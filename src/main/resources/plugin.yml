@@ -1,0 +1,6 @@
+name: MahjongEngine
+version: ${version}
+main: top.ellan.mahjongengine.MahjongPlugin
+api-version: 1.21
+authors: [YourName]
+depend: [CraftEngine] # 强依赖 CraftEngine
