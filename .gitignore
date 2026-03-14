@@ -2,6 +2,7 @@
 /.gradle-home/
 /.kotlin/
 /build/
+/_upstream/
 /.idea/
 /*.iml
 Thumbs.db
