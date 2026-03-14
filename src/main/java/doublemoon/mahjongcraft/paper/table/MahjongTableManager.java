@@ -37,6 +37,7 @@ public final class MahjongTableManager implements Listener {
         MahjongTableSession session = new MahjongTableSession(this.plugin, id, owner.getLocation().toCenterLocation(), owner);
         this.tables.put(id, session);
         this.playerTables.put(owner.getUniqueId(), id);
+        this.plugin.debug().log("table", "Created table " + id + " for " + owner.getName());
         return session;
     }
 
@@ -52,6 +53,7 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
         this.playerTables.put(player.getUniqueId(), session.id());
+        this.plugin.debug().log("table", player.getName() + " joined table " + session.id());
         session.render();
         return session;
     }
@@ -68,6 +70,7 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
         this.spectatorTables.put(player.getUniqueId(), session.id());
+        this.plugin.debug().log("table", player.getName() + " is spectating table " + session.id());
         session.render();
         return session;
     }
@@ -81,10 +84,12 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
         this.playerTables.remove(playerId);
+        this.plugin.debug().log("table", "Player " + playerId + " left table " + session.id());
         if (session.isEmpty()) {
             session.spectators().forEach(this.spectatorTables::remove);
             session.shutdown();
             this.tables.remove(session.id());
+            this.plugin.debug().log("table", "Removed empty table " + session.id());
         } else {
             session.render();
         }
@@ -98,6 +103,7 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
         session.removeSpectator(playerId);
+        this.plugin.debug().log("table", "Spectator " + playerId + " left table " + session.id());
         session.render();
         return session;
     }
@@ -129,6 +135,7 @@ public final class MahjongTableManager implements Listener {
         if (session == null) {
             throw new IllegalStateException("Player is not in a table");
         }
+        this.plugin.debug().log("table", player.getName() + " started table " + session.id());
         session.startRound();
     }
 
@@ -137,6 +144,7 @@ public final class MahjongTableManager implements Listener {
         if (session == null || !session.contains(player.getUniqueId()) || !player.getUniqueId().equals(ownerId)) {
             return false;
         }
+        this.plugin.debug().log("table", player.getName() + " clicked tile index " + tileIndex + " on table " + tableId);
         return session.discard(ownerId, tileIndex);
     }
 

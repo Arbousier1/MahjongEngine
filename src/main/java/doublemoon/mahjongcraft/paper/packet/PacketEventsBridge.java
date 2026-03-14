@@ -43,6 +43,10 @@ public final class PacketEventsBridge {
                 }
 
                 Player player = event.getPlayer();
+                PacketEventsBridge.this.plugin.debug().log(
+                    "packet",
+                    "Interact entity packet from " + player.getName() + " for entity=" + interaction.getEntityId()
+                );
                 Bukkit.getScheduler().runTask(PacketEventsBridge.this.plugin, () -> {
                     boolean accepted = PacketEventsBridge.this.tableManager.clickTile(
                         player,
@@ -66,6 +70,7 @@ public final class PacketEventsBridge {
                 if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
                     WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
                     if (!DisplayVisibilityRegistry.canView(packet.getEntityId(), viewerId)) {
+                        PacketEventsBridge.this.plugin.debug().log("packet", "Cancelled SPAWN_ENTITY " + packet.getEntityId() + " for " + player.getName());
                         event.setCancelled(true);
                     }
                     return;
@@ -73,6 +78,7 @@ public final class PacketEventsBridge {
                 if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
                     WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
                     if (!DisplayVisibilityRegistry.canView(packet.getEntityId(), viewerId)) {
+                        PacketEventsBridge.this.plugin.debug().log("packet", "Cancelled ENTITY_METADATA " + packet.getEntityId() + " for " + player.getName());
                         event.setCancelled(true);
                     }
                 }

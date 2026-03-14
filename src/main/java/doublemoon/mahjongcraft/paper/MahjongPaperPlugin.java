@@ -1,18 +1,21 @@
 package doublemoon.mahjongcraft.paper;
 
 import doublemoon.mahjongcraft.paper.command.MahjongCommand;
+import doublemoon.mahjongcraft.paper.debug.DebugService;
 import doublemoon.mahjongcraft.paper.db.DatabaseService;
 import doublemoon.mahjongcraft.paper.i18n.MessageService;
 import doublemoon.mahjongcraft.paper.packet.PacketEventsBridge;
-import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
+import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.table.MahjongTableManager;
-import java.sql.SQLException;
+import java.util.Objects;
+import java.util.logging.Level;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MahjongPaperPlugin extends JavaPlugin {
     private final MessageService messages = new MessageService();
+    private DebugService debug;
     private DatabaseService database;
     private PacketEventsBridge packetEventsBridge;
     private MahjongTableManager tableManager;
@@ -20,12 +23,21 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         this.saveDefaultConfig();
+        this.debug = new DebugService(this.getLogger(), this.getConfig().getConfigurationSection("debug"));
+        this.debug.log("lifecycle", "Debug logging enabled.");
+
         if (DatabaseService.isEnabled(this.getConfig().getConfigurationSection("database"))) {
             try {
                 this.database = new DatabaseService(this, this.getConfig().getConfigurationSection("database"));
                 this.getLogger().info("Database enabled: " + this.database.databaseType());
-            } catch (SQLException ex) {
-                throw new IllegalStateException("Failed to initialize database", ex);
+                this.debug.log("database", "Database service initialized with type=" + this.database.databaseType());
+            } catch (DatabaseService.InitializationException ex) {
+                this.handleDatabaseStartupFailure(ex);
+                if (this.getConfig().getBoolean("database.failOnError", false)) {
+                    this.getLogger().severe("database.failOnError=true, stopping plugin startup.");
+                    this.getServer().getPluginManager().disablePlugin(this);
+                    return;
+                }
             }
         }
 
@@ -44,6 +56,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
         this.getLogger().info("MahjongPaper enabled.");
+        this.debug.log("lifecycle", "Plugin bootstrap complete.");
     }
 
     @Override
@@ -60,6 +73,20 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this.database.close();
             this.database = null;
         }
+        if (this.debug != null) {
+            this.debug.log("lifecycle", "Plugin shutdown complete.");
+        }
+    }
+
+    private void handleDatabaseStartupFailure(DatabaseService.InitializationException ex) {
+        Throwable rootCause = Objects.requireNonNullElse(ex.rootCause(), ex);
+        this.getLogger().severe("Database initialization failed. MahjongPaper will continue with persistence disabled.");
+        this.getLogger().severe("Reason: " + ex.userFacingReason());
+        this.getLogger().severe("Detail: " + rootCause.getClass().getSimpleName() + ": " + Objects.toString(rootCause.getMessage(), "(no additional detail)"));
+        this.getLogger().severe("Hint: use database.type=h2 for local storage, or start MariaDB and verify the configured connection settings.");
+        if (this.debug != null && this.debug.isCategoryEnabled("database")) {
+            this.getLogger().log(Level.SEVERE, "Database startup stack trace:", ex);
+        }
     }
 
     public MessageService messages() {
@@ -68,5 +95,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public DatabaseService database() {
         return this.database;
+    }
+
+    public DebugService debug() {
+        return this.debug;
     }
 }

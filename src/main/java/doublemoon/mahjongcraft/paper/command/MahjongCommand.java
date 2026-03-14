@@ -23,10 +23,12 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 public final class MahjongCommand implements CommandExecutor, TabCompleter {
+    private final MahjongPaperPlugin plugin;
     private final MessageService messages;
     private final MahjongTableManager tableManager;
 
     public MahjongCommand(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
+        this.plugin = plugin;
         this.messages = plugin.messages();
         this.tableManager = tableManager;
     }
@@ -44,6 +46,7 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
+        this.plugin.debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
         switch (sub) {
             case "help" -> this.sendHelp(player);
             case "create" -> {

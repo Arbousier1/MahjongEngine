@@ -1,5 +1,6 @@
 database:
   enabled: true
+  failOnError: false
   type: h2
   host: 127.0.0.1
   port: 3306
@@ -8,6 +9,7 @@ database:
   password: change_me
   parameters: useUnicode=true&characterEncoding=utf8&useSsl=false
   h2:
+    # Relative paths are resolved against the plugin data folder.
     path: data/mahjongpaper
     username: sa
     password: ""
@@ -16,3 +18,12 @@ database:
     maximumPoolSize: 10
     minimumIdle: 2
     connectionTimeoutMillis: 10000
+debug:
+  enabled: false
+  categories:
+    - lifecycle
+    - table
+    - command
+    - packet
+    - render
+    - database

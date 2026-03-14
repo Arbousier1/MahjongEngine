@@ -24,6 +24,12 @@ dependencies {
     implementation("com.zaxxer:HikariCP:6.3.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    testCompileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
+    testImplementation("net.kyori:adventure-api:4.17.0")
+    testImplementation("net.kyori:adventure-text-minimessage:4.17.0")
+    testImplementation("net.kyori:adventure-text-serializer-plain:4.17.0")
 }
 
 java {
@@ -33,13 +39,13 @@ java {
 }
 
 tasks {
-    compileKotlin {
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }
 
-    compileJava {
+    withType<JavaCompile>().configureEach {
         options.encoding = Charsets.UTF_8.name()
         options.release.set(21)
     }
@@ -60,6 +66,6 @@ tasks {
     }
 
     test {
-        enabled = false
+        useJUnitPlatform()
     }
 }

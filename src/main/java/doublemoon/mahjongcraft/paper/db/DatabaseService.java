@@ -8,6 +8,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement;
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
+import java.net.ConnectException;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -30,11 +31,21 @@ public final class DatabaseService {
     private final String databaseType;
     private final HikariDataSource dataSource;
 
-    public DatabaseService(MahjongPaperPlugin plugin, ConfigurationSection config) throws SQLException {
+    public DatabaseService(MahjongPaperPlugin plugin, ConfigurationSection config) throws InitializationException {
         this.plugin = plugin;
         this.databaseType = normalizedType(config);
-        this.dataSource = new HikariDataSource(this.hikariConfig(config));
-        this.initializeSchema();
+
+        HikariDataSource initialized = null;
+        try {
+            initialized = new HikariDataSource(this.hikariConfig(config));
+            this.initializeSchema(initialized);
+        } catch (RuntimeException | SQLException ex) {
+            if (initialized != null) {
+                initialized.close();
+            }
+            throw this.wrapInitializationException(config, ex);
+        }
+        this.dataSource = initialized;
     }
 
     public static boolean isEnabled(ConfigurationSection config) {
@@ -50,9 +61,11 @@ public final class DatabaseService {
     }
 
     public void persistRoundResultAsync(MahjongTableSession session, RoundResolution resolution) {
+        this.plugin.debug().log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
         this.plugin.getServer().getScheduler().runTaskAsynchronously(this.plugin, () -> {
             try {
                 this.persistRoundResult(session, resolution);
+                this.plugin.debug().log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());
             } catch (SQLException ex) {
                 this.plugin.getLogger().warning("Failed to persist round result to " + this.databaseType + ": " + ex.getMessage());
             }
@@ -71,13 +84,13 @@ public final class DatabaseService {
         if ("h2".equals(this.databaseType)) {
             ConfigurationSection h2 = Objects.requireNonNull(config.getConfigurationSection("h2"), "database.h2");
             String rawPath = Objects.requireNonNull(h2.getString("path"), "database.h2.path");
-            Path resolvedPath = this.plugin.getDataFolder().toPath().resolve(rawPath).normalize();
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
             Path parent = resolvedPath.getParent();
             if (parent != null) {
                 parent.toFile().mkdirs();
             }
             hikari.setDriverClassName("org.h2.Driver");
-            hikari.setJdbcUrl("jdbc:h2:file:" + resolvedPath.toString().replace('\\', '/') + (appendH2Parameters(h2.getString("parameters", ""))));
+            hikari.setJdbcUrl("jdbc:h2:file:" + resolvedPath.toString().replace('\\', '/') + appendH2Parameters(h2.getString("parameters", "")));
             hikari.setUsername(h2.getString("username", "sa"));
             hikari.setPassword(h2.getString("password", ""));
             return hikari;
@@ -95,8 +108,8 @@ public final class DatabaseService {
         return hikari;
     }
 
-    private void initializeSchema() throws SQLException {
-        try (Connection connection = this.dataSource.getConnection(); Statement statement = connection.createStatement()) {
+    private void initializeSchema(HikariDataSource dataSource) throws SQLException {
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS round_history (
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -298,11 +311,76 @@ public final class DatabaseService {
         return parameters.isBlank() ? "" : ";" + parameters;
     }
 
+    private InitializationException wrapInitializationException(ConfigurationSection config, Exception cause) {
+        Throwable rootCause = rootCause(cause);
+        return new InitializationException(this.databaseType, this.userFacingReason(config, rootCause), cause, rootCause);
+    }
+
+    private String userFacingReason(ConfigurationSection config, Throwable rootCause) {
+        if ("h2".equals(this.databaseType)) {
+            ConfigurationSection h2 = Objects.requireNonNull(config.getConfigurationSection("h2"), "database.h2");
+            String rawPath = h2.getString("path", "data/mahjongpaper");
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
+            return "Could not open the H2 database file. Resolved path: " + resolvedPath
+                + ". Check database.h2.path and make sure the plugin folder is writable.";
+        }
+
+        String host = config.getString("host", "127.0.0.1");
+        int port = config.getInt("port", 3306);
+        String database = config.getString("name", "mahjongpaper");
+        String target = host + ":" + port + "/" + database;
+        String message = Objects.toString(rootCause.getMessage(), "");
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (rootCause instanceof ConnectException || lower.contains("connection refused") || lower.contains("connect")) {
+            return "Could not connect to MariaDB at " + target
+                + ". Check that the database server is running and verify database.host, database.port, database.name, database.username, and database.password.";
+        }
+        if (lower.contains("access denied") || lower.contains("authentication")) {
+            return "MariaDB authentication failed for " + target
+                + ". Check database.username and database.password.";
+        }
+        return "MariaDB initialization failed for " + target
+            + ". Check the database connection settings and network availability.";
+    }
+
+    private static Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
     private static void setNullableInt(PreparedStatement statement, int parameterIndex, Integer value) throws SQLException {
         if (value == null) {
             statement.setNull(parameterIndex, java.sql.Types.INTEGER);
         } else {
             statement.setInt(parameterIndex, value);
+        }
+    }
+
+    public static final class InitializationException extends Exception {
+        private final String databaseType;
+        private final String userFacingReason;
+        private final Throwable rootCause;
+
+        public InitializationException(String databaseType, String userFacingReason, Throwable cause, Throwable rootCause) {
+            super(userFacingReason, cause);
+            this.databaseType = databaseType;
+            this.userFacingReason = userFacingReason;
+            this.rootCause = rootCause;
+        }
+
+        public String databaseType() {
+            return this.databaseType;
+        }
+
+        public String userFacingReason() {
+            return this.userFacingReason;
+        }
+
+        public Throwable rootCause() {
+            return this.rootCause;
         }
     }
 }
