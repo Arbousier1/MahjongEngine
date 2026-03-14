@@ -1,6 +1,6 @@
 database:
   enabled: true
-  type: mariadb
+  type: h2
   host: 127.0.0.1
   port: 3306
   name: mahjongpaper

@@ -287,7 +287,7 @@ public final class DatabaseService {
     }
 
     private static String normalizedType(ConfigurationSection config) {
-        String type = config.getString("type", "mariadb").trim().toLowerCase(Locale.ROOT);
+        String type = config.getString("type", "h2").trim().toLowerCase(Locale.ROOT);
         return switch (type) {
             case "mariadb", "h2" -> type;
             default -> throw new IllegalArgumentException("Unsupported database.type: " + type);

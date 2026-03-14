@@ -27,7 +27,7 @@ This repository currently includes a playable Paper-based Riichi Mahjong port fo
 - per-viewer localized HUD overlays, turn prompts and settlement messaging
 - MiniMessage-based player messaging with `zh-CN` / fallback English localization
 - locale-aware number formatting in command and settlement surfaces
-- MariaDB or H2-backed round history persistence with startup schema creation
+- H2-backed round history persistence by default, with optional MariaDB support and startup schema creation
 
 It is still not fully at feature parity with upstream `MahjongCraft`. The largest remaining gaps are the original mod's more specialized client UX surface, additional board choreography/animation polish, and broader end-to-end parity verification against every upstream interaction edge case.
 
@@ -66,7 +66,7 @@ It is still not fully at feature parity with upstream `MahjongCraft`. The larges
 
 The plugin expects the PacketEvents plugin to be installed on the server because it is declared as a dependency in `plugin.yml`.
 The project now also ships [`paper-plugin.yml`](./src/main/resources/paper-plugin.yml) for Paper-native plugin metadata and dependency loading; `plugin.yml` is still kept for command and permission registration.
-Database settings live in [`config.yml`](./src/main/resources/config.yml); set `database.type` to `mariadb` or `h2`. Round settlements are written asynchronously to `round_history` and `round_player_result`.
+Database settings live in [`config.yml`](./src/main/resources/config.yml); the default database type is `h2`, and you can switch `database.type` to `mariadb` if needed. Round settlements are written asynchronously to `round_history` and `round_player_result`.
 
 ## Resource Pack
 
