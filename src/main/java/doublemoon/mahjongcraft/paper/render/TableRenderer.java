@@ -5,6 +5,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -40,8 +41,8 @@ public final class TableRenderer {
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
     private static final double DEAD_WALL_GAP = TILE_PADDING * 20.0D;
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
-    private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
-    private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
+    private static final double UPRIGHT_TILE_Y = 0.0D;
+    private static final double FLAT_TILE_Y = 0.0D;
     private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
     private static final float HAND_INTERACTION_WIDTH = 0.14F;
     private static final float HAND_INTERACTION_HEIGHT = 0.18F;
@@ -118,7 +119,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_HEIGHT,
             (float) borderSpanZ
         ));
-        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+        spawned.addAll(this.renderTableHitboxes(session, center));
         return spawned;
     }
 
@@ -180,6 +181,7 @@ public final class TableRenderer {
             }
         }
 
+        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(center, session);
         List<Entity> spawned = new ArrayList<>(liveWallCount + DEAD_WALL_SIZE - session.doraIndicators().size());
         int breakTileIndex = wallBreakTileIndex(session);
         for (int i = 0; i < liveWallCount; i++) {
@@ -200,15 +202,15 @@ public final class TableRenderer {
             ));
         }
 
-        SeatWind deadWallWind = deadWallSeat(session);
         for (int i = 0; i < DEAD_WALL_SIZE; i++) {
             if (doraSlots[i]) {
                 continue;
             }
+            DeadWallPlacement placement = deadWallPlacements.get(i);
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
-                deadWallLocation(center, session, i),
-                seatYaw(deadWallWind),
+                placement.location(),
+                placement.yaw(),
                 MahjongTile.UNKNOWN,
                 DisplayEntities.TileRenderPose.FLAT_FACE_DOWN,
                 null,
@@ -224,14 +226,15 @@ public final class TableRenderer {
         }
         Location center = displayCenter(session);
         List<MahjongTile> dora = session.doraIndicators();
+        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(center, session);
         List<Entity> spawned = new ArrayList<>(dora.size());
-        SeatWind deadWallWind = deadWallSeat(session);
         int kanCount = session.kanCount();
         for (int i = 0; i < dora.size(); i++) {
+            DeadWallPlacement placement = deadWallPlacements.get(doraIndicatorDeadWallIndex(kanCount, i));
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
-                deadWallLocation(center, session, doraIndicatorDeadWallIndex(kanCount, i)),
-                seatYaw(deadWallWind),
+                placement.location(),
+                placement.yaw(),
                 dora.get(i),
                 DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                 null,
@@ -520,7 +523,7 @@ public final class TableRenderer {
     }
 
     private List<Entity> renderTableHitboxes(MahjongTableSession session, Location center) {
-        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center.clone().add(-0.5D, 0.0D, -0.5D));
+        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center.clone());
         return furnitureHitbox == null ? List.of() : List.of(furnitureHitbox);
     }
 
@@ -554,10 +557,6 @@ public final class TableRenderer {
         return Math.floorMod(wallBreakTileIndex(session) - DEAD_WALL_SIZE, TOTAL_WALL_TILES);
     }
 
-    private static SeatWind deadWallSeat(MahjongTableSession session) {
-        return WallLayout.wallSeat(deadWallAnchorSlot(session));
-    }
-
     private static int doraIndicatorDeadWallIndex(int kanCount, int indicatorIndex) {
         return (4 - indicatorIndex) * 2 + kanCount;
     }
@@ -580,15 +579,53 @@ public final class TableRenderer {
         return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
     }
 
-    private static Location deadWallLocation(Location center, MahjongTableSession session, int deadWallIndex) {
-        SeatWind wind = deadWallSeat(session);
-        int anchorSlot = deadWallAnchorSlot(session);
-        int lineIndex = DEAD_WALL_SIZE - 1 - deadWallIndex;
-        int originalSlot = Math.floorMod(anchorSlot + lineIndex, TOTAL_WALL_TILES);
-        Location anchor = add(wallSlotLocation(center, anchorSlot), deadWallGapOffset(wind));
-        Location location = add(anchor, multiply(deadWallLineOffset(wind), lineIndex / 2));
-        location.setY(center.getY() + FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(originalSlot)));
-        return location;
+    private static List<DeadWallPlacement> deadWallPlacements(Location center, MahjongTableSession session) {
+        int breakTileIndex = wallBreakTileIndex(session);
+        List<DeadWallPlacementMutable> placements = new ArrayList<>(DEAD_WALL_SIZE);
+        for (int i = 0; i < DEAD_WALL_SIZE; i++) {
+            int wallSlot = Math.floorMod(breakTileIndex - DEAD_WALL_SIZE + i, TOTAL_WALL_TILES);
+            SeatWind face = WallLayout.wallSeat(wallSlot);
+            placements.add(new DeadWallPlacementMutable(
+                wallSlot,
+                face,
+                seatYaw(face),
+                add(wallSlotLocation(center, wallSlot), deadWallGapOffset(face))
+            ));
+        }
+
+        SeatWind direction = placements.get(placements.size() - 1).face();
+        List<DeadWallPlacementMutable> reversed = new ArrayList<>(placements);
+        Collections.reverse(reversed);
+        for (int index = 0; index < reversed.size(); index++) {
+            DeadWallPlacementMutable placement = reversed.get(index);
+            if (placement.face() == direction) {
+                continue;
+            }
+
+            placement.setYaw(seatYaw(direction));
+            if (index % 2 == 0) {
+                Offset shift = deadWallCornerShift(direction);
+                for (DeadWallPlacementMutable other : reversed) {
+                    other.shift(shift.x(), shift.z());
+                }
+            }
+
+            Location base = reversed.get(0).location();
+            double positionY = reversed.get(index % 2 == 0 ? 0 : 1).location().getY();
+            double offset = WALL_TILE_STEP * (index / 2);
+            placement.setLocation(switch (direction) {
+                case EAST -> new Location(base.getWorld(), base.getX(), positionY, base.getZ() - offset);
+                case SOUTH -> new Location(base.getWorld(), base.getX() + offset, positionY, base.getZ());
+                case WEST -> new Location(base.getWorld(), base.getX(), positionY, base.getZ() + offset);
+                case NORTH -> new Location(base.getWorld(), base.getX() - offset, positionY, base.getZ());
+            });
+        }
+
+        List<DeadWallPlacement> result = new ArrayList<>(placements.size());
+        for (DeadWallPlacementMutable placement : placements) {
+            result.add(new DeadWallPlacement(placement.location(), placement.yaw()));
+        }
+        return result;
     }
 
     private static float seatYaw(SeatWind wind) {
@@ -728,6 +765,15 @@ public final class TableRenderer {
         };
     }
 
+    private static Offset deadWallCornerShift(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, TILE_WIDTH);
+            case SOUTH -> new Offset(-TILE_WIDTH, 0.0D);
+            case WEST -> new Offset(0.0D, -TILE_WIDTH);
+            case NORTH -> new Offset(TILE_WIDTH, 0.0D);
+        };
+    }
+
     private static Offset tileOffset(SeatWind wind) {
         return switch (wind) {
             case EAST -> new Offset(0.0D, -TILE_WIDTH);
@@ -858,5 +904,50 @@ public final class TableRenderer {
         double depth() {
             return this.maxZ - this.minZ;
         }
+    }
+
+    private static final class DeadWallPlacementMutable {
+        private final int wallSlot;
+        private final SeatWind face;
+        private float yaw;
+        private Location location;
+
+        private DeadWallPlacementMutable(int wallSlot, SeatWind face, float yaw, Location location) {
+            this.wallSlot = wallSlot;
+            this.face = face;
+            this.yaw = yaw;
+            this.location = location;
+        }
+
+        private int wallSlot() {
+            return this.wallSlot;
+        }
+
+        private SeatWind face() {
+            return this.face;
+        }
+
+        private float yaw() {
+            return this.yaw;
+        }
+
+        private void setYaw(float yaw) {
+            this.yaw = yaw;
+        }
+
+        private Location location() {
+            return this.location;
+        }
+
+        private void setLocation(Location location) {
+            this.location = location;
+        }
+
+        private void shift(double deltaX, double deltaZ) {
+            this.location = this.location.clone().add(deltaX, 0.0D, deltaZ);
+        }
+    }
+
+    private record DeadWallPlacement(Location location, float yaw) {
     }
 }

@@ -29,6 +29,8 @@ public final class DisplayEntities {
     private static final String ITEM_MODEL_NAMESPACE = "mahjongcraft";
     private static final float TILE_SCALE = 1.0F;
     private static final float LABEL_VIEW_RANGE = 48.0F;
+    private static final float TILE_HEIGHT = 0.15F;
+    private static final float TILE_DEPTH = 0.075F;
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
 
     private DisplayEntities() {
@@ -56,12 +58,13 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        World world = location.getWorld();
+        Location renderedLocation = location.clone().add(0.0D, pose.worldYOffset(), 0.0D);
+        World world = renderedLocation.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        ItemDisplay display = world.spawn(location, ItemDisplay.class, spawned -> {
+        ItemDisplay display = world.spawn(renderedLocation, ItemDisplay.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
             spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
@@ -251,17 +254,19 @@ public final class DisplayEntities {
     }
 
     public enum TileRenderPose {
-        STANDING(false, 0.0F),
-        STANDING_FACE_DOWN(true, 0.0F),
-        FLAT_FACE_UP(false, -90.0F),
-        FLAT_FACE_DOWN(true, 90.0F);
+        STANDING(false, 0.0F, TILE_HEIGHT / 2.0F),
+        STANDING_FACE_DOWN(true, 0.0F, TILE_HEIGHT / 2.0F),
+        FLAT_FACE_UP(false, -90.0F, TILE_DEPTH / 2.0F),
+        FLAT_FACE_DOWN(true, 90.0F, TILE_DEPTH / 2.0F);
 
         private final boolean faceDown;
         private final float xRotationDegrees;
+        private final float worldYOffset;
 
-        TileRenderPose(boolean faceDown, float xRotationDegrees) {
+        TileRenderPose(boolean faceDown, float xRotationDegrees, float worldYOffset) {
             this.faceDown = faceDown;
             this.xRotationDegrees = xRotationDegrees;
+            this.worldYOffset = worldYOffset;
         }
 
         public boolean faceDown() {
@@ -270,6 +275,10 @@ public final class DisplayEntities {
 
         public float xRotationDegrees() {
             return this.xRotationDegrees;
+        }
+
+        public float worldYOffset() {
+            return this.worldYOffset;
         }
     }
 }
