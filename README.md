@@ -28,7 +28,8 @@ This repository currently includes a playable Paper-based Riichi Mahjong port fo
 - MiniMessage-based player messaging with `zh-CN` / fallback English localization
 - locale-aware number formatting in command and settlement surfaces
 - H2-backed round history persistence by default, with optional MariaDB support and startup schema creation
-- optional CraftEngine compatibility with automatic bundle export and custom-item fallback support
+- CraftEngine bundle export with CraftEngine-backed table hitboxes and entity culling integration
+- persistent lobby-style tables that survive restart and render before the round begins
 
 It is still not fully at feature parity with upstream `MahjongCraft`. The largest remaining gaps are the original mod's more specialized client UX surface, additional board choreography/animation polish, and broader end-to-end parity verification against every upstream interaction edge case.
 
@@ -75,6 +76,14 @@ The plugin expects the PacketEvents plugin to be installed on the server because
 The build now produces a thin jar. Runtime libraries are resolved by the Paper plugin loader declared in [`paper-plugin.yml`](./src/main/resources/paper-plugin.yml); `plugin.yml` is still kept for command and permission registration.
 Database settings live in [`config.yml`](./src/main/resources/config.yml); the default database type is `h2`, and you can switch `database.type` to `mariadb` if needed. Round settlements are written asynchronously to `round_history` and `round_player_result`.
 
+Recommended runtime stack for the current branch:
+
+- Paper
+- PacketEvents
+- CraftEngine
+
+MahjongPaper still runs without CraftEngine, but the current table pipeline now expects CraftEngine for the best result. Table hitboxes are exported as CraftEngine furniture, and display-entity culling is bridged into CraftEngine's tracked-entity culling system instead of using MahjongPaper's old local culling service.
+
 ## Resource Pack
 
 The matching pack is in [`resourcepack`](./resourcepack).
@@ -96,7 +105,17 @@ The exported bundle contains:
 - `configuration/items/mahjong_tiles.yml`
 - `resourcepack/assets/mahjongcraft/...`
 
-MahjongPaper continues to work without CraftEngine. When CraftEngine is present and its custom items are available, display and settlement tiles will prefer the generated CraftEngine item IDs such as `mahjongpaper:east` and fall back to direct `item_model` items if needed.
+The exported item config now also contains `mahjongpaper:table_hitbox`, which MahjongPaper places as CraftEngine furniture for the table collision volume.
+
+Current CraftEngine integration covers:
+
+- custom tile items such as `mahjongpaper:east`
+- table hitboxes via CraftEngine furniture
+- display-entity culling via CraftEngine tracked `Cullable` entities
+
+When CraftEngine is present and its custom items are available, display and settlement tiles will prefer the generated CraftEngine item IDs such as `mahjongpaper:east` and fall back to direct `item_model` items if needed.
+
+Important: CraftEngine entity culling must be enabled in CraftEngine's own config if you want MahjongPaper display culling to be active. MahjongPaper no longer ships its old standalone `clientOptimization.entityCulling` config section.
 
 ## Upstream References
 
