@@ -58,7 +58,7 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        Location renderedLocation = location.clone().add(0.0D, pose.worldYOffset(), 0.0D);
+        Location renderedLocation = tileRenderLocation(location, yaw, pose);
         World world = renderedLocation.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -76,7 +76,7 @@ public final class DisplayEntities {
             spawned.setShadowStrength(0.0F);
             spawned.setDisplayWidth(0.4F);
             spawned.setDisplayHeight(0.6F);
-            spawned.setRotation(yaw, 0.0F);
+            spawned.setRotation(tileDisplayYaw(yaw), 0.0F);
             spawned.setVisibleByDefault(!restrictedVisibility && visibleByDefault);
             spawned.setTransformation(new Transformation(
                 new Vector3f(),
@@ -237,6 +237,37 @@ public final class DisplayEntities {
         }
     }
 
+    static Location tileRenderLocation(Location location, float yaw, TileRenderPose pose) {
+        Offset3 offset = rotateTileOffset(pose.localYOffset(), pose.localZOffset(), pose.xRotationDegrees(), tileDisplayYaw(yaw));
+        return location.clone().add(offset.x(), offset.y(), offset.z());
+    }
+
+    static float tileDisplayYaw(float yaw) {
+        float renderedYaw = -yaw + 180.0F;
+        while (renderedYaw >= 180.0F) {
+            renderedYaw -= 360.0F;
+        }
+        while (renderedYaw < -180.0F) {
+            renderedYaw += 360.0F;
+        }
+        return renderedYaw;
+    }
+
+    private static Offset3 rotateTileOffset(float localYOffset, float localZOffset, float xRotationDegrees, float renderedYawDegrees) {
+        double xRotationRadians = Math.toRadians(xRotationDegrees);
+        double cosX = Math.cos(xRotationRadians);
+        double sinX = Math.sin(xRotationRadians);
+        double rotatedY = localYOffset * cosX - localZOffset * sinX;
+        double rotatedZ = localYOffset * sinX + localZOffset * cosX;
+
+        double yawRadians = Math.toRadians(renderedYawDegrees);
+        double sinYaw = Math.sin(yawRadians);
+        double cosYaw = Math.cos(yawRadians);
+        double rotatedX = -sinYaw * rotatedZ;
+        double finalZ = cosYaw * rotatedZ;
+        return new Offset3(rotatedX, rotatedY, finalZ);
+    }
+
     private static ItemStack tileItem(Plugin plugin, MahjongTile tile, boolean faceDown) {
         if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin) {
             ItemStack customItem = mahjongPlugin.craftEngine().resolveTileItem(tile, faceDown);
@@ -258,19 +289,21 @@ public final class DisplayEntities {
     }
 
     public enum TileRenderPose {
-        STANDING(false, 0.0F, TILE_HEIGHT / 2.0F),
-        STANDING_FACE_DOWN(true, 0.0F, TILE_HEIGHT / 2.0F),
-        FLAT_FACE_UP(false, -90.0F, TILE_DEPTH / 2.0F),
-        FLAT_FACE_DOWN(true, 90.0F, TILE_DEPTH / 2.0F);
+        STANDING(false, 0.0F, TILE_HEIGHT / 2.0F, 0.0F),
+        STANDING_FACE_DOWN(true, 0.0F, TILE_HEIGHT / 2.0F, 0.0F),
+        FLAT_FACE_UP(false, 90.0F, 0.0F, -TILE_DEPTH / 2.0F),
+        FLAT_FACE_DOWN(true, -90.0F, 0.0F, TILE_DEPTH / 2.0F);
 
         private final boolean faceDown;
         private final float xRotationDegrees;
-        private final float worldYOffset;
+        private final float localYOffset;
+        private final float localZOffset;
 
-        TileRenderPose(boolean faceDown, float xRotationDegrees, float worldYOffset) {
+        TileRenderPose(boolean faceDown, float xRotationDegrees, float localYOffset, float localZOffset) {
             this.faceDown = faceDown;
             this.xRotationDegrees = xRotationDegrees;
-            this.worldYOffset = worldYOffset;
+            this.localYOffset = localYOffset;
+            this.localZOffset = localZOffset;
         }
 
         public boolean faceDown() {
@@ -281,8 +314,15 @@ public final class DisplayEntities {
             return this.xRotationDegrees;
         }
 
-        public float worldYOffset() {
-            return this.worldYOffset;
+        public float localYOffset() {
+            return this.localYOffset;
         }
+
+        public float localZOffset() {
+            return this.localZOffset;
+        }
+    }
+
+    private record Offset3(double x, double y, double z) {
     }
 }

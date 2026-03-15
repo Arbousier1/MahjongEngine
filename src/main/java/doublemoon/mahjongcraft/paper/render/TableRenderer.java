@@ -292,17 +292,15 @@ public final class TableRenderer {
         List<MahjongTile> hand = session.hand(playerId);
         List<UUID> othersOnly = session.viewerIdsExcluding(playerId);
         List<Entity> spawned = new ArrayList<>(hand.size());
-        DisplayEntities.TileRenderPose publicHandPose = session.isStarted()
-            ? DisplayEntities.TileRenderPose.STANDING_FACE_DOWN
-            : DisplayEntities.TileRenderPose.STANDING;
+        boolean concealHand = session.isStarted();
 
         for (int i = 0; i < hand.size(); i++) {
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
                 handTileLocation(session, wind, hand.size(), i, false),
                 yaw,
-                hand.get(i),
-                publicHandPose,
+                concealHand ? MahjongTile.UNKNOWN : hand.get(i),
+                DisplayEntities.TileRenderPose.STANDING,
                 null,
                 true,
                 othersOnly

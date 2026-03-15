@@ -331,6 +331,7 @@ public final class CraftEngineService {
         for (TrackedCullableEntity tracked : this.trackedCullableEntities.values()) {
             if (tracked.entity().isValid()) {
                 this.addTrackedEntity(player, tracked);
+                this.scheduleViewerVisibility(tracked.entity(), player, true);
             }
         }
     }
