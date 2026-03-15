@@ -502,7 +502,7 @@ public final class TableRenderer {
     }
 
     private List<Entity> renderTableHitboxes(MahjongTableSession session, Location center) {
-        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center);
+        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center.clone().add(-0.5D, 0.0D, -0.5D));
         return furnitureHitbox == null ? List.of() : List.of(furnitureHitbox);
     }
 
