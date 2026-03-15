@@ -29,6 +29,10 @@ public final class MessageService {
         return this.messages.plain(locale, key, placeholders);
     }
 
+    public boolean contains(Locale locale, String key) {
+        return this.messages.contains(locale, key);
+    }
+
     public Locale resolveLocale(CommandSender sender) {
         if (sender instanceof Player player) {
             return this.messages.normalizeLocale(player.locale().toLanguageTag());

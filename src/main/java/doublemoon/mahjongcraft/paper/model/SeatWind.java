@@ -1,25 +1,25 @@
 package doublemoon.mahjongcraft.paper.model;
 
 public enum SeatWind {
-    EAST(0, "东"),
-    SOUTH(1, "南"),
-    WEST(2, "西"),
-    NORTH(3, "北");
+    EAST(0, "seat.wind.east"),
+    SOUTH(1, "seat.wind.south"),
+    WEST(2, "seat.wind.west"),
+    NORTH(3, "seat.wind.north");
 
     private final int index;
-    private final String displayName;
+    private final String translationKey;
 
-    SeatWind(int index, String displayName) {
+    SeatWind(int index, String translationKey) {
         this.index = index;
-        this.displayName = displayName;
+        this.translationKey = translationKey;
     }
 
     public int index() {
         return this.index;
     }
 
-    public String displayName() {
-        return this.displayName;
+    public String translationKey() {
+        return this.translationKey;
     }
 
     public static SeatWind fromIndex(int index) {

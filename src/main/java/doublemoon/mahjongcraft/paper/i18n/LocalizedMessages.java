@@ -36,6 +36,12 @@ public final class LocalizedMessages {
         return PlainTextComponentSerializer.plainText().serialize(this.render(locale, key, placeholders));
     }
 
+    public boolean contains(Locale locale, String key) {
+        return this.bundle(this.resolveLocale(locale)).containsKey(key)
+            || this.bundle(this.index.defaultLocale()).containsKey(key)
+            || this.bundle(Locale.ENGLISH).containsKey(key);
+    }
+
     public TagResolver tag(String key, String value) {
         return Placeholder.unparsed(key, value);
     }

@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper.table;
 
 import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
+import doublemoon.mahjongcraft.paper.i18n.LocalizedMessages;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.MeldView;
@@ -11,6 +12,7 @@ import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
 import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
+import doublemoon.mahjongcraft.paper.riichi.model.MahjongSoulScoring;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -54,7 +56,7 @@ public final class MahjongTableSession {
     private final Map<UUID, String> feedbackState = new HashMap<>();
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
-    private MahjongRule configuredRule = new MahjongRule();
+    private MahjongRule configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
     private RiichiRoundEngine engine;
     private String lastSettlementFingerprint = "";
     private String lastPersistedSettlementFingerprint = "";
@@ -338,15 +340,19 @@ public final class MahjongTableSession {
     }
 
     public String displayName(UUID playerId) {
+        return this.displayName(playerId, this.publicLocale());
+    }
+
+    public String displayName(UUID playerId, Locale locale) {
         if (playerId == null) {
-            return "Empty";
+            return this.plugin.messages().plain(locale, "common.empty");
         }
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             return player.getName();
         }
         if (this.botNames.containsKey(playerId)) {
-            return this.botNames.get(playerId);
+            return this.botDisplayName(playerId, locale);
         }
         if (this.engine != null) {
             RiichiPlayerState seatPlayer = this.engine.seatPlayer(playerId.toString());
@@ -354,7 +360,7 @@ public final class MahjongTableSession {
                 return seatPlayer.getDisplayName();
             }
         }
-        return "Offline";
+        return this.plugin.messages().plain(locale, "common.offline");
     }
 
     public boolean isBot(UUID playerId) {
@@ -379,36 +385,71 @@ public final class MahjongTableSession {
     }
 
     public String waitingSummary() {
-        return "Seats " + this.size() + "/4 | Bots " + this.botCount() + " | Spectators " + this.spectatorCount() + " | " + this.ruleSummary();
+        return this.waitingSummary(this.publicLocale());
+    }
+
+    public String waitingSummary(Locale locale) {
+        return this.plugin.messages().plain(
+            locale,
+            "table.waiting_summary",
+            this.plugin.messages().number(locale, "seats", this.size()),
+            this.plugin.messages().number(locale, "bots", this.botCount()),
+            this.plugin.messages().number(locale, "spectators", this.spectatorCount()),
+            this.plugin.messages().tag("rules", this.ruleSummary(locale))
+        );
     }
 
     public String waitingDisplaySummary() {
-        return "Seats " + this.size() + "/4"
-            + " | Bots " + this.botCount()
-            + " | Specs " + this.spectatorCount();
+        return this.waitingDisplaySummary(this.publicLocale());
+    }
+
+    public String waitingDisplaySummary(Locale locale) {
+        return this.plugin.messages().plain(
+            locale,
+            "table.waiting_display_summary",
+            this.plugin.messages().number(locale, "seats", this.size()),
+            this.plugin.messages().number(locale, "bots", this.botCount()),
+            this.plugin.messages().number(locale, "spectators", this.spectatorCount())
+        );
     }
 
     public String ruleDisplaySummary() {
+        return this.ruleDisplaySummary(this.publicLocale());
+    }
+
+    public String ruleDisplaySummary(Locale locale) {
         MahjongRule rule = this.currentRule();
-        return rule.getLength().name()
-            + " | " + rule.getThinkingTime().name()
-            + " | red=" + rule.getRedFive().name()
-            + " | minHan=" + rule.getMinimumHan().name()
-            + " | start=" + rule.getStartingPoints()
-            + " | goal=" + rule.getMinPointsToWin();
+        return this.plugin.messages().plain(
+            locale,
+            "table.rule_display_summary",
+            this.plugin.messages().tag("length", this.ruleLengthLabel(locale, rule.getLength())),
+            this.plugin.messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
+            this.plugin.messages().tag("red", this.ruleRedFiveLabel(locale, rule.getRedFive())),
+            this.plugin.messages().tag("min_han", this.ruleMinimumHanLabel(locale, rule.getMinimumHan())),
+            this.plugin.messages().number(locale, "start", rule.getStartingPoints()),
+            this.plugin.messages().number(locale, "goal", rule.getMinPointsToWin())
+        );
     }
 
     public String ruleSummary() {
+        return this.ruleSummary(this.publicLocale());
+    }
+
+    public String ruleSummary(Locale locale) {
         MahjongRule rule = this.currentRule();
-        return "length=" + rule.getLength().name()
-            + ", thinking=" + rule.getThinkingTime().name()
-            + ", minHan=" + rule.getMinimumHan().name()
-            + ", spectate=" + rule.getSpectate()
-            + ", redFive=" + rule.getRedFive().name()
-            + ", openTanyao=" + rule.getOpenTanyao()
-            + ", localYaku=" + rule.getLocalYaku()
-            + ", startPoints=" + rule.getStartingPoints()
-            + ", goal=" + rule.getMinPointsToWin();
+        return this.plugin.messages().plain(
+            locale,
+            "table.rule_summary",
+            this.plugin.messages().tag("length", this.ruleLengthLabel(locale, rule.getLength())),
+            this.plugin.messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
+            this.plugin.messages().tag("min_han", this.ruleMinimumHanLabel(locale, rule.getMinimumHan())),
+            this.plugin.messages().tag("spectate", this.booleanLabel(locale, rule.getSpectate())),
+            this.plugin.messages().tag("red_five", this.ruleRedFiveLabel(locale, rule.getRedFive())),
+            this.plugin.messages().tag("open_tanyao", this.booleanLabel(locale, rule.getOpenTanyao())),
+            this.plugin.messages().tag("local_yaku", this.booleanLabel(locale, rule.getLocalYaku())),
+            this.plugin.messages().number(locale, "start_points", rule.getStartingPoints()),
+            this.plugin.messages().number(locale, "goal", rule.getMinPointsToWin())
+        );
     }
 
     public boolean setRuleOption(String key, String rawValue) {
@@ -417,6 +458,11 @@ public final class MahjongTableSession {
         }
         try {
             switch (key.toLowerCase(Locale.ROOT)) {
+                case "preset", "mode" -> {
+                    if (!this.applyRulePreset(rawValue)) {
+                        return false;
+                    }
+                }
                 case "length" -> this.configuredRule.setLength(MahjongRule.GameLength.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "thinkingtime", "thinking" -> this.configuredRule.setThinkingTime(MahjongRule.ThinkingTime.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "minimumhan", "minhan" -> this.configuredRule.setMinimumHan(MahjongRule.MinimumHan.valueOf(rawValue.toUpperCase(Locale.ROOT)));
@@ -438,11 +484,12 @@ public final class MahjongTableSession {
     }
 
     public List<String> ruleKeys() {
-        return List.of("length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
+        return List.of("preset", "mode", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
     }
 
     public List<String> ruleValues(String key) {
         return switch (key.toLowerCase(Locale.ROOT)) {
+            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN");
             case "length" -> List.of("ONE_GAME", "EAST", "SOUTH", "TWO_WIND");
             case "thinkingtime", "thinking" -> List.of("VERY_SHORT", "SHORT", "NORMAL", "LONG", "VERY_LONG");
             case "minimumhan", "minhan" -> List.of("ONE", "TWO", "FOUR", "YAKUMAN");
@@ -538,17 +585,31 @@ public final class MahjongTableSession {
     }
 
     public String roundDisplay() {
+        return this.roundDisplay(this.publicLocale());
+    }
+
+    public String roundDisplay(Locale locale) {
         if (this.engine == null) {
-            return "Not started";
+            return this.plugin.messages().plain(locale, "table.round_not_started");
         }
-        return this.roundWindText() + " " + (this.engine.getRound().getRound() + 1) + " | Honba " + this.engine.getRound().getHonba();
+        return this.plugin.messages().plain(
+            locale,
+            "table.round_display",
+            this.plugin.messages().tag("wind", this.roundWindText(locale)),
+            this.plugin.messages().number(locale, "round", this.engine.getRound().getRound() + 1),
+            this.plugin.messages().number(locale, "honba", this.engine.getRound().getHonba())
+        );
     }
 
     public String dealerName() {
+        return this.dealerName(this.publicLocale());
+    }
+
+    public String dealerName(Locale locale) {
         if (this.engine == null) {
-            return "Unknown";
+            return this.plugin.messages().plain(locale, "common.unknown");
         }
-        return this.displayName(UUID.fromString(this.engine.getDealer().getUuid()));
+        return this.displayName(UUID.fromString(this.engine.getDealer().getUuid()), locale);
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> doraIndicators() {
@@ -586,39 +647,43 @@ public final class MahjongTableSession {
             return this.plugin.messages().render(player, "command.table_not_started");
         }
 
+        Locale locale = this.plugin.messages().resolveLocale(player);
         StringBuilder builder = new StringBuilder(96);
-        builder.append("Round ").append(this.roundDisplay());
-        builder.append(" | Turn ").append(this.engine.getCurrentPlayer().getDisplayName());
-        builder.append(" | Wall ").append(this.engine.getWall().size());
-        builder.append(" | Spectators ").append(this.spectatorCount());
+        builder.append(this.plugin.messages().plain(locale, "state.label.round")).append(' ').append(this.roundDisplay(locale));
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.turn")).append(' ').append(this.engine.getCurrentPlayer().getDisplayName());
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.wall")).append(' ').append(this.engine.getWall().size());
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.spectators")).append(' ').append(this.spectatorCount());
 
         if (this.engine.getPendingReaction() != null) {
             ReactionOptions options = this.engine.availableReactions(player.getUniqueId().toString());
             if (options != null) {
-                builder.append(" | Reactions");
+                builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.reactions"));
                 if (options.getCanRon()) {
-                    builder.append(" ron");
+                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.ron"));
                 }
                 if (options.getCanPon()) {
-                    builder.append(" pon");
+                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.pon"));
                 }
                 if (options.getCanMinkan()) {
-                    builder.append(" minkan");
+                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.minkan"));
                 }
                 if (!options.getChiiPairs().isEmpty()) {
-                    builder.append(" chii");
+                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.chii"));
                 }
             }
         }
 
         if (this.engine.getLastResolution() != null) {
-            builder.append(" | Resolution ").append(this.engine.getLastResolution().getTitle());
+            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.resolution")).append(' ').append(this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()));
         }
         if (this.nextRoundDeadlineMillis > 0L && !this.engine.getGameFinished()) {
-            builder.append(" | Next round in ").append(this.nextRoundSecondsRemaining()).append('s');
+            builder.append(" | ")
+                .append(this.plugin.messages().plain(locale, "state.label.next_round"))
+                .append(' ')
+                .append(this.plugin.messages().plain(locale, "state.next_round_in", this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())));
         }
         if (this.engine.getGameFinished()) {
-            builder.append(" | Match finished, start again to begin a new table game.");
+            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.match_finished"));
         }
 
         return this.plugin.messages().render(player, "command.rule_summary", this.plugin.messages().tag("summary", builder.toString()));
@@ -631,7 +696,7 @@ public final class MahjongTableSession {
                 locale,
                 "overlay.waiting",
                 this.plugin.messages().tag("table_id", this.id),
-                this.plugin.messages().tag("summary", this.waitingDisplaySummary())
+                this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
             );
         }
         if (!this.engine.getStarted()) {
@@ -639,14 +704,14 @@ public final class MahjongTableSession {
                 return this.plugin.messages().render(
                     locale,
                     "overlay.finished",
-                    this.plugin.messages().tag("round", this.roundDisplay()),
-                    this.plugin.messages().tag("title", this.engine.getLastResolution().getTitle())
+                    this.plugin.messages().tag("round", this.roundDisplay(locale)),
+                    this.plugin.messages().tag("title", this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()))
                 );
             }
             return this.plugin.messages().render(
                 locale,
                 "overlay.next_round",
-                this.plugin.messages().tag("round", this.roundDisplay()),
+                this.plugin.messages().tag("round", this.roundDisplay(locale)),
                 this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())
             );
         }
@@ -666,7 +731,7 @@ public final class MahjongTableSession {
             locale,
             "overlay.active",
             this.plugin.messages().tag("role", role),
-            this.plugin.messages().tag("round", this.roundDisplay()),
+            this.plugin.messages().tag("round", this.roundDisplay(locale)),
             this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
             this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
             this.plugin.messages().tag("prompt", prompt)
@@ -680,7 +745,7 @@ public final class MahjongTableSession {
             return this.plugin.messages().render(
                 locale,
                 "overlay.seat_empty",
-                this.plugin.messages().tag("seat", wind.displayName())
+                this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale))
             );
         }
 
@@ -696,8 +761,8 @@ public final class MahjongTableSession {
         return this.plugin.messages().render(
             locale,
             "overlay.seat",
-            this.plugin.messages().tag("seat", wind.displayName()),
-            this.plugin.messages().tag("name", this.displayName(playerId)),
+            this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale)),
+            this.plugin.messages().tag("name", this.displayName(playerId, locale)),
             this.plugin.messages().number(locale, "points", this.points(playerId)),
             this.plugin.messages().number(locale, "hand", this.hand(playerId).size()),
             this.plugin.messages().number(locale, "river", this.discards(playerId).size()),
@@ -741,6 +806,17 @@ public final class MahjongTableSession {
         return this.engine == null ? this.configuredRule : this.engine.getRule();
     }
 
+    public boolean applyRulePreset(String rawValue) {
+        switch (rawValue.toUpperCase(Locale.ROOT)) {
+            case "MAJSOUL_TONPUU", "TONPUU", "TONPUSEN", "EAST" -> this.configuredRule = majsoulRule(MahjongRule.GameLength.EAST);
+            case "MAJSOUL_HANCHAN", "HANCHAN", "TWO_WIND", "SOUTH" -> this.configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private MahjongRule copyRule() {
         return new MahjongRule(
             this.configuredRule.getLength(),
@@ -753,6 +829,29 @@ public final class MahjongTableSession {
             this.configuredRule.getOpenTanyao(),
             this.configuredRule.getLocalYaku()
         );
+    }
+
+    public List<FinalStanding> finalStandings() {
+        if (this.engine == null || !this.engine.getGameFinished()) {
+            return List.of();
+        }
+        List<RiichiPlayerState> seatOrder = this.engine.getSeats();
+        List<RiichiPlayerState> ranked = new ArrayList<>(seatOrder);
+        ranked.sort((left, right) -> {
+            int scoreCompare = Integer.compare(right.getPoints(), left.getPoints());
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+            return Integer.compare(seatOrder.indexOf(left), seatOrder.indexOf(right));
+        });
+
+        List<FinalStanding> standings = new ArrayList<>(ranked.size());
+        for (int i = 0; i < ranked.size(); i++) {
+            RiichiPlayerState player = ranked.get(i);
+            double gameScore = MahjongSoulScoring.gameScore(player.getPoints(), i + 1);
+            standings.add(new FinalStanding(UUID.fromString(player.getUuid()), player.getDisplayName(), i + 1, player.getPoints(), gameScore));
+        }
+        return List.copyOf(standings);
     }
 
     private void syncPlayerFeedback() {
@@ -864,7 +963,7 @@ public final class MahjongTableSession {
         for (Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile> pair : options.getChiiPairs()) {
             String command = "/mahjong chii " + pair.getFirst().name().toLowerCase(Locale.ROOT) + " " + pair.getSecond().name().toLowerCase(Locale.ROOT);
             String label = this.plugin.messages().plain(locale, "table.action.chii") + " "
-                + pair.getFirst().name().toLowerCase(Locale.ROOT) + " " + pair.getSecond().name().toLowerCase(Locale.ROOT);
+                + this.tileLabel(locale, pair.getFirst().name()) + " " + this.tileLabel(locale, pair.getSecond().name());
             message = message.append(this.actionButton(label, command, NamedTextColor.GREEN)).append(Component.space());
         }
         return message.append(this.actionButton(this.plugin.messages().plain(locale, "table.action.skip"), "/mahjong skip", NamedTextColor.GRAY));
@@ -924,22 +1023,22 @@ public final class MahjongTableSession {
                 locale,
                 "hud.waiting",
                 this.plugin.messages().tag("table_id", this.id),
-                this.plugin.messages().tag("summary", this.waitingDisplaySummary())
+                this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
             );
         }
         if (this.engine.getGameFinished() && this.engine.getLastResolution() != null) {
             return this.plugin.messages().render(
                 locale,
                 "hud.finished",
-                this.plugin.messages().tag("round", this.roundDisplay()),
-                this.plugin.messages().tag("title", this.engine.getLastResolution().getTitle())
+                this.plugin.messages().tag("round", this.roundDisplay(locale)),
+                this.plugin.messages().tag("title", this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()))
             );
         }
         if (!this.engine.getStarted() && this.nextRoundDeadlineMillis > 0L) {
             return this.plugin.messages().render(
                 locale,
                 "hud.next_round",
-                this.plugin.messages().tag("round", this.roundDisplay()),
+                this.plugin.messages().tag("round", this.roundDisplay(locale)),
                 this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())
             );
         }
@@ -949,7 +1048,7 @@ public final class MahjongTableSession {
         return this.plugin.messages().render(
             locale,
             "hud.round",
-            this.plugin.messages().tag("round", this.roundDisplay()),
+            this.plugin.messages().tag("round", this.roundDisplay(locale)),
             this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
             this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
             this.plugin.messages().tag("role", role)
@@ -1243,13 +1342,151 @@ public final class MahjongTableSession {
         List<Entity> render();
     }
 
-    private String roundWindText() {
+    public Locale publicLocale() {
+        return LocalizedMessages.DEFAULT_LOCALE;
+    }
+
+    public String seatDisplayName(SeatWind wind, Locale locale) {
+        return this.plugin.messages().plain(locale, wind.translationKey());
+    }
+
+    public String publicSeatStatus(SeatWind wind) {
+        Locale locale = this.publicLocale();
+        UUID playerId = this.playerAt(wind);
+        if (playerId == null) {
+            return this.plugin.messages().plain(
+                locale,
+                "table.public.seat_empty",
+                this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale))
+            );
+        }
+        String riichi = this.isRiichi(playerId) ? this.plugin.messages().plain(locale, "overlay.status_riichi") : "";
+        return this.plugin.messages().plain(
+            locale,
+            "table.public.seat_status",
+            this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale)),
+            this.plugin.messages().number(locale, "points", this.points(playerId)),
+            this.plugin.messages().tag("status", riichi.isBlank() ? "" : " | " + riichi)
+        );
+    }
+
+    public String publicCenterText() {
+        Locale locale = this.publicLocale();
+        if (this.isStarted()) {
+            return this.plugin.messages().plain(
+                locale,
+                "table.public.center_active",
+                this.plugin.messages().tag("round", this.roundDisplay(locale)),
+                this.plugin.messages().number(locale, "wall", this.remainingWall().size()),
+                this.plugin.messages().number(locale, "dice", this.dicePoints()),
+                this.plugin.messages().tag("dealer", this.dealerName(locale))
+            );
+        }
+        return this.plugin.messages().plain(
+            locale,
+            "table.public.center_waiting",
+            this.plugin.messages().tag("table_id", this.id),
+            this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale)),
+            this.plugin.messages().tag("rules", this.ruleDisplaySummary(locale))
+        );
+    }
+
+    private String roundWindText(Locale locale) {
         return switch (this.engine.getRound().getWind().name()) {
-            case "EAST" -> "East";
-            case "SOUTH" -> "South";
-            case "WEST" -> "West";
-            case "NORTH" -> "North";
+            case "EAST" -> this.plugin.messages().plain(locale, "seat.wind.east");
+            case "SOUTH" -> this.plugin.messages().plain(locale, "seat.wind.south");
+            case "WEST" -> this.plugin.messages().plain(locale, "seat.wind.west");
+            case "NORTH" -> this.plugin.messages().plain(locale, "seat.wind.north");
             default -> this.engine.getRound().getWind().name();
         };
+    }
+
+    private String botDisplayName(UUID playerId, Locale locale) {
+        String raw = this.botNames.get(playerId);
+        if (raw == null) {
+            return this.plugin.messages().plain(locale, "common.unknown");
+        }
+        int suffix = this.seats.indexOf(playerId) + 1;
+        return this.plugin.messages().plain(locale, "table.bot_name", this.plugin.messages().number(locale, "index", Math.max(1, suffix)));
+    }
+
+    private String ruleLengthLabel(Locale locale, MahjongRule.GameLength length) {
+        return this.plugin.messages().plain(locale, "rule.length." + length.name().toLowerCase(Locale.ROOT));
+    }
+
+    private String ruleThinkingLabel(Locale locale, MahjongRule.ThinkingTime thinkingTime) {
+        return this.plugin.messages().plain(locale, "rule.thinking." + thinkingTime.name().toLowerCase(Locale.ROOT));
+    }
+
+    private String ruleMinimumHanLabel(Locale locale, MahjongRule.MinimumHan minimumHan) {
+        return this.plugin.messages().plain(locale, "rule.minimum_han." + minimumHan.name().toLowerCase(Locale.ROOT));
+    }
+
+    private String ruleRedFiveLabel(Locale locale, MahjongRule.RedFive redFive) {
+        return this.plugin.messages().plain(locale, "rule.red_five." + redFive.name().toLowerCase(Locale.ROOT));
+    }
+
+    private String booleanLabel(Locale locale, boolean value) {
+        return this.plugin.messages().plain(locale, value ? "common.true" : "common.false");
+    }
+
+    private String tileLabel(Locale locale, String tileName) {
+        String key = "tile." + tileName.toLowerCase(Locale.ROOT);
+        return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : tileName.toLowerCase(Locale.ROOT);
+    }
+
+    private String resolutionLabel(Locale locale, String title) {
+        String key = "resolution." + title.toLowerCase(Locale.ROOT);
+        return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : title;
+    }
+
+    private static MahjongRule majsoulRule(MahjongRule.GameLength length) {
+        return new MahjongRule(
+            length,
+            MahjongRule.ThinkingTime.NORMAL,
+            25000,
+            30000,
+            MahjongRule.MinimumHan.ONE,
+            true,
+            MahjongRule.RedFive.THREE,
+            true,
+            false
+        );
+    }
+
+    public static final class FinalStanding {
+        private final UUID playerId;
+        private final String displayName;
+        private final int place;
+        private final int points;
+        private final double gameScore;
+
+        public FinalStanding(UUID playerId, String displayName, int place, int points, double gameScore) {
+            this.playerId = playerId;
+            this.displayName = displayName;
+            this.place = place;
+            this.points = points;
+            this.gameScore = gameScore;
+        }
+
+        public UUID playerId() {
+            return this.playerId;
+        }
+
+        public String displayName() {
+            return this.displayName;
+        }
+
+        public int place() {
+            return this.place;
+        }
+
+        public int points() {
+            return this.points;
+        }
+
+        public double gameScore() {
+            return this.gameScore;
+        }
     }
 }

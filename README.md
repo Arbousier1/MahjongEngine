@@ -36,6 +36,8 @@ It is still not fully at feature parity with upstream `MahjongCraft`. The larges
 
 - `/mahjong help`: show the in-game command help with explanations
 - `/mahjong create`: create a new table at your position
+- `/mahjong botmatch [hanchan|tonpuu]`: create and start a 4-bot full-match test table, then spectate it
+- `/mahjong mode <tonpuu|hanchan>`: apply a Mahjong Soul-style east-only or hanchan preset
 - `/mahjong join <tableId>`: join an existing table as a player
 - `/mahjong leave`: leave your current table or stop spectating
 - `/mahjong list`: show active tables and their locations
@@ -58,6 +60,8 @@ It is still not fully at feature parity with upstream `MahjongCraft`. The larges
 - `/mahjong settlement`: reopen the latest settlement UI for this table
 - `/mahjong render`: force a table display refresh
 - `/mahjong clear`: remove current display entities for the table
+
+Mahjong Soul-style defaults are now used for new tables: 4-player riichi, 25,000 start, 30,000 target, red fives enabled, open tanyao enabled, and final match score calculated with no oka and `+15/+5/-5/-15` placement bonus.
 
 ## Build
 

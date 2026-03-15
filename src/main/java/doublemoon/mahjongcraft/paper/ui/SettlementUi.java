@@ -10,6 +10,7 @@ import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.text.NumberFormat;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -47,7 +48,7 @@ public final class SettlementUi {
         Inventory inventory = Bukkit.createInventory(
             holder,
             INVENTORY_SIZE,
-            messages.render(locale, "ui.settlement_title", messages.tag("title", resolution.getTitle()))
+            messages.render(locale, "ui.settlement_title", messages.tag("title", resolutionTitleLabel(session, locale, resolution.getTitle())))
         );
         holder.bind(inventory);
         fillBackground(inventory);
@@ -69,15 +70,15 @@ public final class SettlementUi {
     private static ItemStack summaryItem(MahjongTableSession session, RoundResolution resolution, Locale locale) {
         MessageService messages = session.plugin().messages();
         List<Component> lore = new ArrayList<>();
-        lore.add(messages.render(locale, "ui.summary.round", messages.tag("value", session.roundDisplay())));
-        lore.add(messages.render(locale, "ui.summary.dealer", messages.tag("value", session.dealerName())));
+        lore.add(messages.render(locale, "ui.summary.round", messages.tag("value", session.roundDisplay(locale))));
+        lore.add(messages.render(locale, "ui.summary.dealer", messages.tag("value", session.dealerName(locale))));
         if (resolution.getDraw() != null) {
-            lore.add(messages.render(locale, "ui.summary.draw_type", messages.tag("value", resolution.getDraw().name())));
+            lore.add(messages.render(locale, "ui.summary.draw_type", messages.tag("value", drawLabel(session, locale, resolution.getDraw().name()))));
         }
         if (resolution.getScoreSettlement() != null) {
             lore.add(messages.render(locale, "ui.summary.settled_players", messages.number(locale, "value", resolution.getScoreSettlement().getScoreList().size())));
         }
-        return namedItem(Material.NETHER_STAR, messages.render(locale, "ui.summary_title", messages.tag("title", resolution.getTitle())), lore);
+        return namedItem(Material.NETHER_STAR, messages.render(locale, "ui.summary_title", messages.tag("title", resolutionTitleLabel(session, locale, resolution.getTitle()))), lore);
     }
 
     private static void placeIndicatorRow(Inventory inventory, Locale locale, MahjongTableSession session, int startSlot, String key, List<MahjongTile> tiles) {
@@ -115,7 +116,14 @@ public final class SettlementUi {
             lore.add(messages.render(locale, "ui.score.change", messages.tag("value", item.getScoreChangeText().isBlank() ? "0" : item.getScoreChangeText())));
             lore.add(messages.render(locale, "ui.score.total", messages.number(locale, "value", item.getScoreTotal())));
             if (!item.getRankFloatText().isBlank()) {
-                lore.add(messages.render(locale, "ui.score.rank_shift", messages.tag("value", item.getRankFloatText())));
+                lore.add(messages.render(locale, "ui.score.rank_shift", messages.tag("value", rankShiftLabel(session, locale, item.getRankFloatText()))));
+            }
+            if (session.engine() != null && session.engine().getGameFinished()) {
+                MahjongTableSession.FinalStanding standing = finalStanding(session, item.getScoreItem().getStringUUID());
+                if (standing != null) {
+                    lore.add(messages.render(locale, "ui.score.place", messages.number(locale, "value", standing.place())));
+                    lore.add(messages.render(locale, "ui.score.majsoul", messages.tag("value", formatGameScore(locale, standing.gameScore()))));
+                }
             }
             inventory.setItem(slots[i], namedItem(Material.NAME_TAG, Component.text(playerName(session, item.getScoreItem().getStringUUID())), lore));
         }
@@ -154,21 +162,21 @@ public final class SettlementUi {
         lore.add(messages.render(locale, "ui.fu_han", messages.number(locale, "fu", settlement.getFu()), messages.number(locale, "han", settlement.getHan())));
         lore.add(messages.render(locale, "ui.score", messages.number(locale, "value", settlement.getScore())));
         lore.add(messages.render(locale, "ui.riichi", messages.tag("value", messages.plain(locale, settlement.getRiichi() ? "ui.yes" : "ui.no"))));
-        lore.add(messages.render(locale, "ui.winning_tile_line", messages.tag("value", settlement.getWinningTile().name().toLowerCase(Locale.ROOT))));
-        lore.add(messages.render(locale, "ui.hand", messages.tag("value", joinTiles(settlement.getHands()))));
+        lore.add(messages.render(locale, "ui.winning_tile_line", messages.tag("value", tileLabel(session, locale, settlement.getWinningTile().name()))));
+        lore.add(messages.render(locale, "ui.hand", messages.tag("value", joinTiles(session, locale, settlement.getHands()))));
         if (!settlement.getFuuroList().isEmpty()) {
             List<String> melds = new ArrayList<>();
-            settlement.getFuuroList().forEach(pair -> melds.add((pair.getFirst() ? "open" : "closed") + ":" + joinTiles(pair.getSecond())));
+            settlement.getFuuroList().forEach(pair -> melds.add(meldPrefix(session, locale, pair.getFirst()) + ":" + joinTiles(session, locale, pair.getSecond())));
             lore.add(messages.render(locale, "ui.melds", messages.tag("value", String.join(" | ", melds))));
         }
         if (!settlement.getYakuList().isEmpty()) {
-            settlement.getYakuList().forEach(yaku -> lore.add(messages.render(locale, "ui.yaku", messages.tag("value", yaku))));
+            settlement.getYakuList().forEach(yaku -> lore.add(messages.render(locale, "ui.yaku", messages.tag("value", yakuLabel(session, locale, yaku)))));
         }
         if (!settlement.getYakumanList().isEmpty()) {
-            settlement.getYakumanList().forEach(yaku -> lore.add(messages.render(locale, "ui.yakuman", messages.tag("value", yaku))));
+            settlement.getYakumanList().forEach(yaku -> lore.add(messages.render(locale, "ui.yakuman", messages.tag("value", yakumanLabel(session, locale, yaku)))));
         }
         if (!settlement.getDoubleYakumanList().isEmpty()) {
-            settlement.getDoubleYakumanList().forEach(yaku -> lore.add(messages.render(locale, "ui.double_yakuman", messages.tag("value", yaku.name()))));
+            settlement.getDoubleYakumanList().forEach(yaku -> lore.add(messages.render(locale, "ui.double_yakuman", messages.tag("value", doubleYakumanLabel(session, locale, yaku.name())))));
         }
         if (settlement.getNagashiMangan()) {
             lore.add(messages.render(locale, "ui.nagashi_mangan"));
@@ -177,18 +185,18 @@ public final class SettlementUi {
             lore.add(messages.render(locale, "ui.red_fives", messages.number(locale, "value", settlement.getRedFiveCount())));
         }
         if (!settlement.getDoraIndicators().isEmpty()) {
-            lore.add(messages.render(locale, "ui.dora", messages.tag("value", joinTiles(settlement.getDoraIndicators()))));
+            lore.add(messages.render(locale, "ui.dora", messages.tag("value", joinTiles(session, locale, settlement.getDoraIndicators()))));
         }
         if (!settlement.getUraDoraIndicators().isEmpty()) {
-            lore.add(messages.render(locale, "ui.uradora", messages.tag("value", joinTiles(settlement.getUraDoraIndicators()))));
+            lore.add(messages.render(locale, "ui.uradora", messages.tag("value", joinTiles(session, locale, settlement.getUraDoraIndicators()))));
         }
         return lore;
     }
 
-    private static String joinTiles(List<?> tiles) {
+    private static String joinTiles(MahjongTableSession session, Locale locale, List<?> tiles) {
         List<String> names = new ArrayList<>();
         for (Object tile : tiles) {
-            names.add(tile.toString().toLowerCase(Locale.ROOT));
+            names.add(tileLabel(session, locale, tile.toString()));
         }
         return String.join(" ", names);
     }
@@ -231,6 +239,73 @@ public final class SettlementUi {
         }
         item.setItemMeta(meta);
         return item;
+    }
+
+    private static String tileLabel(MahjongTableSession session, Locale locale, String tileName) {
+        String normalized = tileName.toLowerCase(Locale.ROOT);
+        String key = "tile." + normalized;
+        return session.plugin().messages().contains(locale, key)
+            ? session.plugin().messages().plain(locale, key)
+            : normalized;
+    }
+
+    private static String meldPrefix(MahjongTableSession session, Locale locale, boolean open) {
+        return session.plugin().messages().plain(locale, open ? "ui.meld_open" : "ui.meld_closed");
+    }
+
+    private static String rankShiftLabel(MahjongTableSession session, Locale locale, String rankShift) {
+        return switch (rankShift) {
+            case "UP" -> session.plugin().messages().plain(locale, "ui.rank_shift.up");
+            case "DOWN" -> session.plugin().messages().plain(locale, "ui.rank_shift.down");
+            default -> rankShift;
+        };
+    }
+
+    private static MahjongTableSession.FinalStanding finalStanding(MahjongTableSession session, String stringUuid) {
+        try {
+            UUID uuid = UUID.fromString(stringUuid);
+            return session.finalStandings().stream()
+                .filter(standing -> standing.playerId().equals(uuid))
+                .findFirst()
+                .orElse(null);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private static String formatGameScore(Locale locale, double score) {
+        NumberFormat format = NumberFormat.getNumberInstance(locale);
+        format.setMinimumFractionDigits(1);
+        format.setMaximumFractionDigits(1);
+        return format.format(score);
+    }
+
+    private static String resolutionTitleLabel(MahjongTableSession session, Locale locale, String title) {
+        return translatedLabel(session, locale, "resolution", title);
+    }
+
+    private static String drawLabel(MahjongTableSession session, Locale locale, String drawType) {
+        return translatedLabel(session, locale, "draw", drawType);
+    }
+
+    private static String yakuLabel(MahjongTableSession session, Locale locale, String yaku) {
+        return translatedLabel(session, locale, "yaku", yaku);
+    }
+
+    private static String yakumanLabel(MahjongTableSession session, Locale locale, String yaku) {
+        return translatedLabel(session, locale, "yakuman", yaku);
+    }
+
+    private static String doubleYakumanLabel(MahjongTableSession session, Locale locale, String yaku) {
+        return translatedLabel(session, locale, "double_yakuman", yaku);
+    }
+
+    private static String translatedLabel(MahjongTableSession session, Locale locale, String prefix, String rawValue) {
+        String normalized = rawValue.toLowerCase(Locale.ROOT);
+        String key = prefix + "." + normalized;
+        return session.plugin().messages().contains(locale, key)
+            ? session.plugin().messages().plain(locale, key)
+            : rawValue;
     }
 
     private static final class SettlementHolder implements InventoryHolder {

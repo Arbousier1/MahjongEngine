@@ -4,7 +4,6 @@ import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class MessageServiceTest {
@@ -18,8 +17,7 @@ class MessageServiceTest {
     @Test
     fun `plain returns chinese text for zh CN locale`() {
         val chinese = messages.plain(Locale.forLanguageTag("zh-CN"), "command.action.ron")
-        assertTrue(chinese.isNotBlank())
-        assertNotEquals("Ron", chinese)
+        assertEquals("荣和", chinese)
     }
 
     @Test
@@ -34,5 +32,12 @@ class MessageServiceTest {
         val rendered = messages.plain(Locale.ENGLISH, "command.help.create")
         assertContains(rendered, "/mahjong create")
         assertContains(rendered, "Create a new table")
+    }
+
+    @Test
+    fun `yaku labels are localized`() {
+        assertEquals("Riichi", messages.plain(Locale.ENGLISH, "yaku.reach"))
+        assertEquals("立直", messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"))
+        assertEquals("国士无双", messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso"))
     }
 }

@@ -57,6 +57,40 @@ public final class MahjongCommand implements BasicCommand {
                 table.render();
                 this.messages.send(player, "command.created_table", this.messages.tag("table_id", table.id()));
             }
+            case "botmatch" -> {
+                String preset = args.length >= 2 ? args[1] : "MAJSOUL_HANCHAN";
+                MahjongTableSession table = this.tableManager.createBotMatch(player, preset);
+                if (table == null) {
+                    this.messages.send(player, "command.botmatch_failed_in_table");
+                    return;
+                }
+                this.messages.send(
+                    player,
+                    "command.botmatch_created",
+                    this.messages.tag("table_id", table.id()),
+                    this.messages.tag("mode", preset.toLowerCase(Locale.ROOT))
+                );
+            }
+            case "mode" -> {
+                MahjongTableSession table = requireTable(player);
+                if (table == null) {
+                    return;
+                }
+                if (args.length < 2) {
+                    this.messages.send(player, "command.mode_usage");
+                    return;
+                }
+                boolean updated = table.applyRulePreset(args[1]);
+                Locale locale = this.messages.resolveLocale(player);
+                this.messages.send(
+                    player,
+                    updated ? "command.mode_updated" : "command.mode_failed",
+                    this.messages.tag("summary", table.ruleSummary(locale))
+                );
+                if (updated) {
+                    table.render();
+                }
+            }
             case "join" -> {
                 if (args.length < 2) {
                     this.messages.send(player, "command.join_usage");
@@ -93,7 +127,7 @@ public final class MahjongCommand implements BasicCommand {
                     locale,
                     "command.table_list_entry",
                     this.messages.tag("table_id", table.id()),
-                    this.messages.tag("summary", table.waitingSummary()),
+                    this.messages.tag("summary", table.waitingSummary(locale)),
                     this.messages.number(locale, "x", table.center().getBlockX()),
                     this.messages.number(locale, "y", table.center().getBlockY()),
                     this.messages.number(locale, "z", table.center().getBlockZ())
@@ -135,17 +169,19 @@ public final class MahjongCommand implements BasicCommand {
                     return;
                 }
                 if (args.length == 1) {
-                    this.messages.send(player, "command.rule_summary", this.messages.tag("summary", table.ruleSummary()));
+                    Locale locale = this.messages.resolveLocale(player);
+                    this.messages.send(player, "command.rule_summary", this.messages.tag("summary", table.ruleSummary(locale)));
                     return;
                 }
                 if (args.length < 3) {
                     this.messages.send(player, "command.rule_usage");
                     return;
                 }
+                Locale locale = this.messages.resolveLocale(player);
                 this.messages.send(
                     player,
                     table.setRuleOption(args[1], args[2]) ? "command.rule_updated" : "command.rule_update_failed",
-                    this.messages.tag("summary", table.ruleSummary())
+                    this.messages.tag("summary", table.ruleSummary(locale))
                 );
             }
             case "start" -> {
@@ -246,13 +282,20 @@ public final class MahjongCommand implements BasicCommand {
         if (args.length == 1) {
             return matchPrefix(
                 args[0],
-                List.of("help", "create", "join", "leave", "list", "spectate", "unspectate", "addbot", "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan", "skip", "kyuushu", "settlement", "render", "clear")
+                List.of("help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot", "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan", "skip", "kyuushu", "settlement", "render", "clear")
             );
         }
         if (!(sender instanceof Player player)) {
             return List.of();
         }
 
+        if (args.length == 2 && "botmatch".equalsIgnoreCase(args[0])) {
+            return matchPrefix(args[1], List.of("MAJSOUL_HANCHAN", "MAJSOUL_TONPUU", "hanchan", "tonpuu"));
+        }
+        if (args.length == 2 && "mode".equalsIgnoreCase(args[0])) {
+            MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+            return table == null ? List.of() : matchPrefix(args[1], table.ruleValues("mode"));
+        }
         if (args.length == 2 && ("join".equalsIgnoreCase(args[0]) || "spectate".equalsIgnoreCase(args[0]))) {
             List<String> ids = new ArrayList<>();
             this.tableManager.tables().forEach(table -> ids.add(table.id()));
@@ -304,6 +347,8 @@ public final class MahjongCommand implements BasicCommand {
         this.messages.send(player, "command.usage");
         String[] keys = {
             "command.help.create",
+            "command.help.botmatch",
+            "command.help.mode",
             "command.help.join",
             "command.help.leave",
             "command.help.list",

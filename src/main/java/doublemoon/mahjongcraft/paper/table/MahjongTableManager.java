@@ -41,6 +41,32 @@ public final class MahjongTableManager implements Listener {
         return session;
     }
 
+    public MahjongTableSession createBotMatch(Player owner, String preset) {
+        if (this.isViewingAnyTable(owner.getUniqueId())) {
+            return null;
+        }
+
+        String id = nextId();
+        MahjongTableSession session = new MahjongTableSession(this.plugin, id, owner.getLocation().toCenterLocation(), owner);
+        this.tables.put(id, session);
+        this.playerTables.put(owner.getUniqueId(), id);
+
+        if (preset != null && !preset.isBlank()) {
+            session.applyRulePreset(preset);
+        }
+
+        while (session.size() < 4) {
+            session.addBot();
+        }
+        session.removePlayer(owner.getUniqueId());
+        this.playerTables.remove(owner.getUniqueId());
+        session.addSpectator(owner);
+        this.spectatorTables.put(owner.getUniqueId(), id);
+        session.startRound();
+        this.plugin.debug().log("table", "Created 4-bot match " + id + " for spectator " + owner.getName());
+        return session;
+    }
+
     public MahjongTableSession join(Player player, String tableId) {
         MahjongTableSession session = this.tables.get(tableId.toUpperCase(Locale.ROOT));
         if (session == null) {

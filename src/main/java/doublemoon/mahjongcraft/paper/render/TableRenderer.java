@@ -44,19 +44,16 @@ public final class TableRenderer {
         UUID playerId = session.playerAt(wind);
         Location handBase = seatBase(center, wind, HAND_RADIUS);
         boolean active = session.currentSeat() == wind;
-        String status = playerId == null
-            ? "[" + wind.displayName() + "] Empty seat"
-            : "[" + wind.displayName() + "] " + session.points(playerId) + " pts" + (session.isRiichi(playerId) ? " | Riichi" : "");
 
         spawned.add(DisplayEntities.spawnLabel(
             handBase.clone().add(0.0D, 0.45D, 0.0D),
-            Component.text(status),
+            Component.text(session.publicSeatStatus(wind)),
             seatLabelColor(wind, active)
         ));
         if (playerId != null) {
             spawned.add(DisplayEntities.spawnLabel(
                 handBase.clone().add(0.0D, 0.26D, 0.0D),
-                Component.text(session.displayName(playerId)),
+                Component.text(session.displayName(playerId, session.publicLocale())),
                 Color.fromARGB(100, 18, 18, 18)
             ));
         }
@@ -92,13 +89,9 @@ public final class TableRenderer {
 
     public List<Entity> renderCenterLabel(MahjongTableSession session) {
         Location center = displayCenter(session);
-        int wallCount = session.remainingWall().size();
-        String text = session.isStarted()
-            ? session.roundDisplay() + "\nWall " + wallCount + " | Dice " + session.dicePoints() + " | Dealer " + session.dealerName()
-            : "Mahjong Table " + session.id() + "\n" + session.waitingDisplaySummary() + "\n" + session.ruleDisplaySummary();
         return List.of(DisplayEntities.spawnLabel(
             center.clone().add(0.0D, 0.3D, 0.0D),
-            Component.text(text),
+            Component.text(session.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
         ));
     }
