@@ -27,3 +27,7 @@ debug:
     - packet
     - render
     - database
+craftengine:
+  exportBundleOnEnable: true
+  preferCustomItems: true
+  bundleFolder: mahjongpaper

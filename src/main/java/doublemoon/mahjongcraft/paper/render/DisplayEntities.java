@@ -79,7 +79,7 @@ public final class DisplayEntities {
             ));
             spawned.customName(Component.text(tile.name()));
             spawned.setCustomNameVisible(false);
-            spawned.setItemStack(tileItem(tile, faceDown));
+            spawned.setItemStack(tileItem(plugin, tile, faceDown));
         });
 
         if (clickAction != null) {
@@ -144,7 +144,13 @@ public final class DisplayEntities {
         return interaction;
     }
 
-    private static ItemStack tileItem(MahjongTile tile, boolean faceDown) {
+    private static ItemStack tileItem(Plugin plugin, MahjongTile tile, boolean faceDown) {
+        if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin) {
+            ItemStack customItem = mahjongPlugin.craftEngine().resolveTileItem(tile, faceDown);
+            if (customItem != null) {
+                return customItem;
+            }
+        }
         String path = faceDown ? "mahjong_tile/back" : tile.itemModelPath();
         return TILE_ITEM_CACHE.computeIfAbsent(path, key -> createTileItem(tile, key)).clone();
     }

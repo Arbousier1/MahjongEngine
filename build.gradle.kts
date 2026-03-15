@@ -141,6 +141,59 @@ fun writeMahjongTileResourceIndex(enumSource: File, itemsDir: File, modelsDir: F
     outputFile.writeText(json, Charsets.UTF_8)
 }
 
+fun formatTileLabel(name: String): String = name.split('_').joinToString(" ") { part ->
+    part.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+}
+
+fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionFile: File, outputDir: File) {
+    val outputRoot = outputDir.resolve("craftengine").resolve("mahjongpaper")
+    val outputResourcepackDir = outputRoot.resolve("resourcepack")
+    val outputAssetsDir = outputResourcepackDir.resolve("assets")
+    val outputConfigDir = outputRoot.resolve("configuration").resolve("items")
+    val tileNames = parseMahjongTileNames(enumSource).toMutableSet().apply {
+        add("back")
+    }.sorted()
+
+    outputRoot.deleteRecursively()
+    outputAssetsDir.mkdirs()
+    outputConfigDir.mkdirs()
+
+    resourcepackDir.resolve("assets").copyRecursively(outputAssetsDir, overwrite = true)
+    attributionFile.copyTo(outputRoot.resolve("ATTRIBUTION.md"), overwrite = true)
+
+    outputRoot.resolve("pack.yml").writeText(
+        """
+        author: OpenAI
+        version: ${project.version}
+        description: MahjongPaper CraftEngine assets
+        namespace: mahjongpaper
+        """.trimIndent() + "\n",
+        Charsets.UTF_8
+    )
+
+    val itemConfig = buildString {
+        appendLine("items:")
+        tileNames.forEach { tileName ->
+            appendLine("  mahjongpaper:$tileName:")
+            appendLine("    material: paper")
+            appendLine("    settings:")
+            appendLine("      tags:")
+            appendLine("        - mahjongpaper:mahjong_tile")
+            appendLine("    data:")
+            appendLine("      item-name: <!i><white>${formatTileLabel(tileName)}</white>")
+            appendLine("    item-model: mahjongcraft:mahjong_tile/$tileName")
+        }
+    }
+    outputConfigDir.resolve("mahjong_tiles.yml").writeText(itemConfig, Charsets.UTF_8)
+
+    val bundleFiles = outputRoot.walkTopDown()
+        .filter(File::isFile)
+        .map { it.relativeTo(outputRoot).invariantSeparatorsPath }
+        .sorted()
+        .toList()
+    outputRoot.resolve("_bundle_index.txt").writeText(bundleFiles.joinToString("\n", postfix = "\n"), Charsets.UTF_8)
+}
+
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
@@ -171,6 +224,20 @@ val verifyMahjongTileResources = tasks.register("verifyMahjongTileResources") {
     outputs.file(outputFile)
     doLast {
         writeMahjongTileResourceIndex(enumSource, itemsDir, modelsDir, texturesDir, outputFile)
+    }
+}
+
+val generateCraftEngineBundle = tasks.register("generateCraftEngineBundle") {
+    val enumSource = layout.projectDirectory.file("src/main/java/doublemoon/mahjongcraft/paper/model/MahjongTile.java").asFile
+    val resourcepackDir = layout.projectDirectory.dir("resourcepack").asFile
+    val attributionFile = layout.projectDirectory.file("resourcepack/ATTRIBUTION.md").asFile
+    val outputDir = generatedResourcesDir.get().asFile
+    inputs.file(enumSource)
+    inputs.dir(resourcepackDir)
+    inputs.file(attributionFile)
+    outputs.dir(outputDir.resolve("craftengine"))
+    doLast {
+        writeCraftEngineBundle(enumSource, resourcepackDir, attributionFile, outputDir)
     }
 }
 
@@ -210,7 +277,7 @@ tasks {
     }
 
     processResources {
-        dependsOn(generateMessageIndex, verifyMahjongTileResources)
+        dependsOn(generateMessageIndex, verifyMahjongTileResources, generateCraftEngineBundle)
         filteringCharset = Charsets.UTF_8.name()
         from(generatedResourcesDir)
         filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
@@ -243,5 +310,6 @@ tasks {
     check {
         dependsOn(jacocoTestReport)
         dependsOn(verifyMahjongTileResources)
+        dependsOn(generateCraftEngineBundle)
     }
 }

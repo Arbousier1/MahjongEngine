@@ -85,7 +85,7 @@ public final class SettlementUi {
         Component label = messages.render(locale, key);
         for (int i = 0; i < 5; i++) {
             if (i < tiles.size()) {
-                inventory.setItem(startSlot + i, tileItem(tiles.get(i), false, label));
+                inventory.setItem(startSlot + i, tileItem(session, tiles.get(i), false, label));
             } else {
                 inventory.setItem(startSlot + i, namedItem(Material.GRAY_STAINED_GLASS_PANE, label, List.of(messages.render(locale, "ui.no_tile_slot"))));
             }
@@ -142,7 +142,7 @@ public final class SettlementUi {
             }
             inventory.setItem(detailSlot, namedItem(Material.ENCHANTED_BOOK, Component.text(settlement.getDisplayName()), settlementLore(locale, session, settlement)));
             if (detailSlot + 1 < INVENTORY_SIZE) {
-                inventory.setItem(detailSlot + 1, tileItem(toDisplayTile(settlement.getWinningTile().name()), false, messages.render(locale, "ui.winning_tile")));
+                inventory.setItem(detailSlot + 1, tileItem(session, toDisplayTile(settlement.getWinningTile().name()), false, messages.render(locale, "ui.winning_tile")));
             }
             detailSlot += 3;
         }
@@ -201,7 +201,14 @@ public final class SettlementUi {
         }
     }
 
-    private static ItemStack tileItem(MahjongTile tile, boolean faceDown, Component name) {
+    private static ItemStack tileItem(MahjongTableSession session, MahjongTile tile, boolean faceDown, Component name) {
+        ItemStack customItem = session.plugin().craftEngine().resolveTileItem(tile, faceDown);
+        if (customItem != null) {
+            ItemMeta customMeta = customItem.getItemMeta();
+            customMeta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));
+            customItem.setItemMeta(customMeta);
+            return customItem;
+        }
         String path = faceDown ? "mahjong_tile/back" : tile.itemModelPath();
         ItemStack itemStack = new ItemStack(Material.PAPER);
         ItemMeta meta = itemStack.getItemMeta();

@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper;
 
 import doublemoon.mahjongcraft.paper.command.MahjongCommand;
+import doublemoon.mahjongcraft.paper.compat.CraftEngineService;
 import doublemoon.mahjongcraft.paper.debug.DebugService;
 import doublemoon.mahjongcraft.paper.db.DatabaseService;
 import doublemoon.mahjongcraft.paper.i18n.MessageService;
@@ -16,6 +17,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private final MessageService messages = new MessageService();
     private DebugService debug;
     private DatabaseService database;
+    private CraftEngineService craftEngine;
     private PacketEventsBridge packetEventsBridge;
     private MahjongTableManager tableManager;
 
@@ -24,6 +26,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.saveDefaultConfig();
         this.debug = new DebugService(this.getLogger(), this.getConfig().getConfigurationSection("debug"));
         this.debug.log("lifecycle", "Debug logging enabled.");
+        this.craftEngine = new CraftEngineService(this, this.getConfig().getConfigurationSection("craftengine"));
 
         if (DatabaseService.isEnabled(this.getConfig().getConfigurationSection("database"))) {
             try {
@@ -52,6 +55,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         );
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
+        this.getServer().getScheduler().runTask(this, this.craftEngine::initializeAfterStartup);
         this.getLogger().info("MahjongPaper enabled.");
         this.debug.log("lifecycle", "Plugin bootstrap complete.");
     }
@@ -70,6 +74,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this.database.close();
             this.database = null;
         }
+        this.craftEngine = null;
         if (this.debug != null) {
             this.debug.log("lifecycle", "Plugin shutdown complete.");
         }
@@ -96,5 +101,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public DebugService debug() {
         return this.debug;
+    }
+
+    public CraftEngineService craftEngine() {
+        return this.craftEngine;
     }
 }

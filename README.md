@@ -28,6 +28,7 @@ This repository currently includes a playable Paper-based Riichi Mahjong port fo
 - MiniMessage-based player messaging with `zh-CN` / fallback English localization
 - locale-aware number formatting in command and settlement surfaces
 - H2-backed round history persistence by default, with optional MariaDB support and startup schema creation
+- optional CraftEngine compatibility with automatic bundle export and custom-item fallback support
 
 It is still not fully at feature parity with upstream `MahjongCraft`. The largest remaining gaps are the original mod's more specialized client UX surface, additional board choreography/animation polish, and broader end-to-end parity verification against every upstream interaction edge case.
 
@@ -78,6 +79,18 @@ For the current prototype the plugin uses the `mahjongcraft` namespace and binds
 - `mahjongcraft:mahjong_tile/m1`
 - `mahjongcraft:mahjong_tile/east`
 - `mahjongcraft:mahjong_tile/back`
+
+## CraftEngine
+
+If CraftEngine is installed, MahjongPaper will export a ready-to-use CraftEngine bundle to `plugins/CraftEngine/resources/mahjongpaper` on startup by default.
+
+The exported bundle contains:
+
+- `pack.yml`
+- `configuration/items/mahjong_tiles.yml`
+- `resourcepack/assets/mahjongcraft/...`
+
+MahjongPaper continues to work without CraftEngine. When CraftEngine is present and its custom items are available, display and settlement tiles will prefer the generated CraftEngine item IDs such as `mahjongpaper:east` and fall back to direct `item_model` items if needed.
 
 ## Upstream References
 
