@@ -10,6 +10,9 @@ public final class TableDisplayRegistry {
     }
 
     public static void register(int entityId, DisplayClickAction action) {
+        if (action == null) {
+            return;
+        }
         ACTIONS.put(entityId, action);
     }
 

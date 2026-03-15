@@ -11,6 +11,7 @@ import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Shulker;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -91,14 +92,15 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
+        registerForCulling(plugin, display);
         return display;
     }
 
-    public static TextDisplay spawnLabel(Location location, Component text, Color color) {
-        return spawnLabel(location, text, color, null);
+    public static TextDisplay spawnLabel(Plugin plugin, Location location, Component text, Color color) {
+        return spawnLabel(plugin, location, text, color, null);
     }
 
-    public static TextDisplay spawnLabel(Location location, Component text, Color color, Collection<UUID> privateViewers) {
+    public static TextDisplay spawnLabel(Plugin plugin, Location location, Component text, Color color, Collection<UUID> privateViewers) {
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -119,10 +121,21 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
+        registerForCulling(plugin, display);
         return display;
     }
 
     public static Interaction spawnInteraction(
+        Plugin plugin,
+        Location location,
+        float width,
+        float height
+    ) {
+        return spawnInteraction(plugin, location, width, height, null, null);
+    }
+
+    public static Interaction spawnInteraction(
+        Plugin plugin,
         Location location,
         float width,
         float height,
@@ -140,18 +153,43 @@ public final class DisplayEntities {
             spawned.setInteractionWidth(width);
             spawned.setInteractionHeight(height);
         });
-        TableDisplayRegistry.register(interaction.getEntityId(), clickAction);
+        if (clickAction != null) {
+            TableDisplayRegistry.register(interaction.getEntityId(), clickAction);
+        }
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(interaction.getEntityId(), privateViewers);
         }
+        registerForCulling(plugin, interaction);
         return interaction;
     }
 
-    public static BlockDisplay spawnBlockDisplay(Location location, Material material, float scaleX, float scaleY, float scaleZ) {
-        return spawnBlockDisplay(location, material, scaleX, scaleY, scaleZ, true, null);
+    public static Shulker spawnShulkerHitbox(Plugin plugin, Location location) {
+        World world = location.getWorld();
+        if (world == null) {
+            throw new IllegalArgumentException("Location world is null");
+        }
+
+        return world.spawn(location, Shulker.class, spawned -> {
+            spawned.setPersistent(false);
+            spawned.setRemoveWhenFarAway(false);
+            spawned.setAI(false);
+            spawned.setAware(false);
+            spawned.setCollidable(true);
+            spawned.setInvisible(true);
+            spawned.setInvulnerable(true);
+            spawned.setSilent(true);
+            spawned.setGravity(false);
+            spawned.setPeek(0.0F);
+            spawned.addScoreboardTag("mahjongcraft:table_hitbox");
+        });
+    }
+
+    public static BlockDisplay spawnBlockDisplay(Plugin plugin, Location location, Material material, float scaleX, float scaleY, float scaleZ) {
+        return spawnBlockDisplay(plugin, location, material, scaleX, scaleY, scaleZ, true, null);
     }
 
     public static BlockDisplay spawnBlockDisplay(
+        Plugin plugin,
         Location location,
         Material material,
         float scaleX,
@@ -186,7 +224,14 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
+        registerForCulling(plugin, display);
         return display;
+    }
+
+    private static void registerForCulling(Plugin plugin, org.bukkit.entity.Entity entity) {
+        if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.entityCulling() != null) {
+            mahjongPlugin.entityCulling().register(entity);
+        }
     }
 
     private static ItemStack tileItem(Plugin plugin, MahjongTile tile, boolean faceDown) {

@@ -46,8 +46,8 @@ class MessageServiceTest {
 
     @Test
     fun `traditional region bundles are addressable`() {
-        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"))
-        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"))
-        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"))
+        assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"))
+        assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"))
+        assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"))
     }
 }

@@ -299,6 +299,9 @@ public final class MahjongTableSession {
         for (Entity entity : entities) {
             TableDisplayRegistry.unregister(entity.getEntityId());
             DisplayVisibilityRegistry.unregister(entity.getEntityId());
+            if (this.plugin.entityCulling() != null) {
+                this.plugin.entityCulling().unregister(entity);
+            }
             if (!entity.isDead()) {
                 entity.remove();
             }
@@ -576,14 +579,42 @@ public final class MahjongTableSession {
         }
         List<MeldView> melds = new ArrayList<>(player.getFuuroList().size());
         player.getFuuroList().forEach(fuuro -> {
-            List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(fuuro.getTileInstances().size());
-            List<Boolean> faceDownFlags = new ArrayList<>(fuuro.getTileInstances().size());
-            boolean concealedKan = fuuro.isKan() && !fuuro.isOpen();
-            for (int i = 0; i < fuuro.getTileInstances().size(); i++) {
-                tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(fuuro.getTileInstances().get(i).getMahjongTile().name()));
-                faceDownFlags.add(concealedKan && (i == 0 || i == fuuro.getTileInstances().size() - 1));
+            List<doublemoon.mahjongcraft.paper.riichi.model.TileInstance> orderedInstances = new ArrayList<>(fuuro.getTileInstances());
+            doublemoon.mahjongcraft.paper.riichi.model.TileInstance addedKanTile = null;
+            if ("KAKAN".equals(fuuro.getType().name()) && !orderedInstances.isEmpty()) {
+                addedKanTile = orderedInstances.remove(orderedInstances.size() - 1);
+            } else if (!"KAKAN".equals(fuuro.getType().name())) {
+                orderedInstances.sort((left, right) -> Integer.compare(right.getMahjongTile().getSortOrder(), left.getMahjongTile().getSortOrder()));
             }
-            melds.add(new MeldView(List.copyOf(tiles), List.copyOf(faceDownFlags)));
+
+            doublemoon.mahjongcraft.paper.riichi.model.TileInstance claimTile = fuuro.getClaimTile();
+            orderedInstances.remove(claimTile);
+            int claimTileIndex = switch (fuuro.getClaimTarget().name()) {
+                case "RIGHT" -> 0;
+                case "ACROSS" -> 1;
+                case "LEFT" -> orderedInstances.size();
+                default -> -1;
+            };
+            if (claimTileIndex >= 0) {
+                orderedInstances.add(Math.min(claimTileIndex, orderedInstances.size()), claimTile);
+            }
+
+            List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(orderedInstances.size());
+            List<Boolean> faceDownFlags = new ArrayList<>(orderedInstances.size());
+            boolean concealedKan = fuuro.isKan() && !fuuro.isOpen();
+            for (int i = 0; i < orderedInstances.size(); i++) {
+                tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(orderedInstances.get(i).getMahjongTile().name()));
+                faceDownFlags.add(concealedKan && (i == 0 || i == orderedInstances.size() - 1));
+            }
+            int claimYawOffset = switch (fuuro.getClaimTarget().name()) {
+                case "RIGHT", "ACROSS" -> 90;
+                case "LEFT" -> -90;
+                default -> 0;
+            };
+            doublemoon.mahjongcraft.paper.model.MahjongTile addedKanView = addedKanTile == null
+                ? null
+                : doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(addedKanTile.getMahjongTile().name());
+            melds.add(new MeldView(List.copyOf(tiles), List.copyOf(faceDownFlags), claimTileIndex, claimYawOffset, addedKanView));
         });
         return List.copyOf(melds);
     }
@@ -598,28 +629,13 @@ public final class MahjongTableSession {
 
     public List<Player> viewers() {
         List<Player> viewers = new ArrayList<>(this.seats.size() + this.spectators.size());
-        for (UUID playerId : this.seats) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                viewers.add(player);
-            }
-        }
-        for (UUID spectatorId : this.spectators) {
-            Player player = Bukkit.getPlayer(spectatorId);
-            if (player != null) {
-                viewers.add(player);
-            }
-        }
+        this.appendOnlineViewers(viewers);
         return viewers;
     }
 
     public List<UUID> viewerIdsExcluding(UUID excludedPlayerId) {
         List<UUID> viewerIds = new ArrayList<>(this.seats.size() + this.spectators.size());
-        for (Player viewer : this.viewers()) {
-            if (!viewer.getUniqueId().equals(excludedPlayerId)) {
-                viewerIds.add(viewer.getUniqueId());
-            }
-        }
+        this.appendOnlineViewerIds(viewerIds, excludedPlayerId);
         return List.copyOf(viewerIds);
     }
 
@@ -687,94 +703,26 @@ public final class MahjongTableSession {
         }
 
         Locale locale = this.plugin.messages().resolveLocale(player);
-        StringBuilder builder = new StringBuilder(96);
-        builder.append(this.plugin.messages().plain(locale, "state.label.round")).append(' ').append(this.roundDisplay(locale));
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.turn")).append(' ').append(this.engine.getCurrentPlayer().getDisplayName());
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.wall")).append(' ').append(this.engine.getWall().size());
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.spectators")).append(' ').append(this.spectatorCount());
-
-        if (this.engine.getPendingReaction() != null) {
-            ReactionOptions options = this.engine.availableReactions(player.getUniqueId().toString());
-            if (options != null) {
-                builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.reactions"));
-                if (options.getCanRon()) {
-                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.ron"));
-                }
-                if (options.getCanPon()) {
-                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.pon"));
-                }
-                if (options.getCanMinkan()) {
-                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.minkan"));
-                }
-                if (!options.getChiiPairs().isEmpty()) {
-                    builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.chii"));
-                }
-            }
-        }
-
-        if (this.engine.getLastResolution() != null) {
-            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.resolution")).append(' ').append(this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()));
-        }
-        if (this.nextRoundDeadlineMillis > 0L && !this.engine.getGameFinished()) {
-            builder.append(" | ")
-                .append(this.plugin.messages().plain(locale, "state.label.next_round"))
-                .append(' ')
-                .append(this.plugin.messages().plain(locale, "state.next_round_in", this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())));
-        }
-        if (this.engine.getGameFinished()) {
-            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.match_finished"));
-        }
-
+        StringBuilder builder = this.baseStateSummary(locale);
+        this.appendReactionStateSummary(builder, locale, player.getUniqueId());
+        this.appendResolutionStateSummary(builder, locale);
+        this.appendNextRoundStateSummary(builder, locale);
+        this.appendFinishedStateSummary(builder, locale);
         return this.plugin.messages().render(player, "command.rule_summary", this.plugin.messages().tag("summary", builder.toString()));
     }
 
     public Component viewerOverlay(Player viewer) {
         Locale locale = this.plugin.messages().resolveLocale(viewer);
         if (this.engine == null) {
-            return this.plugin.messages().render(
-                locale,
-                "overlay.waiting",
-                this.plugin.messages().tag("table_id", this.id),
-                this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
-            );
+            return this.waitingViewerOverlay(locale);
         }
         if (!this.engine.getStarted()) {
             if (this.engine.getGameFinished() && this.engine.getLastResolution() != null) {
-                return this.plugin.messages().render(
-                    locale,
-                    "overlay.finished",
-                    this.plugin.messages().tag("round", this.roundDisplay(locale)),
-                    this.plugin.messages().tag("title", this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()))
-                );
+                return this.finishedViewerOverlay(locale);
             }
-            return this.plugin.messages().render(
-                locale,
-                "overlay.next_round",
-                this.plugin.messages().tag("round", this.roundDisplay(locale)),
-                this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())
-            );
+            return this.nextRoundViewerOverlay(locale);
         }
-
-        String role = this.plugin.messages().plain(locale, this.isSpectator(viewer.getUniqueId()) ? "hud.role_spectator" : "hud.role_player");
-        String prompt = "";
-        ReactionOptions options = this.engine.availableReactions(viewer.getUniqueId().toString());
-        if (options != null) {
-            prompt = this.reactionSummary(locale, options);
-        } else if (this.engine.getCurrentPlayer().getUuid().equals(viewer.getUniqueId().toString())) {
-            prompt = this.plugin.messages().plain(locale, "overlay.your_turn");
-        } else if (this.isSpectator(viewer.getUniqueId())) {
-            prompt = this.plugin.messages().plain(locale, "overlay.spectating_turn") + " " + this.engine.getCurrentPlayer().getDisplayName();
-        }
-
-        return this.plugin.messages().render(
-            locale,
-            "overlay.active",
-            this.plugin.messages().tag("role", role),
-            this.plugin.messages().tag("round", this.roundDisplay(locale)),
-            this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
-            this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
-            this.plugin.messages().tag("prompt", prompt)
-        );
+        return this.activeViewerOverlay(locale, viewer);
     }
 
     public Component spectatorSeatOverlay(Player viewer, SeatWind wind) {
@@ -788,15 +736,6 @@ public final class MahjongTableSession {
             );
         }
 
-        String status = "";
-        if (this.currentSeat() == wind && this.isStarted()) {
-            status = this.plugin.messages().plain(locale, "overlay.status_turn");
-        }
-        if (this.isRiichi(playerId)) {
-            String riichi = this.plugin.messages().plain(locale, "overlay.status_riichi");
-            status = status.isBlank() ? riichi : status + " / " + riichi;
-        }
-
         return this.plugin.messages().render(
             locale,
             "overlay.seat",
@@ -806,7 +745,7 @@ public final class MahjongTableSession {
             this.plugin.messages().number(locale, "hand", this.hand(playerId).size()),
             this.plugin.messages().number(locale, "river", this.discards(playerId).size()),
             this.plugin.messages().number(locale, "melds", this.fuuro(playerId).size()),
-            this.plugin.messages().tag("status", status)
+            this.plugin.messages().tag("status", this.spectatorSeatStatus(locale, wind, playerId))
         );
     }
 
@@ -895,58 +834,15 @@ public final class MahjongTableSession {
 
     private void syncPlayerFeedback() {
         if (this.engine == null) {
-            this.feedbackState.clear();
-            this.lastSettlementFingerprint = "";
-            this.lastPersistedSettlementFingerprint = "";
-            this.cancelNextRoundCountdown();
+            this.resetFeedbackState();
             return;
         }
 
         String settlementFingerprint = Objects.toString(this.engine.getLastResolution(), "");
-        if (!settlementFingerprint.isBlank() && !settlementFingerprint.equals(this.lastPersistedSettlementFingerprint) && this.plugin.database() != null) {
-            this.plugin.database().persistRoundResultAsync(this, this.engine.getLastResolution());
-            this.lastPersistedSettlementFingerprint = settlementFingerprint;
-        }
-        if (!settlementFingerprint.isBlank() && !settlementFingerprint.equals(this.lastSettlementFingerprint)) {
-            for (Player player : this.viewers()) {
-                SettlementUi.open(player, this);
-                if (!this.engine.getGameFinished()) {
-                    this.plugin.messages().send(
-                        player,
-                        "table.next_round_countdown",
-                        this.plugin.messages().number(this.plugin.messages().resolveLocale(player), "seconds", NEXT_ROUND_DELAY_MILLIS / 1000L)
-                    );
-                } else {
-                    this.plugin.messages().send(player, "table.match_finished");
-                }
-            }
-            if (!this.engine.getGameFinished()) {
-                this.scheduleNextRoundCountdown();
-            } else {
-                this.cancelNextRoundCountdown();
-            }
-        }
+        this.persistSettlementIfNeeded(settlementFingerprint);
+        this.syncSettlementFeedback(settlementFingerprint);
         this.lastSettlementFingerprint = settlementFingerprint;
-
-        for (UUID playerId : this.seats) {
-            if (this.isBot(playerId)) {
-                continue;
-            }
-            Player player = Bukkit.getPlayer(playerId);
-            if (player == null) {
-                continue;
-            }
-            String signature = this.feedbackSignature(playerId);
-            String previous = this.feedbackState.put(playerId, signature);
-            if (Objects.equals(signature, previous)) {
-                continue;
-            }
-            if (signature.isBlank()) {
-                player.sendActionBar(Component.empty());
-                continue;
-            }
-            this.sendFeedback(player, playerId);
-        }
+        this.syncSeatFeedbackStates();
     }
 
     private String feedbackSignature(UUID playerId) {
@@ -987,6 +883,74 @@ public final class MahjongTableSession {
         }
     }
 
+    private void resetFeedbackState() {
+        this.feedbackState.clear();
+        this.lastSettlementFingerprint = "";
+        this.lastPersistedSettlementFingerprint = "";
+        this.cancelNextRoundCountdown();
+    }
+
+    private void persistSettlementIfNeeded(String settlementFingerprint) {
+        if (settlementFingerprint.isBlank() || settlementFingerprint.equals(this.lastPersistedSettlementFingerprint) || this.plugin.database() == null) {
+            return;
+        }
+        this.plugin.database().persistRoundResultAsync(this, this.engine.getLastResolution());
+        this.lastPersistedSettlementFingerprint = settlementFingerprint;
+    }
+
+    private void syncSettlementFeedback(String settlementFingerprint) {
+        if (settlementFingerprint.isBlank() || settlementFingerprint.equals(this.lastSettlementFingerprint)) {
+            return;
+        }
+        this.openSettlementForViewers();
+        if (!this.engine.getGameFinished()) {
+            this.scheduleNextRoundCountdown();
+        } else {
+            this.cancelNextRoundCountdown();
+        }
+    }
+
+    private void openSettlementForViewers() {
+        for (Player player : this.viewers()) {
+            SettlementUi.open(player, this);
+            if (!this.engine.getGameFinished()) {
+                this.plugin.messages().send(
+                    player,
+                    "table.next_round_countdown",
+                    this.plugin.messages().number(this.plugin.messages().resolveLocale(player), "seconds", NEXT_ROUND_DELAY_MILLIS / 1000L)
+                );
+            } else {
+                this.plugin.messages().send(player, "table.match_finished");
+            }
+        }
+    }
+
+    private void syncSeatFeedbackStates() {
+        for (UUID playerId : this.seats) {
+            if (this.isBot(playerId)) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) {
+                continue;
+            }
+            this.syncSeatFeedbackState(player, playerId);
+        }
+    }
+
+    private void syncSeatFeedbackState(Player player, UUID playerId) {
+        String signature = this.feedbackSignature(playerId);
+        String previous = this.feedbackState.put(playerId, signature);
+        if (Objects.equals(signature, previous)) {
+            return;
+        }
+        if (signature.isBlank()) {
+            player.sendActionBar(Component.empty());
+            return;
+        }
+        this.sendFeedback(player, playerId);
+    }
+
     private Component reactionPrompt(Player player, ReactionOptions options) {
         Locale locale = this.plugin.messages().resolveLocale(player);
         Component message = this.plugin.messages().render(locale, "table.reactions_prefix");
@@ -1014,9 +978,143 @@ public final class MahjongTableSession {
             .hoverEvent(HoverEvent.showText(Component.text(command, NamedTextColor.GRAY)));
     }
 
+    private StringBuilder baseStateSummary(Locale locale) {
+        StringBuilder builder = new StringBuilder(96);
+        builder.append(this.plugin.messages().plain(locale, "state.label.round")).append(' ').append(this.roundDisplay(locale));
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.turn")).append(' ').append(this.engine.getCurrentPlayer().getDisplayName());
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.wall")).append(' ').append(this.engine.getWall().size());
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.spectators")).append(' ').append(this.spectatorCount());
+        return builder;
+    }
+
+    private void appendReactionStateSummary(StringBuilder builder, Locale locale, UUID playerId) {
+        if (this.engine.getPendingReaction() == null) {
+            return;
+        }
+        ReactionOptions options = this.engine.availableReactions(playerId.toString());
+        if (options == null) {
+            return;
+        }
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.reactions"));
+        this.appendReactionActionLabels(builder, locale, options);
+    }
+
+    private void appendResolutionStateSummary(StringBuilder builder, Locale locale) {
+        if (this.engine.getLastResolution() == null) {
+            return;
+        }
+        builder.append(" | ")
+            .append(this.plugin.messages().plain(locale, "state.label.resolution"))
+            .append(' ')
+            .append(this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()));
+    }
+
+    private void appendNextRoundStateSummary(StringBuilder builder, Locale locale) {
+        if (this.nextRoundDeadlineMillis <= 0L || this.engine.getGameFinished()) {
+            return;
+        }
+        builder.append(" | ")
+            .append(this.plugin.messages().plain(locale, "state.label.next_round"))
+            .append(' ')
+            .append(this.plugin.messages().plain(locale, "state.next_round_in", this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())));
+    }
+
+    private void appendFinishedStateSummary(StringBuilder builder, Locale locale) {
+        if (!this.engine.getGameFinished()) {
+            return;
+        }
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.match_finished"));
+    }
+
+    private void appendReactionActionLabels(StringBuilder builder, Locale locale, ReactionOptions options) {
+        if (options.getCanRon()) {
+            builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.ron"));
+        }
+        if (options.getCanPon()) {
+            builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.pon"));
+        }
+        if (options.getCanMinkan()) {
+            builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.minkan"));
+        }
+        if (!options.getChiiPairs().isEmpty()) {
+            builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.chii"));
+        }
+    }
+
+    private Component waitingViewerOverlay(Locale locale) {
+        return this.plugin.messages().render(
+            locale,
+            "overlay.waiting",
+            this.plugin.messages().tag("table_id", this.id),
+            this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
+        );
+    }
+
+    private Component finishedViewerOverlay(Locale locale) {
+        return this.plugin.messages().render(
+            locale,
+            "overlay.finished",
+            this.plugin.messages().tag("round", this.roundDisplay(locale)),
+            this.plugin.messages().tag("title", this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()))
+        );
+    }
+
+    private Component nextRoundViewerOverlay(Locale locale) {
+        return this.plugin.messages().render(
+            locale,
+            "overlay.next_round",
+            this.plugin.messages().tag("round", this.roundDisplay(locale)),
+            this.plugin.messages().number(locale, "seconds", this.nextRoundSecondsRemaining())
+        );
+    }
+
+    private Component activeViewerOverlay(Locale locale, Player viewer) {
+        return this.plugin.messages().render(
+            locale,
+            "overlay.active",
+            this.plugin.messages().tag("role", this.viewerRoleLabel(locale, viewer.getUniqueId())),
+            this.plugin.messages().tag("round", this.roundDisplay(locale)),
+            this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
+            this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
+            this.plugin.messages().tag("prompt", this.viewerPrompt(locale, viewer))
+        );
+    }
+
+    private String viewerRoleLabel(Locale locale, UUID viewerId) {
+        return this.plugin.messages().plain(locale, this.isSpectator(viewerId) ? "hud.role_spectator" : "hud.role_player");
+    }
+
+    private String viewerPrompt(Locale locale, Player viewer) {
+        UUID viewerId = viewer.getUniqueId();
+        ReactionOptions options = this.engine.availableReactions(viewerId.toString());
+        if (options != null) {
+            return this.reactionSummary(locale, options);
+        }
+        if (this.engine.getCurrentPlayer().getUuid().equals(viewerId.toString())) {
+            return this.plugin.messages().plain(locale, "overlay.your_turn");
+        }
+        if (this.isSpectator(viewerId)) {
+            return this.plugin.messages().plain(locale, "overlay.spectating_turn") + " " + this.engine.getCurrentPlayer().getDisplayName();
+        }
+        return "";
+    }
+
+    private String spectatorSeatStatus(Locale locale, SeatWind wind, UUID playerId) {
+        String status = "";
+        if (this.currentSeat() == wind && this.isStarted()) {
+            status = this.plugin.messages().plain(locale, "overlay.status_turn");
+        }
+        if (!this.isRiichi(playerId)) {
+            return status;
+        }
+        String riichi = this.plugin.messages().plain(locale, "overlay.status_riichi");
+        return status.isBlank() ? riichi : status + " / " + riichi;
+    }
+
     private void updateViewerOverlayRegions() {
+        List<Player> viewers = this.viewers();
         Set<String> activeKeys = new LinkedHashSet<>();
-        for (Player viewer : this.viewers()) {
+        for (Player viewer : viewers) {
             String regionKey = "viewer-overlay:" + viewer.getUniqueId();
             activeKeys.add(regionKey);
             this.updateRegion(regionKey, this.viewerOverlayFingerprint(viewer), () -> this.renderer.renderViewerOverlay(this, viewer));
@@ -1029,31 +1127,12 @@ public final class MahjongTableSession {
     }
 
     private void syncHud() {
+        List<Player> viewers = this.viewers();
         Set<UUID> onlineViewerIds = new LinkedHashSet<>();
-        for (Player viewer : this.viewers()) {
-            UUID viewerId = viewer.getUniqueId();
-            onlineViewerIds.add(viewerId);
-            Locale locale = this.plugin.messages().resolveLocale(viewer);
-            String state = this.hudStateSignature(locale, viewerId);
-            BossBar bar = this.viewerHudBars.get(viewerId);
-            if (bar == null) {
-                bar = BossBar.bossBar(Component.empty(), 1.0F, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
-                this.viewerHudBars.put(viewerId, bar);
-                viewer.showBossBar(bar);
-            }
-            if (!Objects.equals(this.viewerHudState.get(viewerId), state)) {
-                bar.name(this.hudTitle(locale, viewerId));
-                bar.progress(this.hudProgress());
-                bar.color(this.hudColor(viewerId));
-                this.viewerHudState.put(viewerId, state);
-            }
+        for (Player viewer : viewers) {
+            this.syncViewerHud(viewer, onlineViewerIds);
         }
-
-        for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
-            if (!onlineViewerIds.contains(viewerId)) {
-                this.hideHud(viewerId);
-            }
-        }
+        this.hideOfflineHud(onlineViewerIds);
     }
 
     private Component hudTitle(Locale locale, UUID viewerId) {
@@ -1126,28 +1205,74 @@ public final class MahjongTableSession {
         return this.isSpectator(viewerId) ? BossBar.Color.BLUE : BossBar.Color.WHITE;
     }
 
+    private void syncViewerHud(Player viewer, Set<UUID> onlineViewerIds) {
+        UUID viewerId = viewer.getUniqueId();
+        onlineViewerIds.add(viewerId);
+        Locale locale = this.plugin.messages().resolveLocale(viewer);
+        String state = this.hudStateSignature(locale, viewerId);
+        BossBar bar = this.viewerHudBars.get(viewerId);
+        if (bar == null) {
+            bar = this.createHudBar(viewerId, viewer);
+        }
+        if (Objects.equals(this.viewerHudState.get(viewerId), state)) {
+            return;
+        }
+        bar.name(this.hudTitle(locale, viewerId));
+        bar.progress(this.hudProgress());
+        bar.color(this.hudColor(viewerId));
+        this.viewerHudState.put(viewerId, state);
+    }
+
+    private BossBar createHudBar(UUID viewerId, Player viewer) {
+        BossBar bar = BossBar.bossBar(Component.empty(), 1.0F, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
+        this.viewerHudBars.put(viewerId, bar);
+        viewer.showBossBar(bar);
+        return bar;
+    }
+
+    private void hideOfflineHud(Set<UUID> onlineViewerIds) {
+        for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
+            if (!onlineViewerIds.contains(viewerId)) {
+                this.hideHud(viewerId);
+            }
+        }
+    }
+
     private String hudStateSignature(Locale locale, UUID viewerId) {
-        return locale.toLanguageTag()
-            + ':' + this.hudProgress()
-            + ':' + this.hudColor(viewerId)
-            + ':' + this.nextRoundSecondsRemaining()
-            + ':' + this.isSpectator(viewerId)
-            + ':' + this.isStarted()
-            + ':' + Objects.toString(this.engine == null ? null : this.engine.getLastResolution(), "")
-            + ':' + (this.engine == null ? this.waitingDisplaySummary() + ':' + this.ruleDisplaySummary() : this.roundDisplay() + ':' + this.engine.getWall().size() + ':' + this.engine.getCurrentPlayerIndex());
+        FingerprintBuilder builder = fingerprintBuilder(160)
+            .field(locale.toLanguageTag())
+            .field(this.hudProgress())
+            .field(this.hudColor(viewerId))
+            .field(this.nextRoundSecondsRemaining())
+            .field(this.isSpectator(viewerId))
+            .field(this.isStarted())
+            .field(this.engine == null ? null : this.engine.getLastResolution());
+        if (this.engine == null) {
+            return builder
+                .field(this.waitingDisplaySummary())
+                .field(this.ruleDisplaySummary())
+                .toString();
+        }
+        return this.appendActiveRoundFingerprint(builder).toString();
     }
 
     private String viewerOverlayFingerprint(Player viewer) {
         Locale locale = this.plugin.messages().resolveLocale(viewer);
-        return locale.toLanguageTag()
-            + ':' + viewer.getUniqueId()
-            + ':' + this.isSpectator(viewer.getUniqueId())
-            + ':' + this.nextRoundSecondsRemaining()
-            + ':' + Objects.toString(this.engine == null ? null : this.engine.getLastResolution(), "")
-            + ':' + this.waitingDisplaySummary()
-            + ':' + this.ruleDisplaySummary()
-            + ':' + (this.engine == null ? "no-engine" : this.roundDisplay() + ':' + this.engine.getWall().size() + ':' + this.engine.getCurrentPlayerIndex()
-                + ':' + Objects.toString(this.engine.availableReactions(viewer.getUniqueId().toString()), "") + ':' + this.spectatorSeatFingerprint());
+        FingerprintBuilder builder = fingerprintBuilder(224)
+            .field(locale.toLanguageTag())
+            .field(viewer.getUniqueId())
+            .field(this.isSpectator(viewer.getUniqueId()))
+            .field(this.nextRoundSecondsRemaining())
+            .field(this.engine == null ? null : this.engine.getLastResolution())
+            .field(this.waitingDisplaySummary())
+            .field(this.ruleDisplaySummary());
+        if (this.engine == null) {
+            return builder.field("no-engine").toString();
+        }
+        return this.appendActiveRoundFingerprint(builder)
+            .field(this.engine.availableReactions(viewer.getUniqueId().toString()))
+            .field(this.spectatorSeatFingerprint())
+            .toString();
     }
 
     private void hideHud(UUID viewerId) {
@@ -1167,12 +1292,27 @@ public final class MahjongTableSession {
 
     private void playStateSounds() {
         if (this.engine == null) {
-            this.lastTurnSoundFingerprint = "";
-            this.lastRiichiSoundFingerprint = "";
-            this.lastResolutionSoundFingerprint = "";
+            this.resetSoundFingerprints();
             return;
         }
+        this.syncTurnSound();
+        this.syncRiichiSound();
+        this.syncResolutionSound();
+    }
 
+    private void broadcastSound(Sound sound, float volume, float pitch) {
+        for (Player viewer : this.viewers()) {
+            viewer.playSound(viewer.getLocation(), sound, volume, pitch);
+        }
+    }
+
+    private void resetSoundFingerprints() {
+        this.lastTurnSoundFingerprint = "";
+        this.lastRiichiSoundFingerprint = "";
+        this.lastResolutionSoundFingerprint = "";
+    }
+
+    private void syncTurnSound() {
         String turnFingerprint = this.engine.getStarted()
             ? this.engine.getCurrentPlayerIndex() + ":" + this.engine.getWall().size() + ":" + Objects.toString(this.engine.getPendingReaction(), "")
             : "";
@@ -1180,25 +1320,23 @@ public final class MahjongTableSession {
             this.broadcastSound(Sound.UI_BUTTON_CLICK, 0.5F, 1.6F);
         }
         this.lastTurnSoundFingerprint = turnFingerprint;
+    }
 
+    private void syncRiichiSound() {
         String riichiFingerprint = this.riichiFingerprint();
         if (!riichiFingerprint.equals(this.lastRiichiSoundFingerprint) && !this.lastRiichiSoundFingerprint.isBlank()) {
             this.broadcastSound(Sound.BLOCK_BELL_USE, 0.8F, 1.25F);
         }
         this.lastRiichiSoundFingerprint = riichiFingerprint;
+    }
 
+    private void syncResolutionSound() {
         String resolutionFingerprint = Objects.toString(this.engine.getLastResolution(), "");
         if (!resolutionFingerprint.isBlank() && !resolutionFingerprint.equals(this.lastResolutionSoundFingerprint)) {
             Sound sound = this.engine.getLastResolution().getDraw() == null ? Sound.UI_TOAST_CHALLENGE_COMPLETE : Sound.BLOCK_NOTE_BLOCK_BELL;
             this.broadcastSound(sound, 0.9F, 1.0F);
         }
         this.lastResolutionSoundFingerprint = resolutionFingerprint;
-    }
-
-    private void broadcastSound(Sound sound, float volume, float pitch) {
-        for (Player viewer : this.viewers()) {
-            viewer.playSound(viewer.getLocation(), sound, volume, pitch);
-        }
     }
 
     private String reactionSummary(Locale locale, ReactionOptions options) {
@@ -1220,36 +1358,98 @@ public final class MahjongTableSession {
 
     private String viewerMembershipSignature(UUID excludedPlayerId) {
         StringBuilder builder = new StringBuilder(96);
-        for (Player viewer : this.viewers()) {
-            if (!viewer.getUniqueId().equals(excludedPlayerId)) {
-                builder.append(viewer.getUniqueId()).append(';');
-            }
-        }
+        this.appendOnlineViewerIds(builder, excludedPlayerId);
         return builder.toString();
     }
 
+    private void appendOnlineViewers(List<Player> target) {
+        this.appendOnlineSeatViewers(target);
+        this.appendOnlineSpectators(target);
+    }
+
+    private void appendOnlineViewerIds(List<UUID> target, UUID excludedPlayerId) {
+        this.appendOnlineSeatViewerIds(target, excludedPlayerId);
+        this.appendOnlineSpectatorIds(target, excludedPlayerId);
+    }
+
+    private void appendOnlineViewerIds(StringBuilder target, UUID excludedPlayerId) {
+        this.appendOnlineSeatViewerIds(target, excludedPlayerId);
+        this.appendOnlineSpectatorIds(target, excludedPlayerId);
+    }
+
+    private void appendOnlineSeatViewers(List<Player> target) {
+        for (UUID playerId : this.seats) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                target.add(player);
+            }
+        }
+    }
+
+    private void appendOnlineSpectators(List<Player> target) {
+        for (UUID spectatorId : this.spectators) {
+            Player player = Bukkit.getPlayer(spectatorId);
+            if (player != null) {
+                target.add(player);
+            }
+        }
+    }
+
+    private void appendOnlineSeatViewerIds(List<UUID> target, UUID excludedPlayerId) {
+        for (UUID playerId : this.seats) {
+            if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
+                target.add(playerId);
+            }
+        }
+    }
+
+    private void appendOnlineSpectatorIds(List<UUID> target, UUID excludedPlayerId) {
+        for (UUID spectatorId : this.spectators) {
+            if (!spectatorId.equals(excludedPlayerId) && Bukkit.getPlayer(spectatorId) != null) {
+                target.add(spectatorId);
+            }
+        }
+    }
+
+    private void appendOnlineSeatViewerIds(StringBuilder target, UUID excludedPlayerId) {
+        for (UUID playerId : this.seats) {
+            if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
+                target.append(playerId).append(';');
+            }
+        }
+    }
+
+    private void appendOnlineSpectatorIds(StringBuilder target, UUID excludedPlayerId) {
+        for (UUID spectatorId : this.spectators) {
+            if (!spectatorId.equals(excludedPlayerId) && Bukkit.getPlayer(spectatorId) != null) {
+                target.append(spectatorId).append(';');
+            }
+        }
+    }
+
     private String spectatorSeatFingerprint() {
-        StringBuilder builder = new StringBuilder(256);
+        FingerprintBuilder builder = fingerprintBuilder(256);
         for (SeatWind wind : SeatWind.values()) {
             UUID playerId = this.playerAt(wind);
-            builder.append(wind.name()).append(':').append(Objects.toString(playerId, "empty")).append(':');
+            builder.field(wind.name()).field(Objects.toString(playerId, "empty"));
             if (playerId != null) {
-                builder.append(this.displayName(playerId)).append(':')
-                    .append(this.points(playerId)).append(':')
-                    .append(this.hand(playerId).size()).append(':')
-                    .append(this.discards(playerId).size()).append(':')
-                    .append(this.fuuro(playerId).size()).append(':')
-                    .append(this.isRiichi(playerId)).append(':')
-                    .append(this.currentSeat() == wind).append(';');
+                builder.field(this.displayName(playerId))
+                    .field(this.points(playerId))
+                    .field(this.hand(playerId).size())
+                    .field(this.discards(playerId).size())
+                    .field(this.fuuro(playerId).size())
+                    .field(this.isRiichi(playerId))
+                    .field(this.currentSeat() == wind);
             }
+            builder.entrySeparator();
         }
         return builder.toString();
     }
 
     private String riichiFingerprint() {
-        StringBuilder builder = new StringBuilder(64);
+        FingerprintBuilder builder = fingerprintBuilder(64);
         for (UUID playerId : this.seats) {
-            builder.append(playerId).append(':').append(this.isRiichi(playerId)).append(';');
+            builder.field(playerId).field(this.isRiichi(playerId)).entrySeparator();
         }
         return builder.toString();
     }
@@ -1305,89 +1505,171 @@ public final class MahjongTableSession {
         if (this.engine == null) {
             return "waiting";
         }
-        return "wall:" + this.engine.getStarted()
-            + ':' + this.engine.getGameFinished()
-            + ':' + this.engine.getWall().size();
+        return fingerprintBuilder(32)
+            .field("wall")
+            .field(this.engine.getStarted())
+            .field(this.engine.getGameFinished())
+            .field(this.engine.getWall().size())
+            .toString();
     }
 
     private String tableFingerprint() {
-        return "table:" + this.center.getWorld().getName()
-            + ':' + this.center.getBlockX()
-            + ':' + this.center.getBlockY()
-            + ':' + this.center.getBlockZ();
+        return fingerprintBuilder(48)
+            .field("table")
+            .field(this.center.getWorld().getName())
+            .field(this.center.getBlockX())
+            .field(this.center.getBlockY())
+            .field(this.center.getBlockZ())
+            .toString();
     }
 
     private String doraFingerprint() {
-        StringBuilder builder = new StringBuilder(64);
         if (this.engine == null) {
             return "dora:waiting";
         }
-        builder.append("dora:").append(this.engine.getStarted()).append(':').append(this.engine.getDoraIndicators().size()).append(':');
-        this.engine.getDoraIndicators().forEach(tile -> builder.append(tile.getMahjongTile().name()).append(','));
+        FingerprintBuilder builder = fingerprintBuilder(64)
+            .field("dora")
+            .field(this.engine.getStarted())
+            .field(this.engine.getDoraIndicators().size());
+        this.engine.getDoraIndicators().forEach(tile -> builder.raw(tile.getMahjongTile().name()).raw(','));
         return builder.toString();
     }
 
     private String centerFingerprint() {
-        return this.isStarted()
-            ? "center:started:" + this.roundDisplay() + ':' + this.remainingWall().size() + ':' + this.dicePoints() + ':' + this.dealerName() + ':' + this.currentSeat().name()
-            : "center:waiting:" + this.waitingDisplaySummary() + ':' + this.ruleDisplaySummary();
+        FingerprintBuilder builder = fingerprintBuilder(128).field("center");
+        if (this.isStarted()) {
+            return builder.field("started")
+                .field(this.roundDisplay())
+                .field(this.remainingWall().size())
+                .field(this.dicePoints())
+                .field(this.dealerName())
+                .field(this.currentSeat().name())
+                .toString();
+        }
+        return builder.field("waiting")
+            .field(this.waitingDisplaySummary())
+            .field(this.ruleDisplaySummary())
+            .toString();
     }
 
     private String seatLabelFingerprint(SeatWind wind) {
         UUID playerId = this.playerAt(wind);
-        return "labels:" + wind.name()
-            + ':' + this.currentSeat().name()
-            + ':' + Objects.toString(playerId, "empty")
-            + ':' + this.displayName(playerId)
-            + ':' + this.points(playerId)
-            + ':' + this.isRiichi(playerId);
+        return fingerprintBuilder(96)
+            .field("labels")
+            .field(wind.name())
+            .field(this.currentSeat().name())
+            .field(Objects.toString(playerId, "empty"))
+            .field(this.displayName(playerId))
+            .field(this.points(playerId))
+            .field(this.isRiichi(playerId))
+            .toString();
     }
 
     private String handFingerprint(SeatWind wind) {
         UUID playerId = this.playerAt(wind);
-        StringBuilder builder = new StringBuilder(256);
-        builder.append("hand:").append(wind.name()).append(':').append(Objects.toString(playerId, "empty"));
+        FingerprintBuilder builder = this.seatFingerprintBuilder("hand", wind, playerId, 256);
         if (playerId == null) {
             return builder.toString();
         }
-        builder.append(':').append(this.onlinePlayer(playerId) != null);
-        builder.append(':').append(this.viewerMembershipSignature(playerId));
-        this.hand(playerId).forEach(tile -> builder.append(':').append(tile.name()));
+        builder.field(this.onlinePlayer(playerId) != null);
+        builder.field(this.viewerMembershipSignature(playerId));
+        this.hand(playerId).forEach(tile -> builder.field(tile.name()));
         return builder.toString();
     }
 
     private String discardFingerprint(SeatWind wind) {
         UUID playerId = this.playerAt(wind);
-        StringBuilder builder = new StringBuilder(256);
-        builder.append("discards:").append(wind.name()).append(':').append(Objects.toString(playerId, "empty"));
+        FingerprintBuilder builder = this.seatFingerprintBuilder("discards", wind, playerId, 256);
         if (playerId == null) {
             return builder.toString();
         }
-        builder.append(':').append(this.riichiDiscardIndex(playerId));
-        this.discards(playerId).forEach(tile -> builder.append(':').append(tile.name()));
+        builder.field(this.riichiDiscardIndex(playerId));
+        this.discards(playerId).forEach(tile -> builder.field(tile.name()));
         return builder.toString();
     }
 
     private String meldFingerprint(SeatWind wind) {
         UUID playerId = this.playerAt(wind);
-        StringBuilder builder = new StringBuilder(256);
-        builder.append("melds:").append(wind.name()).append(':').append(Objects.toString(playerId, "empty"));
+        FingerprintBuilder builder = this.seatFingerprintBuilder("melds", wind, playerId, 256);
         if (playerId == null) {
             return builder.toString();
         }
-        this.fuuro(playerId).forEach(meld -> {
-            builder.append('[');
-            for (int i = 0; i < meld.tiles().size(); i++) {
-                builder.append(meld.tiles().get(i).name()).append('/').append(meld.faceDownAt(i)).append(',');
-            }
-            builder.append(']');
-        });
+        this.fuuro(playerId).forEach(meld -> this.appendMeldFingerprint(builder, meld));
         return builder.toString();
+    }
+
+    private FingerprintBuilder seatFingerprintBuilder(String region, SeatWind wind, UUID playerId, int capacity) {
+        return fingerprintBuilder(capacity)
+            .field(region)
+            .field(wind.name())
+            .field(Objects.toString(playerId, "empty"));
+    }
+
+    private FingerprintBuilder appendActiveRoundFingerprint(FingerprintBuilder builder) {
+        return builder
+            .field(this.roundDisplay())
+            .field(this.engine.getWall().size())
+            .field(this.engine.getCurrentPlayerIndex());
+    }
+
+    private void appendMeldFingerprint(FingerprintBuilder builder, MeldView meld) {
+        builder.raw('[')
+            .raw(meld.claimTileIndex())
+            .raw('/')
+            .raw(meld.claimYawOffset())
+            .raw('/')
+            .raw(Objects.toString(meld.addedKanTile(), "none"))
+            .raw(':');
+        for (int i = 0; i < meld.tiles().size(); i++) {
+            builder.raw(meld.tiles().get(i).name())
+                .raw('/')
+                .raw(meld.faceDownAt(i))
+                .raw(',');
+        }
+        builder.raw(']');
+    }
+
+    private static FingerprintBuilder fingerprintBuilder(int capacity) {
+        return new FingerprintBuilder(capacity);
     }
 
     @FunctionalInterface
     private interface RegionRenderer {
         List<Entity> render();
+    }
+
+    private static final class FingerprintBuilder {
+        private final StringBuilder delegate;
+        private boolean needsSeparator;
+
+        private FingerprintBuilder(int capacity) {
+            this.delegate = new StringBuilder(capacity);
+        }
+
+        private FingerprintBuilder field(Object value) {
+            if (this.needsSeparator) {
+                this.delegate.append(':');
+            }
+            this.delegate.append(Objects.toString(value, ""));
+            this.needsSeparator = true;
+            return this;
+        }
+
+        private FingerprintBuilder raw(Object value) {
+            this.delegate.append(value);
+            return this;
+        }
+
+        private FingerprintBuilder entrySeparator() {
+            this.delegate.append(';');
+            this.needsSeparator = false;
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return this.delegate.toString();
+        }
     }
 
     public Locale publicLocale() {

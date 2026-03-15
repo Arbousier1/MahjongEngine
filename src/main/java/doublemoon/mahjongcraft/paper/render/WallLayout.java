@@ -7,14 +7,14 @@ public final class WallLayout {
     }
 
     public static SeatWind wallSeat(int tileIndex) {
-        return SeatWind.fromIndex((tileIndex % 68) / 17);
+        return SeatWind.fromIndex(tileIndex / 34);
     }
 
     public static int wallColumn(int tileIndex) {
-        return tileIndex % 17;
+        return (tileIndex / 2) % 17;
     }
 
     public static int wallLayer(int tileIndex) {
-        return tileIndex / 68;
+        return 1 - tileIndex % 2;
     }
 }
