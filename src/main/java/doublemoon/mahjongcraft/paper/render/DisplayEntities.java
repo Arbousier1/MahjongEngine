@@ -7,6 +7,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Interaction;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class DisplayEntities {
     private static final String ITEM_MODEL_NAMESPACE = "mahjongcraft";
-    private static final float TILE_SCALE = 0.15F;
+    private static final float TILE_SCALE = 1.0F;
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
 
     private DisplayEntities() {
@@ -36,10 +37,11 @@ public final class DisplayEntities {
         float yaw,
         MahjongTile tile,
         boolean faceDown,
+        boolean flatOnTable,
         DisplayClickAction clickAction,
         boolean visibleByDefault
     ) {
-        return spawnTileDisplay(plugin, location, yaw, tile, faceDown, clickAction, visibleByDefault, null);
+        return spawnTileDisplay(plugin, location, yaw, tile, faceDown, flatOnTable, clickAction, visibleByDefault, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -48,6 +50,7 @@ public final class DisplayEntities {
         float yaw,
         MahjongTile tile,
         boolean faceDown,
+        boolean flatOnTable,
         DisplayClickAction clickAction,
         boolean visibleByDefault,
         Collection<UUID> privateViewers
@@ -73,7 +76,7 @@ public final class DisplayEntities {
             spawned.setVisibleByDefault(visibleByDefault);
             spawned.setTransformation(new Transformation(
                 new Vector3f(),
-                new AxisAngle4f((float) Math.toRadians(90), 1.0F, 0.0F, 0.0F),
+                new AxisAngle4f((float) Math.toRadians(flatOnTable ? 90.0F : 0.0F), 1.0F, 0.0F, 0.0F),
                 new Vector3f(TILE_SCALE, TILE_SCALE, TILE_SCALE),
                 new AxisAngle4f()
             ));
@@ -142,6 +145,48 @@ public final class DisplayEntities {
             DisplayVisibilityRegistry.registerPrivate(interaction.getEntityId(), privateViewers);
         }
         return interaction;
+    }
+
+    public static BlockDisplay spawnBlockDisplay(Location location, Material material, float scaleX, float scaleY, float scaleZ) {
+        return spawnBlockDisplay(location, material, scaleX, scaleY, scaleZ, true, null);
+    }
+
+    public static BlockDisplay spawnBlockDisplay(
+        Location location,
+        Material material,
+        float scaleX,
+        float scaleY,
+        float scaleZ,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers
+    ) {
+        World world = location.getWorld();
+        if (world == null) {
+            throw new IllegalArgumentException("Location world is null");
+        }
+
+        BlockDisplay display = world.spawn(location, BlockDisplay.class, spawned -> {
+            spawned.setPersistent(false);
+            spawned.setInterpolationDuration(1);
+            spawned.setInterpolationDelay(0);
+            spawned.setTeleportDuration(1);
+            spawned.setViewRange(48.0F);
+            spawned.setShadowRadius(0.0F);
+            spawned.setShadowStrength(0.0F);
+            spawned.setBrightness(new Display.Brightness(15, 15));
+            spawned.setVisibleByDefault(visibleByDefault);
+            spawned.setBlock(material.createBlockData());
+            spawned.setTransformation(new Transformation(
+                new Vector3f(),
+                new AxisAngle4f(),
+                new Vector3f(scaleX, scaleY, scaleZ),
+                new AxisAngle4f()
+            ));
+        });
+        if (privateViewers != null && !privateViewers.isEmpty()) {
+            DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
+        }
+        return display;
     }
 
     private static ItemStack tileItem(Plugin plugin, MahjongTile tile, boolean faceDown) {

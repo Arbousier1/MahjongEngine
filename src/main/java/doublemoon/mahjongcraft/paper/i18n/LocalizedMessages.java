@@ -6,10 +6,14 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,7 +32,7 @@ public final class LocalizedMessages {
     private final Map<Locale, Map<String, String>> bundles = new ConcurrentHashMap<>();
 
     public Component render(Locale locale, String key, TagResolver... placeholders) {
-        String template = this.template(this.resolveLocale(locale), key);
+        String template = this.template(locale, key);
         return this.miniMessage.deserialize(template, TagResolver.resolver(placeholders));
     }
 
@@ -37,9 +41,12 @@ public final class LocalizedMessages {
     }
 
     public boolean contains(Locale locale, String key) {
-        return this.bundle(this.resolveLocale(locale)).containsKey(key)
-            || this.bundle(this.index.defaultLocale()).containsKey(key)
-            || this.bundle(Locale.ENGLISH).containsKey(key);
+        for (Locale candidate : this.resolveLocales(locale)) {
+            if (this.bundle(candidate).containsKey(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public TagResolver tag(String key, String value) {
@@ -47,7 +54,7 @@ public final class LocalizedMessages {
     }
 
     public TagResolver number(Locale locale, String key, Number value) {
-        return Placeholder.unparsed(key, NumberFormat.getIntegerInstance(this.resolveLocale(locale)).format(value));
+        return Placeholder.unparsed(key, NumberFormat.getIntegerInstance(this.resolveLocales(locale).get(0)).format(value));
     }
 
     public Locale normalizeLocale(String rawLocale) {
@@ -55,32 +62,26 @@ public final class LocalizedMessages {
             return this.index.defaultLocale();
         }
         Locale locale = Locale.forLanguageTag(rawLocale.replace('_', '-'));
-        return locale.getLanguage().isBlank() ? this.index.defaultLocale() : this.resolveLocale(locale);
+        return locale.getLanguage().isBlank() ? this.index.defaultLocale() : this.resolveLocales(locale).get(0);
     }
 
-    private Locale resolveLocale(Locale locale) {
-        return this.index.resolve(locale == null ? this.index.defaultLocale() : locale);
+    private List<Locale> resolveLocales(Locale locale) {
+        return this.index.resolveChain(locale == null ? this.index.defaultLocale() : locale);
     }
 
     private String template(Locale locale, String key) {
-        String template = this.bundle(locale).get(key);
-        if (template != null) {
-            return template;
-        }
-        template = this.bundle(this.index.defaultLocale()).get(key);
-        if (template != null) {
-            return template;
-        }
-        template = this.bundle(Locale.ENGLISH).get(key);
-        if (template != null) {
-            return template;
+        for (Locale candidate : this.resolveLocales(locale)) {
+            String template = this.bundle(candidate).get(key);
+            if (template != null) {
+                return template;
+            }
         }
         throw new IllegalArgumentException("Missing message key: " + key);
     }
 
     private Map<String, String> bundle(Locale locale) {
-        Locale resolved = this.resolveLocale(locale);
-        return this.bundles.computeIfAbsent(resolved, this::loadBundle);
+        Locale safeLocale = locale == null ? this.index.defaultLocale() : locale;
+        return this.bundles.computeIfAbsent(safeLocale, this::loadBundle);
     }
 
     private Map<String, String> loadBundle(Locale locale) {
@@ -114,7 +115,10 @@ public final class LocalizedMessages {
             DEFAULT_LOCALE,
             Map.of(
                 "en", "messages.properties",
-                DEFAULT_LOCALE.toLanguageTag(), "messages_zh_CN.properties"
+                DEFAULT_LOCALE.toLanguageTag(), "messages_zh_CN.properties",
+                "zh-TW", "messages_zh_TW.properties",
+                "zh-HK", "messages_zh_HK.properties",
+                "zh-MO", "messages_zh_MO.properties"
             )
         );
 
@@ -156,30 +160,83 @@ public final class LocalizedMessages {
             return this.defaultLocale;
         }
 
-        Locale resolve(Locale requestedLocale) {
+        List<Locale> resolveChain(Locale requestedLocale) {
             Locale safeLocale = requestedLocale == null ? this.defaultLocale : requestedLocale;
-            String exactTag = safeLocale.toLanguageTag();
-            if (this.bundles.containsKey(exactTag)) {
-                return Locale.forLanguageTag(exactTag);
-            }
+            LinkedHashSet<String> candidateTags = new LinkedHashSet<>();
+            this.collectExactCandidate(candidateTags, safeLocale);
+            this.collectChineseCandidates(candidateTags, safeLocale);
+            this.collectLanguageCandidates(candidateTags, safeLocale);
+            candidateTags.add(this.defaultLocale.toLanguageTag());
+            candidateTags.add(Locale.ENGLISH.toLanguageTag());
 
-            String language = safeLocale.getLanguage();
-            if (language != null && !language.isBlank()) {
+            List<Locale> resolved = new ArrayList<>(candidateTags.size());
+            for (String candidateTag : candidateTags) {
+                if (this.bundles.containsKey(candidateTag)) {
+                    resolved.add(Locale.forLanguageTag(candidateTag));
+                }
+            }
+            if (resolved.isEmpty()) {
+                resolved.add(this.defaultLocale);
+            }
+            return List.copyOf(resolved);
+        }
+
+        private void collectExactCandidate(Set<String> candidateTags, Locale locale) {
+            String exactTag = locale.toLanguageTag();
+            if (this.bundles.containsKey(exactTag)) {
+                candidateTags.add(exactTag);
+            }
+        }
+
+        private void collectLanguageCandidates(Set<String> candidateTags, Locale locale) {
+            String language = safeLanguage(locale);
+            if (!language.isBlank()) {
                 if (this.bundles.containsKey(language)) {
-                    return Locale.forLanguageTag(language);
+                    candidateTags.add(language);
                 }
                 for (String supportedLocale : this.bundles.keySet()) {
                     if (supportedLocale.startsWith(language + "-")) {
-                        return Locale.forLanguageTag(supportedLocale);
+                        candidateTags.add(supportedLocale);
                     }
                 }
             }
+        }
 
-            return this.defaultLocale;
+        private void collectChineseCandidates(Set<String> candidateTags, Locale locale) {
+            if (!"zh".equalsIgnoreCase(safeLanguage(locale))) {
+                return;
+            }
+
+            String region = locale.getCountry().toUpperCase(Locale.ROOT);
+            String script = locale.getScript();
+            boolean traditional = "Hant".equalsIgnoreCase(script) || region.equals("TW") || region.equals("HK") || region.equals("MO");
+            boolean simplified = "Hans".equalsIgnoreCase(script) || region.equals("CN") || region.equals("SG") || region.equals("MY");
+
+            if (region.equals("HK") && this.bundles.containsKey("zh-HK")) {
+                candidateTags.add("zh-HK");
+            }
+            if (region.equals("MO") && this.bundles.containsKey("zh-MO")) {
+                candidateTags.add("zh-MO");
+            }
+            if (traditional || (!simplified && !region.isBlank())) {
+                if (this.bundles.containsKey("zh-TW")) {
+                    candidateTags.add("zh-TW");
+                }
+            }
+            if (simplified && this.bundles.containsKey("zh-CN")) {
+                candidateTags.add("zh-CN");
+            }
+            if (!traditional && !simplified && this.bundles.containsKey("zh-CN")) {
+                candidateTags.add("zh-CN");
+            }
         }
 
         String resourceName(Locale locale) {
-            return this.bundles.get(this.resolve(locale).toLanguageTag());
+            return this.bundles.get(locale.toLanguageTag());
+        }
+
+        private String safeLanguage(Locale locale) {
+            return locale.getLanguage() == null ? "" : locale.getLanguage();
         }
     }
 }

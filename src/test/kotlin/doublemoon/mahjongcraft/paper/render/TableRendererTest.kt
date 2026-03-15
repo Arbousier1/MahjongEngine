@@ -3,8 +3,13 @@ package doublemoon.mahjongcraft.paper.render
 import doublemoon.mahjongcraft.paper.model.SeatWind
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class TableRendererTest {
+    private val tileWidth = 0.1125
+    private val tileHeight = 0.15
+    private val tilePadding = 0.01
+
     @Test
     fun `wall indexing stays within four seat winds`() {
         assertEquals(SeatWind.EAST, WallLayout.wallSeat(0))
@@ -29,5 +34,21 @@ class TableRendererTest {
         assertEquals(0, WallLayout.wallLayer(67))
         assertEquals(1, WallLayout.wallLayer(68))
         assertEquals(1, WallLayout.wallLayer(135))
+    }
+
+    @Test
+    fun `riichi discard uses sideways footprint and yaw`() {
+        assertTrue(DiscardLayout.discardFootprint(tileWidth, tileHeight, true) > DiscardLayout.discardFootprint(tileWidth, tileHeight, false))
+        assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
+        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
+        assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
+        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
+    }
+
+    @Test
+    fun `discard row footprint accounts for sideways riichi tile`() {
+        val plainRow = DiscardLayout.rowFootprint(tileWidth, tileHeight, tilePadding, 0, 6, -1)
+        val riichiRow = DiscardLayout.rowFootprint(tileWidth, tileHeight, tilePadding, 0, 6, 2)
+        assertTrue(riichiRow > plainRow)
     }
 }

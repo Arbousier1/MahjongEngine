@@ -4,7 +4,6 @@ import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class MessageServiceTest {
     private val messages = LocalizedMessages()
@@ -21,9 +20,13 @@ class MessageServiceTest {
     }
 
     @Test
-    fun `normalize locale matches supported language variants`() {
+    fun `normalize locale matches supported language and region variants`() {
         assertEquals(Locale.ENGLISH, messages.normalizeLocale("en-US"))
-        assertEquals(Locale.forLanguageTag("zh-CN"), messages.normalizeLocale("zh-HK"))
+        assertEquals(Locale.forLanguageTag("zh-TW"), messages.normalizeLocale("zh-Hant"))
+        assertEquals(Locale.forLanguageTag("zh-TW"), messages.normalizeLocale("zh-TW"))
+        assertEquals(Locale.forLanguageTag("zh-HK"), messages.normalizeLocale("zh-HK"))
+        assertEquals(Locale.forLanguageTag("zh-MO"), messages.normalizeLocale("zh-MO"))
+        assertEquals(Locale.forLanguageTag("zh-CN"), messages.normalizeLocale("zh-SG"))
         assertEquals(Locale.forLanguageTag("zh-CN"), messages.normalizeLocale("de-DE"))
     }
 
@@ -39,5 +42,12 @@ class MessageServiceTest {
         assertEquals("Riichi", messages.plain(Locale.ENGLISH, "yaku.reach"))
         assertEquals("立直", messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"))
         assertEquals("国士无双", messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso"))
+    }
+
+    @Test
+    fun `traditional region bundles are addressable`() {
+        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"))
+        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"))
+        assertEquals("荣和", messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"))
     }
 }

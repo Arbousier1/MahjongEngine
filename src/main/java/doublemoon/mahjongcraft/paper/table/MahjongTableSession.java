@@ -39,6 +39,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class MahjongTableSession {
+    private static final String REGION_TABLE = "table";
     private static final String REGION_WALL = "wall";
     private static final String REGION_DORA = "dora";
     private static final String REGION_CENTER = "center";
@@ -533,6 +534,30 @@ public final class MahjongTableSession {
         List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(player.getDiscardedTilesForDisplay().size());
         player.getDiscardedTilesForDisplay().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile.getMahjongTile().name())));
         return tiles;
+    }
+
+    public int riichiDiscardIndex(UUID playerId) {
+        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
+        if (player == null || player.getRiichiSengenTile() == null) {
+            return -1;
+        }
+        int displayIndex = player.getDiscardedTilesForDisplay().indexOf(player.getRiichiSengenTile());
+        if (displayIndex >= 0) {
+            return displayIndex;
+        }
+
+        int declaredIndex = player.getDiscardedTiles().indexOf(player.getRiichiSengenTile());
+        if (declaredIndex < 0) {
+            return -1;
+        }
+
+        for (int i = declaredIndex + 1; i < player.getDiscardedTiles().size(); i++) {
+            int shiftedDisplayIndex = player.getDiscardedTilesForDisplay().indexOf(player.getDiscardedTiles().get(i));
+            if (shiftedDisplayIndex >= 0) {
+                return shiftedDisplayIndex;
+            }
+        }
+        return -1;
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> remainingWall() {
@@ -1245,6 +1270,7 @@ public final class MahjongTableSession {
     }
 
     private void updateStaticRegions() {
+        this.updateRegion(REGION_TABLE, this.tableFingerprint(), () -> this.renderer.renderTableStructure(this));
         this.updateRegion(REGION_WALL, this.wallFingerprint(), () -> this.renderer.renderWall(this));
         this.updateRegion(REGION_DORA, this.doraFingerprint(), () -> this.renderer.renderDora(this));
         this.updateRegion(REGION_CENTER, this.centerFingerprint(), () -> this.renderer.renderCenterLabel(this));
@@ -1282,6 +1308,13 @@ public final class MahjongTableSession {
         return "wall:" + this.engine.getStarted()
             + ':' + this.engine.getGameFinished()
             + ':' + this.engine.getWall().size();
+    }
+
+    private String tableFingerprint() {
+        return "table:" + this.center.getWorld().getName()
+            + ':' + this.center.getBlockX()
+            + ':' + this.center.getBlockY()
+            + ':' + this.center.getBlockZ();
     }
 
     private String doraFingerprint() {
@@ -1330,6 +1363,7 @@ public final class MahjongTableSession {
         if (playerId == null) {
             return builder.toString();
         }
+        builder.append(':').append(this.riichiDiscardIndex(playerId));
         this.discards(playerId).forEach(tile -> builder.append(':').append(tile.name()));
         return builder.toString();
     }
