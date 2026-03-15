@@ -3,6 +3,7 @@ package doublemoon.mahjongcraft.paper.render;
 import doublemoon.mahjongcraft.paper.model.MahjongTile;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,10 @@ public final class TableRenderer {
     private static final double TILE_HEIGHT = 0.15D;
     private static final double TILE_DEPTH = 0.075D;
     private static final double TILE_PADDING = 0.0025D;
+    private static final double STICK_WIDTH = 0.4D;
+    private static final double STICK_HEIGHT = 0.0125D;
+    private static final double STICK_DEPTH = 0.0625D;
+    private static final int STICKS_PER_STACK = 5;
     private static final double TABLE_BOTTOM_SIZE = 14.0D * ONE_SIXTEENTH;
     private static final double TABLE_BOTTOM_HEIGHT = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_PILLAR_SIZE = 8.0D * ONE_SIXTEENTH;
@@ -28,25 +33,34 @@ public final class TableRenderer {
     private static final double TABLE_TOP_THICKNESS = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
-    private static final double TABLE_BORDER_SPAN = 47.0D * ONE_SIXTEENTH;
-    private static final double TABLE_SHULKER_HITBOX_Y = -1.0D;
+    private static final double TABLE_SHULKER_HITBOX_Y = -2.0D;
     private static final double[] TABLE_SHULKER_HITBOX_GRID = new double[] {-1.0D, 0.0D, 1.0D};
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
-    private static final double DORA_STEP = TILE_WIDTH + TILE_PADDING;
-    private static final double DORA_RADIUS = 0.28D;
+    private static final double DEAD_WALL_GAP = TILE_PADDING * 20.0D;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D + 0.01D;
     private static final double FLAT_TILE_Y = 0.02D;
+    private static final int WALL_TILES_PER_SIDE = 34;
+    private static final int TOTAL_WALL_TILES = 136;
+    private static final int DEAD_WALL_SIZE = 14;
+    private static final int LIVE_WALL_SIZE = TOTAL_WALL_TILES - DEAD_WALL_SIZE;
     private static final int DISCARDS_PER_ROW = 6;
     public List<Entity> renderTableStructure(MahjongTableSession session) {
         Location center = displayCenter(session);
+        TableBounds bounds = tableBoundsFromTiles(center);
         List<Entity> spawned = new ArrayList<>(16);
-        double borderCenterOffset = TABLE_TOP_SIZE / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
+        Location tableCenter = center.clone().set(bounds.centerX(), center.getY(), bounds.centerZ());
+        double topWidth = bounds.width();
+        double topDepth = bounds.depth();
+        double borderSpanX = topWidth + TABLE_BORDER_THICKNESS;
+        double borderSpanZ = topDepth + TABLE_BORDER_THICKNESS;
+        double borderCenterOffsetX = topWidth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
+        double borderCenterOffsetZ = topDepth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
 
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(0.0D, -1.0D, 0.0D), TABLE_BOTTOM_SIZE, TABLE_BOTTOM_HEIGHT, TABLE_BOTTOM_SIZE),
+            centeredCuboid(tableCenter.clone().add(0.0D, -1.0D, 0.0D), TABLE_BOTTOM_SIZE, TABLE_BOTTOM_HEIGHT, TABLE_BOTTOM_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_BOTTOM_SIZE,
             (float) TABLE_BOTTOM_HEIGHT,
@@ -54,7 +68,7 @@ public final class TableRenderer {
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(0.0D, -(TABLE_TOP_THICKNESS + TABLE_PILLAR_HEIGHT), 0.0D), TABLE_PILLAR_SIZE, TABLE_PILLAR_HEIGHT, TABLE_PILLAR_SIZE),
+            centeredCuboid(tableCenter.clone().add(0.0D, -(TABLE_TOP_THICKNESS + TABLE_PILLAR_HEIGHT), 0.0D), TABLE_PILLAR_SIZE, TABLE_PILLAR_HEIGHT, TABLE_PILLAR_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_PILLAR_SIZE,
             (float) TABLE_PILLAR_HEIGHT,
@@ -62,45 +76,45 @@ public final class TableRenderer {
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(0.0D, -TABLE_TOP_THICKNESS, 0.0D), TABLE_TOP_SIZE, TABLE_TOP_THICKNESS, TABLE_TOP_SIZE),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, 0.0D), topWidth, TABLE_TOP_THICKNESS, topDepth),
             Material.SMOOTH_STONE,
-            (float) TABLE_TOP_SIZE,
+            (float) topWidth,
             (float) TABLE_TOP_THICKNESS,
-            (float) TABLE_TOP_SIZE
+            (float) topDepth
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(0.0D, -TABLE_TOP_THICKNESS, -borderCenterOffset), TABLE_BORDER_SPAN, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, -borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
-            (float) TABLE_BORDER_SPAN,
+            (float) borderSpanX,
             (float) TABLE_BORDER_HEIGHT,
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(0.0D, -TABLE_TOP_THICKNESS, borderCenterOffset), TABLE_BORDER_SPAN, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
-            (float) TABLE_BORDER_SPAN,
+            (float) borderSpanX,
             (float) TABLE_BORDER_HEIGHT,
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(-borderCenterOffset, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, TABLE_BORDER_SPAN),
+            centeredCuboid(tableCenter.clone().add(-borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
             (float) TABLE_BORDER_HEIGHT,
-            (float) TABLE_BORDER_SPAN
+            (float) borderSpanZ
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
-            centeredCuboid(center.clone().add(borderCenterOffset, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, TABLE_BORDER_SPAN),
+            centeredCuboid(tableCenter.clone().add(borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
             (float) TABLE_BORDER_HEIGHT,
-            (float) TABLE_BORDER_SPAN
+            (float) borderSpanZ
         ));
-        spawned.addAll(this.renderTableHitboxes(session, center));
+        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
         return spawned;
     }
 
@@ -128,23 +142,46 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderWall(MahjongTableSession session) {
+    public List<Entity> renderSticks(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
-        int wallCount = session.remainingWall().size();
-        List<Entity> spawned = new ArrayList<>(wallCount);
-        for (int i = 0; i < wallCount; i++) {
-            SeatWind wind = WallLayout.wallSeat(i);
-            int stackIndex = WallLayout.wallColumn(i);
-            int topLayer = WallLayout.wallLayer(i);
-            double stackWidth = stackIndex * (TILE_WIDTH + TILE_PADDING);
-            double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
-            double yOffset = topLayer * TILE_DEPTH + (topLayer == 1 ? TILE_PADDING : 0.0D);
-            Location tileLocation = switch (wind) {
-                case EAST -> center.clone().add(WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, -startingPos + stackWidth);
-                case SOUTH -> center.clone().add(startingPos - stackWidth, UPRIGHT_TILE_Y + yOffset, WALL_DIRECTION_OFFSET);
-                case WEST -> center.clone().add(-WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, startingPos - stackWidth);
-                case NORTH -> center.clone().add(-startingPos + stackWidth, UPRIGHT_TILE_Y + yOffset, -WALL_DIRECTION_OFFSET);
-            };
+        UUID playerId = session.playerAt(wind);
+        if (playerId == null) {
+            return List.of();
+        }
+
+        List<Entity> spawned = new ArrayList<>();
+        List<ScoringStick> cornerSticks = session.cornerSticks(wind);
+        for (int i = 0; i < cornerSticks.size(); i++) {
+            spawned.add(spawnStick(session, cornerStickCenter(center, wind, i), cornerStickLongOnX(wind), cornerSticks.get(i)));
+        }
+        if (session.isRiichi(playerId)) {
+            spawned.add(spawnStick(session, riichiStickCenter(center, wind), riichiStickLongOnX(wind), ScoringStick.P1000));
+        }
+        return spawned;
+    }
+
+    public List<Entity> renderWall(MahjongTableSession session) {
+        if (!session.isStarted()) {
+            return List.of();
+        }
+        Location center = displayCenter(session);
+        int liveWallCount = session.remainingWall().size();
+        int kanCount = session.kanCount();
+        int frontDrawCount = Math.max(0, LIVE_WALL_SIZE - liveWallCount - kanCount);
+        boolean[] doraSlots = new boolean[DEAD_WALL_SIZE];
+        for (int i = 0; i < session.doraIndicators().size(); i++) {
+            int deadWallIndex = doraIndicatorDeadWallIndex(kanCount, i);
+            if (deadWallIndex >= 0 && deadWallIndex < doraSlots.length) {
+                doraSlots[deadWallIndex] = true;
+            }
+        }
+
+        List<Entity> spawned = new ArrayList<>(liveWallCount + DEAD_WALL_SIZE - session.doraIndicators().size());
+        int breakTileIndex = wallBreakTileIndex(session);
+        for (int i = 0; i < liveWallCount; i++) {
+            int wallSlot = Math.floorMod(breakTileIndex + frontDrawCount + i, TOTAL_WALL_TILES);
+            SeatWind wind = WallLayout.wallSeat(wallSlot);
+            Location tileLocation = wallSlotLocation(center, wallSlot);
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
                 tileLocation,
@@ -156,16 +193,46 @@ public final class TableRenderer {
                 true
             ));
         }
+
+        SeatWind deadWallWind = deadWallSeat(session);
+        for (int i = 0; i < DEAD_WALL_SIZE; i++) {
+            if (doraSlots[i]) {
+                continue;
+            }
+            spawned.add(DisplayEntities.spawnTileDisplay(
+                session.plugin(),
+                deadWallLocation(center, session, i),
+                seatYaw(deadWallWind),
+                MahjongTile.UNKNOWN,
+                true,
+                false,
+                null,
+                true
+            ));
+        }
         return spawned;
     }
 
     public List<Entity> renderDora(MahjongTableSession session) {
+        if (!session.isStarted()) {
+            return List.of();
+        }
         Location center = displayCenter(session);
         List<MahjongTile> dora = session.doraIndicators();
         List<Entity> spawned = new ArrayList<>(dora.size());
+        SeatWind deadWallWind = deadWallSeat(session);
+        int kanCount = session.kanCount();
         for (int i = 0; i < dora.size(); i++) {
-            Location tileLocation = center.clone().add(centeredOffset(Math.max(1, dora.size()), i, DORA_STEP), FLAT_TILE_Y, -DORA_RADIUS);
-            spawned.add(DisplayEntities.spawnTileDisplay(session.plugin(), tileLocation, 0.0F, dora.get(i), false, true, null, true));
+            spawned.add(DisplayEntities.spawnTileDisplay(
+                session.plugin(),
+                deadWallLocation(center, session, doraIndicatorDeadWallIndex(kanCount, i)),
+                seatYaw(deadWallWind),
+                dora.get(i),
+                false,
+                false,
+                null,
+                true
+            ));
         }
         return spawned;
     }
@@ -219,7 +286,8 @@ public final class TableRenderer {
         List<MahjongTile> hand = session.hand(playerId);
         List<MeldView> melds = session.fuuro(playerId);
         double fuuroOffset = melds.size() < 3 ? 0.0D : (melds.size() - 2.0D) * TILE_WIDTH;
-        double startingPos = (hand.size() * TILE_WIDTH + Math.max(0, hand.size() - 1) * TILE_PADDING) / 2.0D + fuuroOffset;
+        double sticksOffset = session.stickLayoutCount(wind) < 3 ? 0.0D : (session.stickLayoutCount(wind) - 2.0D) * STICK_DEPTH;
+        double startingPos = (hand.size() * TILE_WIDTH + Math.max(0, hand.size() - 1) * TILE_PADDING) / 2.0D + fuuroOffset + sticksOffset;
         List<UUID> ownerOnly = List.of(playerId);
         List<UUID> othersOnly = session.viewerIdsExcluding(playerId);
         List<Entity> spawned = new ArrayList<>(hand.size() * 3);
@@ -282,6 +350,8 @@ public final class TableRenderer {
         int riichiDiscardIndex = session.riichiDiscardIndex(playerId);
         List<Entity> spawned = new ArrayList<>(discards.size());
         Location start = discardStart(center, wind);
+        Location cursor = start;
+        boolean openDoorSeat = session.openDoorSeat() == wind;
 
         for (int discardIndex = 0; discardIndex < discards.size(); discardIndex++) {
             int lineCount = discardIndex / DISCARDS_PER_ROW;
@@ -290,23 +360,28 @@ public final class TableRenderer {
             boolean riichiTile = discardIndex == riichiDiscardIndex;
             boolean previousWasRiichi = discardIndex > 0 && discardIndex - 1 == riichiDiscardIndex;
 
-            Location tileLocation = add(start, multiply(lineOffset(wind), lineCount));
-            if (!firstTileInRow) {
-                tileLocation = add(tileLocation, multiply(tileOffset(wind), column));
-                tileLocation = add(tileLocation, multiply(smallGapOffset(wind), column));
+            if (lineCount > 0 && firstTileInRow && !(openDoorSeat && discardIndex >= DISCARDS_PER_ROW * 3)) {
+                cursor = start;
+                for (int i = 0; i < lineCount; i++) {
+                    cursor = add(cursor, lineOffset(wind));
+                }
             }
 
-            if (riichiTile) {
-                tileLocation = firstTileInRow
-                    ? add(tileLocation, add(riichiTileOffset(wind), negate(tileOffset(wind))))
-                    : add(tileLocation, riichiTileOffset(wind));
-            } else if (!firstTileInRow && previousWasRiichi) {
-                tileLocation = add(tileLocation, riichiTileOffset(wind));
+            if (firstTileInRow) {
+                if (riichiTile) {
+                    cursor = add(cursor, riichiTileOffset(wind));
+                    cursor = add(cursor, negate(tileOffset(wind)));
+                }
+            } else {
+                cursor = riichiTile || previousWasRiichi
+                    ? add(cursor, riichiTileOffset(wind))
+                    : add(cursor, tileOffset(wind));
+                cursor = add(cursor, smallGapOffset(wind));
             }
 
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
-                tileLocation.add(0.0D, FLAT_TILE_Y, 0.0D),
+                cursor.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
                 DiscardLayout.discardYaw(wind, riichiTile),
                 discards.get(discardIndex),
                 false,
@@ -334,6 +409,10 @@ public final class TableRenderer {
         int tileCount = melds.stream().mapToInt(meld -> meld.tiles().size() + (meld.hasAddedKanTile() ? 1 : 0)).sum();
         List<Entity> spawned = new ArrayList<>(tileCount);
         Location cursor = meldStart(center, wind);
+        int stickCount = session.stickLayoutCount(wind);
+        if (stickCount > 0) {
+            cursor = add(cursor, cornerStickMeldOffset(wind, Math.min(stickCount, STICKS_PER_STACK)));
+        }
         Location lastClaimBase = null;
         boolean lastTileWasHorizontal = false;
         int placedTileCount = 0;
@@ -433,6 +512,69 @@ public final class TableRenderer {
         return center.clone().add(-width / 2.0D, 0.0D, -depth / 2.0D);
     }
 
+    private static TableBounds tableBoundsFromTiles(Location center) {
+        Location eastMeldStart = meldStart(center, SeatWind.EAST);
+        Location southMeldStart = meldStart(center, SeatWind.SOUTH);
+        Location westMeldStart = meldStart(center, SeatWind.WEST);
+        Location northMeldStart = meldStart(center, SeatWind.NORTH);
+        double halfTileHeight = TILE_HEIGHT / 2.0D;
+        double minX = northMeldStart.getX();
+        double maxX = southMeldStart.getX();
+        double minZ = eastMeldStart.getZ();
+        double maxZ = westMeldStart.getZ();
+        double centerX = (westMeldStart.getX() - halfTileHeight + maxX) / 2.0D;
+        double centerZ = (northMeldStart.getZ() - halfTileHeight + maxZ) / 2.0D;
+        return new TableBounds(centerX, centerZ, minX, maxX, minZ, maxZ);
+    }
+
+    private static int wallBreakTileIndex(MahjongTableSession session) {
+        int seatCount = SeatWind.values().length;
+        int dicePoints = session.dicePoints();
+        int directionIndex = 4 - (((dicePoints % seatCount) - 1 + session.roundIndex()) % seatCount);
+        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + dicePoints * 2, TOTAL_WALL_TILES);
+    }
+
+    private static int deadWallAnchorSlot(MahjongTableSession session) {
+        return Math.floorMod(wallBreakTileIndex(session) - DEAD_WALL_SIZE, TOTAL_WALL_TILES);
+    }
+
+    private static SeatWind deadWallSeat(MahjongTableSession session) {
+        return WallLayout.wallSeat(deadWallAnchorSlot(session));
+    }
+
+    private static int doraIndicatorDeadWallIndex(int kanCount, int indicatorIndex) {
+        return (4 - indicatorIndex) * 2 + kanCount;
+    }
+
+    private static Location wallSlotLocation(Location center, int wallSlot) {
+        SeatWind wind = WallLayout.wallSeat(wallSlot);
+        int stackIndex = WallLayout.wallColumn(wallSlot);
+        double stackWidth = stackIndex * (TILE_WIDTH + TILE_PADDING);
+        double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
+        double yOffset = wallLayerYOffset(WallLayout.wallLayer(wallSlot));
+        return switch (wind) {
+            case EAST -> center.clone().add(WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, -startingPos + stackWidth);
+            case SOUTH -> center.clone().add(startingPos - stackWidth, UPRIGHT_TILE_Y + yOffset, WALL_DIRECTION_OFFSET);
+            case WEST -> center.clone().add(-WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, startingPos - stackWidth);
+            case NORTH -> center.clone().add(-startingPos + stackWidth, UPRIGHT_TILE_Y + yOffset, -WALL_DIRECTION_OFFSET);
+        };
+    }
+
+    private static double wallLayerYOffset(int layer) {
+        return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
+    }
+
+    private static Location deadWallLocation(Location center, MahjongTableSession session, int deadWallIndex) {
+        SeatWind wind = deadWallSeat(session);
+        int anchorSlot = deadWallAnchorSlot(session);
+        int lineIndex = DEAD_WALL_SIZE - 1 - deadWallIndex;
+        int originalSlot = Math.floorMod(anchorSlot + lineIndex, TOTAL_WALL_TILES);
+        Location anchor = add(wallSlotLocation(center, anchorSlot), deadWallGapOffset(wind));
+        Location location = add(anchor, multiply(deadWallLineOffset(wind), lineIndex / 2));
+        location.setY(center.getY() + UPRIGHT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(originalSlot)));
+        return location;
+    }
+
     private static float seatYaw(SeatWind wind) {
         return DiscardLayout.seatYaw(wind);
     }
@@ -474,6 +616,100 @@ public final class TableRenderer {
 
     private static double centeredOffset(int size, int index, double step) {
         return (index - (size - 1) / 2.0D) * step;
+    }
+
+    private static Entity spawnStick(MahjongTableSession session, Location center, boolean longOnX, ScoringStick stick) {
+        double width = longOnX ? STICK_WIDTH : STICK_DEPTH;
+        double depth = longOnX ? STICK_DEPTH : STICK_WIDTH;
+        return DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(center, width, STICK_HEIGHT, depth),
+            stickMaterial(stick),
+            (float) width,
+            (float) STICK_HEIGHT,
+            (float) depth
+        );
+    }
+
+    private static Material stickMaterial(ScoringStick stick) {
+        return switch (stick) {
+            case P100 -> Material.RED_CONCRETE;
+            case P5000 -> Material.GOLD_BLOCK;
+            case P10000 -> Material.EMERALD_BLOCK;
+            default -> Material.QUARTZ_BLOCK;
+        };
+    }
+
+    private static Location riichiStickCenter(Location center, SeatWind wind) {
+        double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
+        double paddingFromCenter = halfWidthOfSixTiles - STICK_DEPTH / 2.0D;
+        return switch (wind) {
+            case EAST -> center.clone().add(paddingFromCenter, FLAT_TILE_Y, 0.0D);
+            case SOUTH -> center.clone().add(0.0D, FLAT_TILE_Y, paddingFromCenter);
+            case WEST -> center.clone().add(-paddingFromCenter, FLAT_TILE_Y, 0.0D);
+            case NORTH -> center.clone().add(0.0D, FLAT_TILE_Y, -paddingFromCenter);
+        };
+    }
+
+    private static boolean riichiStickLongOnX(SeatWind wind) {
+        return wind == SeatWind.SOUTH || wind == SeatWind.NORTH;
+    }
+
+    private static Location cornerStickCenter(Location center, SeatWind wind, int index) {
+        int stackIndex = index / STICKS_PER_STACK;
+        int stickIndex = index % STICKS_PER_STACK;
+        double halfWidthOfStick = STICK_WIDTH / 2.0D;
+        double halfDepthOfStick = STICK_DEPTH / 2.0D;
+        Location start = switch (wind) {
+            case EAST -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick, FLAT_TILE_Y, -HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick);
+            case SOUTH -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick, FLAT_TILE_Y, HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick);
+            case WEST -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick, FLAT_TILE_Y, HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick);
+            case NORTH -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick, FLAT_TILE_Y, -HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick);
+        };
+        return add(start, multiply(cornerStickOffset(wind), stickIndex)).add(0.0D, stackIndex * (STICK_HEIGHT + TILE_PADDING), 0.0D);
+    }
+
+    private static boolean cornerStickLongOnX(SeatWind wind) {
+        return wind == SeatWind.EAST || wind == SeatWind.WEST;
+    }
+
+    private static Offset cornerStickOffset(SeatWind wind) {
+        double amount = STICK_DEPTH + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset cornerStickMeldOffset(SeatWind wind, int firstStackCount) {
+        double amount = firstStackCount * STICK_DEPTH + Math.max(0, firstStackCount - 1) * TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset deadWallGapOffset(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, DEAD_WALL_GAP);
+            case SOUTH -> new Offset(-DEAD_WALL_GAP, 0.0D);
+            case WEST -> new Offset(0.0D, -DEAD_WALL_GAP);
+            case NORTH -> new Offset(DEAD_WALL_GAP, 0.0D);
+        };
+    }
+
+    private static Offset deadWallLineOffset(SeatWind wind) {
+        double amount = TILE_WIDTH + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, -amount);
+            case SOUTH -> new Offset(amount, 0.0D);
+            case WEST -> new Offset(0.0D, amount);
+            case NORTH -> new Offset(-amount, 0.0D);
+        };
     }
 
     private static Offset tileOffset(SeatWind wind) {
@@ -596,5 +832,15 @@ public final class TableRenderer {
     }
 
     private record Offset(double x, double z) {
+    }
+
+    private record TableBounds(double centerX, double centerZ, double minX, double maxX, double minZ, double maxZ) {
+        double width() {
+            return this.maxX - this.minX;
+        }
+
+        double depth() {
+            return this.maxZ - this.minZ;
+        }
     }
 }

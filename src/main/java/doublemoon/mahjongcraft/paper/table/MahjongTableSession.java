@@ -13,6 +13,7 @@ import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongSoulScoring;
+import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ public final class MahjongTableSession {
     private final MahjongPaperPlugin plugin;
     private final String id;
     private final Location center;
+    private final boolean persistentRoom;
     private final List<UUID> seats = new ArrayList<>(4);
     private final Set<UUID> spectators = new LinkedHashSet<>();
     private final Map<String, List<Entity>> regionDisplays = new LinkedHashMap<>();
@@ -57,7 +59,7 @@ public final class MahjongTableSession {
     private final Map<UUID, String> feedbackState = new HashMap<>();
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
-    private MahjongRule configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
+    private MahjongRule configuredRule;
     private RiichiRoundEngine engine;
     private String lastSettlementFingerprint = "";
     private String lastPersistedSettlementFingerprint = "";
@@ -69,10 +71,21 @@ public final class MahjongTableSession {
     private BukkitTask botTask;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
+        this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
+        this.addPlayer(owner);
+    }
+
+    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner, boolean persistentRoom) {
+        this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
+        this.addPlayer(owner);
+    }
+
+    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongRule configuredRule, boolean persistentRoom) {
         this.plugin = plugin;
         this.id = id;
         this.center = center.clone();
-        this.addPlayer(owner);
+        this.configuredRule = copyRule(configuredRule);
+        this.persistentRoom = persistentRoom;
     }
 
     public MahjongPaperPlugin plugin() {
@@ -83,8 +96,16 @@ public final class MahjongTableSession {
         return this.id;
     }
 
+    public boolean isPersistentRoom() {
+        return this.persistentRoom;
+    }
+
     public Location center() {
         return this.center.clone();
+    }
+
+    public MahjongRule configuredRuleSnapshot() {
+        return copyRule(this.configuredRule);
     }
 
     public boolean addPlayer(Player player) {
@@ -181,7 +202,7 @@ public final class MahjongTableSession {
     }
 
     public UUID owner() {
-        return this.seats.getFirst();
+        return this.seats.isEmpty() ? null : this.seats.getFirst();
     }
 
     public void startRound() {
@@ -402,6 +423,29 @@ public final class MahjongTableSession {
         return this.engine == null ? 0 : this.engine.getDicePoints();
     }
 
+    public int kanCount() {
+        return this.engine == null ? 0 : this.engine.getKanCount();
+    }
+
+    public int roundIndex() {
+        return this.engine == null ? 0 : this.engine.getRound().getRound();
+    }
+
+    public SeatWind openDoorSeat() {
+        if (this.engine == null) {
+            return SeatWind.EAST;
+        }
+        return SeatWind.fromIndex(Math.floorMod(this.dicePoints() - 1 + this.roundIndex(), SeatWind.values().length));
+    }
+
+    public int honbaCount() {
+        return this.engine == null ? 0 : this.engine.getRound().getHonba();
+    }
+
+    public SeatWind dealerSeat() {
+        return this.engine == null ? SeatWind.EAST : SeatWind.fromIndex(this.engine.getRound().getRound());
+    }
+
     public String waitingSummary() {
         return this.waitingSummary(this.publicLocale());
     }
@@ -495,6 +539,7 @@ public final class MahjongTableSession {
                 }
             }
             this.render();
+            this.persistRoomMetadataIfNeeded();
             return true;
         } catch (IllegalArgumentException ex) {
             return false;
@@ -617,6 +662,30 @@ public final class MahjongTableSession {
             melds.add(new MeldView(List.copyOf(tiles), List.copyOf(faceDownFlags), claimTileIndex, claimYawOffset, addedKanView));
         });
         return List.copyOf(melds);
+    }
+
+    public List<ScoringStick> scoringSticks(UUID playerId) {
+        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
+        return player == null ? List.of() : List.copyOf(player.getSticks());
+    }
+
+    public List<ScoringStick> cornerSticks(SeatWind wind) {
+        List<ScoringStick> sticks = new ArrayList<>();
+        if (this.dealerSeat() == wind) {
+            for (int i = 0; i < this.honbaCount(); i++) {
+                sticks.add(ScoringStick.P100);
+            }
+        }
+        return List.copyOf(sticks);
+    }
+
+    public int stickLayoutCount(SeatWind wind) {
+        UUID playerId = this.playerAt(wind);
+        int total = playerId == null ? 0 : this.scoringSticks(playerId).size();
+        if (this.dealerSeat() == wind) {
+            total += this.honbaCount();
+        }
+        return total;
     }
 
     public Player onlinePlayer(UUID playerId) {
@@ -792,20 +861,31 @@ public final class MahjongTableSession {
                 return false;
             }
         }
+        this.persistRoomMetadataIfNeeded();
         return true;
     }
 
+    private void persistRoomMetadataIfNeeded() {
+        if (this.persistentRoom && this.plugin.tableManager() != null) {
+            this.plugin.tableManager().persistTables();
+        }
+    }
+
     private MahjongRule copyRule() {
+        return copyRule(this.configuredRule);
+    }
+
+    private static MahjongRule copyRule(MahjongRule rule) {
         return new MahjongRule(
-            this.configuredRule.getLength(),
-            this.configuredRule.getThinkingTime(),
-            this.configuredRule.getStartingPoints(),
-            this.configuredRule.getMinPointsToWin(),
-            this.configuredRule.getMinimumHan(),
-            this.configuredRule.getSpectate(),
-            this.configuredRule.getRedFive(),
-            this.configuredRule.getOpenTanyao(),
-            this.configuredRule.getLocalYaku()
+            rule.getLength(),
+            rule.getThinkingTime(),
+            rule.getStartingPoints(),
+            rule.getMinPointsToWin(),
+            rule.getMinimumHan(),
+            rule.getSpectate(),
+            rule.getRedFive(),
+            rule.getOpenTanyao(),
+            rule.getLocalYaku()
         );
     }
 
@@ -1478,6 +1558,7 @@ public final class MahjongTableSession {
 
     private void updateSeatRegion(SeatWind wind) {
         this.updateRegion(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(wind), () -> this.renderer.renderSeatLabels(this, wind));
+        this.updateRegion(this.seatRegionKey("sticks", wind), this.stickFingerprint(wind), () -> this.renderer.renderSticks(this, wind));
         this.updateRegion(this.seatRegionKey("hand", wind), this.handFingerprint(wind), () -> this.renderer.renderHand(this, wind));
         this.updateRegion(this.seatRegionKey("discards", wind), this.discardFingerprint(wind), () -> this.renderer.renderDiscards(this, wind));
         this.updateRegion(this.seatRegionKey("melds", wind), this.meldFingerprint(wind), () -> this.renderer.renderMelds(this, wind));
@@ -1573,6 +1654,7 @@ public final class MahjongTableSession {
         }
         builder.field(this.onlinePlayer(playerId) != null);
         builder.field(this.viewerMembershipSignature(playerId));
+        builder.field(this.stickLayoutCount(wind));
         this.hand(playerId).forEach(tile -> builder.field(tile.name()));
         return builder.toString();
     }
@@ -1594,7 +1676,22 @@ public final class MahjongTableSession {
         if (playerId == null) {
             return builder.toString();
         }
+        builder.field(this.stickLayoutCount(wind));
         this.fuuro(playerId).forEach(meld -> this.appendMeldFingerprint(builder, meld));
+        return builder.toString();
+    }
+
+    private String stickFingerprint(SeatWind wind) {
+        UUID playerId = this.playerAt(wind);
+        FingerprintBuilder builder = this.seatFingerprintBuilder("sticks", wind, playerId, 128)
+            .field(this.honbaCount())
+            .field(this.dealerSeat().name());
+        if (playerId == null) {
+            return builder.toString();
+        }
+        builder.field(this.isRiichi(playerId));
+        this.scoringSticks(playerId).forEach(stick -> builder.field(stick.name()));
+        this.cornerSticks(wind).forEach(stick -> builder.field(stick.name()));
         return builder.toString();
     }
 

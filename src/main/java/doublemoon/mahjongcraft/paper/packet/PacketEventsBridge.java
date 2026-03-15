@@ -7,7 +7,11 @@ import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.event.simple.PacketPlaySendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityRelativeMove;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityRelativeMoveAndRotation;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnLivingEntity;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
 import doublemoon.mahjongcraft.paper.render.DisplayClickAction;
@@ -69,21 +73,42 @@ public final class PacketEventsBridge {
                 UUID viewerId = player.getUniqueId();
                 if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
                     WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
-                    if (!DisplayVisibilityRegistry.canView(packet.getEntityId(), viewerId)) {
-                        PacketEventsBridge.this.plugin.debug().log("packet", "Cancelled SPAWN_ENTITY " + packet.getEntityId() + " for " + player.getName());
-                        event.setCancelled(true);
-                    }
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "SPAWN_ENTITY");
+                    return;
+                }
+                if (event.getPacketType() == PacketType.Play.Server.SPAWN_LIVING_ENTITY) {
+                    WrapperPlayServerSpawnLivingEntity packet = new WrapperPlayServerSpawnLivingEntity(event);
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "SPAWN_LIVING_ENTITY");
                     return;
                 }
                 if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
                     WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
-                    if (!DisplayVisibilityRegistry.canView(packet.getEntityId(), viewerId)) {
-                        PacketEventsBridge.this.plugin.debug().log("packet", "Cancelled ENTITY_METADATA " + packet.getEntityId() + " for " + player.getName());
-                        event.setCancelled(true);
-                    }
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "ENTITY_METADATA");
+                    return;
+                }
+                if (event.getPacketType() == PacketType.Play.Server.ENTITY_TELEPORT) {
+                    WrapperPlayServerEntityTeleport packet = new WrapperPlayServerEntityTeleport(event);
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "ENTITY_TELEPORT");
+                    return;
+                }
+                if (event.getPacketType() == PacketType.Play.Server.ENTITY_RELATIVE_MOVE) {
+                    WrapperPlayServerEntityRelativeMove packet = new WrapperPlayServerEntityRelativeMove(event);
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "ENTITY_RELATIVE_MOVE");
+                    return;
+                }
+                if (event.getPacketType() == PacketType.Play.Server.ENTITY_RELATIVE_MOVE_AND_ROTATION) {
+                    WrapperPlayServerEntityRelativeMoveAndRotation packet = new WrapperPlayServerEntityRelativeMoveAndRotation(event);
+                    PacketEventsBridge.this.cancelHiddenEntityPacket(event, viewerId, packet.getEntityId(), player.getName(), "ENTITY_RELATIVE_MOVE_AND_ROTATION");
                 }
             }
         };
+    }
+
+    private void cancelHiddenEntityPacket(PacketPlaySendEvent event, UUID viewerId, int entityId, String playerName, String packetType) {
+        if (!DisplayVisibilityRegistry.canView(entityId, viewerId)) {
+            this.plugin.debug().log("packet", "Cancelled " + packetType + ' ' + entityId + " for " + playerName);
+            event.setCancelled(true);
+        }
     }
 
     public void enable() {

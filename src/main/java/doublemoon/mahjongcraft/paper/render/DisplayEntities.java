@@ -81,8 +81,6 @@ public final class DisplayEntities {
                 new Vector3f(TILE_SCALE, TILE_SCALE, TILE_SCALE),
                 new AxisAngle4f()
             ));
-            spawned.customName(Component.text(tile.name()));
-            spawned.setCustomNameVisible(false);
             spawned.setItemStack(tileItem(plugin, tile, faceDown));
         });
 
@@ -169,7 +167,7 @@ public final class DisplayEntities {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        return world.spawn(location, Shulker.class, spawned -> {
+        Shulker shulker = world.spawn(location, Shulker.class, spawned -> {
             spawned.setPersistent(false);
             spawned.setRemoveWhenFarAway(false);
             spawned.setAI(false);
@@ -180,8 +178,11 @@ public final class DisplayEntities {
             spawned.setSilent(true);
             spawned.setGravity(false);
             spawned.setPeek(0.0F);
+            spawned.setRotation(0.0F, 0.0F);
             spawned.addScoreboardTag("mahjongcraft:table_hitbox");
         });
+        DisplayVisibilityRegistry.registerHidden(shulker.getEntityId());
+        return shulker;
     }
 
     public static BlockDisplay spawnBlockDisplay(Plugin plugin, Location location, Material material, float scaleX, float scaleY, float scaleZ) {
@@ -213,6 +214,7 @@ public final class DisplayEntities {
             spawned.setShadowStrength(0.0F);
             spawned.setBrightness(new Display.Brightness(15, 15));
             spawned.setVisibleByDefault(visibleByDefault);
+            spawned.setRotation(0.0F, 0.0F);
             spawned.setBlock(material.createBlockData());
             spawned.setTransformation(new Transformation(
                 new Vector3f(),

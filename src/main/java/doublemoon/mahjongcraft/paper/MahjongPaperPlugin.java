@@ -51,6 +51,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.packetEventsBridge = new PacketEventsBridge(this, this.tableManager);
         this.packetEventsBridge.enable();
         this.entityCulling.enable();
+        this.tableManager.loadPersistentTables();
 
         MahjongCommand mahjongCommand = new MahjongCommand(this, this.tableManager);
         this.registerCommand(
@@ -118,5 +119,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public EntityCullingService entityCulling() {
         return this.entityCulling;
+    }
+
+    public MahjongTableManager tableManager() {
+        return this.tableManager;
     }
 }

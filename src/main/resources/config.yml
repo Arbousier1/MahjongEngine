@@ -41,3 +41,6 @@ craftengine:
   exportBundleOnEnable: true
   preferCustomItems: true
   bundleFolder: mahjongpaper
+tablePersistence:
+  enabled: true
+  file: tables.yml

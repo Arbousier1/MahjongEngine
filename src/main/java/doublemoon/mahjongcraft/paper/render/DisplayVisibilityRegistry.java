@@ -20,6 +20,10 @@ public final class DisplayVisibilityRegistry {
         VIEWERS.put(entityId, Set.copyOf(viewers));
     }
 
+    public static void registerHidden(int entityId) {
+        VIEWERS.put(entityId, Set.of());
+    }
+
     public static boolean canView(int entityId, UUID viewerId) {
         Set<UUID> viewers = VIEWERS.get(entityId);
         return viewers == null || viewers.contains(viewerId);
