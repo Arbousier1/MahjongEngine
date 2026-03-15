@@ -278,72 +278,90 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderHand(MahjongTableSession session, SeatWind wind) {
+    public List<Entity> renderHandPublic(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
         if (playerId == null) {
             return List.of();
         }
 
-        Location handBase = handDirectionBase(center, wind);
         float yaw = seatYaw(wind);
         List<MahjongTile> hand = session.hand(playerId);
-        List<MeldView> melds = session.fuuro(playerId);
-        double fuuroOffset = melds.size() < 3 ? 0.0D : (melds.size() - 2.0D) * TILE_WIDTH;
-        double sticksOffset = session.stickLayoutCount(wind) < 3 ? 0.0D : (session.stickLayoutCount(wind) - 2.0D) * STICK_DEPTH;
-        double startingPos = (hand.size() * TILE_WIDTH + Math.max(0, hand.size() - 1) * TILE_PADDING) / 2.0D + fuuroOffset + sticksOffset;
-        List<UUID> ownerOnly = List.of(playerId);
         List<UUID> othersOnly = session.viewerIdsExcluding(playerId);
-        List<Entity> spawned = new ArrayList<>(hand.size() * 3);
-        int selectedTileIndex = session.selectedHandTileIndex(playerId);
+        List<Entity> spawned = new ArrayList<>(hand.size());
         DisplayEntities.TileRenderPose publicHandPose = session.isStarted()
             ? DisplayEntities.TileRenderPose.STANDING_FACE_DOWN
             : DisplayEntities.TileRenderPose.STANDING;
 
         for (int i = 0; i < hand.size(); i++) {
-            double drawGap = i == hand.size() - 1 && hand.size() % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
-            double stackOffset = i * (TILE_WIDTH + TILE_PADDING) + drawGap;
-            double tileYOffset = i == selectedTileIndex ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
-            Location tileLocation = switch (wind) {
-                case EAST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
-                case SOUTH -> handBase.clone().add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
-                case WEST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
-                case NORTH -> handBase.clone().add(startingPos - stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
-            };
-
-            DisplayClickAction clickAction = new DisplayClickAction(session.id(), playerId, i);
-            ItemDisplay publicDisplay = DisplayEntities.spawnTileDisplay(
+            spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
-                tileLocation,
+                handTileLocation(session, wind, hand.size(), i, false),
                 yaw,
                 hand.get(i),
                 publicHandPose,
                 null,
                 true,
                 othersOnly
-            );
-            spawned.add(publicDisplay);
-            ItemDisplay privateDisplay = DisplayEntities.spawnTileDisplay(
-                session.plugin(),
-                tileLocation,
-                yaw,
-                hand.get(i),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                ownerOnly
-            );
-            spawned.add(privateDisplay);
-            spawned.add(DisplayEntities.spawnInteraction(
-                session.plugin(),
-                handInteractionLocation(tileLocation),
-                HAND_INTERACTION_WIDTH,
-                HAND_INTERACTION_HEIGHT,
-                clickAction,
-                ownerOnly
             ));
         }
         return spawned;
+    }
+
+    public List<Entity> renderHandPrivateTile(MahjongTableSession session, SeatWind wind, int tileIndex) {
+        Location center = displayCenter(session);
+        UUID playerId = session.playerAt(wind);
+        if (playerId == null) {
+            return List.of();
+        }
+
+        List<MahjongTile> hand = session.hand(playerId);
+        if (tileIndex < 0 || tileIndex >= hand.size()) {
+            return List.of();
+        }
+
+        float yaw = seatYaw(wind);
+        List<UUID> ownerOnly = List.of(playerId);
+        Location tileLocation = handTileLocation(session, wind, hand.size(), tileIndex, tileIndex == session.selectedHandTileIndex(playerId));
+        List<Entity> spawned = new ArrayList<>(2);
+        spawned.add(DisplayEntities.spawnTileDisplay(
+            session.plugin(),
+            tileLocation,
+            yaw,
+            hand.get(tileIndex),
+            DisplayEntities.TileRenderPose.STANDING,
+            null,
+            true,
+            ownerOnly
+        ));
+        spawned.add(DisplayEntities.spawnInteraction(
+            session.plugin(),
+            handInteractionLocation(tileLocation),
+            HAND_INTERACTION_WIDTH,
+            HAND_INTERACTION_HEIGHT,
+            new DisplayClickAction(session.id(), playerId, tileIndex),
+            ownerOnly
+        ));
+        return spawned;
+    }
+
+    private static Location handTileLocation(MahjongTableSession session, SeatWind wind, int handSize, int tileIndex, boolean selected) {
+        Location handBase = handDirectionBase(displayCenter(session), wind);
+        UUID playerId = session.playerAt(wind);
+        int meldCount = playerId == null ? 0 : session.fuuro(playerId).size();
+        double fuuroOffset = meldCount < 3 ? 0.0D : (meldCount - 2.0D) * TILE_WIDTH;
+        int stickCount = session.stickLayoutCount(wind);
+        double sticksOffset = stickCount < 3 ? 0.0D : (stickCount - 2.0D) * STICK_DEPTH;
+        double startingPos = (handSize * TILE_WIDTH + Math.max(0, handSize - 1) * TILE_PADDING) / 2.0D + fuuroOffset + sticksOffset;
+        double drawGap = tileIndex == handSize - 1 && handSize % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
+        double stackOffset = tileIndex * (TILE_WIDTH + TILE_PADDING) + drawGap;
+        double tileYOffset = selected ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
+        return switch (wind) {
+            case EAST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
+            case SOUTH -> handBase.clone().add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
+            case WEST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
+            case NORTH -> handBase.clone().add(startingPos - stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
+        };
     }
 
     public List<Entity> renderDiscards(MahjongTableSession session, SeatWind wind) {

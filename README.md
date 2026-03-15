@@ -1,5 +1,7 @@
 # MahjongPaper
 
+中文说明请见 [`README.zh-CN.md`](./README.zh-CN.md)。
+
 `MahjongPaper` is a Paper plugin rewrite scaffold for `MahjongCraft` that uses:
 
 - Paper `ItemDisplay` and `TextDisplay`
