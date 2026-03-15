@@ -25,21 +25,12 @@ debug:
     - table
     - command
     - packet
-    - culling
     - render
     - database
-clientOptimization:
-  entityCulling:
-    enabled: false
-    intervalTicks: 2
-    viewDistance: 48
-    rateLimiting:
-      enabled: true
-      bucketSize: 64
-      restorePerTick: 8
 craftengine:
   exportBundleOnEnable: true
   preferCustomItems: true
+  preferFurnitureHitbox: true
   bundleFolder: mahjongpaper
 tablePersistence:
   enabled: true

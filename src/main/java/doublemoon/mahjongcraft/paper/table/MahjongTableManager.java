@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -232,7 +233,7 @@ public final class MahjongTableManager implements Listener {
             return false;
         }
         this.plugin.debug().log("table", player.getName() + " clicked tile index " + tileIndex + " on table " + tableId);
-        return session.discard(ownerId, tileIndex);
+        return session.clickHandTile(ownerId, tileIndex);
     }
 
     public void shutdown() {
@@ -251,6 +252,11 @@ public final class MahjongTableManager implements Listener {
         if (session == null) {
             this.unspectate(playerId);
         }
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Bukkit.getScheduler().runTask(this.plugin, () -> this.plugin.craftEngine().syncTrackedEntitiesFor(event.getPlayer()));
     }
 
     @EventHandler

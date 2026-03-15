@@ -15,16 +15,20 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSp
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
 import doublemoon.mahjongcraft.paper.render.DisplayClickAction;
-import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
+import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.table.MahjongTableManager;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public final class PacketEventsBridge {
+    private static final long CLICK_DEDUP_WINDOW_MILLIS = 100L;
     private final MahjongPaperPlugin plugin;
     private final MahjongTableManager tableManager;
+    private final Map<UUID, RecentInteraction> recentInteractions = new ConcurrentHashMap<>();
     private final SimplePacketListenerAbstract listener;
 
     public PacketEventsBridge(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
@@ -47,6 +51,13 @@ public final class PacketEventsBridge {
                 }
 
                 Player player = event.getPlayer();
+                if (PacketEventsBridge.this.isDuplicateInteraction(player.getUniqueId(), interaction.getEntityId())) {
+                    PacketEventsBridge.this.plugin.debug().log(
+                        "packet",
+                        "Ignored duplicate interact entity packet from " + player.getName() + " for entity=" + interaction.getEntityId()
+                    );
+                    return;
+                }
                 PacketEventsBridge.this.plugin.debug().log(
                     "packet",
                     "Interact entity packet from " + player.getName() + " for entity=" + interaction.getEntityId()
@@ -111,11 +122,21 @@ public final class PacketEventsBridge {
         }
     }
 
+    private boolean isDuplicateInteraction(UUID playerId, int entityId) {
+        long now = System.currentTimeMillis();
+        RecentInteraction previous = this.recentInteractions.put(playerId, new RecentInteraction(entityId, now));
+        return previous != null && previous.entityId() == entityId && now - previous.timestampMillis() <= CLICK_DEDUP_WINDOW_MILLIS;
+    }
+
     public void enable() {
         PacketEvents.getAPI().getEventManager().registerListener(this.listener);
     }
 
     public void disable() {
         PacketEvents.getAPI().getEventManager().unregisterListener(this.listener);
+        this.recentInteractions.clear();
+    }
+
+    private record RecentInteraction(int entityId, long timestampMillis) {
     }
 }

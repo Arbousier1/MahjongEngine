@@ -11,7 +11,6 @@ import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Interaction;
-import org.bukkit.entity.Shulker;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -37,12 +36,11 @@ public final class DisplayEntities {
         Location location,
         float yaw,
         MahjongTile tile,
-        boolean faceDown,
-        boolean flatOnTable,
+        TileRenderPose pose,
         DisplayClickAction clickAction,
         boolean visibleByDefault
     ) {
-        return spawnTileDisplay(plugin, location, yaw, tile, faceDown, flatOnTable, clickAction, visibleByDefault, null);
+        return spawnTileDisplay(plugin, location, yaw, tile, pose, clickAction, visibleByDefault, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -50,8 +48,7 @@ public final class DisplayEntities {
         Location location,
         float yaw,
         MahjongTile tile,
-        boolean faceDown,
-        boolean flatOnTable,
+        TileRenderPose pose,
         DisplayClickAction clickAction,
         boolean visibleByDefault,
         Collection<UUID> privateViewers
@@ -70,18 +67,17 @@ public final class DisplayEntities {
             spawned.setViewRange(32.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
-            spawned.setBrightness(new Display.Brightness(15, 15));
             spawned.setDisplayWidth(0.4F);
             spawned.setDisplayHeight(0.6F);
             spawned.setRotation(yaw, 0.0F);
             spawned.setVisibleByDefault(visibleByDefault);
             spawned.setTransformation(new Transformation(
                 new Vector3f(),
-                new AxisAngle4f((float) Math.toRadians(flatOnTable ? 90.0F : 0.0F), 1.0F, 0.0F, 0.0F),
+                new AxisAngle4f((float) Math.toRadians(pose.xRotationDegrees()), 1.0F, 0.0F, 0.0F),
                 new Vector3f(TILE_SCALE, TILE_SCALE, TILE_SCALE),
                 new AxisAngle4f()
             ));
-            spawned.setItemStack(tileItem(plugin, tile, faceDown));
+            spawned.setItemStack(tileItem(plugin, tile, pose.faceDown()));
         });
 
         if (clickAction != null) {
@@ -90,7 +86,7 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
-        registerForCulling(plugin, display);
+        registerForCraftEngineCulling(plugin, display);
         return display;
     }
 
@@ -119,7 +115,7 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
-        registerForCulling(plugin, display);
+        registerForCraftEngineCulling(plugin, display);
         return display;
     }
 
@@ -157,32 +153,8 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(interaction.getEntityId(), privateViewers);
         }
-        registerForCulling(plugin, interaction);
+        registerForCraftEngineCulling(plugin, interaction);
         return interaction;
-    }
-
-    public static Shulker spawnShulkerHitbox(Plugin plugin, Location location) {
-        World world = location.getWorld();
-        if (world == null) {
-            throw new IllegalArgumentException("Location world is null");
-        }
-
-        Shulker shulker = world.spawn(location, Shulker.class, spawned -> {
-            spawned.setPersistent(false);
-            spawned.setRemoveWhenFarAway(false);
-            spawned.setAI(false);
-            spawned.setAware(false);
-            spawned.setCollidable(true);
-            spawned.setInvisible(true);
-            spawned.setInvulnerable(true);
-            spawned.setSilent(true);
-            spawned.setGravity(false);
-            spawned.setPeek(0.0F);
-            spawned.setRotation(0.0F, 0.0F);
-            spawned.addScoreboardTag("mahjongcraft:table_hitbox");
-        });
-        DisplayVisibilityRegistry.registerHidden(shulker.getEntityId());
-        return shulker;
     }
 
     public static BlockDisplay spawnBlockDisplay(Plugin plugin, Location location, Material material, float scaleX, float scaleY, float scaleZ) {
@@ -212,7 +184,6 @@ public final class DisplayEntities {
             spawned.setViewRange(48.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
-            spawned.setBrightness(new Display.Brightness(15, 15));
             spawned.setVisibleByDefault(visibleByDefault);
             spawned.setRotation(0.0F, 0.0F);
             spawned.setBlock(material.createBlockData());
@@ -226,13 +197,13 @@ public final class DisplayEntities {
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
         }
-        registerForCulling(plugin, display);
+        registerForCraftEngineCulling(plugin, display);
         return display;
     }
 
-    private static void registerForCulling(Plugin plugin, org.bukkit.entity.Entity entity) {
-        if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.entityCulling() != null) {
-            mahjongPlugin.entityCulling().register(entity);
+    private static void registerForCraftEngineCulling(Plugin plugin, org.bukkit.entity.Entity entity) {
+        if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.craftEngine() != null) {
+            mahjongPlugin.craftEngine().registerCullableEntity(entity);
         }
     }
 
@@ -254,5 +225,28 @@ public final class DisplayEntities {
         meta.displayName(Component.text(tile.name()));
         itemStack.setItemMeta(meta);
         return itemStack;
+    }
+
+    public enum TileRenderPose {
+        STANDING(false, 0.0F),
+        STANDING_FACE_DOWN(true, 0.0F),
+        FLAT_FACE_UP(false, -90.0F),
+        FLAT_FACE_DOWN(true, 90.0F);
+
+        private final boolean faceDown;
+        private final float xRotationDegrees;
+
+        TileRenderPose(boolean faceDown, float xRotationDegrees) {
+            this.faceDown = faceDown;
+            this.xRotationDegrees = xRotationDegrees;
+        }
+
+        public boolean faceDown() {
+            return this.faceDown;
+        }
+
+        public float xRotationDegrees() {
+            return this.xRotationDegrees;
+        }
     }
 }

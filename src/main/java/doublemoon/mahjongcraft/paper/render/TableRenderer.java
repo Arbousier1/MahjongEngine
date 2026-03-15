@@ -33,14 +33,17 @@ public final class TableRenderer {
     private static final double TABLE_TOP_THICKNESS = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
-    private static final double TABLE_SHULKER_HITBOX_Y = -2.0D;
-    private static final double[] TABLE_SHULKER_HITBOX_GRID = new double[] {-1.0D, 0.0D, 1.0D};
+    private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
+    private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
     private static final double DEAD_WALL_GAP = TILE_PADDING * 20.0D;
-    private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D + 0.01D;
-    private static final double FLAT_TILE_Y = 0.02D;
+    private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
+    private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
+    private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
+    private static final float HAND_INTERACTION_WIDTH = 0.14F;
+    private static final float HAND_INTERACTION_HEIGHT = 0.18F;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
     private static final int DEAD_WALL_SIZE = 14;
@@ -127,14 +130,14 @@ public final class TableRenderer {
 
         spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
-            handBase.clone().add(0.0D, 0.45D, 0.0D),
+            handBase.clone().add(0.0D, 0.45D + FLOATING_TEXT_Y_OFFSET, 0.0D),
             Component.text(session.publicSeatStatus(wind)),
             seatLabelColor(wind, active)
         ));
         if (playerId != null) {
             spawned.add(DisplayEntities.spawnLabel(
                 session.plugin(),
-                handBase.clone().add(0.0D, 0.26D, 0.0D),
+                handBase.clone().add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                 Component.text(session.displayName(playerId, session.publicLocale())),
                 Color.fromARGB(100, 18, 18, 18)
             ));
@@ -182,13 +185,15 @@ public final class TableRenderer {
             int wallSlot = Math.floorMod(breakTileIndex + frontDrawCount + i, TOTAL_WALL_TILES);
             SeatWind wind = WallLayout.wallSeat(wallSlot);
             Location tileLocation = wallSlotLocation(center, wallSlot);
+            if (kanCount % 2 == 1 && i == liveWallCount - 1) {
+                tileLocation.subtract(0.0D, TILE_DEPTH, 0.0D);
+            }
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
                 tileLocation,
                 seatYaw(wind),
                 MahjongTile.UNKNOWN,
-                true,
-                false,
+                DisplayEntities.TileRenderPose.FLAT_FACE_DOWN,
                 null,
                 true
             ));
@@ -204,8 +209,7 @@ public final class TableRenderer {
                 deadWallLocation(center, session, i),
                 seatYaw(deadWallWind),
                 MahjongTile.UNKNOWN,
-                true,
-                false,
+                DisplayEntities.TileRenderPose.FLAT_FACE_DOWN,
                 null,
                 true
             ));
@@ -228,8 +232,7 @@ public final class TableRenderer {
                 deadWallLocation(center, session, doraIndicatorDeadWallIndex(kanCount, i)),
                 seatYaw(deadWallWind),
                 dora.get(i),
-                false,
-                false,
+                DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                 null,
                 true
             ));
@@ -241,7 +244,7 @@ public final class TableRenderer {
         Location center = displayCenter(session);
         return List.of(DisplayEntities.spawnLabel(
             session.plugin(),
-            center.clone().add(0.0D, 0.3D, 0.0D),
+            center.clone().add(0.0D, 0.3D + FLOATING_TEXT_Y_OFFSET, 0.0D),
             Component.text(session.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
         ));
@@ -254,7 +257,7 @@ public final class TableRenderer {
         if (session.isStarted() || session.isSpectator(viewerId)) {
             spawned.add(DisplayEntities.spawnLabel(
                 session.plugin(),
-                center.clone().add(0.0D, 0.9D, 0.0D),
+                center.clone().add(0.0D, 0.9D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                 session.viewerOverlay(viewer),
                 Color.fromARGB(84, 12, 12, 12),
                 List.of(viewerId)
@@ -264,7 +267,7 @@ public final class TableRenderer {
             for (SeatWind wind : SeatWind.values()) {
                 spawned.add(DisplayEntities.spawnLabel(
                     session.plugin(),
-                    add(handDirectionBase(center, wind), offsetAcrossSeat(wind, 0.42D)).add(0.0D, 0.62D, 0.0D),
+                    add(handDirectionBase(center, wind), offsetAcrossSeat(wind, 0.42D)).add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                     session.spectatorSeatOverlay(viewer, wind),
                     Color.fromARGB(92, 14, 14, 18),
                     List.of(viewerId)
@@ -291,15 +294,20 @@ public final class TableRenderer {
         List<UUID> ownerOnly = List.of(playerId);
         List<UUID> othersOnly = session.viewerIdsExcluding(playerId);
         List<Entity> spawned = new ArrayList<>(hand.size() * 3);
+        int selectedTileIndex = session.selectedHandTileIndex(playerId);
+        DisplayEntities.TileRenderPose publicHandPose = session.isStarted()
+            ? DisplayEntities.TileRenderPose.STANDING_FACE_DOWN
+            : DisplayEntities.TileRenderPose.STANDING;
 
         for (int i = 0; i < hand.size(); i++) {
             double drawGap = i == hand.size() - 1 && hand.size() % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
             double stackOffset = i * (TILE_WIDTH + TILE_PADDING) + drawGap;
+            double tileYOffset = i == selectedTileIndex ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
             Location tileLocation = switch (wind) {
-                case EAST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y, startingPos - stackOffset);
-                case SOUTH -> handBase.clone().add(-startingPos + stackOffset, UPRIGHT_TILE_Y, 0.0D);
-                case WEST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y, -startingPos + stackOffset);
-                case NORTH -> handBase.clone().add(startingPos - stackOffset, UPRIGHT_TILE_Y, 0.0D);
+                case EAST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
+                case SOUTH -> handBase.clone().add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
+                case WEST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
+                case NORTH -> handBase.clone().add(startingPos - stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
             };
 
             DisplayClickAction clickAction = new DisplayClickAction(session.id(), playerId, i);
@@ -308,8 +316,7 @@ public final class TableRenderer {
                 tileLocation,
                 yaw,
                 hand.get(i),
-                true,
-                false,
+                publicHandPose,
                 null,
                 true,
                 othersOnly
@@ -320,8 +327,7 @@ public final class TableRenderer {
                 tileLocation,
                 yaw,
                 hand.get(i),
-                false,
-                false,
+                DisplayEntities.TileRenderPose.STANDING,
                 null,
                 true,
                 ownerOnly
@@ -329,9 +335,9 @@ public final class TableRenderer {
             spawned.add(privateDisplay);
             spawned.add(DisplayEntities.spawnInteraction(
                 session.plugin(),
-                tileLocation.clone().add(0.0D, 0.02D, 0.0D),
-                0.20F,
-                0.24F,
+                handInteractionLocation(tileLocation),
+                HAND_INTERACTION_WIDTH,
+                HAND_INTERACTION_HEIGHT,
                 clickAction,
                 ownerOnly
             ));
@@ -384,8 +390,7 @@ public final class TableRenderer {
                 cursor.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
                 DiscardLayout.discardYaw(wind, riichiTile),
                 discards.get(discardIndex),
-                false,
-                true,
+                DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                 null,
                 true
             ));
@@ -430,11 +435,10 @@ public final class TableRenderer {
                     }
                     spawned.add(DisplayEntities.spawnTileDisplay(
                         session.plugin(),
-                        cursor.clone().add(0.0D, UPRIGHT_TILE_Y, 0.0D),
+                        cursor.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
                         yaw,
                         meld.tiles().get(i),
-                        meld.faceDownAt(i),
-                        false,
+                        meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                         null,
                         true
                     ));
@@ -460,11 +464,10 @@ public final class TableRenderer {
                 Location baseLocation = isClaimTile ? add(cursor, horizontalTileGravityOffset(wind)) : cursor;
                 spawned.add(DisplayEntities.spawnTileDisplay(
                     session.plugin(),
-                    baseLocation.clone().add(0.0D, UPRIGHT_TILE_Y, 0.0D),
+                    baseLocation.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
                     isClaimTile ? yaw + meld.claimYawOffset() : yaw,
                     meld.tiles().get(i),
-                    meld.faceDownAt(i),
-                    false,
+                    meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                     null,
                     true
                 ));
@@ -476,11 +479,10 @@ public final class TableRenderer {
             if (meld.hasAddedKanTile() && lastClaimBase != null) {
                 spawned.add(DisplayEntities.spawnTileDisplay(
                     session.plugin(),
-                    add(lastClaimBase, kakanOffset(wind)).add(0.0D, UPRIGHT_TILE_Y, 0.0D),
+                    add(lastClaimBase, kakanOffset(wind)).add(0.0D, FLAT_TILE_Y, 0.0D),
                     yaw + meld.claimYawOffset(),
                     meld.addedKanTile(),
-                    false,
-                    false,
+                    DisplayEntities.TileRenderPose.FLAT_FACE_UP,
                     null,
                     true
                 ));
@@ -492,20 +494,16 @@ public final class TableRenderer {
     }
 
     private static Location displayCenter(MahjongTableSession session) {
-        return session.center().add(0.0D, 1.02D, 0.0D);
+        return session.center().add(0.0D, DISPLAY_CENTER_Y_OFFSET, 0.0D);
+    }
+
+    private static Location handInteractionLocation(Location tileLocation) {
+        return tileLocation.clone().subtract(0.0D, UPRIGHT_TILE_Y, 0.0D);
     }
 
     private List<Entity> renderTableHitboxes(MahjongTableSession session, Location center) {
-        List<Entity> spawned = new ArrayList<>(TABLE_SHULKER_HITBOX_GRID.length * TABLE_SHULKER_HITBOX_GRID.length);
-        for (double xOffset : TABLE_SHULKER_HITBOX_GRID) {
-            for (double zOffset : TABLE_SHULKER_HITBOX_GRID) {
-                spawned.add(DisplayEntities.spawnShulkerHitbox(
-                    session.plugin(),
-                    center.clone().add(xOffset, TABLE_SHULKER_HITBOX_Y, zOffset)
-                ));
-            }
-        }
-        return spawned;
+        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center);
+        return furnitureHitbox == null ? List.of() : List.of(furnitureHitbox);
     }
 
     private static Location centeredCuboid(Location center, double width, double height, double depth) {
@@ -551,12 +549,12 @@ public final class TableRenderer {
         int stackIndex = WallLayout.wallColumn(wallSlot);
         double stackWidth = stackIndex * (TILE_WIDTH + TILE_PADDING);
         double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
-        double yOffset = wallLayerYOffset(WallLayout.wallLayer(wallSlot));
+        double yOffset = FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(wallSlot));
         return switch (wind) {
-            case EAST -> center.clone().add(WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, -startingPos + stackWidth);
-            case SOUTH -> center.clone().add(startingPos - stackWidth, UPRIGHT_TILE_Y + yOffset, WALL_DIRECTION_OFFSET);
-            case WEST -> center.clone().add(-WALL_DIRECTION_OFFSET, UPRIGHT_TILE_Y + yOffset, startingPos - stackWidth);
-            case NORTH -> center.clone().add(-startingPos + stackWidth, UPRIGHT_TILE_Y + yOffset, -WALL_DIRECTION_OFFSET);
+            case EAST -> center.clone().add(WALL_DIRECTION_OFFSET, yOffset, -startingPos + stackWidth);
+            case SOUTH -> center.clone().add(startingPos - stackWidth, yOffset, WALL_DIRECTION_OFFSET);
+            case WEST -> center.clone().add(-WALL_DIRECTION_OFFSET, yOffset, startingPos - stackWidth);
+            case NORTH -> center.clone().add(-startingPos + stackWidth, yOffset, -WALL_DIRECTION_OFFSET);
         };
     }
 
@@ -571,7 +569,7 @@ public final class TableRenderer {
         int originalSlot = Math.floorMod(anchorSlot + lineIndex, TOTAL_WALL_TILES);
         Location anchor = add(wallSlotLocation(center, anchorSlot), deadWallGapOffset(wind));
         Location location = add(anchor, multiply(deadWallLineOffset(wind), lineIndex / 2));
-        location.setY(center.getY() + UPRIGHT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(originalSlot)));
+        location.setY(center.getY() + FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(originalSlot)));
         return location;
     }
 
@@ -644,10 +642,10 @@ public final class TableRenderer {
         double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
         double paddingFromCenter = halfWidthOfSixTiles - STICK_DEPTH / 2.0D;
         return switch (wind) {
-            case EAST -> center.clone().add(paddingFromCenter, FLAT_TILE_Y, 0.0D);
-            case SOUTH -> center.clone().add(0.0D, FLAT_TILE_Y, paddingFromCenter);
-            case WEST -> center.clone().add(-paddingFromCenter, FLAT_TILE_Y, 0.0D);
-            case NORTH -> center.clone().add(0.0D, FLAT_TILE_Y, -paddingFromCenter);
+            case EAST -> center.clone().add(paddingFromCenter, 0.0D, 0.0D);
+            case SOUTH -> center.clone().add(0.0D, 0.0D, paddingFromCenter);
+            case WEST -> center.clone().add(-paddingFromCenter, 0.0D, 0.0D);
+            case NORTH -> center.clone().add(0.0D, 0.0D, -paddingFromCenter);
         };
     }
 
@@ -661,10 +659,10 @@ public final class TableRenderer {
         double halfWidthOfStick = STICK_WIDTH / 2.0D;
         double halfDepthOfStick = STICK_DEPTH / 2.0D;
         Location start = switch (wind) {
-            case EAST -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick, FLAT_TILE_Y, -HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick);
-            case SOUTH -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick, FLAT_TILE_Y, HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick);
-            case WEST -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick, FLAT_TILE_Y, HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick);
-            case NORTH -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick, FLAT_TILE_Y, -HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick);
+            case EAST -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick);
+            case SOUTH -> center.clone().add(HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick);
+            case WEST -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick);
+            case NORTH -> center.clone().add(-HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick);
         };
         return add(start, multiply(cornerStickOffset(wind), stickIndex)).add(0.0D, stackIndex * (STICK_HEIGHT + TILE_PADDING), 0.0D);
     }

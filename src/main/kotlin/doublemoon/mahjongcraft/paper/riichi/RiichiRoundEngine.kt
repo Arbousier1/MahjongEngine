@@ -100,15 +100,21 @@ class RiichiRoundEngine(
         }
 
     val doraIndicators: List<TileInstance>
-        get() = List(kanCount + 1) {
-            val index = (4 - it) * 2 + kanCount
-            deadWall[index]
+        get() {
+            val visibleKanCount = minOf(kanCount, 4)
+            return List(visibleKanCount + 1) {
+                val index = (4 - it) * 2 + visibleKanCount
+                deadWall[index]
+            }
         }
 
     val uraDoraIndicators: List<TileInstance>
-        get() = List(kanCount + 1) {
-            val index = (4 - it) * 2 + 1 + kanCount
-            deadWall[index]
+        get() {
+            val visibleKanCount = minOf(kanCount, 4)
+            return List(visibleKanCount + 1) {
+                val index = (4 - it) * 2 + 1 + visibleKanCount
+                deadWall[index]
+            }
         }
 
     val generalSituation: GeneralSituation
@@ -197,6 +203,7 @@ class RiichiRoundEngine(
 
     fun tryAnkanOrKakan(playerUuid: String, tile: MahjongTile): Boolean {
         if (!started || pendingReaction != null || currentPlayer.uuid != playerUuid) return false
+        if (kanCount >= 4) return false
         val player = currentPlayer
         val ankanTile = player.tilesCanAnkan.find { it.mahjongTile == tile }
         if (ankanTile != null) {

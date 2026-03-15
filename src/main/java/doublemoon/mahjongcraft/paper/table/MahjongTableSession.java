@@ -9,6 +9,7 @@ import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.render.TableRenderer;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
+import doublemoon.mahjongcraft.paper.riichi.ReactionType;
 import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
@@ -59,8 +60,11 @@ public final class MahjongTableSession {
     private final Map<UUID, String> feedbackState = new HashMap<>();
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
+    private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
     private MahjongRule configuredRule;
     private RiichiRoundEngine engine;
+    private doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile;
+    private UUID lastPublicDiscardPlayerId;
     private String lastSettlementFingerprint = "";
     private String lastPersistedSettlementFingerprint = "";
     private String lastTurnSoundFingerprint = "";
@@ -156,6 +160,7 @@ public final class MahjongTableSession {
                 this.seats.remove(i);
                 this.botNames.remove(playerId);
                 this.feedbackState.remove(playerId);
+                this.selectedHandTileIndices.remove(playerId);
                 this.render();
                 return true;
             }
@@ -170,6 +175,7 @@ public final class MahjongTableSession {
         this.hideHud(playerId);
         this.feedbackState.remove(playerId);
         this.botNames.remove(playerId);
+        this.selectedHandTileIndices.remove(playerId);
         return this.seats.remove(playerId);
     }
 
@@ -220,6 +226,8 @@ public final class MahjongTableSession {
         }
 
         this.engine.startRound();
+        this.selectedHandTileIndices.clear();
+        this.clearLastPublicDiscard();
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.regionFingerprints.clear();
@@ -231,7 +239,12 @@ public final class MahjongTableSession {
         if (this.engine == null) {
             return false;
         }
+        doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
         boolean result = this.engine.discard(playerId.toString(), tileIndex);
+        if (result) {
+            this.selectedHandTileIndices.clear();
+            this.rememberPublicDiscard(playerId, discardedTile);
+        }
         this.render();
         return result;
     }
@@ -240,7 +253,12 @@ public final class MahjongTableSession {
         if (this.engine == null) {
             return false;
         }
+        doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
         boolean result = this.engine.declareRiichi(playerId.toString(), tileIndex);
+        if (result) {
+            this.selectedHandTileIndices.clear();
+            this.rememberPublicDiscard(playerId, discardedTile);
+        }
         this.render();
         return result;
     }
@@ -250,6 +268,9 @@ public final class MahjongTableSession {
             return false;
         }
         boolean result = this.engine.tryTsumo(playerId.toString());
+        if (result) {
+            this.selectedHandTileIndices.clear();
+        }
         this.render();
         return result;
     }
@@ -259,6 +280,9 @@ public final class MahjongTableSession {
             return false;
         }
         boolean result = this.engine.declareKyuushuKyuuhai(playerId.toString());
+        if (result) {
+            this.selectedHandTileIndices.clear();
+        }
         this.render();
         return result;
     }
@@ -268,6 +292,10 @@ public final class MahjongTableSession {
             return false;
         }
         boolean result = this.engine.react(playerId.toString(), response);
+        if (result) {
+            this.selectedHandTileIndices.clear();
+            this.playReactionSound(response);
+        }
         this.render();
         return result;
     }
@@ -280,6 +308,9 @@ public final class MahjongTableSession {
             doublemoon.mahjongcraft.paper.riichi.model.MahjongTile tile =
                 doublemoon.mahjongcraft.paper.riichi.model.MahjongTile.valueOf(tileName.toUpperCase(Locale.ROOT));
             boolean result = this.engine.tryAnkanOrKakan(playerId.toString(), tile);
+            if (result) {
+                this.selectedHandTileIndices.clear();
+            }
             this.render();
             return result;
         } catch (IllegalArgumentException ex) {
@@ -289,6 +320,7 @@ public final class MahjongTableSession {
 
     public void render() {
         this.cancelBotTask();
+        this.pruneSelectedHandTiles();
         this.updateStaticRegions();
         for (SeatWind wind : SeatWind.values()) {
             this.updateSeatRegion(wind);
@@ -320,10 +352,11 @@ public final class MahjongTableSession {
         for (Entity entity : entities) {
             TableDisplayRegistry.unregister(entity.getEntityId());
             DisplayVisibilityRegistry.unregister(entity.getEntityId());
-            if (this.plugin.entityCulling() != null) {
-                this.plugin.entityCulling().unregister(entity);
+            if (this.plugin.craftEngine() != null) {
+                this.plugin.craftEngine().unregisterCullableEntity(entity);
             }
-            if (!entity.isDead()) {
+            boolean removedByCraftEngine = this.plugin.craftEngine() != null && this.plugin.craftEngine().removeFurniture(entity);
+            if (!removedByCraftEngine && !entity.isDead()) {
                 entity.remove();
             }
         }
@@ -335,6 +368,8 @@ public final class MahjongTableSession {
         this.cancelNextRoundCountdown();
         this.removeAllDisplays();
         this.feedbackState.clear();
+        this.selectedHandTileIndices.clear();
+        this.clearLastPublicDiscard();
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.regionFingerprints.clear();
@@ -350,6 +385,8 @@ public final class MahjongTableSession {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
         this.feedbackState.clear();
+        this.selectedHandTileIndices.clear();
+        this.clearLastPublicDiscard();
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.regionFingerprints.clear();
@@ -865,6 +902,52 @@ public final class MahjongTableSession {
         return true;
     }
 
+    public boolean clickHandTile(UUID playerId, int tileIndex) {
+        if (!this.contains(playerId) || tileIndex < 0 || tileIndex >= this.hand(playerId).size()) {
+            return false;
+        }
+        Integer selectedIndex = this.selectedHandTileIndices.get(playerId);
+        if (selectedIndex != null && selectedIndex == tileIndex) {
+            return this.discard(playerId, tileIndex);
+        }
+        this.selectedHandTileIndices.put(playerId, tileIndex);
+        this.render();
+        return true;
+    }
+
+    public int selectedHandTileIndex(UUID playerId) {
+        return this.selectedHandTileIndices.getOrDefault(playerId, -1);
+    }
+
+    private void pruneSelectedHandTiles() {
+        this.selectedHandTileIndices.entrySet().removeIf(entry -> !this.isValidSelectedHandTile(entry.getKey(), entry.getValue()));
+    }
+
+    private boolean isValidSelectedHandTile(UUID playerId, int tileIndex) {
+        return this.contains(playerId) && tileIndex >= 0 && tileIndex < this.hand(playerId).size();
+    }
+
+    private doublemoon.mahjongcraft.paper.model.MahjongTile handTileAt(UUID playerId, int tileIndex) {
+        List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand = this.hand(playerId);
+        if (tileIndex < 0 || tileIndex >= hand.size()) {
+            return null;
+        }
+        return hand.get(tileIndex);
+    }
+
+    private void rememberPublicDiscard(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
+        if (discardedTile == null) {
+            return;
+        }
+        this.lastPublicDiscardPlayerId = playerId;
+        this.lastPublicDiscardTile = discardedTile;
+    }
+
+    private void clearLastPublicDiscard() {
+        this.lastPublicDiscardPlayerId = null;
+        this.lastPublicDiscardTile = null;
+    }
+
     private void persistRoomMetadataIfNeeded() {
         if (this.persistentRoom && this.plugin.tableManager() != null) {
             this.plugin.tableManager().persistTables();
@@ -1156,6 +1239,7 @@ public final class MahjongTableSession {
             this.plugin.messages().tag("round", this.roundDisplay(locale)),
             this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
             this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
+            this.plugin.messages().tag("last_discard", this.lastDiscardSummary(locale)),
             this.plugin.messages().tag("prompt", this.viewerPrompt(locale, viewer))
         );
     }
@@ -1383,6 +1467,12 @@ public final class MahjongTableSession {
     private void broadcastSound(Sound sound, float volume, float pitch) {
         for (Player viewer : this.viewers()) {
             viewer.playSound(viewer.getLocation(), sound, volume, pitch);
+        }
+    }
+
+    private void playReactionSound(ReactionResponse response) {
+        if (response.getType() == ReactionType.CHII) {
+            this.broadcastSound(Sound.ENTITY_PLAYER_BURP, 0.85F, 1.15F);
         }
     }
 
@@ -1625,6 +1715,8 @@ public final class MahjongTableSession {
                 .field(this.dicePoints())
                 .field(this.dealerName())
                 .field(this.currentSeat().name())
+                .field(this.lastPublicDiscardPlayerId)
+                .field(this.lastPublicDiscardTile)
                 .toString();
         }
         return builder.field("waiting")
@@ -1655,6 +1747,7 @@ public final class MahjongTableSession {
         builder.field(this.onlinePlayer(playerId) != null);
         builder.field(this.viewerMembershipSignature(playerId));
         builder.field(this.stickLayoutCount(wind));
+        builder.field(this.selectedHandTileIndex(playerId));
         this.hand(playerId).forEach(tile -> builder.field(tile.name()));
         return builder.toString();
     }
@@ -1706,7 +1799,9 @@ public final class MahjongTableSession {
         return builder
             .field(this.roundDisplay())
             .field(this.engine.getWall().size())
-            .field(this.engine.getCurrentPlayerIndex());
+            .field(this.engine.getCurrentPlayerIndex())
+            .field(this.lastPublicDiscardPlayerId)
+            .field(this.lastPublicDiscardTile);
     }
 
     private void appendMeldFingerprint(FingerprintBuilder builder, MeldView meld) {
@@ -1806,7 +1901,8 @@ public final class MahjongTableSession {
                 this.plugin.messages().tag("round", this.roundDisplay(locale)),
                 this.plugin.messages().number(locale, "wall", this.remainingWall().size()),
                 this.plugin.messages().number(locale, "dice", this.dicePoints()),
-                this.plugin.messages().tag("dealer", this.dealerName(locale))
+                this.plugin.messages().tag("dealer", this.dealerName(locale)),
+                this.plugin.messages().tag("last_discard", this.lastDiscardSummary(locale))
             );
         }
         return this.plugin.messages().plain(
@@ -1860,6 +1956,18 @@ public final class MahjongTableSession {
     private String tileLabel(Locale locale, String tileName) {
         String key = "tile." + tileName.toLowerCase(Locale.ROOT);
         return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : tileName.toLowerCase(Locale.ROOT);
+    }
+
+    private String lastDiscardSummary(Locale locale) {
+        if (this.lastPublicDiscardPlayerId == null || this.lastPublicDiscardTile == null) {
+            return this.plugin.messages().plain(locale, "table.last_discard_none");
+        }
+        return this.plugin.messages().plain(
+            locale,
+            "table.last_discard",
+            this.plugin.messages().tag("player", this.displayName(this.lastPublicDiscardPlayerId, locale)),
+            this.plugin.messages().tag("tile", this.tileLabel(locale, this.lastPublicDiscardTile.name()))
+        );
     }
 
     private String resolutionLabel(Locale locale, String title) {

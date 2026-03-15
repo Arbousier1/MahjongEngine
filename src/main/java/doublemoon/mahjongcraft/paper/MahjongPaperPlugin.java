@@ -7,8 +7,6 @@ import doublemoon.mahjongcraft.paper.db.DatabaseService;
 import doublemoon.mahjongcraft.paper.i18n.MessageService;
 import doublemoon.mahjongcraft.paper.packet.PacketEventsBridge;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
-import doublemoon.mahjongcraft.paper.render.EntityCullingConfig;
-import doublemoon.mahjongcraft.paper.render.EntityCullingService;
 import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.table.MahjongTableManager;
 import java.util.Objects;
@@ -22,7 +20,6 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private CraftEngineService craftEngine;
     private PacketEventsBridge packetEventsBridge;
     private MahjongTableManager tableManager;
-    private EntityCullingService entityCulling;
 
     @Override
     public void onEnable() {
@@ -30,7 +27,6 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.debug = new DebugService(this.getLogger(), this.getConfig().getConfigurationSection("debug"));
         this.debug.log("lifecycle", "Debug logging enabled.");
         this.craftEngine = new CraftEngineService(this, this.getConfig().getConfigurationSection("craftengine"));
-        this.entityCulling = new EntityCullingService(this, EntityCullingConfig.from(this.getConfig()));
 
         if (DatabaseService.isEnabled(this.getConfig().getConfigurationSection("database"))) {
             try {
@@ -50,7 +46,6 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.tableManager = new MahjongTableManager(this);
         this.packetEventsBridge = new PacketEventsBridge(this, this.tableManager);
         this.packetEventsBridge.enable();
-        this.entityCulling.enable();
         this.tableManager.loadPersistentTables();
 
         MahjongCommand mahjongCommand = new MahjongCommand(this, this.tableManager);
@@ -61,7 +56,12 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         );
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
-        this.getServer().getScheduler().runTask(this, this.craftEngine::initializeAfterStartup);
+        this.getServer().getScheduler().runTask(this, () -> {
+            this.craftEngine.initializeAfterStartup();
+            if (this.tableManager != null) {
+                this.tableManager.tables().forEach(table -> table.render());
+            }
+        });
         this.getLogger().info("MahjongPaper enabled.");
         this.debug.log("lifecycle", "Plugin bootstrap complete.");
     }
@@ -73,9 +73,8 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         }
         TableDisplayRegistry.clear();
         DisplayVisibilityRegistry.clear();
-        if (this.entityCulling != null) {
-            this.entityCulling.disable();
-            this.entityCulling = null;
+        if (this.craftEngine != null) {
+            this.craftEngine.clearTrackedCullables();
         }
         if (this.packetEventsBridge != null) {
             this.packetEventsBridge.disable();
@@ -115,10 +114,6 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public CraftEngineService craftEngine() {
         return this.craftEngine;
-    }
-
-    public EntityCullingService entityCulling() {
-        return this.entityCulling;
     }
 
     public MahjongTableManager tableManager() {
