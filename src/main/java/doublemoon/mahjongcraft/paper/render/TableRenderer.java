@@ -39,6 +39,7 @@ public final class TableRenderer {
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
     private static final double DEAD_WALL_GAP = TILE_PADDING * 20.0D;
+    private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
     private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
@@ -547,7 +548,7 @@ public final class TableRenderer {
     private static Location wallSlotLocation(Location center, int wallSlot) {
         SeatWind wind = WallLayout.wallSeat(wallSlot);
         int stackIndex = WallLayout.wallColumn(wallSlot);
-        double stackWidth = stackIndex * (TILE_WIDTH + TILE_PADDING);
+        double stackWidth = stackIndex * WALL_TILE_STEP;
         double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
         double yOffset = FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(wallSlot));
         return switch (wind) {
@@ -701,7 +702,7 @@ public final class TableRenderer {
     }
 
     private static Offset deadWallLineOffset(SeatWind wind) {
-        double amount = TILE_WIDTH + TILE_PADDING;
+        double amount = WALL_TILE_STEP;
         return switch (wind) {
             case EAST -> new Offset(0.0D, -amount);
             case SOUTH -> new Offset(amount, 0.0D);
