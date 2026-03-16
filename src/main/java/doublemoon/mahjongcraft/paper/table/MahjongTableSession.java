@@ -1119,29 +1119,26 @@ public final class MahjongTableSession {
         }
 
         Locale locale = this.plugin.messages().resolveLocale(player);
-        StringBuilder builder = this.baseStateSummary(locale);
-        this.appendReactionStateSummary(builder, locale, player.getUniqueId());
-        this.appendResolutionStateSummary(builder, locale);
-        this.appendNextRoundStateSummary(builder, locale);
-        this.appendFinishedStateSummary(builder, locale);
-        return this.plugin.messages().render(player, "command.rule_summary", this.plugin.messages().tag("summary", builder.toString()));
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, player.getUniqueId());
+        return this.plugin.messages().render(player, "command.rule_summary", this.plugin.messages().tag("summary", summary.commandStateSummary()));
     }
 
     public Component viewerOverlay(Player viewer) {
-        return this.viewerOverlay(this.plugin.messages().resolveLocale(viewer), viewer);
+        Locale locale = this.plugin.messages().resolveLocale(viewer);
+        return this.viewerOverlay(locale, this.captureViewerSummarySnapshot(locale, viewer.getUniqueId()));
     }
 
-    private Component viewerOverlay(Locale locale, Player viewer) {
+    private Component viewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         if (this.engine == null) {
-            return this.waitingViewerOverlay(locale);
+            return this.waitingViewerOverlay(locale, summary);
         }
         if (!this.engine.getStarted()) {
             if (this.engine.getGameFinished() && this.engine.getLastResolution() != null) {
-                return this.finishedViewerOverlay(locale);
+                return this.finishedViewerOverlay(locale, summary);
             }
-            return this.nextRoundViewerOverlay(locale);
+            return this.nextRoundViewerOverlay(locale, summary);
         }
-        return this.activeViewerOverlay(locale, viewer);
+        return this.activeViewerOverlay(locale, summary);
     }
 
     public Component spectatorSeatOverlay(Player viewer, SeatWind wind) {
@@ -1468,59 +1465,6 @@ public final class MahjongTableSession {
             .hoverEvent(HoverEvent.showText(Component.text(command, NamedTextColor.GRAY)));
     }
 
-    private StringBuilder baseStateSummary(Locale locale) {
-        StringBuilder builder = new StringBuilder(96);
-        builder.append(this.plugin.messages().plain(locale, "state.label.round")).append(' ').append(this.roundDisplay(locale));
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.turn")).append(' ').append(this.engine.getCurrentPlayer().getDisplayName());
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.wall")).append(' ').append(this.engine.getWall().size());
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.spectators")).append(' ').append(this.spectatorCount());
-        return builder;
-    }
-
-    private void appendReactionStateSummary(StringBuilder builder, Locale locale, UUID playerId) {
-        if (this.engine.getPendingReaction() == null) {
-            return;
-        }
-        ReactionOptions options = this.engine.availableReactions(playerId.toString());
-        if (options == null) {
-            return;
-        }
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.reactions"));
-        this.appendReactionActionLabels(builder, locale, options);
-    }
-
-    private void appendResolutionStateSummary(StringBuilder builder, Locale locale) {
-        if (this.engine.getLastResolution() == null) {
-            return;
-        }
-        builder.append(" | ")
-            .append(this.plugin.messages().plain(locale, "state.label.resolution"))
-            .append(' ')
-            .append(this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()));
-    }
-
-    private void appendNextRoundStateSummary(StringBuilder builder, Locale locale) {
-        if (this.engine == null || this.engine.getStarted() || this.engine.getGameFinished()) {
-            return;
-        }
-        builder.append(" | ")
-            .append(this.plugin.messages().plain(locale, "state.label.next_round"))
-            .append(' ')
-            .append(this.plugin.messages().plain(
-                locale,
-                "state.ready_summary",
-                this.plugin.messages().number(locale, "ready", this.readyCount()),
-                this.plugin.messages().number(locale, "total", this.size())
-            ));
-    }
-
-    private void appendFinishedStateSummary(StringBuilder builder, Locale locale) {
-        if (!this.engine.getGameFinished()) {
-            return;
-        }
-        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.match_finished"));
-    }
-
     private void appendReactionActionLabels(StringBuilder builder, Locale locale, ReactionOptions options) {
         if (options.getCanRon()) {
             builder.append(' ').append(this.plugin.messages().plain(locale, "table.action.ron"));
@@ -1536,43 +1480,43 @@ public final class MahjongTableSession {
         }
     }
 
-    private Component waitingViewerOverlay(Locale locale) {
+    private Component waitingViewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         return this.plugin.messages().render(
             locale,
             "overlay.waiting",
             this.plugin.messages().tag("table_id", this.id),
-            this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
+            this.plugin.messages().tag("summary", summary.waitingSummary())
         );
     }
 
-    private Component finishedViewerOverlay(Locale locale) {
+    private Component finishedViewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         return this.plugin.messages().render(
             locale,
             "overlay.finished",
-            this.plugin.messages().tag("round", this.roundDisplay(locale)),
-            this.plugin.messages().tag("title", this.resolutionLabel(locale, this.engine.getLastResolution().getTitle()))
+            this.plugin.messages().tag("round", summary.round()),
+            this.plugin.messages().tag("title", summary.resolutionTitle())
         );
     }
 
-    private Component nextRoundViewerOverlay(Locale locale) {
+    private Component nextRoundViewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         return this.plugin.messages().render(
             locale,
             "overlay.waiting",
             this.plugin.messages().tag("table_id", this.id),
-            this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale))
+            this.plugin.messages().tag("summary", summary.waitingSummary())
         );
     }
 
-    private Component activeViewerOverlay(Locale locale, Player viewer) {
+    private Component activeViewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         return this.plugin.messages().render(
             locale,
             "overlay.active",
-            this.plugin.messages().tag("role", this.viewerRoleLabel(locale, viewer.getUniqueId())),
-            this.plugin.messages().tag("round", this.roundDisplay(locale)),
-            this.plugin.messages().tag("turn", this.engine.getCurrentPlayer().getDisplayName()),
-            this.plugin.messages().number(locale, "wall", this.engine.getWall().size()),
-            this.plugin.messages().tag("last_discard", this.lastDiscardSummary(locale)),
-            this.plugin.messages().tag("prompt", this.viewerPrompt(locale, viewer))
+            this.plugin.messages().tag("role", summary.roleLabel()),
+            this.plugin.messages().tag("round", summary.round()),
+            this.plugin.messages().tag("turn", summary.turn()),
+            this.plugin.messages().number(locale, "wall", summary.wall()),
+            this.plugin.messages().tag("last_discard", summary.lastDiscardSummary()),
+            this.plugin.messages().tag("prompt", summary.viewerPrompt())
         );
     }
 
@@ -1580,17 +1524,109 @@ public final class MahjongTableSession {
         return this.plugin.messages().plain(locale, this.isSpectator(viewerId) ? "hud.role_spectator" : "hud.role_player");
     }
 
-    private String viewerPrompt(Locale locale, Player viewer) {
-        UUID viewerId = viewer.getUniqueId();
+    private ViewerSummarySnapshot captureViewerSummarySnapshot(Locale locale, UUID viewerId) {
+        boolean spectator = this.isSpectator(viewerId);
+        String waitingSummary = this.waitingDisplaySummary(locale);
+        String ruleSummary = this.ruleDisplaySummary(locale);
+        if (this.engine == null) {
+            return new ViewerSummarySnapshot(
+                locale,
+                viewerId,
+                spectator,
+                waitingSummary,
+                ruleSummary,
+                "",
+                "",
+                0,
+                this.viewerRoleLabel(locale, viewerId),
+                "",
+                "",
+                "",
+                "",
+                ""
+            );
+        }
+
+        String round = this.roundDisplay(locale);
+        String turn = this.engine.getCurrentPlayer().getDisplayName();
+        int wall = this.engine.getWall().size();
+        String roleLabel = this.viewerRoleLabel(locale, viewerId);
+        String lastDiscardSummary = this.lastDiscardSummary(locale);
         ReactionOptions options = this.engine.availableReactions(viewerId.toString());
+        String reactionOptionsFingerprint = Objects.toString(options, "");
+        String viewerPrompt = this.viewerPrompt(locale, viewerId, options, turn, spectator);
+        String resolutionTitle = this.engine.getLastResolution() == null
+            ? ""
+            : this.resolutionLabel(locale, this.engine.getLastResolution().getTitle());
+        String commandStateSummary = this.buildCommandStateSummary(locale, viewerId, round, turn, wall, options, resolutionTitle);
+        return new ViewerSummarySnapshot(
+            locale,
+            viewerId,
+            spectator,
+            waitingSummary,
+            ruleSummary,
+            round,
+            turn,
+            wall,
+            roleLabel,
+            lastDiscardSummary,
+            viewerPrompt,
+            resolutionTitle,
+            reactionOptionsFingerprint,
+            commandStateSummary
+        );
+    }
+
+    private String buildCommandStateSummary(
+        Locale locale,
+        UUID viewerId,
+        String round,
+        String turn,
+        int wall,
+        ReactionOptions options,
+        String resolutionTitle
+    ) {
+        StringBuilder builder = new StringBuilder(128);
+        builder.append(this.plugin.messages().plain(locale, "state.label.round")).append(' ').append(round);
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.turn")).append(' ').append(turn);
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.wall")).append(' ').append(wall);
+        builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.spectators")).append(' ').append(this.spectatorCount());
+        if (this.engine.getPendingReaction() != null && options != null) {
+            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.label.reactions"));
+            this.appendReactionActionLabels(builder, locale, options);
+        }
+        if (this.engine.getLastResolution() != null) {
+            builder.append(" | ")
+                .append(this.plugin.messages().plain(locale, "state.label.resolution"))
+                .append(' ')
+                .append(resolutionTitle);
+        }
+        if (!this.engine.getStarted() && !this.engine.getGameFinished()) {
+            builder.append(" | ")
+                .append(this.plugin.messages().plain(locale, "state.label.next_round"))
+                .append(' ')
+                .append(this.plugin.messages().plain(
+                    locale,
+                    "state.ready_summary",
+                    this.plugin.messages().number(locale, "ready", this.readyCount()),
+                    this.plugin.messages().number(locale, "total", this.size())
+                ));
+        }
+        if (this.engine.getGameFinished()) {
+            builder.append(" | ").append(this.plugin.messages().plain(locale, "state.match_finished"));
+        }
+        return builder.toString();
+    }
+
+    private String viewerPrompt(Locale locale, UUID viewerId, ReactionOptions options, String currentTurnName, boolean spectator) {
         if (options != null) {
             return this.reactionSummary(locale, options);
         }
         if (this.engine.getCurrentPlayer().getUuid().equals(viewerId.toString())) {
             return this.plugin.messages().plain(locale, "overlay.your_turn");
         }
-        if (this.isSpectator(viewerId)) {
-            return this.plugin.messages().plain(locale, "overlay.spectating_turn") + " " + this.engine.getCurrentPlayer().getDisplayName();
+        if (spectator) {
+            return this.plugin.messages().plain(locale, "overlay.spectating_turn") + " " + currentTurnName;
         }
         return "";
     }
@@ -1612,11 +1648,12 @@ public final class MahjongTableSession {
         UUID viewerId = viewer.getUniqueId();
         String regionKey = "viewer-overlay:" + viewerId;
         boolean spectator = this.isSpectator(viewerId);
-        Component overlay = this.viewerOverlay(locale, viewer);
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
+        Component overlay = this.viewerOverlay(locale, summary);
         List<SpectatorSeatOverlaySnapshot> seatOverlays = spectator
             ? this.captureSpectatorSeatOverlays(locale)
             : List.of();
-        String fingerprint = this.viewerOverlayFingerprint(viewer, locale, viewerId, spectator, seatOverlays);
+        String fingerprint = this.viewerOverlayFingerprint(locale, viewerId, spectator, summary, seatOverlays);
         return new ViewerOverlaySnapshot(viewerId, regionKey, spectator, overlay, seatOverlays, fingerprint);
     }
 
@@ -1671,10 +1708,10 @@ public final class MahjongTableSession {
     }
 
     private String viewerOverlayFingerprint(
-        Player viewer,
         Locale locale,
         UUID viewerId,
         boolean spectator,
+        ViewerSummarySnapshot summary,
         List<SpectatorSeatOverlaySnapshot> seatOverlays
     ) {
         FingerprintBuilder builder = fingerprintBuilder(256)
@@ -1683,13 +1720,21 @@ public final class MahjongTableSession {
             .field(spectator)
             .field(this.nextRoundSecondsRemaining())
             .field(this.engine == null ? null : this.engine.getLastResolution())
-            .field(this.waitingDisplaySummary())
-            .field(this.ruleDisplaySummary());
+            .field(summary.waitingSummary())
+            .field(summary.ruleSummary())
+            .field(summary.round())
+            .field(summary.turn())
+            .field(summary.wall())
+            .field(summary.roleLabel())
+            .field(summary.lastDiscardSummary())
+            .field(summary.viewerPrompt())
+            .field(summary.resolutionTitle())
+            .field(summary.commandStateSummary());
         if (this.engine == null) {
             return builder.field("no-engine").toString();
         }
         builder = this.appendActiveRoundFingerprint(builder)
-            .field(this.engine.availableReactions(viewerId.toString()));
+            .field(summary.reactionOptionsFingerprint());
         for (SpectatorSeatOverlaySnapshot seatOverlay : seatOverlays) {
             builder.field(seatOverlay.signature());
         }
@@ -1788,20 +1833,19 @@ public final class MahjongTableSession {
     private ViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
         float progress = this.hudProgress();
         BossBar.Color color = this.hudColor(viewerId);
-        boolean spectator = this.isSpectator(viewerId);
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
+        boolean spectator = summary.spectator();
         long nextRoundSeconds = this.nextRoundSecondsRemaining();
         Object lastResolution = this.engine == null ? null : this.engine.getLastResolution();
         Component title;
         String stateSignature;
 
         if (this.engine == null) {
-            String waitingSummary = this.waitingDisplaySummary(locale);
-            String ruleSummary = this.ruleDisplaySummary(locale);
             title = this.plugin.messages().render(
                 locale,
                 "hud.waiting",
                 this.plugin.messages().tag("table_id", this.id),
-                this.plugin.messages().tag("summary", waitingSummary)
+                this.plugin.messages().tag("summary", summary.waitingSummary())
             );
             stateSignature = fingerprintBuilder(192)
                 .field(locale.toLanguageTag())
@@ -1811,20 +1855,18 @@ public final class MahjongTableSession {
                 .field(spectator)
                 .field(false)
                 .field(lastResolution)
-                .field(waitingSummary)
-                .field(ruleSummary)
+                .field(summary.waitingSummary())
+                .field(summary.ruleSummary())
                 .toString();
             return new ViewerHudSnapshot(title, progress, color, stateSignature);
         }
 
         if (this.engine.getGameFinished() && this.engine.getLastResolution() != null) {
-            String round = this.roundDisplay(locale);
-            String titleText = this.resolutionLabel(locale, this.engine.getLastResolution().getTitle());
             title = this.plugin.messages().render(
                 locale,
                 "hud.finished",
-                this.plugin.messages().tag("round", round),
-                this.plugin.messages().tag("title", titleText)
+                this.plugin.messages().tag("round", summary.round()),
+                this.plugin.messages().tag("title", summary.resolutionTitle())
             );
             stateSignature = fingerprintBuilder(192)
                 .field(locale.toLanguageTag())
@@ -1834,20 +1876,18 @@ public final class MahjongTableSession {
                 .field(spectator)
                 .field(this.isStarted())
                 .field(lastResolution)
-                .field(round)
-                .field(titleText)
+                .field(summary.round())
+                .field(summary.resolutionTitle())
                 .toString();
             return new ViewerHudSnapshot(title, progress, color, stateSignature);
         }
 
         if (!this.engine.getStarted()) {
-            String waitingSummary = this.waitingDisplaySummary(locale);
-            String ruleSummary = this.ruleDisplaySummary(locale);
             title = this.plugin.messages().render(
                 locale,
                 "hud.waiting",
                 this.plugin.messages().tag("table_id", this.id),
-                this.plugin.messages().tag("summary", waitingSummary)
+                this.plugin.messages().tag("summary", summary.waitingSummary())
             );
             stateSignature = fingerprintBuilder(192)
                 .field(locale.toLanguageTag())
@@ -1857,25 +1897,19 @@ public final class MahjongTableSession {
                 .field(spectator)
                 .field(false)
                 .field(lastResolution)
-                .field(waitingSummary)
-                .field(ruleSummary)
+                .field(summary.waitingSummary())
+                .field(summary.ruleSummary())
                 .toString();
             return new ViewerHudSnapshot(title, progress, color, stateSignature);
         }
 
-        String round = this.roundDisplay(locale);
-        String turn = this.engine.getCurrentPlayer().getDisplayName();
-        int wall = this.engine.getWall().size();
-        String role = spectator
-            ? this.plugin.messages().plain(locale, "hud.role_spectator")
-            : this.plugin.messages().plain(locale, "hud.role_player");
         title = this.plugin.messages().render(
             locale,
             "hud.round",
-            this.plugin.messages().tag("round", round),
-            this.plugin.messages().tag("turn", turn),
-            this.plugin.messages().number(locale, "wall", wall),
-            this.plugin.messages().tag("role", role)
+            this.plugin.messages().tag("round", summary.round()),
+            this.plugin.messages().tag("turn", summary.turn()),
+            this.plugin.messages().number(locale, "wall", summary.wall()),
+            this.plugin.messages().tag("role", summary.roleLabel())
         );
         stateSignature = fingerprintBuilder(192)
             .field(locale.toLanguageTag())
@@ -1885,13 +1919,13 @@ public final class MahjongTableSession {
             .field(spectator)
             .field(true)
             .field(lastResolution)
-            .field(round)
-            .field(turn)
-            .field(wall)
-            .field(role)
+            .field(summary.round())
+            .field(summary.turn())
+            .field(summary.wall())
+            .field(summary.roleLabel())
             .field(this.lastPublicDiscardPlayerId)
             .field(this.lastPublicDiscardTile)
-            .field(this.engine.availableReactions(viewerId.toString()))
+            .field(summary.reactionOptionsFingerprint())
             .toString();
         return new ViewerHudSnapshot(title, progress, color, stateSignature);
     }
@@ -2631,6 +2665,24 @@ public final class MahjongTableSession {
         SeatWind wind,
         Component overlay,
         String signature
+    ) {
+    }
+
+    private record ViewerSummarySnapshot(
+        Locale locale,
+        UUID viewerId,
+        boolean spectator,
+        String waitingSummary,
+        String ruleSummary,
+        String round,
+        String turn,
+        int wall,
+        String roleLabel,
+        String lastDiscardSummary,
+        String viewerPrompt,
+        String resolutionTitle,
+        String reactionOptionsFingerprint,
+        String commandStateSummary
     ) {
     }
 
