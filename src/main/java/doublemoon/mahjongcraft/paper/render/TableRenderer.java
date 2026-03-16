@@ -334,40 +334,24 @@ public final class TableRenderer {
                 Color.fromARGB(100, 18, 18, 18)
             ));
             if (!session.isStarted()) {
-                Entity seatHitbox = session.plugin().craftEngine().placeSeatHitbox(
-                    toLocation(session, plan.interactionLocation()),
-                    DisplayClickAction.toggleReady(session.id(), seat.wind())
-                );
-                if (seatHitbox != null) {
-                    spawned.add(seatHitbox);
-                } else {
-                    spawned.add(DisplayEntities.spawnInteraction(
-                        session.plugin(),
-                        toLocation(session, plan.interactionLocation()),
-                        SEAT_INTERACTION_WIDTH,
-                        SEAT_INTERACTION_HEIGHT,
-                        DisplayClickAction.toggleReady(session.id(), seat.wind()),
-                        null
-                    ));
-                }
-            }
-        } else if (!session.isStarted()) {
-            Entity seatHitbox = session.plugin().craftEngine().placeSeatHitbox(
-                toLocation(session, plan.interactionLocation()),
-                DisplayClickAction.joinSeat(session.id(), seat.wind())
-            );
-            if (seatHitbox != null) {
-                spawned.add(seatHitbox);
-            } else {
                 spawned.add(DisplayEntities.spawnInteraction(
                     session.plugin(),
                     toLocation(session, plan.interactionLocation()),
                     SEAT_INTERACTION_WIDTH,
                     SEAT_INTERACTION_HEIGHT,
-                    DisplayClickAction.joinSeat(session.id(), seat.wind()),
+                    DisplayClickAction.toggleReady(session.id(), seat.wind()),
                     null
                 ));
             }
+        } else if (!session.isStarted()) {
+            spawned.add(DisplayEntities.spawnInteraction(
+                session.plugin(),
+                toLocation(session, plan.interactionLocation()),
+                SEAT_INTERACTION_WIDTH,
+                SEAT_INTERACTION_HEIGHT,
+                DisplayClickAction.joinSeat(session.id(), seat.wind()),
+                null
+            ));
         }
         return spawned;
     }
