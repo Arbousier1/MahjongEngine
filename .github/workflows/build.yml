@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - paper-plugin-port
+      - virtual-threads
   pull_request:
 
 jobs:

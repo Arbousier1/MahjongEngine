@@ -53,6 +53,7 @@ public final class MahjongTableSession {
     private static final String REGION_DORA = "dora";
     private static final String REGION_CENTER = "center";
     private static final long NEXT_ROUND_DELAY_MILLIS = 8000L;
+    private static final int MAX_WALL_TILE_REGIONS = 136;
     private static final int MAX_HAND_TILE_REGIONS = 14;
     private static final int MAX_DISCARD_TILE_REGIONS = 24;
 
@@ -472,7 +473,7 @@ public final class MahjongTableSession {
 
     private void startAsyncRenderPrecompute(RenderSnapshot snapshot) {
         this.renderPrecomputeRunning = true;
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
+        this.plugin.async().execute("render-precompute-" + this.id, () -> {
             RenderPrecomputeResult result = new RenderPrecomputeResult(
                 snapshot,
                 this.precomputeRegionFingerprints(snapshot),
@@ -513,7 +514,7 @@ public final class MahjongTableSession {
         Map<String, String> fingerprints = result.regionFingerprints();
 
         this.updateRegion(REGION_TABLE, fingerprints.get(REGION_TABLE), () -> this.renderer.renderTableStructure(this, plan));
-        this.updateRegion(REGION_WALL, fingerprints.get(REGION_WALL), () -> this.renderer.renderWall(this, plan));
+        this.updateWallRegions(plan);
         this.updateRegion(REGION_DORA, fingerprints.get(REGION_DORA), () -> this.renderer.renderDora(this, plan));
         this.updateRegion(REGION_CENTER, fingerprints.get(REGION_CENTER), () -> this.renderer.renderCenterLabel(this, snapshot, plan));
         for (SeatWind wind : SeatWind.values()) {
@@ -521,7 +522,7 @@ public final class MahjongTableSession {
             TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
             this.updateRegion(this.seatRegionKey("labels", wind), fingerprints.get(this.seatRegionKey("labels", wind)), () -> this.renderer.renderSeatLabels(this, seat, seatPlan));
             this.updateRegion(this.seatRegionKey("sticks", wind), fingerprints.get(this.seatRegionKey("sticks", wind)), () -> this.renderer.renderSticks(this, seat, seatPlan));
-            this.updateRegion(this.seatRegionKey("hand-public", wind), fingerprints.get(this.seatRegionKey("hand-public", wind)), () -> this.renderer.renderHandPublic(this, snapshot, seat, seatPlan));
+            this.updatePublicHandRegions(snapshot, seat, seatPlan);
             this.updatePrivateHandRegions(seat, seatPlan);
             this.updateDiscardRegions(seat, seatPlan);
             this.updateRegion(this.seatRegionKey("melds", wind), fingerprints.get(this.seatRegionKey("melds", wind)), () -> this.renderer.renderMelds(this, seat, seatPlan));
@@ -1256,6 +1257,7 @@ public final class MahjongTableSession {
             return this.discard(playerId, tileIndex);
         }
         this.selectedHandTileIndices.put(playerId, tileIndex);
+        this.refreshSelectedHandTileView(playerId);
         this.render();
         return true;
     }
@@ -1284,6 +1286,24 @@ public final class MahjongTableSession {
             return false;
         }
         return this.engine.getCurrentPlayer().getUuid().equals(playerId.toString());
+    }
+
+    private void refreshSelectedHandTileView(UUID playerId) {
+        SeatWind wind = this.seatOf(playerId);
+        if (wind == null) {
+            return;
+        }
+        RenderSnapshot snapshot = this.captureRenderSnapshot(this.renderRequestVersion);
+        SeatRenderSnapshot seat = snapshot.seat(wind);
+        if (seat == null || seat.playerId() == null) {
+            return;
+        }
+        TableRenderLayout.LayoutPlan plan = TableRenderLayout.precompute(snapshot);
+        TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
+        if (seatPlan == null) {
+            return;
+        }
+        this.updatePrivateHandRegions(seat, seatPlan);
     }
 
     private doublemoon.mahjongcraft.paper.model.MahjongTile handTileAt(UUID playerId, int tileIndex) {
@@ -2280,6 +2300,8 @@ public final class MahjongTableSession {
             .field("center")
             .field(snapshot.started() ? "started" : "waiting")
             .field(snapshot.publicCenterText())
+            .field(snapshot.lastPublicDiscardPlayerId())
+            .field(snapshot.lastPublicDiscardTile())
             .toString();
     }
 
@@ -2377,6 +2399,43 @@ public final class MahjongTableSession {
             .toString();
     }
 
+    private void updatePublicHandRegions(RenderSnapshot snapshot, SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
+        this.clearRegion(this.seatRegionKey("hand-public", seat.wind()));
+        int handSize = seat.playerId() == null ? 0 : seat.hand().size();
+        for (int tileIndex = 0; tileIndex < MAX_HAND_TILE_REGIONS; tileIndex++) {
+            String regionKey = this.handPublicRegionKey(seat.wind(), tileIndex);
+            if (tileIndex >= handSize) {
+                this.clearRegion(regionKey);
+                continue;
+            }
+            int index = tileIndex;
+            this.updateRegion(
+                regionKey,
+                this.handPublicTileFingerprint(snapshot, seat, plan, tileIndex),
+                () -> this.renderer.renderHandPublicTile(this, snapshot, seat, plan, index)
+            );
+        }
+    }
+
+    private String handPublicTileFingerprint(RenderSnapshot snapshot, SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
+        TableRenderLayout.Point point = plan.publicHandPoints().get(tileIndex);
+        boolean concealHand = snapshot.started();
+        return fingerprintBuilder(160)
+            .field("hand-public-tile")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"))
+            .field(tileIndex)
+            .field(snapshot.started())
+            .field(seat.online())
+            .field(seat.viewerMembershipSignature())
+            .field(seat.stickLayoutCount())
+            .field(Double.doubleToLongBits(point.x()))
+            .field(Double.doubleToLongBits(point.y()))
+            .field(Double.doubleToLongBits(point.z()))
+            .field(concealHand ? "unknown" : seat.hand().get(tileIndex).name())
+            .toString();
+    }
+
     private void updateDiscardRegions(SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
         this.clearRegion(this.seatRegionKey("discards", seat.wind()));
         int discardCount = seat.playerId() == null ? 0 : plan.discardPlacements().size();
@@ -2403,6 +2462,38 @@ public final class MahjongTableSession {
             .field(Objects.toString(seat.playerId(), "empty"))
             .field(discardIndex)
             .field(seat.riichiDiscardIndex())
+            .field(Float.floatToIntBits(placement.yaw()))
+            .field(Double.doubleToLongBits(placement.point().x()))
+            .field(Double.doubleToLongBits(placement.point().y()))
+            .field(Double.doubleToLongBits(placement.point().z()))
+            .field(placement.tile().name())
+            .field(placement.pose().name())
+            .toString();
+    }
+
+    private void updateWallRegions(TableRenderLayout.LayoutPlan plan) {
+        this.clearRegion(REGION_WALL);
+        int wallTileCount = plan.wallTiles().size();
+        for (int wallIndex = 0; wallIndex < MAX_WALL_TILE_REGIONS; wallIndex++) {
+            String regionKey = this.wallRegionKey(wallIndex);
+            if (wallIndex >= wallTileCount) {
+                this.clearRegion(regionKey);
+                continue;
+            }
+            int index = wallIndex;
+            this.updateRegion(
+                regionKey,
+                this.wallTileFingerprint(plan, wallIndex),
+                () -> this.renderer.renderWallTile(this, plan, index)
+            );
+        }
+    }
+
+    private String wallTileFingerprint(TableRenderLayout.LayoutPlan plan, int wallIndex) {
+        TableRenderLayout.TilePlacement placement = plan.wallTiles().get(wallIndex);
+        return fingerprintBuilder(160)
+            .field("wall-tile")
+            .field(wallIndex)
             .field(Float.floatToIntBits(placement.yaw()))
             .field(Double.doubleToLongBits(placement.point().x()))
             .field(Double.doubleToLongBits(placement.point().y()))
@@ -2489,8 +2580,16 @@ public final class MahjongTableSession {
         return this.seatRegionKey("hand-private-" + tileIndex, wind);
     }
 
+    private String handPublicRegionKey(SeatWind wind, int tileIndex) {
+        return this.seatRegionKey("hand-public-" + tileIndex, wind);
+    }
+
     private String discardRegionKey(SeatWind wind, int discardIndex) {
         return this.seatRegionKey("discards-" + discardIndex, wind);
+    }
+
+    private String wallRegionKey(int wallIndex) {
+        return REGION_WALL + "-" + wallIndex;
     }
 
     private String meldFingerprint(SeatWind wind) {
@@ -2769,7 +2868,7 @@ public final class MahjongTableSession {
                 this.plugin.messages().number(locale, "wall", this.remainingWall().size()),
                 this.plugin.messages().number(locale, "dice", this.dicePoints()),
                 this.plugin.messages().tag("dealer", this.dealerName(locale)),
-                this.plugin.messages().tag("last_discard", this.lastDiscardSummary(locale))
+                this.plugin.messages().tag("last_discard", this.centerLastDiscardSummary(locale))
             );
         }
         return this.plugin.messages().plain(
@@ -2779,6 +2878,10 @@ public final class MahjongTableSession {
             this.plugin.messages().tag("summary", this.waitingDisplaySummary(locale)),
             this.plugin.messages().tag("rules", this.ruleDisplaySummary(locale))
         );
+    }
+
+    public doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile() {
+        return this.lastPublicDiscardTile;
     }
 
     private String roundWindText(Locale locale) {
@@ -2834,6 +2937,17 @@ public final class MahjongTableSession {
             "table.last_discard",
             this.plugin.messages().tag("player", this.displayName(this.lastPublicDiscardPlayerId, locale)),
             this.plugin.messages().tag("tile", this.tileLabel(locale, this.lastPublicDiscardTile.name()))
+        );
+    }
+
+    private String centerLastDiscardSummary(Locale locale) {
+        if (this.lastPublicDiscardPlayerId == null || this.lastPublicDiscardTile == null) {
+            return this.plugin.messages().plain(locale, "table.last_discard_none");
+        }
+        return this.plugin.messages().plain(
+            locale,
+            "table.last_discard_player",
+            this.plugin.messages().tag("player", this.displayName(this.lastPublicDiscardPlayerId, locale))
         );
     }
 

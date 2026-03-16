@@ -5,7 +5,6 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -39,6 +38,10 @@ public final class TableRenderer {
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
+    private static final double CENTER_LABEL_Y_OFFSET = 0.3D + FLOATING_TEXT_Y_OFFSET - 0.5D;
+    private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
+    private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
+    private static final Color CENTER_LAST_DISCARD_TILE_GLOW = Color.fromRGB(255, 220, 96);
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
@@ -436,6 +439,13 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderWallTile(MahjongTableSession session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
+        if (!session.isStarted() || wallIndex < 0 || wallIndex >= plan.wallTiles().size()) {
+            return List.of();
+        }
+        return List.of(spawnPublicTile(session, plan.wallTiles().get(wallIndex)));
+    }
+
     public List<Entity> renderSticks(
         MahjongTableSession session,
         MahjongTableSession.SeatRenderSnapshot seat,
@@ -480,12 +490,17 @@ public final class TableRenderer {
 
     public List<Entity> renderCenterLabel(MahjongTableSession session) {
         Location center = displayCenter(session);
-        return List.of(DisplayEntities.spawnLabel(
+        List<Entity> spawned = new ArrayList<>(2);
+        spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
-            center.clone().add(0.0D, 0.3D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            center.clone().add(0.0D, CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(session.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
         ));
+        if (session.lastPublicDiscardTile() != null) {
+            spawned.add(spawnCenterLastDiscardTile(session, center, session.lastPublicDiscardTile()));
+        }
+        return List.copyOf(spawned);
     }
 
     public List<Entity> renderCenterLabel(
@@ -493,12 +508,18 @@ public final class TableRenderer {
         MahjongTableSession.RenderSnapshot snapshot,
         TableRenderLayout.LayoutPlan plan
     ) {
-        return List.of(DisplayEntities.spawnLabel(
+        Location center = toLocation(session, plan.displayCenter());
+        List<Entity> spawned = new ArrayList<>(2);
+        spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
-            toLocation(session, plan.displayCenter()).add(0.0D, 0.3D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            center.clone().add(0.0D, CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(snapshot.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
         ));
+        if (snapshot.lastPublicDiscardTile() != null) {
+            spawned.add(spawnCenterLastDiscardTile(session, center, snapshot.lastPublicDiscardTile()));
+        }
+        return List.copyOf(spawned);
     }
 
     public List<Entity> renderViewerOverlay(MahjongTableSession session, Player viewer) {
@@ -675,6 +696,30 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderHandPublicTile(
+        MahjongTableSession session,
+        MahjongTableSession.RenderSnapshot snapshot,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan,
+        int tileIndex
+    ) {
+        if (seat.playerId() == null || tileIndex < 0 || tileIndex >= seat.hand().size()) {
+            return List.of();
+        }
+
+        boolean concealHand = snapshot.started();
+        return List.of(DisplayEntities.spawnTileDisplay(
+            session.plugin(),
+            toLocation(session, plan.publicHandPoints().get(tileIndex)),
+            plan.yaw(),
+            concealHand ? MahjongTile.UNKNOWN : seat.hand().get(tileIndex),
+            DisplayEntities.TileRenderPose.STANDING,
+            null,
+            true,
+            seat.viewerIdsExcluding()
+        ));
+    }
+
     public List<Entity> renderMelds(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
@@ -832,6 +877,25 @@ public final class TableRenderer {
         return spawnPublicTile(session, toLocation(session, placement.point()), placement.yaw(), placement.tile(), placement.pose());
     }
 
+    private static Entity spawnCenterLastDiscardTile(
+        MahjongTableSession session,
+        Location center,
+        MahjongTile tile
+    ) {
+        return DisplayEntities.spawnTileDisplay(
+            session.plugin(),
+            center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
+            0.0F,
+            tile,
+            DisplayEntities.TileRenderPose.STANDING,
+            null,
+            true,
+            null,
+            CENTER_LAST_DISCARD_TILE_SCALE,
+            CENTER_LAST_DISCARD_TILE_GLOW
+        );
+    }
+
     private static Location toLocation(MahjongTableSession session, TableRenderLayout.Point point) {
         Location origin = session.center();
         return new Location(origin.getWorld(), point.x(), point.y(), point.z());
@@ -903,9 +967,8 @@ public final class TableRenderer {
             ));
         }
 
-        SeatWind direction = placements.get(placements.size() - 1).face();
-        List<DeadWallPlacementMutable> reversed = new ArrayList<>(placements);
-        Collections.reverse(reversed);
+        SeatWind direction = placements.getLast().face();
+        List<DeadWallPlacementMutable> reversed = placements.reversed();
         for (int index = 0; index < reversed.size(); index++) {
             DeadWallPlacementMutable placement = reversed.get(index);
             if (placement.face() == direction) {
@@ -920,7 +983,7 @@ public final class TableRenderer {
                 }
             }
 
-            Location base = reversed.get(0).location();
+            Location base = reversed.getFirst().location();
             double positionY = reversed.get(index % 2 == 0 ? 0 : 1).location().getY();
             double offset = WALL_TILE_STEP * (index / 2);
             placement.setLocation(switch (direction) {

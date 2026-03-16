@@ -92,7 +92,7 @@ final class PersistentTableStore {
         if (!this.asyncSaveScheduled.compareAndSet(false, true)) {
             return;
         }
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, this::drainPendingSaves);
+        this.plugin.async().execute("save-persistent-tables", this::drainPendingSaves);
     }
 
     private void drainPendingSaves() {

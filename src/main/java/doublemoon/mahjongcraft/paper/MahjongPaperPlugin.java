@@ -16,6 +16,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private final MessageService messages = new MessageService();
     private PluginSettings settings;
     private DebugService debug;
+    private AsyncService async;
     private DatabaseService database;
     private CraftEngineService craftEngine;
     private MahjongTableManager tableManager;
@@ -25,6 +26,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.saveDefaultConfig();
         this.settings = PluginSettings.from(this.getConfig());
         this.debug = new DebugService(this.getLogger(), this.settings.debugSection());
+        this.async = new AsyncService(this.getLogger());
         this.debug.log("lifecycle", "Debug logging enabled.");
         this.craftEngine = new CraftEngineService(this, this.settings.craftEngineSection());
 
@@ -59,7 +61,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.getServer().getScheduler().runTask(this, () -> {
             this.craftEngine.initializeAfterStartup();
             if (this.tableManager != null) {
-                this.tableManager.tables().forEach(table -> table.render());
+                this.tableManager.refreshPersistentTablesAfterStartup();
             }
         });
         this.getLogger().info("MahjongPaper enabled.");
@@ -80,6 +82,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.database != null) {
             this.database.close();
             this.database = null;
+        }
+        if (this.async != null) {
+            this.async.close();
+            this.async = null;
         }
         this.craftEngine = null;
         if (this.debug != null) {
@@ -112,6 +118,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public DebugService debug() {
         return this.debug;
+    }
+
+    public AsyncService async() {
+        return this.async;
     }
 
     public CraftEngineService craftEngine() {

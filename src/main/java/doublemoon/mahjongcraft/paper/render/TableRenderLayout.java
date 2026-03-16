@@ -5,7 +5,6 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 
@@ -391,9 +390,8 @@ public final class TableRenderLayout {
             ));
         }
 
-        SeatWind direction = placements.get(placements.size() - 1).face();
-        List<DeadWallPlacementMutable> reversed = new ArrayList<>(placements);
-        Collections.reverse(reversed);
+        SeatWind direction = placements.getLast().face();
+        List<DeadWallPlacementMutable> reversed = placements.reversed();
         for (int index = 0; index < reversed.size(); index++) {
             DeadWallPlacementMutable placement = reversed.get(index);
             if (placement.face() == direction) {
@@ -408,7 +406,7 @@ public final class TableRenderLayout {
                 }
             }
 
-            Point base = reversed.get(0).point();
+            Point base = reversed.getFirst().point();
             double positionY = reversed.get(index % 2 == 0 ? 0 : 1).point().y();
             double offset = WALL_TILE_STEP * (index / 2);
             placement.setPoint(switch (direction) {
