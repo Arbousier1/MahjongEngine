@@ -18,6 +18,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -56,7 +57,7 @@ public final class MahjongTableSession {
     private final String id;
     private final Location center;
     private final boolean persistentRoom;
-    private final List<UUID> seats = new ArrayList<>(4);
+    private final List<UUID> seats = new ArrayList<>(Collections.nCopies(4, null));
     private final Set<UUID> spectators = new LinkedHashSet<>();
     private final Map<String, List<Entity>> regionDisplays = new LinkedHashMap<>();
     private final Map<String, String> regionFingerprints = new HashMap<>();
@@ -118,11 +119,24 @@ public final class MahjongTableSession {
     }
 
     public boolean addPlayer(Player player) {
-        if (this.seats.contains(player.getUniqueId()) || this.seats.size() >= 4) {
+        for (SeatWind wind : SeatWind.values()) {
+            if (this.playerAt(wind) == null) {
+                return this.addPlayer(player, wind);
+            }
+        }
+        return false;
+    }
+
+    public boolean addPlayer(Player player, SeatWind wind) {
+        UUID playerId = player.getUniqueId();
+        if (wind == null || this.seats.contains(playerId) || this.playerAt(wind) != null) {
+            return false;
+        }
+        if (this.size() >= 4) {
             return false;
         }
         this.spectators.remove(player.getUniqueId());
-        this.seats.add(player.getUniqueId());
+        this.seats.set(wind.index(), playerId);
         return true;
     }
 
@@ -141,7 +155,7 @@ public final class MahjongTableSession {
     }
 
     public boolean addBot() {
-        if (this.isStarted() || this.seats.size() >= 4) {
+        if (this.isStarted() || this.size() >= 4) {
             return false;
         }
         UUID botId;
@@ -149,7 +163,11 @@ public final class MahjongTableSession {
             botId = UUID.nameUUIDFromBytes((this.id + "-bot-" + this.nextBotNumber).getBytes(StandardCharsets.UTF_8));
             this.nextBotNumber++;
         } while (this.seats.contains(botId));
-        this.seats.add(botId);
+        SeatWind emptySeat = this.firstEmptySeat();
+        if (emptySeat == null) {
+            return false;
+        }
+        this.seats.set(emptySeat.index(), botId);
         this.botNames.put(botId, "Bot-" + this.botNames.size());
         this.render();
         return true;
@@ -161,8 +179,8 @@ public final class MahjongTableSession {
         }
         for (int i = this.seats.size() - 1; i >= 0; i--) {
             UUID playerId = this.seats.get(i);
-            if (this.botNames.containsKey(playerId)) {
-                this.seats.remove(i);
+            if (playerId != null && this.botNames.containsKey(playerId)) {
+                this.seats.set(i, null);
                 this.botNames.remove(playerId);
                 this.feedbackState.remove(playerId);
                 this.selectedHandTileIndices.remove(playerId);
@@ -181,7 +199,12 @@ public final class MahjongTableSession {
         this.feedbackState.remove(playerId);
         this.botNames.remove(playerId);
         this.selectedHandTileIndices.remove(playerId);
-        return this.seats.remove(playerId);
+        int seatIndex = this.seats.indexOf(playerId);
+        if (seatIndex < 0) {
+            return false;
+        }
+        this.seats.set(seatIndex, null);
+        return true;
     }
 
     public boolean contains(UUID playerId) {
@@ -189,11 +212,17 @@ public final class MahjongTableSession {
     }
 
     public boolean isEmpty() {
-        return this.seats.isEmpty();
+        return this.size() == 0;
     }
 
     public int size() {
-        return this.seats.size();
+        int occupied = 0;
+        for (UUID playerId : this.seats) {
+            if (playerId != null) {
+                occupied++;
+            }
+        }
+        return occupied;
     }
 
     public int botCount() {
@@ -205,7 +234,7 @@ public final class MahjongTableSession {
     }
 
     public List<UUID> players() {
-        return List.copyOf(this.seats);
+        return this.seats.stream().filter(Objects::nonNull).toList();
     }
 
     public Set<UUID> spectators() {
@@ -213,18 +242,39 @@ public final class MahjongTableSession {
     }
 
     public UUID owner() {
-        return this.seats.isEmpty() ? null : this.seats.getFirst();
+        for (UUID playerId : this.seats) {
+            if (playerId != null) {
+                return playerId;
+            }
+        }
+        return null;
+    }
+
+    public SeatWind seatOf(UUID playerId) {
+        if (playerId == null) {
+            return null;
+        }
+        for (SeatWind wind : SeatWind.values()) {
+            if (Objects.equals(this.playerAt(wind), playerId)) {
+                return wind;
+            }
+        }
+        return null;
     }
 
     public void startRound() {
-        if (this.seats.size() != 4) {
+        if (this.size() != 4) {
             throw new IllegalStateException("A riichi table needs exactly 4 players");
         }
 
         this.cancelNextRoundCountdown();
         if (this.engine == null || this.engine.getGameFinished()) {
-            List<RiichiPlayerState> players = new ArrayList<>(this.seats.size());
-            for (UUID playerId : this.seats) {
+            List<RiichiPlayerState> players = new ArrayList<>(SeatWind.values().length);
+            for (SeatWind wind : SeatWind.values()) {
+                UUID playerId = this.playerAt(wind);
+                if (playerId == null) {
+                    throw new IllegalStateException("A riichi table needs exactly 4 occupied seats");
+                }
                 players.add(new RiichiPlayerState(this.displayName(playerId), playerId.toString(), !this.isBot(playerId)));
             }
             this.engine = new RiichiRoundEngine(players, this.copyRule());
@@ -515,7 +565,7 @@ public final class MahjongTableSession {
         if (this.engine != null && !this.engine.getSeats().isEmpty()) {
             return UUID.fromString(this.engine.getSeats().get(wind.index()).getUuid());
         }
-        return wind.index() < this.seats.size() ? this.seats.get(wind.index()) : null;
+        return this.seats.get(wind.index());
     }
 
     public String playerName(SeatWind wind) {
@@ -1198,6 +1248,9 @@ public final class MahjongTableSession {
 
     private void syncSeatFeedbackStates() {
         for (UUID playerId : this.seats) {
+            if (playerId == null) {
+                continue;
+            }
             if (this.isBot(playerId)) {
                 continue;
             }
@@ -1447,7 +1500,7 @@ public final class MahjongTableSession {
 
     private float hudProgress() {
         if (this.engine == null) {
-            return Math.min(1.0F, this.seats.size() / 4.0F);
+            return Math.min(1.0F, this.size() / 4.0F);
         }
         if (!this.engine.getStarted() && this.nextRoundDeadlineMillis > 0L) {
             return Math.max(0.0F, Math.min(1.0F, this.nextRoundSecondsRemaining() / (float) (NEXT_ROUND_DELAY_MILLIS / 1000L)));
@@ -1657,6 +1710,9 @@ public final class MahjongTableSession {
 
     private void appendOnlineSeatViewers(List<Player> target) {
         for (UUID playerId : this.seats) {
+            if (playerId == null) {
+                continue;
+            }
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 target.add(player);
@@ -1675,6 +1731,9 @@ public final class MahjongTableSession {
 
     private void appendOnlineSeatViewerIds(List<UUID> target, UUID excludedPlayerId) {
         for (UUID playerId : this.seats) {
+            if (playerId == null) {
+                continue;
+            }
             if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
                 target.add(playerId);
             }
@@ -1691,6 +1750,9 @@ public final class MahjongTableSession {
 
     private void appendOnlineSeatViewerIds(StringBuilder target, UUID excludedPlayerId) {
         for (UUID playerId : this.seats) {
+            if (playerId == null) {
+                continue;
+            }
             if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
                 target.append(playerId).append(';');
             }
@@ -1727,6 +1789,9 @@ public final class MahjongTableSession {
     private String riichiFingerprint() {
         FingerprintBuilder builder = fingerprintBuilder(64);
         for (UUID playerId : this.seats) {
+            if (playerId == null) {
+                continue;
+            }
             builder.field(playerId).field(this.isRiichi(playerId)).entrySeparator();
         }
         return builder.toString();
@@ -2183,6 +2248,15 @@ public final class MahjongTableSession {
         normalized.setYaw(0.0F);
         normalized.setPitch(0.0F);
         return normalized;
+    }
+
+    private SeatWind firstEmptySeat() {
+        for (SeatWind wind : SeatWind.values()) {
+            if (this.playerAt(wind) == null) {
+                return wind;
+            }
+        }
+        return null;
     }
 
     public static final class FinalStanding {

@@ -22,6 +22,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -35,6 +37,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.BoundingBox;
 
@@ -44,6 +47,7 @@ public final class CraftEngineService {
     private static final String CRAFT_ENGINE_PLUGIN_NAME = "CraftEngine";
     private static final String TABLE_HITBOX_ITEM_ID = "mahjongpaper:table_hitbox";
     private static final String HAND_TILE_HITBOX_ITEM_ID = "mahjongpaper:hand_tile_hitbox";
+    private static final String MAHJONGPAPER_FURNITURE_PREFIX = "mahjongpaper:";
 
     private final MahjongPaperPlugin plugin;
     private final boolean exportBundleOnEnable;
@@ -56,6 +60,7 @@ public final class CraftEngineService {
     private volatile boolean furnitureReflectionUnavailable;
     private volatile boolean cullingReflectionUnavailable;
     private volatile ReflectionBridge reflectionBridge;
+    private volatile NamespacedKey furnitureDataKey;
     private Listener furnitureInteractListener;
 
     public CraftEngineService(MahjongPaperPlugin plugin, ConfigurationSection section) {
@@ -76,6 +81,43 @@ public final class CraftEngineService {
         if (this.exportBundleOnEnable) {
             this.exportBundle(craftEngine);
         }
+    }
+
+    public int cleanupMahjongFurniture() {
+        if (this.furnitureReflectionUnavailable) {
+            return 0;
+        }
+
+        Plugin craftEngine = this.findCraftEnginePlugin();
+        if (craftEngine == null || !craftEngine.isEnabled()) {
+            return 0;
+        }
+
+        NamespacedKey furnitureKey = this.resolveFurnitureDataKey(craftEngine);
+        if (furnitureKey == null) {
+            return 0;
+        }
+
+        int removed = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                String furnitureId = entity.getPersistentDataContainer().get(furnitureKey, PersistentDataType.STRING);
+                if (furnitureId == null || !furnitureId.startsWith(MAHJONGPAPER_FURNITURE_PREFIX)) {
+                    continue;
+                }
+                boolean removedByCraftEngine = this.removeFurniture(entity);
+                if (!removedByCraftEngine && entity.isValid()) {
+                    entity.remove();
+                }
+                removed++;
+            }
+        }
+
+        if (removed > 0) {
+            this.plugin.getLogger().info("Removed " + removed + " leftover MahjongPaper CraftEngine furniture entities from previous sessions.");
+            this.plugin.debug().log("lifecycle", "Startup cleanup removed " + removed + " lingering mahjongpaper furniture entities.");
+        }
+        return removed;
     }
 
     public ItemStack resolveTileItem(MahjongTile tile, boolean faceDown) {
@@ -238,12 +280,13 @@ public final class CraftEngineService {
             if (event instanceof Cancellable cancellable) {
                 cancellable.setCancelled(true);
             }
-            if (!action.ownerId().equals(player.getUniqueId())) {
-                return;
-            }
-            boolean accepted = tableManager.clickTile(player, action.tableId(), action.ownerId(), action.tileIndex());
+            boolean accepted = tableManager.handleDisplayAction(player, action);
             if (!accepted) {
-                this.plugin.messages().actionBar(player, "packet.cannot_click_tile");
+                if (action.actionType() == DisplayClickAction.ActionType.HAND_TILE) {
+                    this.plugin.messages().actionBar(player, "packet.cannot_click_tile");
+                } else {
+                    this.plugin.messages().actionBar(player, "command.join_failed");
+                }
             }
         } catch (ReflectiveOperationException exception) {
             throw new EventException(exception);
@@ -510,6 +553,33 @@ public final class CraftEngineService {
             );
             return null;
         }
+    }
+
+    private NamespacedKey resolveFurnitureDataKey(Plugin craftEngine) {
+        NamespacedKey cached = this.furnitureDataKey;
+        if (cached != null) {
+            return cached;
+        }
+
+        try {
+            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+            Class<?> managerClass = Class.forName(
+                "net.momirealms.craftengine.bukkit.entity.furniture.BukkitFurnitureManager",
+                true,
+                classLoader
+            );
+            Object key = managerClass.getField("FURNITURE_KEY").get(null);
+            if (key instanceof NamespacedKey namespacedKey) {
+                this.furnitureDataKey = namespacedKey;
+                return namespacedKey;
+            }
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine furniture key lookup failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+        }
+        return null;
     }
 
     private static boolean proxyEquals(Object proxy, Object[] args) {

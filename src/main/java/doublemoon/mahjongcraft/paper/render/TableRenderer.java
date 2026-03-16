@@ -47,6 +47,8 @@ public final class TableRenderer {
     private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
     private static final float HAND_INTERACTION_WIDTH = 0.14F;
     private static final float HAND_INTERACTION_HEIGHT = 0.18F;
+    private static final float SEAT_INTERACTION_WIDTH = 0.8F;
+    private static final float SEAT_INTERACTION_HEIGHT = 0.8F;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
     private static final int DEAD_WALL_SIZE = 14;
@@ -187,7 +189,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderSeatLabels(MahjongTableSession session, SeatWind wind) {
-        List<Entity> spawned = new ArrayList<>(2);
+        List<Entity> spawned = new ArrayList<>(3);
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
         Location handBase = handDirectionBase(center, wind);
@@ -205,6 +207,15 @@ public final class TableRenderer {
                 handBase.clone().add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                 Component.text(session.displayName(playerId, session.publicLocale())),
                 Color.fromARGB(100, 18, 18, 18)
+            ));
+        } else if (!session.isStarted()) {
+            spawned.add(DisplayEntities.spawnInteraction(
+                session.plugin(),
+                seatInteractionLocation(handBase),
+                SEAT_INTERACTION_WIDTH,
+                SEAT_INTERACTION_HEIGHT,
+                DisplayClickAction.joinSeat(session.id(), wind),
+                null
             ));
         }
         return spawned;
@@ -374,7 +385,7 @@ public final class TableRenderer {
             ));
             Entity clickHitbox = session.plugin().craftEngine().placeHandTileHitbox(
                 handInteractionLocation(tileLocation),
-                new DisplayClickAction(session.id(), playerId, tileIndex)
+                DisplayClickAction.handTile(session.id(), playerId, tileIndex)
             );
             if (clickHitbox != null) {
                 spawned.add(clickHitbox);
@@ -548,6 +559,10 @@ public final class TableRenderer {
 
     private static Location handInteractionLocation(Location tileLocation) {
         return tileLocation.clone().subtract(0.0D, UPRIGHT_TILE_Y, 0.0D);
+    }
+
+    private static Location seatInteractionLocation(Location handBase) {
+        return handBase.clone().add(0.0D, 0.18D + FLOATING_TEXT_Y_OFFSET, 0.0D);
     }
 
     private List<Entity> renderTableHitboxes(MahjongTableSession session, Location tableCenter) {

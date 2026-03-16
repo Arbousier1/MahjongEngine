@@ -1,6 +1,10 @@
 package doublemoon.mahjongcraft.paper.table;
 
 import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
+import doublemoon.mahjongcraft.paper.model.SeatWind;
+import doublemoon.mahjongcraft.paper.render.DisplayClickAction;
+import doublemoon.mahjongcraft.paper.render.DisplayClickAction.ActionType;
+import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -17,6 +21,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -90,6 +95,34 @@ public final class MahjongTableManager implements Listener {
         }
         this.playerTables.put(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " joined table " + session.id());
+        session.render();
+        return session;
+    }
+
+    public MahjongTableSession join(Player player, String tableId, SeatWind wind) {
+        MahjongTableSession session = this.tables.get(tableId.toUpperCase(Locale.ROOT));
+        if (session == null || wind == null) {
+            return null;
+        }
+
+        UUID playerId = player.getUniqueId();
+        MahjongTableSession currentSeat = this.tableFor(playerId);
+        if (currentSeat != null) {
+            return currentSeat == session && currentSeat.seatOf(playerId) == wind ? currentSeat : null;
+        }
+
+        MahjongTableSession currentView = this.sessionForViewer(playerId);
+        if (currentView != null && currentView != session) {
+            return null;
+        }
+
+        if (!session.addPlayer(player, wind)) {
+            return null;
+        }
+        this.spectatorTables.remove(playerId);
+        session.removeSpectator(playerId);
+        this.playerTables.put(playerId, session.id());
+        this.plugin.debug().log("table", player.getName() + " joined table " + session.id() + " at " + wind.name());
         session.render();
         return session;
     }
@@ -238,6 +271,24 @@ public final class MahjongTableManager implements Listener {
         return session.clickHandTile(ownerId, tileIndex);
     }
 
+    public boolean handleDisplayAction(Player player, DisplayClickAction action) {
+        if (player == null || action == null) {
+            return false;
+        }
+        if (action.actionType() == ActionType.HAND_TILE) {
+            return this.clickTile(player, action.tableId(), action.ownerId(), action.tileIndex());
+        }
+        if (action.actionType() == ActionType.JOIN_SEAT) {
+            MahjongTableSession session = this.join(player, action.tableId(), action.seatWind());
+            if (session == null) {
+                return false;
+            }
+            this.plugin.messages().send(player, "command.joined_table", this.plugin.messages().tag("table_id", session.id()));
+            return true;
+        }
+        return false;
+    }
+
     public void shutdown() {
         this.tableTickTask.cancel();
         this.persistTables();
@@ -259,6 +310,24 @@ public final class MahjongTableManager implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Bukkit.getScheduler().runTask(this.plugin, () -> this.plugin.craftEngine().syncTrackedEntitiesFor(event.getPlayer()));
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onDisplayInteract(PlayerInteractEntityEvent event) {
+        DisplayClickAction action = TableDisplayRegistry.get(event.getRightClicked().getEntityId());
+        if (action == null) {
+            return;
+        }
+
+        event.setCancelled(true);
+        boolean accepted = this.handleDisplayAction(event.getPlayer(), action);
+        if (!accepted) {
+            if (action.actionType() == ActionType.HAND_TILE) {
+                this.plugin.messages().actionBar(event.getPlayer(), "packet.cannot_click_tile");
+            } else {
+                this.plugin.messages().actionBar(event.getPlayer(), "command.join_failed");
+            }
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
