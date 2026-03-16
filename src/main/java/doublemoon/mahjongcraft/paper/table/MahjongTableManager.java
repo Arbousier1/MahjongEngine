@@ -284,7 +284,7 @@ public final class MahjongTableManager implements Listener {
             if (!session.isPersistentRoom()) {
                 continue;
             }
-            this.cleanupLoadedTableArtifactsIfNeeded(session);
+            this.refreshPersistentTableArtifacts(session);
             session.render();
         }
     }
@@ -498,10 +498,18 @@ public final class MahjongTableManager implements Listener {
         if (session == null || !this.pendingArtifactCleanupTableIds.remove(session.id())) {
             return;
         }
+        this.refreshPersistentTableArtifacts(session);
+        this.plugin.debug().log("table", "Deferred startup cleanup finished for persistent table " + session.id());
+    }
+
+    private void refreshPersistentTableArtifacts(MahjongTableSession session) {
+        if (session == null) {
+            return;
+        }
+        this.pendingArtifactCleanupTableIds.remove(session.id());
         Location center = session.center();
         session.clearDisplays();
         this.cleanupTableArtifacts(center);
-        this.plugin.debug().log("table", "Deferred startup cleanup finished for persistent table " + session.id());
     }
 
     private boolean affectsTableArea(Chunk chunk, MahjongTableSession session) {
