@@ -204,7 +204,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("              - item: mahjongpaper:table_visual_model")
         appendLine("                display-transform: none")
         appendLine("                billboard: fixed")
-        appendLine("                position: 0,0,0")
+        appendLine("                position: -1.46875,-1,-1.46875")
         appendLine("                translation: 0,0,0")
         appendLine("                shadow-radius: 0")
         appendLine("                shadow-strength: 0")

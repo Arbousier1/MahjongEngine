@@ -7,7 +7,6 @@ import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Color;
@@ -66,10 +65,10 @@ public final class TableRenderer {
         double borderSpanZ = topDepth + TABLE_BORDER_THICKNESS;
         double borderCenterOffsetX = topWidth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
         double borderCenterOffsetZ = topDepth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
-        Entity tableVisual = spawnTableVisual(session, tableCenter, borderSpanX, borderSpanZ);
+        Entity tableVisual = spawnTableVisual(session, tableCenter);
         if (tableVisual != null) {
             spawned.add(tableVisual);
-            spawned.addAll(this.renderTableHitboxes(session, center));
+            spawned.addAll(this.renderTableHitboxes(session, tableCenter));
             return spawned;
         }
 
@@ -129,8 +128,61 @@ public final class TableRenderer {
             (float) TABLE_BORDER_HEIGHT,
             (float) borderSpanZ
         ));
-        spawned.addAll(this.renderTableHitboxes(session, center));
+        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
         return spawned;
+    }
+
+    public TableDiagnostics inspectTable(MahjongTableSession session) {
+        Location center = displayCenter(session);
+        TableBounds bounds = tableBoundsFromTiles(center);
+        Location tableCenter = center.clone().set(bounds.centerX(), center.getY(), bounds.centerZ());
+        double borderSpanX = bounds.width() + TABLE_BORDER_THICKNESS;
+        double borderSpanZ = bounds.depth() + TABLE_BORDER_THICKNESS;
+        return new TableDiagnostics(
+            center,
+            tableCenter,
+            tableVisualAnchor(tableCenter),
+            borderSpanX,
+            borderSpanZ
+        );
+    }
+
+    public List<StickDiagnostics> inspectSticks(MahjongTableSession session) {
+        Location center = displayCenter(session);
+        List<StickDiagnostics> diagnostics = new ArrayList<>();
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = session.playerAt(wind);
+            if (playerId == null) {
+                continue;
+            }
+            List<ScoringStick> cornerSticks = session.cornerSticks(wind);
+            for (int i = 0; i < cornerSticks.size(); i++) {
+                boolean longOnX = cornerStickLongOnX(wind);
+                ScoringStick stick = cornerSticks.get(i);
+                diagnostics.add(new StickDiagnostics(
+                    wind,
+                    i,
+                    false,
+                    longOnX,
+                    stick,
+                    cornerStickCenter(center, wind, i),
+                    stickFurnitureId(longOnX, stick)
+                ));
+            }
+            if (session.isRiichi(playerId)) {
+                boolean longOnX = riichiStickLongOnX(wind);
+                diagnostics.add(new StickDiagnostics(
+                    wind,
+                    -1,
+                    true,
+                    longOnX,
+                    ScoringStick.P1000,
+                    riichiStickCenter(center, wind),
+                    stickFurnitureId(longOnX, ScoringStick.P1000)
+                ));
+            }
+        }
+        return List.copyOf(diagnostics);
     }
 
     public List<Entity> renderSeatLabels(MahjongTableSession session, SeatWind wind) {
@@ -497,17 +549,20 @@ public final class TableRenderer {
         return tileLocation.clone().subtract(0.0D, UPRIGHT_TILE_Y, 0.0D);
     }
 
-    private List<Entity> renderTableHitboxes(MahjongTableSession session, Location center) {
-        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(center.clone());
+    private List<Entity> renderTableHitboxes(MahjongTableSession session, Location tableCenter) {
+        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(tableCenter.clone());
         return furnitureHitbox == null ? List.of() : List.of(furnitureHitbox);
     }
 
-    private static Entity spawnTableVisual(MahjongTableSession session, Location tableCenter, double borderSpanX, double borderSpanZ) {
+    private static Entity spawnTableVisual(MahjongTableSession session, Location tableCenter) {
         if (session.plugin().craftEngine() == null) {
             return null;
         }
-        Location anchor = tableCenter.clone().add(-borderSpanX / 2.0D, -1.0D, -borderSpanZ / 2.0D);
-        return session.plugin().craftEngine().placeFurniture(anchor, TABLE_VISUAL_FURNITURE_ID);
+        return session.plugin().craftEngine().placeFurniture(tableVisualAnchor(tableCenter), TABLE_VISUAL_FURNITURE_ID);
+    }
+
+    private static Location tableVisualAnchor(Location tableCenter) {
+        return tableCenter.clone();
     }
 
     private static Entity spawnPublicTile(
@@ -517,12 +572,9 @@ public final class TableRenderer {
         MahjongTile tile,
         DisplayEntities.TileRenderPose pose
     ) {
-        Entity furniture = session.plugin().craftEngine() == null
-            ? null
-            : session.plugin().craftEngine().placeFurniture(withYaw(location, yaw), publicTileFurnitureId(tile, pose));
-        if (furniture != null) {
-            return furniture;
-        }
+        // Public tiles still use CraftEngine custom items, but render through ItemDisplay so
+        // they keep the exact sub-block positioning Mahjong tables need and don't introduce
+        // furniture-sized interaction volumes over the table surface.
         return DisplayEntities.spawnTileDisplay(
             session.plugin(),
             location,
@@ -532,22 +584,6 @@ public final class TableRenderer {
             null,
             true
         );
-    }
-
-    private static String publicTileFurnitureId(MahjongTile tile, DisplayEntities.TileRenderPose pose) {
-        return "mahjongpaper:" + switch (pose) {
-            case STANDING -> "tile_standing_";
-            case STANDING_FACE_DOWN -> "tile_standing_face_down_";
-            case FLAT_FACE_UP -> "tile_flat_face_up_";
-            case FLAT_FACE_DOWN -> "tile_flat_face_down_";
-        } + tile.name().toLowerCase(Locale.ROOT);
-    }
-
-    private static Location withYaw(Location location, float yaw) {
-        Location rotated = location.clone();
-        rotated.setYaw(yaw);
-        rotated.setPitch(0.0F);
-        return rotated;
     }
 
     private static Location centeredCuboid(Location center, double width, double height, double depth) {
@@ -934,6 +970,26 @@ public final class TableRenderer {
     }
 
     private record Offset(double x, double z) {
+    }
+
+    public record TableDiagnostics(
+        Location displayCenter,
+        Location tableCenter,
+        Location visualAnchor,
+        double borderSpanX,
+        double borderSpanZ
+    ) {
+    }
+
+    public record StickDiagnostics(
+        SeatWind wind,
+        int index,
+        boolean riichi,
+        boolean longOnX,
+        ScoringStick stick,
+        Location center,
+        String furnitureId
+    ) {
     }
 
     private record TableBounds(double centerX, double centerZ, double minX, double maxX, double minZ, double maxZ) {

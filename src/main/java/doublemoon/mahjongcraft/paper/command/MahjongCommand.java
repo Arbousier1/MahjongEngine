@@ -286,6 +286,14 @@ public final class MahjongCommand implements BasicCommand {
                 table.render();
                 this.messages.send(player, "command.rendered");
             }
+            case "inspect" -> {
+                MahjongTableSession table = requireViewedTable(player);
+                if (table == null) {
+                    return;
+                }
+                table.inspectRender(player);
+                this.messages.send(player, "command.inspect_sent");
+            }
             case "clear" -> {
                 MahjongTableSession table = requireTable(player);
                 if (table == null) {
@@ -304,7 +312,7 @@ public final class MahjongCommand implements BasicCommand {
         if (args.length == 1) {
             return matchPrefix(
                 args[0],
-                List.of("help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot", "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan", "skip", "kyuushu", "settlement", "render", "clear", "forceend", "deletetable")
+                List.of("help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot", "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan", "skip", "kyuushu", "settlement", "render", "inspect", "clear", "forceend", "deletetable")
             );
         }
         if (!(sender instanceof Player player)) {
@@ -397,6 +405,7 @@ public final class MahjongCommand implements BasicCommand {
             "command.help.kyuushu",
             "command.help.settlement",
             "command.help.render",
+            "command.help.inspect",
             "command.help.clear",
             "command.help.forceend",
             "command.help.deletetable"

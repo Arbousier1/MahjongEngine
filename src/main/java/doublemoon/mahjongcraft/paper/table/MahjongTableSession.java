@@ -34,8 +34,10 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -340,6 +342,31 @@ public final class MahjongTableSession {
         this.removeAllDisplays();
     }
 
+    public void inspectRender(Player viewer) {
+        if (viewer == null || !viewer.isOnline()) {
+            return;
+        }
+        TableRenderer.TableDiagnostics tableDiagnostics = this.renderer.inspectTable(this);
+        this.highlightTableDiagnostics(viewer, tableDiagnostics);
+        for (TableRenderer.StickDiagnostics stickDiagnostics : this.renderer.inspectSticks(this)) {
+            this.highlightStickDiagnostics(viewer, stickDiagnostics);
+        }
+        viewer.sendMessage(Component.text(
+            "Render inspect complete for table " + this.id
+                + " | center=" + this.formatLocation(tableDiagnostics.tableCenter())
+                + " | anchor=" + this.formatLocation(tableDiagnostics.visualAnchor())
+                + " | span=" + formatDecimal(tableDiagnostics.borderSpanX()) + "x" + formatDecimal(tableDiagnostics.borderSpanZ()),
+            NamedTextColor.GOLD
+        ));
+        this.plugin.debug().log(
+            "render",
+            "Inspect table=" + this.id
+                + " center=" + this.formatLocation(tableDiagnostics.tableCenter())
+                + " anchor=" + this.formatLocation(tableDiagnostics.visualAnchor())
+                + " span=" + formatDecimal(tableDiagnostics.borderSpanX()) + "x" + formatDecimal(tableDiagnostics.borderSpanZ())
+        );
+    }
+
     private void removeAllDisplays() {
         for (String regionKey : List.copyOf(this.regionDisplays.keySet())) {
             this.removeRegionDisplays(regionKey);
@@ -364,6 +391,81 @@ public final class MahjongTableSession {
             }
         }
         this.regionFingerprints.remove(regionKey);
+    }
+
+    private void highlightTableDiagnostics(Player viewer, TableRenderer.TableDiagnostics diagnostics) {
+        Location centerMarker = diagnostics.tableCenter().clone().add(0.0D, 1.02D, 0.0D);
+        Location anchorMarker = diagnostics.visualAnchor().clone().add(0.0D, 1.02D, 0.0D);
+        this.spawnMarker(viewer, centerMarker, Color.fromRGB(0, 255, 80), 18);
+        this.spawnMarker(viewer, anchorMarker, Color.fromRGB(255, 70, 70), 18);
+
+        double maxX = diagnostics.visualAnchor().getX() + diagnostics.borderSpanX();
+        double maxZ = diagnostics.visualAnchor().getZ() + diagnostics.borderSpanZ();
+        World world = diagnostics.visualAnchor().getWorld();
+        if (world == null) {
+            return;
+        }
+        this.spawnMarker(viewer, new Location(world, diagnostics.visualAnchor().getX(), centerMarker.getY(), diagnostics.visualAnchor().getZ()), Color.fromRGB(255, 180, 60), 10);
+        this.spawnMarker(viewer, new Location(world, maxX, centerMarker.getY(), diagnostics.visualAnchor().getZ()), Color.fromRGB(255, 180, 60), 10);
+        this.spawnMarker(viewer, new Location(world, diagnostics.visualAnchor().getX(), centerMarker.getY(), maxZ), Color.fromRGB(255, 180, 60), 10);
+        this.spawnMarker(viewer, new Location(world, maxX, centerMarker.getY(), maxZ), Color.fromRGB(255, 180, 60), 10);
+    }
+
+    private void highlightStickDiagnostics(Player viewer, TableRenderer.StickDiagnostics diagnostics) {
+        Color color = diagnostics.riichi() ? Color.fromRGB(255, 255, 255) : switch (diagnostics.stick()) {
+            case P100 -> Color.fromRGB(255, 70, 70);
+            case P5000 -> Color.fromRGB(255, 210, 60);
+            case P10000 -> Color.fromRGB(60, 220, 120);
+            default -> Color.fromRGB(240, 240, 240);
+        };
+        this.spawnMarker(viewer, diagnostics.center().clone().add(0.0D, 0.04D, 0.0D), color, 12);
+        for (double offset = -1.0D; offset <= 1.0D; offset += 0.25D) {
+            Location point = diagnostics.center().clone().add(
+                diagnostics.longOnX() ? 0.20D * offset : 0.0D,
+                0.04D,
+                diagnostics.longOnX() ? 0.0D : 0.20D * offset
+            );
+            this.spawnMarker(viewer, point, color, 4);
+        }
+        viewer.sendMessage(Component.text(
+            (diagnostics.riichi() ? "Riichi" : "Stick")
+                + " " + diagnostics.wind().name()
+                + (diagnostics.index() >= 0 ? "#" + diagnostics.index() : "")
+                + " -> " + diagnostics.furnitureId()
+                + " @ " + this.formatLocation(diagnostics.center())
+                + " axis=" + (diagnostics.longOnX() ? "X" : "Z"),
+            NamedTextColor.YELLOW
+        ));
+        this.plugin.debug().log(
+            "render",
+            "Inspect table=" + this.id
+                + " stick=" + diagnostics.furnitureId()
+                + " wind=" + diagnostics.wind().name()
+                + " riichi=" + diagnostics.riichi()
+                + " center=" + this.formatLocation(diagnostics.center())
+                + " axis=" + (diagnostics.longOnX() ? "X" : "Z")
+        );
+    }
+
+    private void spawnMarker(Player viewer, Location location, Color color, int count) {
+        viewer.spawnParticle(
+            Particle.DUST,
+            location,
+            count,
+            0.015D,
+            0.015D,
+            0.015D,
+            0.0D,
+            new Particle.DustOptions(color, 1.1F)
+        );
+    }
+
+    private String formatLocation(Location location) {
+        return formatDecimal(location.getX()) + "," + formatDecimal(location.getY()) + "," + formatDecimal(location.getZ());
+    }
+
+    private static String formatDecimal(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
     }
 
     public void shutdown() {
