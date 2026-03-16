@@ -8,6 +8,7 @@ import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -30,12 +31,15 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class MahjongTableManager implements Listener {
+    private static final long DUPLICATE_HAND_TILE_CLICK_WINDOW_NANOS = 40_000_000L;
+
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
     private final Map<String, MahjongTableSession> tables = new LinkedHashMap<>();
     private final Map<UUID, String> playerTables = new LinkedHashMap<>();
     private final Map<UUID, String> spectatorTables = new LinkedHashMap<>();
     private final Map<TableChunkKey, Set<String>> tablesByChunk = new LinkedHashMap<>();
+    private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new HashMap<>();
     private final BukkitTask tableTickTask;
 
     public MahjongTableManager(MahjongPaperPlugin plugin) {
@@ -279,8 +283,17 @@ public final class MahjongTableManager implements Listener {
         if (session == null || !session.contains(player.getUniqueId()) || !player.getUniqueId().equals(ownerId)) {
             return false;
         }
+        UUID playerId = player.getUniqueId();
+        if (this.isDuplicateHandTileClick(playerId, tableId, ownerId, tileIndex)) {
+            this.plugin.debug().log("table", player.getName() + " duplicate hand tile click ignored for tile index " + tileIndex + " on table " + tableId);
+            return true;
+        }
         this.plugin.debug().log("table", player.getName() + " clicked tile index " + tileIndex + " on table " + tableId);
-        return session.clickHandTile(ownerId, tileIndex);
+        boolean accepted = session.clickHandTile(ownerId, tileIndex);
+        if (accepted) {
+            this.rememberHandTileClick(playerId, tableId, ownerId, tileIndex);
+        }
+        return accepted;
     }
 
     public boolean handleDisplayAction(Player player, DisplayClickAction action) {
@@ -322,6 +335,7 @@ public final class MahjongTableManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
+        this.recentHandTileClicks.remove(playerId);
         this.leave(playerId);
     }
 
@@ -376,6 +390,18 @@ public final class MahjongTableManager implements Listener {
         }
     }
 
+    private boolean isDuplicateHandTileClick(UUID playerId, String tableId, UUID ownerId, int tileIndex) {
+        RecentHandTileClick recent = this.recentHandTileClicks.get(playerId);
+        if (recent == null || !recent.matches(tableId, ownerId, tileIndex)) {
+            return false;
+        }
+        return System.nanoTime() - recent.timestampNanos() <= DUPLICATE_HAND_TILE_CLICK_WINDOW_NANOS;
+    }
+
+    private void rememberHandTileClick(UUID playerId, String tableId, UUID ownerId, int tileIndex) {
+        this.recentHandTileClicks.put(playerId, new RecentHandTileClick(tableId, ownerId, tileIndex, System.nanoTime()));
+    }
+
     private String nextId() {
         String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         ThreadLocalRandom random = ThreadLocalRandom.current();
@@ -388,6 +414,14 @@ public final class MahjongTableManager implements Listener {
             id = builder.toString();
         } while (this.tables.containsKey(id));
         return id;
+    }
+
+    private record RecentHandTileClick(String tableId, UUID ownerId, int tileIndex, long timestampNanos) {
+        private boolean matches(String tableId, UUID ownerId, int tileIndex) {
+            return this.tileIndex == tileIndex
+                && this.tableId.equals(tableId)
+                && this.ownerId.equals(ownerId);
+        }
     }
 
     private MahjongTableSession resolveTable(String tableId) {
