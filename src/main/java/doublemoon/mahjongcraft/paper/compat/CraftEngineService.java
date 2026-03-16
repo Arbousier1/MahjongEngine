@@ -47,6 +47,7 @@ public final class CraftEngineService {
     private static final String CRAFT_ENGINE_PLUGIN_NAME = "CraftEngine";
     private static final String TABLE_HITBOX_ITEM_ID = "mahjongpaper:table_hitbox";
     private static final String HAND_TILE_HITBOX_ITEM_ID = "mahjongpaper:hand_tile_hitbox";
+    private static final String SEAT_HITBOX_ITEM_ID = "mahjongpaper:seat_hitbox";
     private static final String MAHJONGPAPER_FURNITURE_PREFIX = "mahjongpaper:";
 
     private final MahjongPaperPlugin plugin;
@@ -171,6 +172,14 @@ public final class CraftEngineService {
 
     public Entity placeHandTileHitbox(Location location, DisplayClickAction action) {
         Entity entity = this.placeFurniture(location, HAND_TILE_HITBOX_ITEM_ID);
+        if (entity != null && action != null) {
+            TableDisplayRegistry.register(entity.getEntityId(), action);
+        }
+        return entity;
+    }
+
+    public Entity placeSeatHitbox(Location location, DisplayClickAction action) {
+        Entity entity = this.placeFurniture(location, SEAT_HITBOX_ITEM_ID);
         if (entity != null && action != null) {
             TableDisplayRegistry.register(entity.getEntityId(), action);
         }
@@ -554,6 +563,28 @@ public final class CraftEngineService {
                 "CraftEngine culling reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
             );
             return null;
+        }
+    }
+
+    public boolean isFurnitureEntity(Entity entity) {
+        if (entity == null || this.furnitureReflectionUnavailable) {
+            return false;
+        }
+        Plugin craftEngine = this.craftEnginePlugin();
+        FurnitureBridge bridge = this.furnitureBridge(craftEngine);
+        if (bridge == null) {
+            return false;
+        }
+        try {
+            Object isFurniture = bridge.isFurnitureMethod().invoke(null, entity);
+            return isFurniture instanceof Boolean flag && flag;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.furnitureReflectionUnavailable = true;
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine furniture detection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+            return false;
         }
     }
 

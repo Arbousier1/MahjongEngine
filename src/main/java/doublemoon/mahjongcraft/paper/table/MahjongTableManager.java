@@ -359,6 +359,9 @@ public final class MahjongTableManager implements Listener {
         if (action == null) {
             return;
         }
+        if (this.plugin.craftEngine() != null && this.plugin.craftEngine().isFurnitureEntity(event.getRightClicked())) {
+            return;
+        }
 
         event.setCancelled(true);
         boolean accepted = this.handleDisplayAction(event.getPlayer(), action);

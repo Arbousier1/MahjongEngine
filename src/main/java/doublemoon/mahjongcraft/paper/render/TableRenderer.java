@@ -44,7 +44,6 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
     private static final float HAND_INTERACTION_WIDTH = 0.14F;
     private static final float HAND_INTERACTION_HEIGHT = 0.18F;
     private static final float SEAT_INTERACTION_WIDTH = 0.8F;
@@ -329,24 +328,40 @@ public final class TableRenderer {
                 Color.fromARGB(100, 18, 18, 18)
             ));
             if (!session.isStarted()) {
+                Entity seatHitbox = session.plugin().craftEngine().placeSeatHitbox(
+                    toLocation(session, plan.interactionLocation()),
+                    DisplayClickAction.toggleReady(session.id(), seat.wind())
+                );
+                if (seatHitbox != null) {
+                    spawned.add(seatHitbox);
+                } else {
+                    spawned.add(DisplayEntities.spawnInteraction(
+                        session.plugin(),
+                        toLocation(session, plan.interactionLocation()),
+                        SEAT_INTERACTION_WIDTH,
+                        SEAT_INTERACTION_HEIGHT,
+                        DisplayClickAction.toggleReady(session.id(), seat.wind()),
+                        null
+                    ));
+                }
+            }
+        } else if (!session.isStarted()) {
+            Entity seatHitbox = session.plugin().craftEngine().placeSeatHitbox(
+                toLocation(session, plan.interactionLocation()),
+                DisplayClickAction.joinSeat(session.id(), seat.wind())
+            );
+            if (seatHitbox != null) {
+                spawned.add(seatHitbox);
+            } else {
                 spawned.add(DisplayEntities.spawnInteraction(
                     session.plugin(),
                     toLocation(session, plan.interactionLocation()),
                     SEAT_INTERACTION_WIDTH,
                     SEAT_INTERACTION_HEIGHT,
-                    DisplayClickAction.toggleReady(session.id(), seat.wind()),
+                    DisplayClickAction.joinSeat(session.id(), seat.wind()),
                     null
                 ));
             }
-        } else if (!session.isStarted()) {
-            spawned.add(DisplayEntities.spawnInteraction(
-                session.plugin(),
-                toLocation(session, plan.interactionLocation()),
-                SEAT_INTERACTION_WIDTH,
-                SEAT_INTERACTION_HEIGHT,
-                DisplayClickAction.joinSeat(session.id(), seat.wind()),
-                null
-            ));
         }
         return spawned;
     }
@@ -507,139 +522,6 @@ public final class TableRenderer {
                     List.of(viewerId)
                 ));
             }
-        }
-        return spawned;
-    }
-
-    public List<Entity> renderHandPublic(MahjongTableSession session, SeatWind wind) {
-        Location center = displayCenter(session);
-        UUID playerId = session.playerAt(wind);
-        if (playerId == null) {
-            return List.of();
-        }
-
-        float yaw = seatYaw(wind);
-        List<MahjongTile> hand = session.hand(playerId);
-        List<UUID> othersOnly = session.viewerIdsExcluding(playerId);
-        List<Entity> spawned = new ArrayList<>(hand.size());
-        boolean concealHand = session.isStarted();
-
-        for (int i = 0; i < hand.size(); i++) {
-            spawned.add(DisplayEntities.spawnTileDisplay(
-                session.plugin(),
-                handTileLocation(session, wind, hand.size(), i, false),
-                yaw,
-                concealHand ? MahjongTile.UNKNOWN : hand.get(i),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                othersOnly
-            ));
-        }
-        return spawned;
-    }
-
-    public List<Entity> renderHandPrivate(MahjongTableSession session, SeatWind wind) {
-        Location center = displayCenter(session);
-        UUID playerId = session.playerAt(wind);
-        if (playerId == null) {
-            return List.of();
-        }
-
-        List<MahjongTile> hand = session.hand(playerId);
-        float yaw = seatYaw(wind);
-        List<UUID> ownerOnly = List.of(playerId);
-        int selectedTileIndex = session.selectedHandTileIndex(playerId);
-        List<Entity> spawned = new ArrayList<>(hand.size() * 2);
-        for (int tileIndex = 0; tileIndex < hand.size(); tileIndex++) {
-            Location tileLocation = handTileLocation(session, wind, hand.size(), tileIndex, tileIndex == selectedTileIndex);
-            spawned.add(DisplayEntities.spawnTileDisplay(
-                session.plugin(),
-                tileLocation,
-                yaw,
-                hand.get(tileIndex),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                ownerOnly
-            ));
-            Entity clickHitbox = session.plugin().craftEngine().placeHandTileHitbox(
-                handInteractionLocation(tileLocation),
-                DisplayClickAction.handTile(session.id(), playerId, tileIndex)
-            );
-            if (clickHitbox != null) {
-                spawned.add(clickHitbox);
-            }
-        }
-        return spawned;
-    }
-
-    private static Location handTileLocation(MahjongTableSession session, SeatWind wind, int handSize, int tileIndex, boolean selected) {
-        Location handBase = handDirectionBase(displayCenter(session), wind);
-        UUID playerId = session.playerAt(wind);
-        int meldCount = playerId == null ? 0 : session.fuuro(playerId).size();
-        double fuuroOffset = meldCount < 3 ? 0.0D : (meldCount - 2.0D) * TILE_WIDTH;
-        int stickCount = session.stickLayoutCount(wind);
-        double sticksOffset = stickCount < 3 ? 0.0D : (stickCount - 2.0D) * STICK_DEPTH;
-        double startingPos = (handSize * TILE_WIDTH + Math.max(0, handSize - 1) * TILE_PADDING) / 2.0D + fuuroOffset + sticksOffset;
-        double drawGap = tileIndex == handSize - 1 && handSize % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
-        double stackOffset = tileIndex * (TILE_WIDTH + TILE_PADDING) + drawGap;
-        double tileYOffset = selected ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
-        return switch (wind) {
-            case EAST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
-            case SOUTH -> handBase.clone().add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
-            case WEST -> handBase.clone().add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
-            case NORTH -> handBase.clone().add(startingPos - stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
-        };
-    }
-
-    public List<Entity> renderDiscards(MahjongTableSession session, SeatWind wind) {
-        Location center = displayCenter(session);
-        UUID playerId = session.playerAt(wind);
-        if (playerId == null) {
-            return List.of();
-        }
-
-        List<MahjongTile> discards = session.discards(playerId);
-        int riichiDiscardIndex = session.riichiDiscardIndex(playerId);
-        List<Entity> spawned = new ArrayList<>(discards.size());
-        Location start = discardStart(center, wind);
-        Location cursor = start;
-        boolean openDoorSeat = session.openDoorSeat() == wind;
-
-        for (int discardIndex = 0; discardIndex < discards.size(); discardIndex++) {
-            int lineCount = discardIndex / DISCARDS_PER_ROW;
-            int column = discardIndex % DISCARDS_PER_ROW;
-            boolean firstTileInRow = column == 0;
-            boolean riichiTile = discardIndex == riichiDiscardIndex;
-            boolean previousWasRiichi = discardIndex > 0 && discardIndex - 1 == riichiDiscardIndex;
-
-            if (lineCount > 0 && firstTileInRow && !(openDoorSeat && discardIndex >= DISCARDS_PER_ROW * 3)) {
-                cursor = start;
-                for (int i = 0; i < lineCount; i++) {
-                    cursor = add(cursor, lineOffset(wind));
-                }
-            }
-
-            if (firstTileInRow) {
-                if (riichiTile) {
-                    cursor = add(cursor, riichiTileOffset(wind));
-                    cursor = add(cursor, negate(tileOffset(wind)));
-                }
-            } else {
-                cursor = riichiTile || previousWasRiichi
-                    ? add(cursor, riichiTileOffset(wind))
-                    : add(cursor, tileOffset(wind));
-                cursor = add(cursor, smallGapOffset(wind));
-            }
-
-            spawned.add(spawnPublicTile(
-                session,
-                cursor.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
-                DiscardLayout.discardYaw(wind, riichiTile),
-                discards.get(discardIndex),
-                DisplayEntities.TileRenderPose.FLAT_FACE_UP
-            ));
         }
         return spawned;
     }
@@ -1067,18 +949,6 @@ public final class TableRenderer {
         };
     }
 
-    private static Location discardStart(Location center, SeatWind wind) {
-        double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
-        double paddingFromCenter = halfWidthOfSixTiles + TILE_HEIGHT / 2.0D + TILE_HEIGHT / 4.0D;
-        double basicOffset = halfWidthOfSixTiles - TILE_WIDTH / 2.0D;
-        return switch (wind) {
-            case EAST -> center.clone().add(paddingFromCenter, 0.0D, basicOffset);
-            case SOUTH -> center.clone().add(-basicOffset, 0.0D, paddingFromCenter);
-            case WEST -> center.clone().add(-paddingFromCenter, 0.0D, -basicOffset);
-            case NORTH -> center.clone().add(basicOffset, 0.0D, -paddingFromCenter);
-        };
-    }
-
     private static Location meldStart(Location center, SeatWind wind) {
         double halfHeight = TILE_HEIGHT / 2.0D;
         return switch (wind) {
@@ -1217,44 +1087,6 @@ public final class TableRenderer {
         };
     }
 
-    private static Offset tileOffset(SeatWind wind) {
-        return switch (wind) {
-            case EAST -> new Offset(0.0D, -TILE_WIDTH);
-            case SOUTH -> new Offset(TILE_WIDTH, 0.0D);
-            case WEST -> new Offset(0.0D, TILE_WIDTH);
-            case NORTH -> new Offset(-TILE_WIDTH, 0.0D);
-        };
-    }
-
-    private static Offset riichiTileOffset(SeatWind wind) {
-        double amount = (TILE_HEIGHT + TILE_WIDTH) / 2.0D;
-        return switch (wind) {
-            case EAST -> new Offset(0.0D, -amount);
-            case SOUTH -> new Offset(amount, 0.0D);
-            case WEST -> new Offset(0.0D, amount);
-            case NORTH -> new Offset(-amount, 0.0D);
-        };
-    }
-
-    private static Offset lineOffset(SeatWind wind) {
-        double amount = TILE_HEIGHT + TILE_PADDING;
-        return switch (wind) {
-            case EAST -> new Offset(amount, 0.0D);
-            case SOUTH -> new Offset(0.0D, amount);
-            case WEST -> new Offset(-amount, 0.0D);
-            case NORTH -> new Offset(0.0D, -amount);
-        };
-    }
-
-    private static Offset smallGapOffset(SeatWind wind) {
-        return switch (wind) {
-            case EAST -> new Offset(0.0D, -TILE_PADDING);
-            case SOUTH -> new Offset(TILE_PADDING, 0.0D);
-            case WEST -> new Offset(0.0D, TILE_PADDING);
-            case NORTH -> new Offset(-TILE_PADDING, 0.0D);
-        };
-    }
-
     private static Offset verticalTileOffset(SeatWind wind) {
         double amount = TILE_WIDTH + TILE_PADDING;
         return switch (wind) {
@@ -1318,10 +1150,6 @@ public final class TableRenderer {
 
     private static Offset multiply(Offset offset, double factor) {
         return new Offset(offset.x() * factor, offset.z() * factor);
-    }
-
-    private static Offset negate(Offset offset) {
-        return multiply(offset, -1.0D);
     }
 
     private static Color seatLabelColor(SeatWind wind, boolean active) {

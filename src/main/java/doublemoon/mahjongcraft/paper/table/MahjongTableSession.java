@@ -2236,8 +2236,6 @@ public final class MahjongTableSession {
             fingerprints.put(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(snapshot, seat));
             fingerprints.put(this.seatRegionKey("sticks", wind), this.stickFingerprint(snapshot, seat));
             fingerprints.put(this.seatRegionKey("hand-public", wind), this.handPublicFingerprint(snapshot, seat));
-            fingerprints.put(this.seatRegionKey("hand-private", wind), this.handPrivateFingerprint(seat));
-            fingerprints.put(this.seatRegionKey("discards", wind), this.discardFingerprint(seat));
             fingerprints.put(this.seatRegionKey("melds", wind), this.meldFingerprint(seat));
         }
         return Map.copyOf(fingerprints);
@@ -2315,34 +2313,6 @@ public final class MahjongTableSession {
         return builder.toString();
     }
 
-    private String handPrivateFingerprint(SeatRenderSnapshot seat) {
-        FingerprintBuilder builder = fingerprintBuilder(256)
-            .field("hand-private")
-            .field(seat.wind().name())
-            .field(Objects.toString(seat.playerId(), "empty"));
-        if (seat.playerId() == null) {
-            return builder.toString();
-        }
-        builder.field(seat.online())
-            .field(seat.stickLayoutCount())
-            .field(seat.selectedHandTileIndex());
-        seat.hand().forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
-    }
-
-    private String discardFingerprint(SeatRenderSnapshot seat) {
-        FingerprintBuilder builder = fingerprintBuilder(256)
-            .field("discards")
-            .field(seat.wind().name())
-            .field(Objects.toString(seat.playerId(), "empty"));
-        if (seat.playerId() == null) {
-            return builder.toString();
-        }
-        builder.field(seat.riichiDiscardIndex());
-        seat.discards().forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
-    }
-
     private String meldFingerprint(SeatRenderSnapshot seat) {
         FingerprintBuilder builder = fingerprintBuilder(256)
             .field("melds")
@@ -2370,23 +2340,6 @@ public final class MahjongTableSession {
         seat.scoringSticks().forEach(stick -> builder.field(stick.name()));
         seat.cornerSticks().forEach(stick -> builder.field(stick.name()));
         return builder.toString();
-    }
-
-    private void updateStaticRegions() {
-        this.updateRegion(REGION_TABLE, this.tableFingerprint(), () -> this.renderer.renderTableStructure(this));
-        this.updateRegion(REGION_WALL, this.wallFingerprint(), () -> this.renderer.renderWall(this));
-        this.updateRegion(REGION_DORA, this.doraFingerprint(), () -> this.renderer.renderDora(this));
-        this.updateRegion(REGION_CENTER, this.centerFingerprint(), () -> this.renderer.renderCenterLabel(this));
-    }
-
-    private void updateSeatRegion(SeatWind wind) {
-        this.updateRegion(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(wind), () -> this.renderer.renderSeatLabels(this, wind));
-        this.updateRegion(this.seatRegionKey("sticks", wind), this.stickFingerprint(wind), () -> this.renderer.renderSticks(this, wind));
-        this.updateRegion(this.seatRegionKey("hand-public", wind), this.handPublicFingerprint(wind), () -> this.renderer.renderHandPublic(this, wind));
-        this.clearRegion(this.seatRegionKey("hand-private", wind));
-        this.updateRegion(this.seatRegionKey("hand-private", wind), this.handPrivateFingerprint(wind), () -> this.renderer.renderHandPrivate(this, wind));
-        this.updateRegion(this.seatRegionKey("discards", wind), this.discardFingerprint(wind), () -> this.renderer.renderDiscards(this, wind));
-        this.updateRegion(this.seatRegionKey("melds", wind), this.meldFingerprint(wind), () -> this.renderer.renderMelds(this, wind));
     }
 
     private void updatePrivateHandRegions(SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
@@ -2457,13 +2410,6 @@ public final class MahjongTableSession {
             .field(placement.tile().name())
             .field(placement.pose().name())
             .toString();
-    }
-
-    private void clearLegacyHandPrivateTileRegions(SeatWind wind) {
-        for (int tileIndex = 0; tileIndex < MAX_HAND_TILE_REGIONS; tileIndex++) {
-            String regionKey = this.handPrivateRegionKey(wind, tileIndex);
-            this.clearRegion(regionKey);
-        }
     }
 
     private void updateRegion(String regionKey, String fingerprint, RegionRenderer renderer) {
@@ -2545,112 +2491,6 @@ public final class MahjongTableSession {
 
     private String discardRegionKey(SeatWind wind, int discardIndex) {
         return this.seatRegionKey("discards-" + discardIndex, wind);
-    }
-
-    private String wallFingerprint() {
-        if (this.engine == null) {
-            return "waiting";
-        }
-        return fingerprintBuilder(32)
-            .field("wall")
-            .field(this.engine.getStarted())
-            .field(this.engine.getGameFinished())
-            .field(this.engine.getWall().size())
-            .toString();
-    }
-
-    private String tableFingerprint() {
-        return fingerprintBuilder(48)
-            .field("table")
-            .field(this.center.getWorld().getName())
-            .field(this.center.getBlockX())
-            .field(this.center.getBlockY())
-            .field(this.center.getBlockZ())
-            .toString();
-    }
-
-    private String doraFingerprint() {
-        if (this.engine == null) {
-            return "dora:waiting";
-        }
-        FingerprintBuilder builder = fingerprintBuilder(64)
-            .field("dora")
-            .field(this.engine.getStarted())
-            .field(this.engine.getDoraIndicators().size());
-        this.engine.getDoraIndicators().forEach(tile -> builder.raw(tile.getMahjongTile().name()).raw(','));
-        return builder.toString();
-    }
-
-    private String centerFingerprint() {
-        FingerprintBuilder builder = fingerprintBuilder(128).field("center");
-        if (this.isStarted()) {
-            return builder.field("started")
-                .field(this.roundDisplay())
-                .field(this.remainingWall().size())
-                .field(this.dicePoints())
-                .field(this.dealerName())
-                .field(this.currentSeat().name())
-                .field(this.lastPublicDiscardPlayerId)
-                .field(this.lastPublicDiscardTile)
-                .toString();
-        }
-        return builder.field("waiting")
-            .field(this.waitingDisplaySummary())
-            .field(this.ruleDisplaySummary())
-            .toString();
-    }
-
-    private String seatLabelFingerprint(SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        return fingerprintBuilder(96)
-            .field("labels")
-            .field(wind.name())
-            .field(this.currentSeat().name())
-            .field(Objects.toString(playerId, "empty"))
-            .field(this.displayName(playerId))
-            .field(this.points(playerId))
-            .field(this.isRiichi(playerId))
-            .field(this.isReady(playerId))
-            .field(this.isQueuedToLeave(playerId))
-            .toString();
-    }
-
-    private String handPublicFingerprint(SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        FingerprintBuilder builder = this.seatFingerprintBuilder("hand-public", wind, playerId, 256);
-        if (playerId == null) {
-            return builder.toString();
-        }
-        builder.field(this.onlinePlayer(playerId) != null);
-        builder.field(this.viewerMembershipSignature(playerId));
-        builder.field(this.stickLayoutCount(wind));
-        this.hand(playerId).forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
-    }
-
-    private String handPrivateFingerprint(SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        FingerprintBuilder builder = this.seatFingerprintBuilder("hand-private", wind, playerId, 256);
-        if (playerId == null) {
-            return builder.toString();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand = this.hand(playerId);
-        builder.field(this.onlinePlayer(playerId) != null)
-            .field(this.stickLayoutCount(wind))
-            .field(this.selectedHandTileIndex(playerId));
-        hand.forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
-    }
-
-    private String discardFingerprint(SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        FingerprintBuilder builder = this.seatFingerprintBuilder("discards", wind, playerId, 256);
-        if (playerId == null) {
-            return builder.toString();
-        }
-        builder.field(this.riichiDiscardIndex(playerId));
-        this.discards(playerId).forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
     }
 
     private String meldFingerprint(SeatWind wind) {
