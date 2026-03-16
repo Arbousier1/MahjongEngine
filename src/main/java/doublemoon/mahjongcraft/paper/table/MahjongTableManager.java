@@ -40,6 +40,7 @@ public final class MahjongTableManager implements Listener {
     private static final long DUPLICATE_HAND_TILE_CLICK_WINDOW_NANOS = 40_000_000L;
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_XZ = 4.5D;
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_Y = 3.5D;
+    private static final double ADMIN_NEAREST_TABLE_RADIUS = 4.5D;
 
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
@@ -226,6 +227,32 @@ public final class MahjongTableManager implements Listener {
         return new ArrayList<>(this.tables.keySet());
     }
 
+    public MahjongTableSession nearestTable(Location location) {
+        return this.nearestTable(location, ADMIN_NEAREST_TABLE_RADIUS);
+    }
+
+    public MahjongTableSession nearestTable(Location location, double maxDistance) {
+        if (location == null || location.getWorld() == null || maxDistance < 0.0D) {
+            return null;
+        }
+        double maxDistanceSquared = maxDistance * maxDistance;
+        MahjongTableSession nearest = null;
+        double nearestDistanceSquared = Double.MAX_VALUE;
+        for (MahjongTableSession table : this.tables.values()) {
+            Location center = table.center();
+            if (center.getWorld() == null || !center.getWorld().equals(location.getWorld())) {
+                continue;
+            }
+            double distanceSquared = center.distanceSquared(location);
+            if (distanceSquared > maxDistanceSquared || distanceSquared >= nearestDistanceSquared) {
+                continue;
+            }
+            nearest = table;
+            nearestDistanceSquared = distanceSquared;
+        }
+        return nearest;
+    }
+
     public void loadPersistentTables() {
         for (PersistentTableStore.LoadedTable loadedTable : this.persistentTableStore.load()) {
             String id = loadedTable.id().toUpperCase(Locale.ROOT);
@@ -236,7 +263,7 @@ public final class MahjongTableManager implements Listener {
             MahjongTableSession session = new MahjongTableSession(this.plugin, id, loadedTable.center(), loadedTable.rule(), true);
             this.tables.put(id, session);
             this.indexTable(session);
-            this.cleanupLoadedPersistentTableArtifacts(session.center());
+            this.cleanupTableArtifacts(session.center());
             session.render();
             this.plugin.debug().log("table", "Loaded persistent table " + id);
         }
@@ -272,6 +299,7 @@ public final class MahjongTableManager implements Listener {
         if (session == null) {
             return null;
         }
+        Location center = session.center();
 
         for (UUID playerId : session.players()) {
             this.playerTables.remove(playerId);
@@ -281,6 +309,7 @@ public final class MahjongTableManager implements Listener {
         }
         this.unindexTable(session);
         session.shutdown();
+        this.cleanupTableArtifacts(center);
         this.tables.remove(session.id());
         this.persistTables();
         this.plugin.debug().log("table", "Deleted table " + session.id());
@@ -428,7 +457,7 @@ public final class MahjongTableManager implements Listener {
         return id;
     }
 
-    private void cleanupLoadedPersistentTableArtifacts(Location center) {
+    private void cleanupTableArtifacts(Location center) {
         World world = center == null ? null : center.getWorld();
         if (world == null) {
             return;
@@ -447,7 +476,7 @@ public final class MahjongTableManager implements Listener {
             removed++;
         }
         if (removed > 0) {
-            this.plugin.debug().log("table", "Cleaned " + removed + " persisted-table entities near " + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
+            this.plugin.debug().log("table", "Cleaned " + removed + " table entities near " + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
         }
     }
 
@@ -504,9 +533,11 @@ public final class MahjongTableManager implements Listener {
                 }
                 this.plugin.debug().log("table", "Kept empty persistent table " + session.id());
             } else {
+                Location center = session.center();
                 session.spectators().forEach(this.spectatorTables::remove);
                 this.unindexTable(session);
                 session.shutdown();
+                this.cleanupTableArtifacts(center);
                 this.tables.remove(session.id());
                 this.plugin.debug().log("table", "Removed empty table " + session.id());
             }

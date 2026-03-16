@@ -20,6 +20,7 @@ public final class TableRenderLayout {
     private static final double STICK_DEPTH = 0.0625D;
     private static final double STICK_Y_OFFSET = 0.5D;
     private static final int STICKS_PER_STACK = 5;
+    private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
@@ -46,8 +47,8 @@ public final class TableRenderLayout {
         TableBounds bounds = tableBoundsFromTiles(displayCenter);
         Point tableCenter = new Point(bounds.centerX(), displayCenter.y(), bounds.centerZ());
         Point tableVisualAnchor = new Point(tableCenter.x(), tableCenter.y() + TABLE_VISUAL_Y_OFFSET, tableCenter.z());
-        double borderSpanX = bounds.width() + TABLE_BORDER_THICKNESS;
-        double borderSpanZ = bounds.depth() + TABLE_BORDER_THICKNESS;
+        double borderSpanX = bounds.width() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS;
+        double borderSpanZ = bounds.depth() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS;
 
         EnumMap<SeatWind, SeatLayoutPlan> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {

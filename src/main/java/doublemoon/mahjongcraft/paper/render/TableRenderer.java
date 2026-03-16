@@ -31,7 +31,7 @@ public final class TableRenderer {
     private static final double TABLE_BOTTOM_HEIGHT = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_PILLAR_SIZE = 8.0D * ONE_SIXTEENTH;
     private static final double TABLE_PILLAR_HEIGHT = 12.0D * ONE_SIXTEENTH;
-    private static final double TABLE_TOP_SIZE = 46.0D * ONE_SIXTEENTH;
+    private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
     private static final double TABLE_TOP_THICKNESS = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_OUTWARD_OFFSET = ONE_SIXTEENTH;
@@ -63,8 +63,8 @@ public final class TableRenderer {
         TableBounds bounds = tableBoundsFromTiles(center);
         List<Entity> spawned = new ArrayList<>(16);
         Location tableCenter = center.clone().set(bounds.centerX(), center.getY(), bounds.centerZ());
-        double topWidth = bounds.width();
-        double topDepth = bounds.depth();
+        double topWidth = bounds.width() + TABLE_TOP_SIZE_EXPANSION;
+        double topDepth = bounds.depth() + TABLE_TOP_SIZE_EXPANSION;
         double borderSpanX = topWidth + TABLE_BORDER_THICKNESS;
         double borderSpanZ = topDepth + TABLE_BORDER_THICKNESS;
         double borderCenterOffsetX = topWidth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D + TABLE_BORDER_OUTWARD_OFFSET;
@@ -216,8 +216,8 @@ public final class TableRenderer {
         Location center = displayCenter(session);
         TableBounds bounds = tableBoundsFromTiles(center);
         Location tableCenter = center.clone().set(bounds.centerX(), center.getY(), bounds.centerZ());
-        double borderSpanX = bounds.width() + TABLE_BORDER_THICKNESS + TABLE_BORDER_OUTWARD_OFFSET * 2.0D;
-        double borderSpanZ = bounds.depth() + TABLE_BORDER_THICKNESS + TABLE_BORDER_OUTWARD_OFFSET * 2.0D;
+        double borderSpanX = bounds.width() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS + TABLE_BORDER_OUTWARD_OFFSET * 2.0D;
+        double borderSpanZ = bounds.depth() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS + TABLE_BORDER_OUTWARD_OFFSET * 2.0D;
         return new TableDiagnostics(
             center,
             tableCenter,

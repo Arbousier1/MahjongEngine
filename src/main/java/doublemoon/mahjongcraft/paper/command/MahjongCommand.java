@@ -459,6 +459,9 @@ public final class MahjongCommand implements BasicCommand {
 
         MahjongTableSession table = this.tableManager.sessionForViewer(player.getUniqueId());
         if (table == null) {
+            table = this.tableManager.nearestTable(player.getLocation());
+        }
+        if (table == null) {
             this.messages.send(player, "command.admin_table_required");
         }
         return table;
