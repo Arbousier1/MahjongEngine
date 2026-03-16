@@ -265,6 +265,7 @@ public final class MahjongTableManager implements Listener {
                 continue;
             }
             MahjongTableSession session = new MahjongTableSession(this.plugin, id, loadedTable.center(), loadedTable.rule(), true);
+            session.resetForServerStartup();
             this.tables.put(id, session);
             this.indexTable(session);
             this.pendingArtifactCleanupTableIds.add(id);
