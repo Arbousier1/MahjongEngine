@@ -34,7 +34,7 @@ public final class TableRenderer {
     private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
     private static final double TABLE_TOP_THICKNESS = 2.0D * ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
-    private static final double TABLE_BORDER_OUTWARD_OFFSET = ONE_SIXTEENTH;
+    private static final double TABLE_BORDER_OUTWARD_OFFSET = 0.0D;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
