@@ -14,7 +14,6 @@ import doublemoon.mahjongcraft.paper.riichi.model.TileInstance
 import doublemoon.mahjongcraft.paper.riichi.model.Wind
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
 import mahjongutils.models.isYaochu
-import java.util.Collections
 import kotlin.random.Random
 
 enum class ReactionType {
@@ -128,7 +127,6 @@ class RiichiRoundEngine(
 
     init {
         require(players.size == 4) { "Riichi round engine requires exactly 4 players" }
-        Collections.shuffle(seats)
         seats.forEach {
             it.points = rule.startingPoints
             it.basicThinkingTime = rule.thinkingTime.base

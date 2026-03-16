@@ -47,6 +47,20 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `engine preserves input seat order`() {
+        val players = listOf(
+            RiichiPlayerState("East", "east"),
+            RiichiPlayerState("South", "south"),
+            RiichiPlayerState("West", "west"),
+            RiichiPlayerState("North", "north")
+        )
+
+        val engine = RiichiRoundEngine(players, MahjongRule())
+
+        assertEquals(listOf("east", "south", "west", "north"), engine.seats.map { it.uuid })
+    }
+
+    @Test
     fun `normal draw with all players tenpai does not divide by zero`() {
         val players = listOf(
             RiichiPlayerState("A", "a"),
