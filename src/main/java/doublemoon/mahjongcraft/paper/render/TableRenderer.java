@@ -11,6 +11,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -892,7 +893,8 @@ public final class TableRenderer {
             true,
             null,
             CENTER_LAST_DISCARD_TILE_SCALE,
-            CENTER_LAST_DISCARD_TILE_GLOW
+            CENTER_LAST_DISCARD_TILE_GLOW,
+            Display.Billboard.CENTER
         );
     }
 
