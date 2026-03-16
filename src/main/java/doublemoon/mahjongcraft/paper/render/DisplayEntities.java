@@ -58,6 +58,37 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
+        return spawnTileDisplay(plugin, location, yaw, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        float scale,
+        Color glowColor
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, null);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard
+    ) {
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -74,14 +105,22 @@ public final class DisplayEntities {
             spawned.setViewRange(32.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
-            spawned.setDisplayWidth(0.4F);
-            spawned.setDisplayHeight(0.6F);
+            spawned.setDisplayWidth(0.4F * scale);
+            spawned.setDisplayHeight(0.6F * scale);
+            if (billboard != null) {
+                spawned.setBillboard(billboard);
+            }
             spawned.setRotation(yaw, 0.0F);
             spawned.setVisibleByDefault(!restrictedVisibility && visibleByDefault);
+            if (glowColor != null) {
+                spawned.setGlowing(true);
+                spawned.setGlowColorOverride(glowColor);
+                spawned.setBrightness(new Display.Brightness(15, 15));
+            }
             spawned.setTransformation(new Transformation(
                 new Vector3f(),
                 new AxisAngle4f((float) Math.toRadians(pose.xRotationDegrees()), 1.0F, 0.0F, 0.0F),
-                new Vector3f(TILE_SCALE, TILE_SCALE, TILE_SCALE),
+                new Vector3f(scale, scale, scale),
                 new AxisAngle4f()
             ));
             spawned.setItemStack(tileItem(plugin, tile, pose.faceDown()));

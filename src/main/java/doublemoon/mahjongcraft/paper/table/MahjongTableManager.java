@@ -48,6 +48,7 @@ public final class MahjongTableManager implements Listener {
     private final Map<UUID, String> playerTables = new LinkedHashMap<>();
     private final Map<UUID, String> spectatorTables = new LinkedHashMap<>();
     private final Map<TableChunkKey, Set<String>> tablesByChunk = new LinkedHashMap<>();
+    private final Set<String> pendingArtifactCleanupTableIds = new HashSet<>();
     private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new HashMap<>();
     private final BukkitTask tableTickTask;
 
@@ -114,6 +115,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addPlayer(player)) {
             return null;
         }
+        this.cleanupLoadedTableArtifactsIfNeeded(session);
         this.playerTables.put(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " joined table " + session.id());
         session.render();
@@ -141,6 +143,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addPlayer(player, wind)) {
             return null;
         }
+        this.cleanupLoadedTableArtifactsIfNeeded(session);
         this.spectatorTables.remove(playerId);
         session.removeSpectator(playerId);
         this.playerTables.put(playerId, session.id());
@@ -161,6 +164,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addSpectator(player)) {
             return null;
         }
+        this.cleanupLoadedTableArtifactsIfNeeded(session);
         this.spectatorTables.put(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " is spectating table " + session.id());
         session.render();
@@ -263,6 +267,7 @@ public final class MahjongTableManager implements Listener {
             MahjongTableSession session = new MahjongTableSession(this.plugin, id, loadedTable.center(), loadedTable.rule(), true);
             this.tables.put(id, session);
             this.indexTable(session);
+            this.pendingArtifactCleanupTableIds.add(id);
             this.cleanupTableArtifacts(session.center());
             session.render();
             this.plugin.debug().log("table", "Loaded persistent table " + id);
@@ -272,6 +277,16 @@ public final class MahjongTableManager implements Listener {
 
     public void persistTables() {
         this.persistentTableStore.save(this.tables.values());
+    }
+
+    public void refreshPersistentTablesAfterStartup() {
+        for (MahjongTableSession session : this.tables.values()) {
+            if (!session.isPersistentRoom()) {
+                continue;
+            }
+            this.refreshPersistentTableArtifacts(session);
+            session.render();
+        }
     }
 
     public MahjongTableSession.ReadyResult start(Player player) {
@@ -307,6 +322,7 @@ public final class MahjongTableManager implements Listener {
         for (UUID spectatorId : session.spectators()) {
             this.spectatorTables.remove(spectatorId);
         }
+        this.pendingArtifactCleanupTableIds.remove(session.id());
         this.unindexTable(session);
         session.shutdown();
         this.cleanupTableArtifacts(center);
@@ -368,6 +384,7 @@ public final class MahjongTableManager implements Listener {
         this.playerTables.clear();
         this.spectatorTables.clear();
         this.tablesByChunk.clear();
+        this.pendingArtifactCleanupTableIds.clear();
     }
 
     @EventHandler
@@ -405,15 +422,12 @@ public final class MahjongTableManager implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
-        Collection<String> tableIds = this.tablesByChunk.get(TableChunkKey.from(event.getChunk()));
-        if (tableIds == null || tableIds.isEmpty()) {
-            return;
-        }
-        for (String tableId : tableIds) {
-            MahjongTableSession session = this.tables.get(tableId);
-            if (session != null) {
-                session.render();
+        for (MahjongTableSession session : this.tables.values()) {
+            if (!this.affectsTableArea(event.getChunk(), session)) {
+                continue;
             }
+            this.cleanupLoadedTableArtifactsIfNeeded(session);
+            session.render();
         }
     }
 
@@ -478,6 +492,35 @@ public final class MahjongTableManager implements Listener {
         if (removed > 0) {
             this.plugin.debug().log("table", "Cleaned " + removed + " table entities near " + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
         }
+    }
+
+    private void cleanupLoadedTableArtifactsIfNeeded(MahjongTableSession session) {
+        if (session == null || !this.pendingArtifactCleanupTableIds.remove(session.id())) {
+            return;
+        }
+        this.refreshPersistentTableArtifacts(session);
+        this.plugin.debug().log("table", "Deferred startup cleanup finished for persistent table " + session.id());
+    }
+
+    private void refreshPersistentTableArtifacts(MahjongTableSession session) {
+        if (session == null) {
+            return;
+        }
+        this.pendingArtifactCleanupTableIds.remove(session.id());
+        Location center = session.center();
+        session.clearDisplays();
+        this.cleanupTableArtifacts(center);
+    }
+
+    private boolean affectsTableArea(Chunk chunk, MahjongTableSession session) {
+        Location center = session.center();
+        World world = center.getWorld();
+        if (world == null || !world.equals(chunk.getWorld())) {
+            return false;
+        }
+        int centerChunkX = center.getBlockX() >> 4;
+        int centerChunkZ = center.getBlockZ() >> 4;
+        return Math.abs(centerChunkX - chunk.getX()) <= 1 && Math.abs(centerChunkZ - chunk.getZ()) <= 1;
     }
 
     private record RecentHandTileClick(String tableId, UUID ownerId, int tileIndex, long timestampNanos) {

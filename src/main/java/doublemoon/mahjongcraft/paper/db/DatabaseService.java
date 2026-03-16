@@ -63,7 +63,7 @@ public final class DatabaseService {
 
     public void persistRoundResultAsync(MahjongTableSession session, RoundResolution resolution) {
         this.plugin.debug().log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
-        this.plugin.getServer().getScheduler().runTaskAsynchronously(this.plugin, () -> {
+        this.plugin.async().execute("persist-round-result", () -> {
             try {
                 this.persistRoundResult(session, resolution);
                 this.plugin.debug().log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());

@@ -356,47 +356,51 @@ public final class MahjongCommand implements BasicCommand {
     @Override
     public List<String> suggest(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
+        if (args.length == 0) {
+            return this.visibleRootCommands(sender);
+        }
+        String rootArg = args[0].toLowerCase(Locale.ROOT);
         if (args.length == 1) {
             return matchPrefix(args[0], this.visibleRootCommands(sender));
         }
         if (!(sender instanceof Player player)) {
             return List.of();
         }
-        if (this.isAdminRootCommand(args[0].toLowerCase(Locale.ROOT)) && !player.hasPermission("mahjongpaper.admin")) {
+        if (this.isAdminRootCommand(rootArg) && !player.hasPermission("mahjongpaper.admin")) {
             return List.of();
         }
 
-        if (args.length == 2 && ("forceend".equalsIgnoreCase(args[0]) || "deletetable".equalsIgnoreCase(args[0]))) {
+        if (args.length == 2 && ("forceend".equals(rootArg) || "deletetable".equals(rootArg))) {
             return matchPrefix(args[1], this.tableManager.tableIds());
         }
-        if (args.length == 2 && "botmatch".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "botmatch".equals(rootArg)) {
             return matchPrefix(args[1], BOTMATCH_PRESETS);
         }
-        if (args.length == 2 && "mode".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "mode".equals(rootArg)) {
             MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
             return table == null ? List.of() : matchPrefix(args[1], table.ruleValues("mode"));
         }
-        if (args.length == 2 && ("join".equalsIgnoreCase(args[0]) || "spectate".equalsIgnoreCase(args[0]))) {
+        if (args.length == 2 && ("join".equals(rootArg) || "spectate".equals(rootArg))) {
             return matchPrefix(args[1], this.tableManager.tableIds());
         }
-        if (args.length == 2 && "kan".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "kan".equals(rootArg)) {
             return matchPrefix(args[1], suggestedKanTiles(player));
         }
-        if (args.length == 2 && "rule".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "rule".equals(rootArg)) {
             MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
             return table == null ? List.of() : matchPrefix(args[1], table.ruleKeys());
         }
-        if (args.length == 3 && "rule".equalsIgnoreCase(args[0])) {
+        if (args.length == 3 && "rule".equals(rootArg)) {
             MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
             return table == null ? List.of() : matchPrefix(args[2], table.ruleValues(args[1]));
         }
-        if (args.length == 2 && "chii".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "chii".equals(rootArg)) {
             return matchPrefix(args[1], suggestedChiiFirstTiles(player));
         }
-        if (args.length == 3 && "chii".equalsIgnoreCase(args[0])) {
+        if (args.length == 3 && "chii".equals(rootArg)) {
             return matchPrefix(args[2], suggestedChiiSecondTiles(player, args[1]));
         }
-        if (args.length == 2 && "riichi".equalsIgnoreCase(args[0])) {
+        if (args.length == 2 && "riichi".equals(rootArg)) {
             return matchPrefix(args[1], suggestedRiichiIndices(player));
         }
         return List.of();
