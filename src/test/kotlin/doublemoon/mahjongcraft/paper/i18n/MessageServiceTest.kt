@@ -4,6 +4,7 @@ import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 class MessageServiceTest {
     private val messages = LocalizedMessages()
@@ -49,5 +50,37 @@ class MessageServiceTest {
         assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"))
         assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"))
         assertEquals("榮和", messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"))
+    }
+    @Test
+    fun `render caches static components without placeholders`() {
+        val first = messages.render(Locale.ENGLISH, "command.inspect_sent")
+        val second = messages.render(Locale.ENGLISH, "command.inspect_sent")
+
+        assertSame(first, second)
+    }
+
+    @Test
+    fun `render keeps placeholder substitutions dynamic`() {
+        val first = messages.plain(
+            Locale.ENGLISH,
+            "command.inspect_summary",
+            messages.tag("table_id", "A"),
+            messages.tag("center", "1"),
+            messages.tag("anchor", "2"),
+            messages.tag("span_x", "3"),
+            messages.tag("span_z", "4")
+        )
+        val second = messages.plain(
+            Locale.ENGLISH,
+            "command.inspect_summary",
+            messages.tag("table_id", "B"),
+            messages.tag("center", "5"),
+            messages.tag("anchor", "6"),
+            messages.tag("span_x", "7"),
+            messages.tag("span_z", "8")
+        )
+
+        assertContains(first, "A")
+        assertContains(second, "B")
     }
 }

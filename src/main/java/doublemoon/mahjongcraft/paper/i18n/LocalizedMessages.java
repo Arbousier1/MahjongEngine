@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,16 +29,27 @@ public final class LocalizedMessages {
     private static final String MESSAGE_INDEX_RESOURCE = "i18n/_index.json";
 
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
+    private final PlainTextComponentSerializer plainTextSerializer = PlainTextComponentSerializer.plainText();
     private final MessageBundleIndex index = MessageBundleIndex.load();
     private final Map<Locale, Map<String, String>> bundles = new ConcurrentHashMap<>();
+    private final Map<Locale, List<Locale>> localeChains = new ConcurrentHashMap<>();
+    private final Map<MessageCacheKey, String> templates = new ConcurrentHashMap<>();
+    private final Map<MessageCacheKey, Component> staticComponents = new ConcurrentHashMap<>();
+    private final Map<MessageCacheKey, String> staticPlainTexts = new ConcurrentHashMap<>();
 
     public Component render(Locale locale, String key, TagResolver... placeholders) {
+        if (placeholders.length == 0) {
+            return this.staticComponents.computeIfAbsent(this.cacheKey(locale, key), this::renderStaticComponent);
+        }
         String template = this.template(locale, key);
         return this.miniMessage.deserialize(template, TagResolver.resolver(placeholders));
     }
 
     public String plain(Locale locale, String key, TagResolver... placeholders) {
-        return PlainTextComponentSerializer.plainText().serialize(this.render(locale, key, placeholders));
+        if (placeholders.length == 0) {
+            return this.staticPlainTexts.computeIfAbsent(this.cacheKey(locale, key), this::renderStaticPlain);
+        }
+        return this.plainTextSerializer.serialize(this.render(locale, key, placeholders));
     }
 
     public boolean contains(Locale locale, String key) {
@@ -66,17 +78,38 @@ public final class LocalizedMessages {
     }
 
     private List<Locale> resolveLocales(Locale locale) {
-        return this.index.resolveChain(locale == null ? this.index.defaultLocale() : locale);
+        Locale safeLocale = this.safeLocale(locale);
+        return this.localeChains.computeIfAbsent(safeLocale, this.index::resolveChain);
     }
 
     private String template(Locale locale, String key) {
-        for (Locale candidate : this.resolveLocales(locale)) {
-            String template = this.bundle(candidate).get(key);
+        return this.templates.computeIfAbsent(this.cacheKey(locale, key), this::resolveTemplate);
+    }
+
+    private String resolveTemplate(MessageCacheKey cacheKey) {
+        for (Locale candidate : this.resolveLocales(cacheKey.locale())) {
+            String template = this.bundle(candidate).get(cacheKey.key());
             if (template != null) {
                 return template;
             }
         }
-        throw new IllegalArgumentException("Missing message key: " + key);
+        throw new IllegalArgumentException("Missing message key: " + cacheKey.key());
+    }
+
+    private Component renderStaticComponent(MessageCacheKey cacheKey) {
+        return this.miniMessage.deserialize(this.template(cacheKey.locale(), cacheKey.key()));
+    }
+
+    private String renderStaticPlain(MessageCacheKey cacheKey) {
+        return this.plainTextSerializer.serialize(this.renderStaticComponent(cacheKey));
+    }
+
+    private MessageCacheKey cacheKey(Locale locale, String key) {
+        return new MessageCacheKey(this.safeLocale(locale), key);
+    }
+
+    private Locale safeLocale(Locale locale) {
+        return locale == null ? this.index.defaultLocale() : locale;
     }
 
     private Map<String, String> bundle(Locale locale) {
@@ -237,6 +270,13 @@ public final class LocalizedMessages {
 
         private String safeLanguage(Locale locale) {
             return locale.getLanguage() == null ? "" : locale.getLanguage();
+        }
+    }
+
+    private record MessageCacheKey(Locale locale, String key) {
+        private MessageCacheKey {
+            locale = Objects.requireNonNull(locale, "locale");
+            key = Objects.requireNonNull(key, "key");
         }
     }
 }
