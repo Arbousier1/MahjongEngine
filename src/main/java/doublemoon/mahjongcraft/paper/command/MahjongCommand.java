@@ -23,6 +23,9 @@ import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 
 public final class MahjongCommand implements BasicCommand {
+    private static final Set<String> ADMIN_ROOT_COMMANDS = Set.of(
+        "create", "botmatch", "list", "render", "inspect", "clear", "forceend", "deletetable"
+    );
     private static final List<String> ROOT_COMMANDS = List.of(
         "help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot",
         "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan",
@@ -59,6 +62,16 @@ public final class MahjongCommand implements BasicCommand {
         "command.help.forceend",
         "command.help.deletetable"
     };
+    private static final Set<String> ADMIN_HELP_KEYS = Set.of(
+        "command.help.create",
+        "command.help.botmatch",
+        "command.help.list",
+        "command.help.render",
+        "command.help.inspect",
+        "command.help.clear",
+        "command.help.forceend",
+        "command.help.deletetable"
+    );
     private final MahjongPaperPlugin plugin;
     private final MessageService messages;
     private final MahjongTableManager tableManager;
@@ -86,6 +99,9 @@ public final class MahjongCommand implements BasicCommand {
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (this.isAdminRootCommand(sub) && !this.requireAdmin(player)) {
+            return;
+        }
         this.plugin.debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
         switch (sub) {
             case "help" -> this.sendHelp(player);
@@ -109,9 +125,6 @@ public final class MahjongCommand implements BasicCommand {
                 );
             }
             case "forceend" -> {
-                if (!this.requireAdmin(player)) {
-                    return;
-                }
                 MahjongTableSession target = this.resolveAdminTable(player, args);
                 if (target == null) {
                     return;
@@ -120,9 +133,6 @@ public final class MahjongCommand implements BasicCommand {
                 this.messages.send(player, "command.forceend_success", this.messages.tag("table_id", target.id()));
             }
             case "deletetable" -> {
-                if (!this.requireAdmin(player)) {
-                    return;
-                }
                 MahjongTableSession target = this.resolveAdminTable(player, args);
                 if (target == null) {
                     return;
@@ -347,9 +357,12 @@ public final class MahjongCommand implements BasicCommand {
     public List<String> suggest(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
         if (args.length == 1) {
-            return matchPrefix(args[0], ROOT_COMMANDS);
+            return matchPrefix(args[0], this.visibleRootCommands(sender));
         }
         if (!(sender instanceof Player player)) {
+            return List.of();
+        }
+        if (this.isAdminRootCommand(args[0].toLowerCase(Locale.ROOT)) && !player.hasPermission("mahjongpaper.admin")) {
             return List.of();
         }
 
@@ -411,6 +424,9 @@ public final class MahjongCommand implements BasicCommand {
         Locale locale = this.messages.resolveLocale(player);
         this.messages.send(player, "command.usage");
         for (String key : HELP_KEYS) {
+            if (ADMIN_HELP_KEYS.contains(key) && !player.hasPermission("mahjongpaper.admin")) {
+                continue;
+            }
             player.sendMessage(this.messages.render(locale, key));
         }
     }
@@ -444,6 +460,19 @@ public final class MahjongCommand implements BasicCommand {
         }
         this.messages.send(player, "command.admin_required");
         return false;
+    }
+
+    private boolean isAdminRootCommand(String subcommand) {
+        return ADMIN_ROOT_COMMANDS.contains(subcommand);
+    }
+
+    private List<String> visibleRootCommands(CommandSender sender) {
+        if (sender.hasPermission("mahjongpaper.admin")) {
+            return ROOT_COMMANDS;
+        }
+        return ROOT_COMMANDS.stream()
+            .filter(command -> !this.isAdminRootCommand(command))
+            .toList();
     }
 
     private MahjongTableSession resolveAdminTable(Player player, String[] args) {
