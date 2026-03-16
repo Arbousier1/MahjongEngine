@@ -6,6 +6,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.MeldView;
 import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
+import doublemoon.mahjongcraft.paper.render.TableRenderLayout;
 import doublemoon.mahjongcraft.paper.render.TableRenderer;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
@@ -19,6 +20,7 @@ import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -81,6 +83,10 @@ public final class MahjongTableSession {
     private long nextRoundDeadlineMillis;
     private int nextBotNumber = 1;
     private BukkitTask botTask;
+    private long renderRequestVersion;
+    private long renderCancellationNonce;
+    private boolean renderPrecomputeRunning;
+    private RenderSnapshot pendingRenderSnapshot;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
         this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
@@ -441,11 +447,7 @@ public final class MahjongTableSession {
     public void render() {
         this.cancelBotTask();
         this.pruneSelectedHandTiles();
-        this.updateStaticRegions();
-        for (SeatWind wind : SeatWind.values()) {
-            this.updateSeatRegion(wind);
-        }
-        this.updateViewerOverlayRegions();
+        this.scheduleAsyncRenderPrecompute();
         this.syncPlayerFeedback();
         this.syncHud();
         this.playStateSounds();
@@ -453,8 +455,84 @@ public final class MahjongTableSession {
     }
 
     public void clearDisplays() {
+        this.invalidatePendingRenderPrecompute();
         this.regionFingerprints.clear();
         this.removeAllDisplays();
+    }
+
+    private void scheduleAsyncRenderPrecompute() {
+        RenderSnapshot snapshot = this.captureRenderSnapshot(++this.renderRequestVersion);
+        this.pendingRenderSnapshot = snapshot;
+        if (this.renderPrecomputeRunning) {
+            return;
+        }
+        this.startAsyncRenderPrecompute(snapshot);
+    }
+
+    private void startAsyncRenderPrecompute(RenderSnapshot snapshot) {
+        this.renderPrecomputeRunning = true;
+        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
+            RenderPrecomputeResult result = new RenderPrecomputeResult(
+                snapshot,
+                this.precomputeRegionFingerprints(snapshot),
+                TableRenderLayout.precompute(snapshot)
+            );
+            Bukkit.getScheduler().runTask(this.plugin, () -> this.finishAsyncRenderPrecompute(result));
+        });
+    }
+
+    private void finishAsyncRenderPrecompute(RenderPrecomputeResult result) {
+        this.renderPrecomputeRunning = false;
+        if (result.snapshot().cancellationNonce() != this.renderCancellationNonce) {
+            this.startNextPendingRenderIfNeeded(result.snapshot().version());
+            return;
+        }
+
+        RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
+        if (latestSnapshot != null && latestSnapshot.version() > result.snapshot().version()) {
+            this.startNextPendingRenderIfNeeded(result.snapshot().version());
+            return;
+        }
+
+        this.applyRenderPrecompute(result);
+        this.startNextPendingRenderIfNeeded(result.snapshot().version());
+    }
+
+    private void startNextPendingRenderIfNeeded(long completedVersion) {
+        RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
+        if (latestSnapshot == null || latestSnapshot.version() <= completedVersion) {
+            return;
+        }
+        this.startAsyncRenderPrecompute(latestSnapshot);
+    }
+
+    private void applyRenderPrecompute(RenderPrecomputeResult result) {
+        RenderSnapshot snapshot = result.snapshot();
+        TableRenderLayout.LayoutPlan plan = result.layout();
+        Map<String, String> fingerprints = result.regionFingerprints();
+
+        this.updateRegion(REGION_TABLE, fingerprints.get(REGION_TABLE), () -> this.renderer.renderTableStructure(this, plan));
+        this.updateRegion(REGION_WALL, fingerprints.get(REGION_WALL), () -> this.renderer.renderWall(this, plan));
+        this.updateRegion(REGION_DORA, fingerprints.get(REGION_DORA), () -> this.renderer.renderDora(this, plan));
+        this.updateRegion(REGION_CENTER, fingerprints.get(REGION_CENTER), () -> this.renderer.renderCenterLabel(this, snapshot, plan));
+        for (SeatWind wind : SeatWind.values()) {
+            SeatRenderSnapshot seat = snapshot.seat(wind);
+            TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
+            this.updateRegion(this.seatRegionKey("labels", wind), fingerprints.get(this.seatRegionKey("labels", wind)), () -> this.renderer.renderSeatLabels(this, seat, seatPlan));
+            this.updateRegion(this.seatRegionKey("sticks", wind), fingerprints.get(this.seatRegionKey("sticks", wind)), () -> this.renderer.renderSticks(this, seat, seatPlan));
+            this.updateRegion(this.seatRegionKey("hand-public", wind), fingerprints.get(this.seatRegionKey("hand-public", wind)), () -> this.renderer.renderHandPublic(this, snapshot, seat, seatPlan));
+            this.clearLegacyHandPrivateTileRegions(wind);
+            this.updateRegion(this.seatRegionKey("hand-private", wind), fingerprints.get(this.seatRegionKey("hand-private", wind)), () -> this.renderer.renderHandPrivate(this, seat, seatPlan));
+            this.updateRegion(this.seatRegionKey("discards", wind), fingerprints.get(this.seatRegionKey("discards", wind)), () -> this.renderer.renderDiscards(this, seat, seatPlan));
+            this.updateRegion(this.seatRegionKey("melds", wind), fingerprints.get(this.seatRegionKey("melds", wind)), () -> this.renderer.renderMelds(this, seat, seatPlan));
+        }
+        this.updateViewerOverlayRegions();
+    }
+
+    private void invalidatePendingRenderPrecompute() {
+        this.renderCancellationNonce++;
+        this.pendingRenderSnapshot = null;
+        this.renderPrecomputeRunning = false;
     }
 
     public void inspectRender(Player viewer) {
@@ -592,6 +670,7 @@ public final class MahjongTableSession {
     public void shutdown() {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
+        this.invalidatePendingRenderPrecompute();
         this.removeAllDisplays();
         this.feedbackState.clear();
         this.selectedHandTileIndices.clear();
@@ -612,6 +691,7 @@ public final class MahjongTableSession {
     public void forceEndMatch() {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
+        this.invalidatePendingRenderPrecompute();
         this.feedbackState.clear();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
@@ -1881,6 +1961,207 @@ public final class MahjongTableSession {
         return Math.max(0L, (long) Math.ceil((this.nextRoundDeadlineMillis - System.currentTimeMillis()) / 1000.0D));
     }
 
+    private RenderSnapshot captureRenderSnapshot(long version) {
+        Location tableCenter = this.center();
+        EnumMap<SeatWind, SeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = this.playerAt(wind);
+            seats.put(wind, new SeatRenderSnapshot(
+                wind,
+                playerId,
+                this.displayName(playerId),
+                this.publicSeatStatus(wind),
+                this.points(playerId),
+                this.isRiichi(playerId),
+                this.isReady(playerId),
+                this.isQueuedToLeave(playerId),
+                playerId != null && this.onlinePlayer(playerId) != null,
+                playerId == null ? "" : this.viewerMembershipSignature(playerId),
+                playerId == null ? -1 : this.selectedHandTileIndex(playerId),
+                playerId == null ? -1 : this.riichiDiscardIndex(playerId),
+                this.stickLayoutCount(wind),
+                playerId == null ? List.of() : this.viewerIdsExcluding(playerId),
+                playerId == null ? List.of() : this.hand(playerId),
+                playerId == null ? List.of() : this.discards(playerId),
+                playerId == null ? List.of() : this.fuuro(playerId),
+                playerId == null ? List.of() : this.scoringSticks(playerId),
+                this.cornerSticks(wind)
+            ));
+        }
+        return new RenderSnapshot(
+            version,
+            this.renderCancellationNonce,
+            Objects.toString(tableCenter.getWorld() == null ? null : tableCenter.getWorld().getName(), ""),
+            tableCenter.getX(),
+            tableCenter.getY(),
+            tableCenter.getZ(),
+            this.isStarted(),
+            this.engine != null && this.engine.getGameFinished(),
+            this.remainingWall().size(),
+            this.kanCount(),
+            this.dicePoints(),
+            this.roundIndex(),
+            this.honbaCount(),
+            this.dealerSeat(),
+            this.currentSeat(),
+            this.openDoorSeat(),
+            this.waitingDisplaySummary(),
+            this.ruleDisplaySummary(),
+            this.publicCenterText(),
+            this.lastPublicDiscardPlayerId,
+            this.lastPublicDiscardTile,
+            List.copyOf(this.doraIndicators()),
+            seats
+        );
+    }
+
+    private Map<String, String> precomputeRegionFingerprints(RenderSnapshot snapshot) {
+        Map<String, String> fingerprints = new HashMap<>();
+        fingerprints.put(REGION_TABLE, this.tableFingerprint(snapshot));
+        fingerprints.put(REGION_WALL, this.wallFingerprint(snapshot));
+        fingerprints.put(REGION_DORA, this.doraFingerprint(snapshot));
+        fingerprints.put(REGION_CENTER, this.centerFingerprint(snapshot));
+        for (SeatWind wind : SeatWind.values()) {
+            SeatRenderSnapshot seat = snapshot.seat(wind);
+            fingerprints.put(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(snapshot, seat));
+            fingerprints.put(this.seatRegionKey("sticks", wind), this.stickFingerprint(snapshot, seat));
+            fingerprints.put(this.seatRegionKey("hand-public", wind), this.handPublicFingerprint(snapshot, seat));
+            fingerprints.put(this.seatRegionKey("hand-private", wind), this.handPrivateFingerprint(seat));
+            fingerprints.put(this.seatRegionKey("discards", wind), this.discardFingerprint(seat));
+            fingerprints.put(this.seatRegionKey("melds", wind), this.meldFingerprint(seat));
+        }
+        return Map.copyOf(fingerprints);
+    }
+
+    private String wallFingerprint(RenderSnapshot snapshot) {
+        if (!snapshot.started()) {
+            return "waiting";
+        }
+        return fingerprintBuilder(32)
+            .field("wall")
+            .field(snapshot.started())
+            .field(snapshot.gameFinished())
+            .field(snapshot.remainingWallCount())
+            .toString();
+    }
+
+    private String tableFingerprint(RenderSnapshot snapshot) {
+        return fingerprintBuilder(48)
+            .field("table")
+            .field(snapshot.worldName())
+            .field((int) Math.floor(snapshot.centerX()))
+            .field((int) Math.floor(snapshot.centerY()))
+            .field((int) Math.floor(snapshot.centerZ()))
+            .toString();
+    }
+
+    private String doraFingerprint(RenderSnapshot snapshot) {
+        if (!snapshot.started()) {
+            return "dora:waiting";
+        }
+        FingerprintBuilder builder = fingerprintBuilder(64)
+            .field("dora")
+            .field(snapshot.started())
+            .field(snapshot.doraIndicators().size());
+        snapshot.doraIndicators().forEach(tile -> builder.raw(tile.name()).raw(','));
+        return builder.toString();
+    }
+
+    private String centerFingerprint(RenderSnapshot snapshot) {
+        return fingerprintBuilder(192)
+            .field("center")
+            .field(snapshot.started() ? "started" : "waiting")
+            .field(snapshot.publicCenterText())
+            .toString();
+    }
+
+    private String seatLabelFingerprint(RenderSnapshot snapshot, SeatRenderSnapshot seat) {
+        return fingerprintBuilder(128)
+            .field("labels")
+            .field(seat.wind().name())
+            .field(snapshot.currentSeat().name())
+            .field(Objects.toString(seat.playerId(), "empty"))
+            .field(seat.displayName())
+            .field(seat.publicSeatStatus())
+            .field(seat.riichi())
+            .field(seat.ready())
+            .field(seat.queuedToLeave())
+            .toString();
+    }
+
+    private String handPublicFingerprint(RenderSnapshot snapshot, SeatRenderSnapshot seat) {
+        FingerprintBuilder builder = fingerprintBuilder(256)
+            .field("hand-public")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"));
+        if (seat.playerId() == null) {
+            return builder.toString();
+        }
+        builder.field(snapshot.started())
+            .field(seat.online())
+            .field(seat.viewerMembershipSignature())
+            .field(seat.stickLayoutCount());
+        seat.hand().forEach(tile -> builder.field(tile.name()));
+        return builder.toString();
+    }
+
+    private String handPrivateFingerprint(SeatRenderSnapshot seat) {
+        FingerprintBuilder builder = fingerprintBuilder(256)
+            .field("hand-private")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"));
+        if (seat.playerId() == null) {
+            return builder.toString();
+        }
+        builder.field(seat.online())
+            .field(seat.stickLayoutCount())
+            .field(seat.selectedHandTileIndex());
+        seat.hand().forEach(tile -> builder.field(tile.name()));
+        return builder.toString();
+    }
+
+    private String discardFingerprint(SeatRenderSnapshot seat) {
+        FingerprintBuilder builder = fingerprintBuilder(256)
+            .field("discards")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"));
+        if (seat.playerId() == null) {
+            return builder.toString();
+        }
+        builder.field(seat.riichiDiscardIndex());
+        seat.discards().forEach(tile -> builder.field(tile.name()));
+        return builder.toString();
+    }
+
+    private String meldFingerprint(SeatRenderSnapshot seat) {
+        FingerprintBuilder builder = fingerprintBuilder(256)
+            .field("melds")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"));
+        if (seat.playerId() == null) {
+            return builder.toString();
+        }
+        builder.field(seat.stickLayoutCount());
+        seat.melds().forEach(meld -> this.appendMeldFingerprint(builder, meld));
+        return builder.toString();
+    }
+
+    private String stickFingerprint(RenderSnapshot snapshot, SeatRenderSnapshot seat) {
+        FingerprintBuilder builder = fingerprintBuilder(128)
+            .field("sticks")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"))
+            .field(snapshot.honbaCount())
+            .field(snapshot.dealerSeat().name());
+        if (seat.playerId() == null) {
+            return builder.toString();
+        }
+        builder.field(seat.riichi());
+        seat.scoringSticks().forEach(stick -> builder.field(stick.name()));
+        seat.cornerSticks().forEach(stick -> builder.field(stick.name()));
+        return builder.toString();
+    }
+
     private void updateStaticRegions() {
         this.updateRegion(REGION_TABLE, this.tableFingerprint(), () -> this.renderer.renderTableStructure(this));
         this.updateRegion(REGION_WALL, this.wallFingerprint(), () -> this.renderer.renderWall(this));
@@ -2153,6 +2434,66 @@ public final class MahjongTableSession {
     @FunctionalInterface
     private interface RegionRenderer {
         List<Entity> render();
+    }
+
+    public record RenderSnapshot(
+        long version,
+        long cancellationNonce,
+        String worldName,
+        double centerX,
+        double centerY,
+        double centerZ,
+        boolean started,
+        boolean gameFinished,
+        int remainingWallCount,
+        int kanCount,
+        int dicePoints,
+        int roundIndex,
+        int honbaCount,
+        SeatWind dealerSeat,
+        SeatWind currentSeat,
+        SeatWind openDoorSeat,
+        String waitingDisplaySummary,
+        String ruleDisplaySummary,
+        String publicCenterText,
+        UUID lastPublicDiscardPlayerId,
+        doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile,
+        List<doublemoon.mahjongcraft.paper.model.MahjongTile> doraIndicators,
+        EnumMap<SeatWind, SeatRenderSnapshot> seats
+    ) {
+        public SeatRenderSnapshot seat(SeatWind wind) {
+            return this.seats.get(wind);
+        }
+    }
+
+    public record SeatRenderSnapshot(
+        SeatWind wind,
+        UUID playerId,
+        String displayName,
+        String publicSeatStatus,
+        int points,
+        boolean riichi,
+        boolean ready,
+        boolean queuedToLeave,
+        boolean online,
+        String viewerMembershipSignature,
+        int selectedHandTileIndex,
+        int riichiDiscardIndex,
+        int stickLayoutCount,
+        List<UUID> viewerIdsExcluding,
+        List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand,
+        List<doublemoon.mahjongcraft.paper.model.MahjongTile> discards,
+        List<MeldView> melds,
+        List<ScoringStick> scoringSticks,
+        List<ScoringStick> cornerSticks
+    ) {
+    }
+
+    private record RenderPrecomputeResult(
+        RenderSnapshot snapshot,
+        Map<String, String> regionFingerprints,
+        TableRenderLayout.LayoutPlan layout
+    ) {
     }
 
     private static final class FingerprintBuilder {

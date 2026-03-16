@@ -135,6 +135,82 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderTableStructure(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+        List<Entity> spawned = new ArrayList<>(16);
+        Location tableCenter = toLocation(session, plan.tableCenter());
+        double topWidth = plan.borderSpanX() - TABLE_BORDER_THICKNESS;
+        double topDepth = plan.borderSpanZ() - TABLE_BORDER_THICKNESS;
+        double borderSpanX = plan.borderSpanX();
+        double borderSpanZ = plan.borderSpanZ();
+        double borderCenterOffsetX = topWidth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
+        double borderCenterOffsetZ = topDepth / 2.0D + TABLE_BORDER_THICKNESS / 2.0D;
+        Entity tableVisual = spawnTableVisual(session, tableCenter);
+        if (tableVisual != null) {
+            spawned.add(tableVisual);
+            spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+            return spawned;
+        }
+
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(0.0D, -1.0D, 0.0D), TABLE_BOTTOM_SIZE, TABLE_BOTTOM_HEIGHT, TABLE_BOTTOM_SIZE),
+            Material.DARK_OAK_WOOD,
+            (float) TABLE_BOTTOM_SIZE,
+            (float) TABLE_BOTTOM_HEIGHT,
+            (float) TABLE_BOTTOM_SIZE
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(0.0D, -(TABLE_TOP_THICKNESS + TABLE_PILLAR_HEIGHT), 0.0D), TABLE_PILLAR_SIZE, TABLE_PILLAR_HEIGHT, TABLE_PILLAR_SIZE),
+            Material.DARK_OAK_WOOD,
+            (float) TABLE_PILLAR_SIZE,
+            (float) TABLE_PILLAR_HEIGHT,
+            (float) TABLE_PILLAR_SIZE
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, 0.0D), topWidth, TABLE_TOP_THICKNESS, topDepth),
+            Material.SMOOTH_STONE,
+            (float) topWidth,
+            (float) TABLE_TOP_THICKNESS,
+            (float) topDepth
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, -borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
+            Material.STRIPPED_OAK_WOOD,
+            (float) borderSpanX,
+            (float) TABLE_BORDER_HEIGHT,
+            (float) TABLE_BORDER_THICKNESS
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
+            Material.STRIPPED_OAK_WOOD,
+            (float) borderSpanX,
+            (float) TABLE_BORDER_HEIGHT,
+            (float) TABLE_BORDER_THICKNESS
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(-borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
+            Material.STRIPPED_OAK_WOOD,
+            (float) TABLE_BORDER_THICKNESS,
+            (float) TABLE_BORDER_HEIGHT,
+            (float) borderSpanZ
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(tableCenter.clone().add(borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
+            Material.STRIPPED_OAK_WOOD,
+            (float) TABLE_BORDER_THICKNESS,
+            (float) TABLE_BORDER_HEIGHT,
+            (float) borderSpanZ
+        ));
+        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+        return spawned;
+    }
+
     public TableDiagnostics inspectTable(MahjongTableSession session) {
         Location center = displayCenter(session);
         TableBounds bounds = tableBoundsFromTiles(center);
@@ -231,6 +307,50 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderSeatLabels(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        List<Entity> spawned = new ArrayList<>(3);
+        boolean active = seat.wind() == session.currentSeat();
+
+        spawned.add(DisplayEntities.spawnLabel(
+            session.plugin(),
+            toLocation(session, plan.statusLabelLocation()),
+            Component.text(seat.publicSeatStatus()),
+            seatLabelColor(seat.wind(), active)
+        ));
+        if (seat.playerId() != null) {
+            spawned.add(DisplayEntities.spawnLabel(
+                session.plugin(),
+                toLocation(session, plan.playerNameLocation()),
+                Component.text(seat.displayName()),
+                Color.fromARGB(100, 18, 18, 18)
+            ));
+            if (!session.isStarted()) {
+                spawned.add(DisplayEntities.spawnInteraction(
+                    session.plugin(),
+                    toLocation(session, plan.interactionLocation()),
+                    SEAT_INTERACTION_WIDTH,
+                    SEAT_INTERACTION_HEIGHT,
+                    DisplayClickAction.toggleReady(session.id(), seat.wind()),
+                    null
+                ));
+            }
+        } else if (!session.isStarted()) {
+            spawned.add(DisplayEntities.spawnInteraction(
+                session.plugin(),
+                toLocation(session, plan.interactionLocation()),
+                SEAT_INTERACTION_WIDTH,
+                SEAT_INTERACTION_HEIGHT,
+                DisplayClickAction.joinSeat(session.id(), seat.wind()),
+                null
+            ));
+        }
+        return spawned;
+    }
+
     public List<Entity> renderSticks(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
@@ -288,6 +408,32 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderWall(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+        if (!session.isStarted()) {
+            return List.of();
+        }
+        List<Entity> spawned = new ArrayList<>(plan.wallTiles().size());
+        for (TableRenderLayout.TilePlacement placement : plan.wallTiles()) {
+            spawned.add(spawnPublicTile(session, placement));
+        }
+        return spawned;
+    }
+
+    public List<Entity> renderSticks(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+        List<Entity> spawned = new ArrayList<>(plan.stickPlacements().size());
+        for (TableRenderLayout.StickPlacement stickPlacement : plan.stickPlacements()) {
+            spawned.add(spawnStick(session, toLocation(session, stickPlacement.center()), stickPlacement.longOnX(), stickPlacement.stick()));
+        }
+        return spawned;
+    }
+
     public List<Entity> renderDora(MahjongTableSession session) {
         if (!session.isStarted()) {
             return List.of();
@@ -304,12 +450,36 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderDora(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+        if (!session.isStarted()) {
+            return List.of();
+        }
+        List<Entity> spawned = new ArrayList<>(plan.doraTiles().size());
+        for (TableRenderLayout.TilePlacement placement : plan.doraTiles()) {
+            spawned.add(spawnPublicTile(session, placement));
+        }
+        return spawned;
+    }
+
     public List<Entity> renderCenterLabel(MahjongTableSession session) {
         Location center = displayCenter(session);
         return List.of(DisplayEntities.spawnLabel(
             session.plugin(),
             center.clone().add(0.0D, 0.3D + FLOATING_TEXT_Y_OFFSET, 0.0D),
             Component.text(session.publicCenterText()),
+            Color.fromARGB(112, 20, 80, 20)
+        ));
+    }
+
+    public List<Entity> renderCenterLabel(
+        MahjongTableSession session,
+        MahjongTableSession.RenderSnapshot snapshot,
+        TableRenderLayout.LayoutPlan plan
+    ) {
+        return List.of(DisplayEntities.spawnLabel(
+            session.plugin(),
+            toLocation(session, plan.displayCenter()).add(0.0D, 0.3D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            Component.text(snapshot.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
         ));
     }
@@ -474,6 +644,82 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderDiscards(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+        List<Entity> spawned = new ArrayList<>(plan.discardPlacements().size());
+        for (TableRenderLayout.TilePlacement placement : plan.discardPlacements()) {
+            spawned.add(spawnPublicTile(session, placement));
+        }
+        return spawned;
+    }
+
+    public List<Entity> renderHandPrivate(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+
+        List<UUID> ownerOnly = List.of(seat.playerId());
+        List<Entity> spawned = new ArrayList<>(seat.hand().size() * 2);
+        for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
+            Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
+            spawned.add(DisplayEntities.spawnTileDisplay(
+                session.plugin(),
+                tileLocation,
+                plan.yaw(),
+                seat.hand().get(tileIndex),
+                DisplayEntities.TileRenderPose.STANDING,
+                null,
+                true,
+                ownerOnly
+            ));
+            Entity clickHitbox = session.plugin().craftEngine().placeHandTileHitbox(
+                handInteractionLocation(tileLocation),
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex)
+            );
+            if (clickHitbox != null) {
+                spawned.add(clickHitbox);
+            }
+        }
+        return spawned;
+    }
+
+    public List<Entity> renderHandPublic(
+        MahjongTableSession session,
+        MahjongTableSession.RenderSnapshot snapshot,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+
+        List<Entity> spawned = new ArrayList<>(seat.hand().size());
+        boolean concealHand = snapshot.started();
+        for (int i = 0; i < seat.hand().size(); i++) {
+            spawned.add(DisplayEntities.spawnTileDisplay(
+                session.plugin(),
+                toLocation(session, plan.publicHandPoints().get(i)),
+                plan.yaw(),
+                concealHand ? MahjongTile.UNKNOWN : seat.hand().get(i),
+                DisplayEntities.TileRenderPose.STANDING,
+                null,
+                true,
+                seat.viewerIdsExcluding()
+            ));
+        }
+        return spawned;
+    }
+
     public List<Entity> renderMelds(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
@@ -563,6 +809,21 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderMelds(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+        List<Entity> spawned = new ArrayList<>(plan.meldPlacements().size());
+        for (TableRenderLayout.TilePlacement placement : plan.meldPlacements()) {
+            spawned.add(spawnPublicTile(session, placement));
+        }
+        return spawned;
+    }
+
     private static Location displayCenter(MahjongTableSession session) {
         return session.center().add(0.0D, DISPLAY_CENTER_Y_OFFSET, 0.0D);
     }
@@ -610,6 +871,15 @@ public final class TableRenderer {
             null,
             true
         );
+    }
+
+    private static Entity spawnPublicTile(MahjongTableSession session, TableRenderLayout.TilePlacement placement) {
+        return spawnPublicTile(session, toLocation(session, placement.point()), placement.yaw(), placement.tile(), placement.pose());
+    }
+
+    private static Location toLocation(MahjongTableSession session, TableRenderLayout.Point point) {
+        Location origin = session.center();
+        return new Location(origin.getWorld(), point.x(), point.y(), point.z());
     }
 
     private static Location centeredCuboid(Location center, double width, double height, double depth) {
