@@ -1322,41 +1322,12 @@ public final class MahjongTableSession {
         this.syncSeatFeedbackStates();
     }
 
-    private String feedbackSignature(UUID playerId) {
-        ReactionOptions options = this.engine.availableReactions(playerId.toString());
-        if (options != null && this.engine.getPendingReaction() != null) {
-            return "reaction:" + this.engine.getPendingReaction().getTile().getId() + ":" + options;
+    private void sendFeedback(Player player, PlayerFeedbackSnapshot snapshot) {
+        if (snapshot.actionBar() != null) {
+            player.sendActionBar(snapshot.actionBar());
         }
-        if (this.engine.getStarted() && this.engine.getCurrentPlayer().getUuid().equals(playerId.toString())) {
-            return "turn:" + this.engine.getWall().size() + ":" + this.engine.getCurrentPlayer().isRiichiable()
-                + ":" + this.engine.getCurrentPlayer().getCanAnkan() + ":" + this.engine.getCurrentPlayer().getCanKakan()
-                + ":" + this.engine.canKyuushuKyuuhai(playerId.toString());
-        }
-        return "";
-    }
-
-    private void sendFeedback(Player player, UUID playerId) {
-        ReactionOptions options = this.engine.availableReactions(playerId.toString());
-        if (options != null) {
-            this.plugin.messages().actionBar(player, "table.reaction_available");
-            player.sendMessage(this.reactionPrompt(player, options));
-            return;
-        }
-
-        if (this.engine.getStarted() && this.engine.getCurrentPlayer().getUuid().equals(playerId.toString())) {
-            List<String> actions = new ArrayList<>(4);
-            if (this.engine.getCurrentPlayer().isRiichiable()) {
-                actions.add("/mahjong riichi <index>");
-            }
-            if (this.engine.getCurrentPlayer().getCanAnkan() || this.engine.getCurrentPlayer().getCanKakan()) {
-                actions.add("/mahjong kan <tile>");
-            }
-            if (this.engine.canKyuushuKyuuhai(playerId.toString())) {
-                actions.add("/mahjong kyuushu");
-            }
-            actions.add("/mahjong tsumo");
-            String suffix = actions.isEmpty() ? "" : " | " + String.join(" ", actions);
-            this.plugin.messages().actionBar(player, "table.turn_prompt", this.plugin.messages().tag("suffix", suffix));
+        if (snapshot.reactionPrompt() != null) {
+            player.sendMessage(snapshot.reactionPrompt());
         }
     }
 
@@ -1408,25 +1379,70 @@ public final class MahjongTableSession {
             if (player == null) {
                 continue;
             }
-            this.syncSeatFeedbackState(player, playerId);
+            this.syncSeatFeedbackState(player, this.capturePlayerFeedbackSnapshot(player, playerId));
         }
     }
 
-    private void syncSeatFeedbackState(Player player, UUID playerId) {
-        String signature = this.feedbackSignature(playerId);
-        String previous = this.feedbackState.put(playerId, signature);
-        if (Objects.equals(signature, previous)) {
+    private void syncSeatFeedbackState(Player player, PlayerFeedbackSnapshot snapshot) {
+        String previous = this.feedbackState.put(snapshot.playerId(), snapshot.signature());
+        if (Objects.equals(snapshot.signature(), previous)) {
             return;
         }
-        if (signature.isBlank()) {
+        if (snapshot.signature().isBlank()) {
             player.sendActionBar(Component.empty());
             return;
         }
-        this.sendFeedback(player, playerId);
+        this.sendFeedback(player, snapshot);
+    }
+
+    private PlayerFeedbackSnapshot capturePlayerFeedbackSnapshot(Player player, UUID playerId) {
+        Locale locale = this.plugin.messages().resolveLocale(player);
+        ReactionOptions options = this.engine.availableReactions(playerId.toString());
+        if (options != null && this.engine.getPendingReaction() != null) {
+            Component actionBar = this.plugin.messages().render(locale, "table.reaction_available");
+            Component reactionPrompt = this.reactionPrompt(locale, options);
+            String signature = fingerprintBuilder(192)
+                .field("reaction")
+                .field(playerId)
+                .field(this.engine.getPendingReaction().getTile().getId())
+                .field(options)
+                .toString();
+            return new PlayerFeedbackSnapshot(playerId, signature, actionBar, reactionPrompt);
+        }
+        if (this.engine.getStarted() && this.engine.getCurrentPlayer().getUuid().equals(playerId.toString())) {
+            List<String> actions = new ArrayList<>(4);
+            if (this.engine.getCurrentPlayer().isRiichiable()) {
+                actions.add("/mahjong riichi <index>");
+            }
+            if (this.engine.getCurrentPlayer().getCanAnkan() || this.engine.getCurrentPlayer().getCanKakan()) {
+                actions.add("/mahjong kan <tile>");
+            }
+            if (this.engine.canKyuushuKyuuhai(playerId.toString())) {
+                actions.add("/mahjong kyuushu");
+            }
+            actions.add("/mahjong tsumo");
+            String suffix = actions.isEmpty() ? "" : " | " + String.join(" ", actions);
+            Component actionBar = this.plugin.messages().render(locale, "table.turn_prompt", this.plugin.messages().tag("suffix", suffix));
+            String signature = fingerprintBuilder(192)
+                .field("turn")
+                .field(playerId)
+                .field(this.engine.getWall().size())
+                .field(this.engine.getCurrentPlayer().isRiichiable())
+                .field(this.engine.getCurrentPlayer().getCanAnkan())
+                .field(this.engine.getCurrentPlayer().getCanKakan())
+                .field(this.engine.canKyuushuKyuuhai(playerId.toString()))
+                .field(suffix)
+                .toString();
+            return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
+        }
+        return new PlayerFeedbackSnapshot(playerId, "", null, null);
     }
 
     private Component reactionPrompt(Player player, ReactionOptions options) {
-        Locale locale = this.plugin.messages().resolveLocale(player);
+        return this.reactionPrompt(this.plugin.messages().resolveLocale(player), options);
+    }
+
+    private Component reactionPrompt(Locale locale, ReactionOptions options) {
         Component message = this.plugin.messages().render(locale, "table.reactions_prefix");
         if (options.getCanRon()) {
             message = message.append(this.actionButton(this.plugin.messages().plain(locale, "table.action.ron"), "/mahjong ron", NamedTextColor.RED)).append(Component.space());
@@ -2615,6 +2631,14 @@ public final class MahjongTableSession {
         SeatWind wind,
         Component overlay,
         String signature
+    ) {
+    }
+
+    private record PlayerFeedbackSnapshot(
+        UUID playerId,
+        String signature,
+        Component actionBar,
+        Component reactionPrompt
     ) {
     }
 
