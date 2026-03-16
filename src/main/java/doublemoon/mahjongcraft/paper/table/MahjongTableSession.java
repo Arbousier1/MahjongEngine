@@ -461,17 +461,30 @@ public final class MahjongTableSession {
         if (viewer == null || !viewer.isOnline()) {
             return;
         }
+        Locale locale = this.plugin.messages().resolveLocale(viewer);
         TableRenderer.TableDiagnostics tableDiagnostics = this.renderer.inspectTable(this);
         this.highlightTableDiagnostics(viewer, tableDiagnostics);
         for (TableRenderer.StickDiagnostics stickDiagnostics : this.renderer.inspectSticks(this)) {
             this.highlightStickDiagnostics(viewer, stickDiagnostics);
+            viewer.sendMessage(this.plugin.messages().render(
+                locale,
+                "command.inspect_stick",
+                this.plugin.messages().tag("kind", this.plugin.messages().plain(locale, stickDiagnostics.riichi() ? "command.inspect.kind.riichi" : "command.inspect.kind.stick")),
+                this.plugin.messages().tag("wind", this.seatDisplayName(stickDiagnostics.wind(), locale)),
+                this.plugin.messages().tag("index", stickDiagnostics.index() >= 0 ? "#" + stickDiagnostics.index() : ""),
+                this.plugin.messages().tag("furniture_id", stickDiagnostics.furnitureId()),
+                this.plugin.messages().tag("location", this.formatLocation(stickDiagnostics.center())),
+                this.plugin.messages().tag("axis", this.plugin.messages().plain(locale, stickDiagnostics.longOnX() ? "command.inspect.axis.x" : "command.inspect.axis.z"))
+            ));
         }
-        viewer.sendMessage(Component.text(
-            "Render inspect complete for table " + this.id
-                + " | center=" + this.formatLocation(tableDiagnostics.tableCenter())
-                + " | anchor=" + this.formatLocation(tableDiagnostics.visualAnchor())
-                + " | span=" + formatDecimal(tableDiagnostics.borderSpanX()) + "x" + formatDecimal(tableDiagnostics.borderSpanZ()),
-            NamedTextColor.GOLD
+        viewer.sendMessage(this.plugin.messages().render(
+            locale,
+            "command.inspect_summary",
+            this.plugin.messages().tag("table_id", this.id()),
+            this.plugin.messages().tag("center", this.formatLocation(tableDiagnostics.tableCenter())),
+            this.plugin.messages().tag("anchor", this.formatLocation(tableDiagnostics.visualAnchor())),
+            this.plugin.messages().tag("span_x", formatDecimal(tableDiagnostics.borderSpanX())),
+            this.plugin.messages().tag("span_z", formatDecimal(tableDiagnostics.borderSpanZ()))
         ));
         this.plugin.debug().log(
             "render",
@@ -544,15 +557,6 @@ public final class MahjongTableSession {
             );
             this.spawnMarker(viewer, point, color, 4);
         }
-        viewer.sendMessage(Component.text(
-            (diagnostics.riichi() ? "Riichi" : "Stick")
-                + " " + diagnostics.wind().name()
-                + (diagnostics.index() >= 0 ? "#" + diagnostics.index() : "")
-                + " -> " + diagnostics.furnitureId()
-                + " @ " + this.formatLocation(diagnostics.center())
-                + " axis=" + (diagnostics.longOnX() ? "X" : "Z"),
-            NamedTextColor.YELLOW
-        ));
         this.plugin.debug().log(
             "render",
             "Inspect table=" + this.id
