@@ -35,6 +35,7 @@ public final class TableRenderer {
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
+    private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
@@ -562,7 +563,7 @@ public final class TableRenderer {
     }
 
     private static Location tableVisualAnchor(Location tableCenter) {
-        return tableCenter.clone();
+        return tableCenter.clone().add(0.0D, TABLE_VISUAL_Y_OFFSET, 0.0D);
     }
 
     private static Entity spawnPublicTile(
