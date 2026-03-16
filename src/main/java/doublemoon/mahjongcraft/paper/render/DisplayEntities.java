@@ -20,6 +20,7 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
@@ -27,6 +28,7 @@ import org.joml.Vector3f;
 
 public final class DisplayEntities {
     private static final String ITEM_MODEL_NAMESPACE = "mahjongcraft";
+    private static final String MANAGED_ENTITY_KEY = "managed_entity";
     private static final float TILE_SCALE = 1.0F;
     private static final float LABEL_VIEW_RANGE = 48.0F;
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
@@ -64,6 +66,7 @@ public final class DisplayEntities {
         ItemDisplay display = world.spawn(location, ItemDisplay.class, spawned -> {
             boolean restrictedVisibility = privateViewers != null;
             spawned.setPersistent(false);
+            markManagedEntity(plugin, spawned);
             spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
             spawned.setInterpolationDuration(1);
             spawned.setInterpolationDelay(0);
@@ -112,6 +115,7 @@ public final class DisplayEntities {
         TextDisplay display = world.spawn(location, TextDisplay.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
+            markManagedEntity(plugin, spawned);
             spawned.text(text);
             spawned.setSeeThrough(false);
             spawned.setShadowed(true);
@@ -156,6 +160,7 @@ public final class DisplayEntities {
         Interaction interaction = world.spawn(location, Interaction.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
+            markManagedEntity(plugin, spawned);
             spawned.setResponsive(true);
             spawned.setInteractionWidth(width);
             spawned.setInteractionHeight(height);
@@ -194,6 +199,7 @@ public final class DisplayEntities {
         BlockDisplay display = world.spawn(location, BlockDisplay.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
+            markManagedEntity(plugin, spawned);
             spawned.setInterpolationDuration(1);
             spawned.setInterpolationDelay(0);
             spawned.setTeleportDuration(1);
@@ -232,6 +238,21 @@ public final class DisplayEntities {
         if (plugin instanceof doublemoon.mahjongcraft.paper.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.craftEngine() != null) {
             mahjongPlugin.craftEngine().registerCullableEntity(entity);
         }
+    }
+
+    public static boolean isManagedEntity(Plugin plugin, Entity entity) {
+        if (plugin == null || entity == null) {
+            return false;
+        }
+        return entity.getPersistentDataContainer().has(managedEntityKey(plugin), PersistentDataType.BYTE);
+    }
+
+    private static void markManagedEntity(Plugin plugin, Entity entity) {
+        entity.getPersistentDataContainer().set(managedEntityKey(plugin), PersistentDataType.BYTE, (byte) 1);
+    }
+
+    private static NamespacedKey managedEntityKey(Plugin plugin) {
+        return new NamespacedKey(plugin, MANAGED_ENTITY_KEY);
     }
 
     private static ItemStack tileItem(Plugin plugin, MahjongTile tile, boolean faceDown) {

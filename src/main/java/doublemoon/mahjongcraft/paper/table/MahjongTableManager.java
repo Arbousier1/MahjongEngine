@@ -4,6 +4,7 @@ import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.DisplayClickAction;
 import doublemoon.mahjongcraft.paper.render.DisplayClickAction.ActionType;
+import doublemoon.mahjongcraft.paper.render.DisplayEntities;
 import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.util.ArrayList;
@@ -18,6 +19,11 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 import org.bukkit.event.EventPriority;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -32,6 +38,8 @@ import org.bukkit.scheduler.BukkitTask;
 
 public final class MahjongTableManager implements Listener {
     private static final long DUPLICATE_HAND_TILE_CLICK_WINDOW_NANOS = 40_000_000L;
+    private static final double PERSISTED_TABLE_CLEANUP_RADIUS_XZ = 4.5D;
+    private static final double PERSISTED_TABLE_CLEANUP_RADIUS_Y = 3.5D;
 
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
@@ -228,6 +236,7 @@ public final class MahjongTableManager implements Listener {
             MahjongTableSession session = new MahjongTableSession(this.plugin, id, loadedTable.center(), loadedTable.rule(), true);
             this.tables.put(id, session);
             this.indexTable(session);
+            this.cleanupLoadedPersistentTableArtifacts(session.center());
             session.render();
             this.plugin.debug().log("table", "Loaded persistent table " + id);
         }
@@ -414,6 +423,29 @@ public final class MahjongTableManager implements Listener {
             id = builder.toString();
         } while (this.tables.containsKey(id));
         return id;
+    }
+
+    private void cleanupLoadedPersistentTableArtifacts(Location center) {
+        World world = center == null ? null : center.getWorld();
+        if (world == null) {
+            return;
+        }
+        int removed = 0;
+        for (Entity entity : world.getNearbyEntities(center, PERSISTED_TABLE_CLEANUP_RADIUS_XZ, PERSISTED_TABLE_CLEANUP_RADIUS_Y, PERSISTED_TABLE_CLEANUP_RADIUS_XZ)) {
+            boolean managedDisplay = DisplayEntities.isManagedEntity(this.plugin, entity);
+            boolean legacyVisual = entity instanceof Display || entity instanceof Interaction;
+            boolean removedByCraftEngine = this.plugin.craftEngine() != null && this.plugin.craftEngine().removeFurniture(entity);
+            if (!removedByCraftEngine && !managedDisplay && !legacyVisual) {
+                continue;
+            }
+            if (!removedByCraftEngine && entity.isValid()) {
+                entity.remove();
+            }
+            removed++;
+        }
+        if (removed > 0) {
+            this.plugin.debug().log("table", "Cleaned " + removed + " persisted-table entities near " + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
+        }
     }
 
     private record RecentHandTileClick(String tableId, UUID ownerId, int tileIndex, long timestampNanos) {
