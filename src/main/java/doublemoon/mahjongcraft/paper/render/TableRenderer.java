@@ -685,6 +685,18 @@ public final class TableRenderer {
         return spawned;
     }
 
+    public List<Entity> renderDiscardTile(
+        MahjongTableSession session,
+        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan,
+        int discardIndex
+    ) {
+        if (seat.playerId() == null || discardIndex < 0 || discardIndex >= plan.discardPlacements().size()) {
+            return List.of();
+        }
+        return List.of(spawnPublicTile(session, plan.discardPlacements().get(discardIndex)));
+    }
+
     public List<Entity> renderHandPrivate(
         MahjongTableSession session,
         MahjongTableSession.SeatRenderSnapshot seat,

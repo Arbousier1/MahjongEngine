@@ -54,6 +54,7 @@ public final class MahjongTableSession {
     private static final String REGION_CENTER = "center";
     private static final long NEXT_ROUND_DELAY_MILLIS = 8000L;
     private static final int MAX_HAND_TILE_REGIONS = 14;
+    private static final int MAX_DISCARD_TILE_REGIONS = 24;
 
     private final MahjongPaperPlugin plugin;
     private final String id;
@@ -522,7 +523,7 @@ public final class MahjongTableSession {
             this.updateRegion(this.seatRegionKey("sticks", wind), fingerprints.get(this.seatRegionKey("sticks", wind)), () -> this.renderer.renderSticks(this, seat, seatPlan));
             this.updateRegion(this.seatRegionKey("hand-public", wind), fingerprints.get(this.seatRegionKey("hand-public", wind)), () -> this.renderer.renderHandPublic(this, snapshot, seat, seatPlan));
             this.updatePrivateHandRegions(seat, seatPlan);
-            this.updateRegion(this.seatRegionKey("discards", wind), fingerprints.get(this.seatRegionKey("discards", wind)), () -> this.renderer.renderDiscards(this, seat, seatPlan));
+            this.updateDiscardRegions(seat, seatPlan);
             this.updateRegion(this.seatRegionKey("melds", wind), fingerprints.get(this.seatRegionKey("melds", wind)), () -> this.renderer.renderMelds(this, seat, seatPlan));
         }
         this.updateViewerOverlayRegions();
@@ -2423,6 +2424,41 @@ public final class MahjongTableSession {
             .toString();
     }
 
+    private void updateDiscardRegions(SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
+        this.clearRegion(this.seatRegionKey("discards", seat.wind()));
+        int discardCount = seat.playerId() == null ? 0 : plan.discardPlacements().size();
+        for (int discardIndex = 0; discardIndex < MAX_DISCARD_TILE_REGIONS; discardIndex++) {
+            String regionKey = this.discardRegionKey(seat.wind(), discardIndex);
+            if (discardIndex >= discardCount) {
+                this.clearRegion(regionKey);
+                continue;
+            }
+            int index = discardIndex;
+            this.updateRegion(
+                regionKey,
+                this.discardTileFingerprint(seat, plan, discardIndex),
+                () -> this.renderer.renderDiscardTile(this, seat, plan, index)
+            );
+        }
+    }
+
+    private String discardTileFingerprint(SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int discardIndex) {
+        TableRenderLayout.TilePlacement placement = plan.discardPlacements().get(discardIndex);
+        return fingerprintBuilder(160)
+            .field("discard-tile")
+            .field(seat.wind().name())
+            .field(Objects.toString(seat.playerId(), "empty"))
+            .field(discardIndex)
+            .field(seat.riichiDiscardIndex())
+            .field(Float.floatToIntBits(placement.yaw()))
+            .field(Double.doubleToLongBits(placement.point().x()))
+            .field(Double.doubleToLongBits(placement.point().y()))
+            .field(Double.doubleToLongBits(placement.point().z()))
+            .field(placement.tile().name())
+            .field(placement.pose().name())
+            .toString();
+    }
+
     private void clearLegacyHandPrivateTileRegions(SeatWind wind) {
         for (int tileIndex = 0; tileIndex < MAX_HAND_TILE_REGIONS; tileIndex++) {
             String regionKey = this.handPrivateRegionKey(wind, tileIndex);
@@ -2505,6 +2541,10 @@ public final class MahjongTableSession {
 
     private String handPrivateRegionKey(SeatWind wind, int tileIndex) {
         return this.seatRegionKey("hand-private-" + tileIndex, wind);
+    }
+
+    private String discardRegionKey(SeatWind wind, int discardIndex) {
+        return this.seatRegionKey("discards-" + discardIndex, wind);
     }
 
     private String wallFingerprint() {
