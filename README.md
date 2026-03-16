@@ -13,6 +13,7 @@
 This repository currently includes a playable Paper-based Riichi Mahjong port foundation:
 
 - table creation and joining
+- fixed east/south/west/north seat labels with click-to-join and click-to-ready lobby flow
 - 4-seat riichi wall generation with red fives
 - dealing, drawing and discarding
 - riichi, tsumo, ron, chii, pon, minkan, ankan and kakan flows
@@ -49,7 +50,7 @@ It is still not fully at feature parity with upstream `MahjongCraft`. The larges
 - `/mahjong addbot`: fill one empty seat with a bot
 - `/mahjong removebot`: remove one bot before the round starts
 - `/mahjong rule [key] [value]`: view or change table rules before starting
-- `/mahjong start`: start the round when 4 seats are filled
+- `/mahjong start`: toggle ready; the round auto-starts once all 4 seats are filled and ready
 - `/mahjong state`: show the current table and round state
 - `/mahjong riichi <index>`: declare riichi and discard the chosen tile index
 - `/mahjong tsumo`: claim a self-draw win if your hand is ready
@@ -77,6 +78,8 @@ Mahjong Soul-style defaults are now used for new tables: 4-player riichi, 25,000
 The plugin expects the CraftEngine plugin to be installed on the server because it is declared as a dependency in `plugin.yml`.
 The build now produces a thin jar. Runtime libraries are resolved by the Paper plugin loader declared in [`paper-plugin.yml`](./src/main/resources/paper-plugin.yml); `plugin.yml` is still kept for command and permission registration.
 Database settings live in [`config.yml`](./src/main/resources/config.yml); the default database type is `h2`, and you can switch `database.type` to `mariadb` if needed. Round settlements are written asynchronously to `round_history` and `round_player_result`.
+
+Configuration values are snapshotted during plugin startup. If you change `config.yml`, restart the server/plugin process so the updated CraftEngine, database, and persistence settings are picked up together.
 
 Recommended runtime stack for the current branch:
 

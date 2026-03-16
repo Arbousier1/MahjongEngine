@@ -11,6 +11,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.TileInstance;
 import doublemoon.mahjongcraft.paper.table.MahjongTableManager;
 import doublemoon.mahjongcraft.paper.table.MahjongTableSession;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +23,42 @@ import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 
 public final class MahjongCommand implements BasicCommand {
+    private static final List<String> ROOT_COMMANDS = List.of(
+        "help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot",
+        "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan",
+        "skip", "kyuushu", "settlement", "render", "inspect", "clear", "forceend", "deletetable"
+    );
+    private static final List<String> BOTMATCH_PRESETS = List.of("MAJSOUL_HANCHAN", "MAJSOUL_TONPUU", "hanchan", "tonpuu");
+    private static final String[] HELP_KEYS = {
+        "command.help.create",
+        "command.help.botmatch",
+        "command.help.mode",
+        "command.help.join",
+        "command.help.leave",
+        "command.help.list",
+        "command.help.spectate",
+        "command.help.unspectate",
+        "command.help.addbot",
+        "command.help.removebot",
+        "command.help.rule",
+        "command.help.start",
+        "command.help.state",
+        "command.help.riichi",
+        "command.help.tsumo",
+        "command.help.ron",
+        "command.help.pon",
+        "command.help.minkan",
+        "command.help.chii",
+        "command.help.kan",
+        "command.help.skip",
+        "command.help.kyuushu",
+        "command.help.settlement",
+        "command.help.render",
+        "command.help.inspect",
+        "command.help.clear",
+        "command.help.forceend",
+        "command.help.deletetable"
+    };
     private final MahjongPaperPlugin plugin;
     private final MessageService messages;
     private final MahjongTableManager tableManager;
@@ -134,10 +171,7 @@ public final class MahjongCommand implements BasicCommand {
                 MahjongTableManager.LeaveResult result = this.tableManager.leave(player.getUniqueId());
                 switch (result.status()) {
                     case LEFT -> this.messages.send(player, "command.left_table");
-                    case DEFERRED -> player.sendMessage(net.kyori.adventure.text.Component.text(
-                        "You will leave the table when the current hand ends.",
-                        net.kyori.adventure.text.format.NamedTextColor.YELLOW
-                    ));
+                    case DEFERRED -> this.messages.send(player, "command.leave_deferred");
                     case UNSPECTATED -> this.messages.send(player, "command.unspectated");
                     case NOT_IN_TABLE -> this.messages.send(player, "command.not_in_table");
                     case BLOCKED -> this.messages.send(player, "command.leave_blocked_started");
@@ -313,31 +347,24 @@ public final class MahjongCommand implements BasicCommand {
     public List<String> suggest(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
         if (args.length == 1) {
-            return matchPrefix(
-                args[0],
-                List.of("help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot", "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan", "skip", "kyuushu", "settlement", "render", "inspect", "clear", "forceend", "deletetable")
-            );
+            return matchPrefix(args[0], ROOT_COMMANDS);
         }
         if (!(sender instanceof Player player)) {
             return List.of();
         }
 
         if (args.length == 2 && ("forceend".equalsIgnoreCase(args[0]) || "deletetable".equalsIgnoreCase(args[0]))) {
-            List<String> ids = new ArrayList<>();
-            this.tableManager.tables().forEach(table -> ids.add(table.id()));
-            return matchPrefix(args[1], ids);
+            return matchPrefix(args[1], this.tableManager.tableIds());
         }
         if (args.length == 2 && "botmatch".equalsIgnoreCase(args[0])) {
-            return matchPrefix(args[1], List.of("MAJSOUL_HANCHAN", "MAJSOUL_TONPUU", "hanchan", "tonpuu"));
+            return matchPrefix(args[1], BOTMATCH_PRESETS);
         }
         if (args.length == 2 && "mode".equalsIgnoreCase(args[0])) {
             MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
             return table == null ? List.of() : matchPrefix(args[1], table.ruleValues("mode"));
         }
         if (args.length == 2 && ("join".equalsIgnoreCase(args[0]) || "spectate".equalsIgnoreCase(args[0]))) {
-            List<String> ids = new ArrayList<>();
-            this.tableManager.tables().forEach(table -> ids.add(table.id()));
-            return matchPrefix(args[1], ids);
+            return matchPrefix(args[1], this.tableManager.tableIds());
         }
         if (args.length == 2 && "kan".equalsIgnoreCase(args[0])) {
             return matchPrefix(args[1], suggestedKanTiles(player));
@@ -383,37 +410,7 @@ public final class MahjongCommand implements BasicCommand {
     private void sendHelp(Player player) {
         Locale locale = this.messages.resolveLocale(player);
         this.messages.send(player, "command.usage");
-        String[] keys = {
-            "command.help.create",
-            "command.help.botmatch",
-            "command.help.mode",
-            "command.help.join",
-            "command.help.leave",
-            "command.help.list",
-            "command.help.spectate",
-            "command.help.unspectate",
-            "command.help.addbot",
-            "command.help.removebot",
-            "command.help.rule",
-            "command.help.start",
-            "command.help.state",
-            "command.help.riichi",
-            "command.help.tsumo",
-            "command.help.ron",
-            "command.help.pon",
-            "command.help.minkan",
-            "command.help.chii",
-            "command.help.kan",
-            "command.help.skip",
-            "command.help.kyuushu",
-            "command.help.settlement",
-            "command.help.render",
-            "command.help.inspect",
-            "command.help.clear",
-            "command.help.forceend",
-            "command.help.deletetable"
-        };
-        for (String key : keys) {
+        for (String key : HELP_KEYS) {
             player.sendMessage(this.messages.render(locale, key));
         }
     }
@@ -551,7 +548,7 @@ public final class MahjongCommand implements BasicCommand {
         return table.engine().availableReactions(player.getUniqueId().toString());
     }
 
-    private List<String> matchPrefix(String raw, List<String> values) {
+    private List<String> matchPrefix(String raw, Collection<String> values) {
         String prefix = raw.toLowerCase(Locale.ROOT);
         List<String> matches = new ArrayList<>();
         for (String value : values) {

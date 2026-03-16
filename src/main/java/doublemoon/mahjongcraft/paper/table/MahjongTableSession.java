@@ -721,7 +721,7 @@ public final class MahjongTableSession {
             this.plugin.messages().number(locale, "bots", this.botCount()),
             this.plugin.messages().number(locale, "spectators", this.spectatorCount()),
             this.plugin.messages().tag("rules", this.ruleSummary(locale))
-        ) + " | Ready " + this.readyCount() + "/" + this.size();
+        ) + " | " + this.readySummary(locale);
     }
 
     public String waitingDisplaySummary() {
@@ -735,7 +735,7 @@ public final class MahjongTableSession {
             this.plugin.messages().number(locale, "seats", this.size()),
             this.plugin.messages().number(locale, "bots", this.botCount()),
             this.plugin.messages().number(locale, "spectators", this.spectatorCount())
-        ) + " | Ready " + this.readyCount() + "/" + this.size();
+        ) + " | " + this.readySummary(locale);
     }
 
     public String ruleDisplaySummary() {
@@ -1299,9 +1299,9 @@ public final class MahjongTableSession {
         for (Player player : this.viewers()) {
             SettlementUi.open(player, this);
             if (!this.engine.getGameFinished()) {
-                player.sendMessage(Component.text("Round finished. Ready up to begin the next hand.", NamedTextColor.YELLOW));
+                this.plugin.messages().send(player, "table.round_finished_ready");
             } else {
-                player.sendMessage(Component.text("Match finished. All players must ready again to start a new game.", NamedTextColor.GOLD));
+                this.plugin.messages().send(player, "table.match_finished_ready");
             }
         }
     }
@@ -1400,10 +1400,12 @@ public final class MahjongTableSession {
         builder.append(" | ")
             .append(this.plugin.messages().plain(locale, "state.label.next_round"))
             .append(' ')
-            .append("Ready ")
-            .append(this.readyCount())
-            .append('/')
-            .append(this.size());
+            .append(this.plugin.messages().plain(
+                locale,
+                "state.ready_summary",
+                this.plugin.messages().number(locale, "ready", this.readyCount()),
+                this.plugin.messages().number(locale, "total", this.size())
+            ));
     }
 
     private void appendFinishedStateSummary(StringBuilder builder, Locale locale) {
@@ -2201,7 +2203,7 @@ public final class MahjongTableSession {
                 this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale))
             );
         }
-        String status = this.waitingSeatStatus(playerId);
+        String status = this.waitingSeatStatus(locale, playerId);
         if (this.isStarted() && this.isRiichi(playerId)) {
             String riichi = this.plugin.messages().plain(locale, "overlay.status_riichi");
             status = status.isBlank() ? riichi : status + " | " + riichi;
@@ -2298,14 +2300,23 @@ public final class MahjongTableSession {
         return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : title;
     }
 
-    private String waitingSeatStatus(UUID playerId) {
+    private String readySummary(Locale locale) {
+        return this.plugin.messages().plain(
+            locale,
+            "table.ready_summary",
+            this.plugin.messages().number(locale, "ready", this.readyCount()),
+            this.plugin.messages().number(locale, "total", this.size())
+        );
+    }
+
+    private String waitingSeatStatus(Locale locale, UUID playerId) {
         if (playerId == null || this.isStarted()) {
             return "";
         }
         if (this.isQueuedToLeave(playerId)) {
-            return "Leaving";
+            return this.plugin.messages().plain(locale, "table.status.leaving");
         }
-        return this.isReady(playerId) ? "Ready" : "Waiting";
+        return this.plugin.messages().plain(locale, this.isReady(playerId) ? "table.status.ready" : "table.status.waiting");
     }
 
     private void resetReadyStateForNextRound() {
@@ -2326,7 +2337,7 @@ public final class MahjongTableSession {
             if (player == null) {
                 continue;
             }
-            player.sendMessage(Component.text("Click your seat label or use /mahjong start to ready up.", NamedTextColor.YELLOW));
+            this.plugin.messages().send(player, "command.ready_prompt");
         }
     }
 

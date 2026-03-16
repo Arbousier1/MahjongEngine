@@ -55,10 +55,16 @@ public final class CraftEngineService {
     private final boolean preferFurnitureHitbox;
     private final String bundleFolderName;
     private final Map<String, ItemStack> customItemCache = new ConcurrentHashMap<>();
+    private final Map<String, Object> craftEngineKeyCache = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Method> customItemBuildMethods = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Method> furnitureEntityMethods = new ConcurrentHashMap<>();
     private final Map<Integer, TrackedCullableEntity> trackedCullableEntities = new ConcurrentHashMap<>();
     private volatile boolean itemReflectionUnavailable;
     private volatile boolean furnitureReflectionUnavailable;
     private volatile boolean cullingReflectionUnavailable;
+    private volatile Plugin craftEnginePlugin;
+    private volatile ItemBridge itemBridge;
+    private volatile FurnitureBridge furnitureBridge;
     private volatile ReflectionBridge reflectionBridge;
     private volatile NamespacedKey furnitureDataKey;
     private Listener furnitureInteractListener;
@@ -72,7 +78,7 @@ public final class CraftEngineService {
     }
 
     public void initializeAfterStartup() {
-        Plugin craftEngine = this.findCraftEnginePlugin();
+        Plugin craftEngine = this.craftEnginePlugin();
         if (craftEngine == null) {
             this.plugin.debug().log("lifecycle", "CraftEngine not detected. Using direct item_model items.");
             return;
@@ -88,7 +94,7 @@ public final class CraftEngineService {
             return 0;
         }
 
-        Plugin craftEngine = this.findCraftEnginePlugin();
+        Plugin craftEngine = this.craftEnginePlugin();
         if (craftEngine == null || !craftEngine.isEnabled()) {
             return 0;
         }
@@ -125,8 +131,9 @@ public final class CraftEngineService {
             return null;
         }
 
-        Plugin craftEngine = this.findCraftEnginePlugin();
-        if (craftEngine == null || !craftEngine.isEnabled()) {
+        Plugin craftEngine = this.craftEnginePlugin();
+        ItemBridge bridge = this.itemBridge(craftEngine);
+        if (bridge == null) {
             return null;
         }
 
@@ -137,15 +144,12 @@ public final class CraftEngineService {
         }
 
         try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
-            Class<?> itemsClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineItems", true, classLoader);
-            Object key = keyClass.getMethod("of", String.class).invoke(null, itemId);
-            Object customItem = itemsClass.getMethod("byId", keyClass).invoke(null, key);
+            Object key = this.craftEngineKey(itemId, bridge.keyOfMethod());
+            Object customItem = bridge.byIdMethod().invoke(null, key);
             if (customItem == null) {
                 return null;
             }
-            Object built = customItem.getClass().getMethod("buildItemStack").invoke(customItem);
+            Object built = this.resolveBuildItemStackMethod(customItem.getClass()).invoke(customItem);
             if (!(built instanceof ItemStack itemStack)) {
                 return null;
             }
@@ -178,21 +182,19 @@ public final class CraftEngineService {
             return null;
         }
 
-        Plugin craftEngine = this.findCraftEnginePlugin();
-        if (craftEngine == null || !craftEngine.isEnabled()) {
+        Plugin craftEngine = this.craftEnginePlugin();
+        FurnitureBridge bridge = this.furnitureBridge(craftEngine);
+        if (bridge == null) {
             return null;
         }
 
         try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
-            Class<?> furnitureClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineFurniture", true, classLoader);
-            Object key = keyClass.getMethod("of", String.class).invoke(null, furnitureItemId);
-            Object furniture = furnitureClass.getMethod("place", Location.class, keyClass).invoke(null, location, key);
+            Object key = this.craftEngineKey(furnitureItemId, bridge.keyOfMethod());
+            Object furniture = bridge.placeMethod().invoke(null, location, key);
             if (furniture == null) {
                 return null;
             }
-            Object bukkitEntity = furniture.getClass().getMethod("bukkitEntity").invoke(furniture);
+            Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
             return bukkitEntity instanceof Entity entity ? entity : null;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             this.furnitureReflectionUnavailable = true;
@@ -211,7 +213,7 @@ public final class CraftEngineService {
         if (this.furnitureInteractListener != null) {
             return;
         }
-        Plugin craftEngine = this.findCraftEnginePlugin();
+        Plugin craftEngine = this.craftEnginePlugin();
         if (craftEngine == null || !craftEngine.isEnabled()) {
             this.plugin.getLogger().warning("CraftEngine interaction bridge is unavailable because CraftEngine is not enabled.");
             return;
@@ -298,25 +300,25 @@ public final class CraftEngineService {
             return false;
         }
 
-        Plugin craftEngine = this.findCraftEnginePlugin();
-        if (craftEngine == null || !craftEngine.isEnabled()) {
+        Plugin craftEngine = this.craftEnginePlugin();
+        FurnitureBridge bridge = this.furnitureBridge(craftEngine);
+        if (bridge == null) {
             return false;
         }
 
         try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> furnitureClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineFurniture", true, classLoader);
-            Object isFurniture = furnitureClass.getMethod("isFurniture", Entity.class).invoke(null, entity);
+            Object isFurniture = bridge.isFurnitureMethod().invoke(null, entity);
             if (!(isFurniture instanceof Boolean isFurnitureEntity) || !isFurnitureEntity) {
                 return false;
             }
-            try {
-                furnitureClass.getMethod("remove", Entity.class, boolean.class, boolean.class).invoke(null, entity, false, false);
-                return true;
-            } catch (NoSuchMethodException ignored) {
-                furnitureClass.getMethod("remove", Entity.class).invoke(null, entity);
-                return true;
+            if (bridge.removeWithFlagsMethod() != null) {
+                bridge.removeWithFlagsMethod().invoke(null, entity, false, false);
+            } else if (bridge.removeMethod() != null) {
+                bridge.removeMethod().invoke(null, entity);
+            } else {
+                return false;
             }
+            return true;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             this.furnitureReflectionUnavailable = true;
             this.plugin.debug().log(
@@ -518,7 +520,7 @@ public final class CraftEngineService {
             return cached;
         }
 
-        Plugin craftEngine = this.findCraftEnginePlugin();
+        Plugin craftEngine = this.craftEnginePlugin();
         if (craftEngine == null || !craftEngine.isEnabled()) {
             return null;
         }
@@ -633,6 +635,18 @@ public final class CraftEngineService {
         }
     }
 
+    private Plugin craftEnginePlugin() {
+        Plugin cached = this.craftEnginePlugin;
+        if (cached != null) {
+            return cached;
+        }
+        Plugin exact = this.findCraftEnginePlugin();
+        if (exact != null) {
+            this.craftEnginePlugin = exact;
+        }
+        return exact;
+    }
+
     private Plugin findCraftEnginePlugin() {
         Plugin exact = this.plugin.getServer().getPluginManager().getPlugin(CRAFT_ENGINE_PLUGIN_NAME);
         if (exact != null) {
@@ -646,10 +660,125 @@ public final class CraftEngineService {
         return null;
     }
 
+    private Method resolveBuildItemStackMethod(Class<?> customItemClass) {
+        return this.customItemBuildMethods.computeIfAbsent(customItemClass, this::lookupBuildItemStackMethod);
+    }
+
+    private Method lookupBuildItemStackMethod(Class<?> customItemClass) {
+        try {
+            return customItemClass.getMethod("buildItemStack");
+        } catch (NoSuchMethodException exception) {
+            throw new IllegalStateException("CraftEngine custom item class does not expose buildItemStack(): " + customItemClass.getName(), exception);
+        }
+    }
+
+    private Method resolveFurnitureEntityMethod(Class<?> furnitureInstanceClass) {
+        return this.furnitureEntityMethods.computeIfAbsent(furnitureInstanceClass, this::lookupFurnitureEntityMethod);
+    }
+
+    private Method lookupFurnitureEntityMethod(Class<?> furnitureInstanceClass) {
+        try {
+            return furnitureInstanceClass.getMethod("bukkitEntity");
+        } catch (NoSuchMethodException exception) {
+            throw new IllegalStateException("CraftEngine furniture instance does not expose bukkitEntity(): " + furnitureInstanceClass.getName(), exception);
+        }
+    }
+
+    private Object craftEngineKey(String key, Method keyOfMethod) throws ReflectiveOperationException {
+        Object cached = this.craftEngineKeyCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        Object resolved = keyOfMethod.invoke(null, key);
+        Object previous = this.craftEngineKeyCache.putIfAbsent(key, resolved);
+        return previous == null ? resolved : previous;
+    }
+
+    private ItemBridge itemBridge(Plugin craftEngine) {
+        if (craftEngine == null || !craftEngine.isEnabled() || this.itemReflectionUnavailable) {
+            return null;
+        }
+        ItemBridge cached = this.itemBridge;
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
+            Class<?> itemsClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineItems", true, classLoader);
+            ItemBridge bridge = new ItemBridge(
+                keyClass.getMethod("of", String.class),
+                itemsClass.getMethod("byId", keyClass)
+            );
+            this.itemBridge = bridge;
+            return bridge;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.itemReflectionUnavailable = true;
+            this.plugin.getLogger().warning(
+                "CraftEngine was detected, but MahjongPaper could not build CraftEngine custom items. Falling back to direct item_model items."
+            );
+            this.plugin.debug().log("lifecycle", "CraftEngine reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
+            return null;
+        }
+    }
+
+    private FurnitureBridge furnitureBridge(Plugin craftEngine) {
+        if (craftEngine == null || !craftEngine.isEnabled() || this.furnitureReflectionUnavailable) {
+            return null;
+        }
+        FurnitureBridge cached = this.furnitureBridge;
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
+            Class<?> furnitureClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineFurniture", true, classLoader);
+            Method removeWithFlagsMethod = null;
+            Method removeMethod = null;
+            try {
+                removeWithFlagsMethod = furnitureClass.getMethod("remove", Entity.class, boolean.class, boolean.class);
+            } catch (NoSuchMethodException ignored) {
+                removeMethod = furnitureClass.getMethod("remove", Entity.class);
+            }
+            FurnitureBridge bridge = new FurnitureBridge(
+                keyClass.getMethod("of", String.class),
+                furnitureClass.getMethod("place", Location.class, keyClass),
+                furnitureClass.getMethod("isFurniture", Entity.class),
+                removeMethod,
+                removeWithFlagsMethod
+            );
+            this.furnitureBridge = bridge;
+            return bridge;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.furnitureReflectionUnavailable = true;
+            this.plugin.getLogger().warning(
+                "CraftEngine was detected, but MahjongPaper could not place CraftEngine furniture. CraftEngine-based interaction may be unavailable."
+            );
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine furniture bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+            return null;
+        }
+    }
+
     private record TrackedCullableEntity(Entity entity, int entityId, Object cullableProxy) {
         private TrackedCullableEntity(Entity entity, Object cullableProxy) {
             this(entity, entity.getEntityId(), cullableProxy);
         }
+    }
+
+    private record ItemBridge(Method keyOfMethod, Method byIdMethod) {
+    }
+
+    private record FurnitureBridge(
+        Method keyOfMethod,
+        Method placeMethod,
+        Method isFurnitureMethod,
+        Method removeMethod,
+        Method removeWithFlagsMethod
+    ) {
     }
 
     private record ReflectionBridge(

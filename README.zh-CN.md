@@ -1,5 +1,12 @@
 # MahjongPaper
 
+## 最新说明
+
+- `/mahjong start` 现在用于切换准备状态；4 家坐满且全部准备后才会自动开始。
+- 东南西北悬浮字支持固定座位加入和准备交互。
+- 一局结束后不会直接开始下一局，所有玩家需要重新准备。
+- `config.yml` 的配置会在插件启动时统一读取；修改后请重启服务器进程让新配置生效。
+
 `MahjongPaper` 是 `MahjongCraft` 的 Paper 插件化重写脚手架，目前主要基于：
 
 - Paper 的 `ItemDisplay` 与 `TextDisplay`

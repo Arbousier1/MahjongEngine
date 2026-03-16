@@ -14,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MahjongPaperPlugin extends JavaPlugin {
     private final MessageService messages = new MessageService();
+    private PluginSettings settings;
     private DebugService debug;
     private DatabaseService database;
     private CraftEngineService craftEngine;
@@ -22,18 +23,19 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         this.saveDefaultConfig();
-        this.debug = new DebugService(this.getLogger(), this.getConfig().getConfigurationSection("debug"));
+        this.settings = PluginSettings.from(this.getConfig());
+        this.debug = new DebugService(this.getLogger(), this.settings.debugSection());
         this.debug.log("lifecycle", "Debug logging enabled.");
-        this.craftEngine = new CraftEngineService(this, this.getConfig().getConfigurationSection("craftengine"));
+        this.craftEngine = new CraftEngineService(this, this.settings.craftEngineSection());
 
-        if (DatabaseService.isEnabled(this.getConfig().getConfigurationSection("database"))) {
+        if (DatabaseService.isEnabled(this.settings.databaseSection())) {
             try {
-                this.database = new DatabaseService(this, this.getConfig().getConfigurationSection("database"));
+                this.database = new DatabaseService(this, this.settings.databaseSection());
                 this.getLogger().info("Database enabled: " + this.database.databaseType());
                 this.debug.log("database", "Database service initialized with type=" + this.database.databaseType());
             } catch (DatabaseService.InitializationException ex) {
                 this.handleDatabaseStartupFailure(ex);
-                if (this.getConfig().getBoolean("database.failOnError", false)) {
+                if (this.settings.databaseFailOnError()) {
                     this.getLogger().severe("database.failOnError=true, stopping plugin startup.");
                     this.getServer().getPluginManager().disablePlugin(this);
                     return;
@@ -98,6 +100,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public MessageService messages() {
         return this.messages;
+    }
+
+    public PluginSettings settings() {
+        return this.settings;
     }
 
     public DatabaseService database() {

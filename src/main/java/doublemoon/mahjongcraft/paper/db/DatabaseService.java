@@ -74,15 +74,16 @@ public final class DatabaseService {
 
     private HikariConfig hikariConfig(ConfigurationSection config) {
         HikariConfig hikari = new HikariConfig();
+        ConfigurationSection pool = pool(config);
         hikari.setPoolName("MahjongPaper-" + this.databaseType.toUpperCase(Locale.ROOT));
-        hikari.setMaximumPoolSize(pool(config).getInt("maximumPoolSize", 10));
-        hikari.setMinimumIdle(pool(config).getInt("minimumIdle", 2));
-        hikari.setConnectionTimeout(pool(config).getLong("connectionTimeoutMillis", 10000L));
+        hikari.setMaximumPoolSize(pool.getInt("maximumPoolSize", 10));
+        hikari.setMinimumIdle(pool.getInt("minimumIdle", 2));
+        hikari.setConnectionTimeout(pool.getLong("connectionTimeoutMillis", 10000L));
         hikari.setAutoCommit(true);
         hikari.setConnectionTestQuery("SELECT 1");
 
         if ("h2".equals(this.databaseType)) {
-            ConfigurationSection h2 = Objects.requireNonNull(config.getConfigurationSection("h2"), "database.h2");
+            ConfigurationSection h2 = this.h2(config);
             String rawPath = Objects.requireNonNull(h2.getString("path"), "database.h2.path");
             Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
             Path parent = resolvedPath.getParent();
@@ -299,6 +300,10 @@ public final class DatabaseService {
         return pool;
     }
 
+    private ConfigurationSection h2(ConfigurationSection config) {
+        return Objects.requireNonNull(config.getConfigurationSection("h2"), "database.h2");
+    }
+
     private static String normalizedType(ConfigurationSection config) {
         String type = config.getString("type", "h2").trim().toLowerCase(Locale.ROOT);
         return switch (type) {
@@ -318,7 +323,7 @@ public final class DatabaseService {
 
     private String userFacingReason(ConfigurationSection config, Throwable rootCause) {
         if ("h2".equals(this.databaseType)) {
-            ConfigurationSection h2 = Objects.requireNonNull(config.getConfigurationSection("h2"), "database.h2");
+            ConfigurationSection h2 = this.h2(config);
             String rawPath = h2.getString("path", "data/mahjongpaper");
             Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
             return "Could not open the H2 database file. Resolved path: " + resolvedPath

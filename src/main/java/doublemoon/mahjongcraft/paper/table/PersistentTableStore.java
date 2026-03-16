@@ -20,10 +20,8 @@ final class PersistentTableStore {
 
     PersistentTableStore(MahjongPaperPlugin plugin) {
         this.plugin = plugin;
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection("tablePersistence");
-        this.enabled = section == null || section.getBoolean("enabled", true);
-        String fileName = section == null ? "tables.yml" : section.getString("file", "tables.yml");
-        this.file = new File(plugin.getDataFolder(), fileName);
+        this.enabled = plugin.settings().tablePersistenceEnabled();
+        this.file = new File(plugin.getDataFolder(), plugin.settings().tablePersistenceFile());
     }
 
     boolean isEnabled() {
