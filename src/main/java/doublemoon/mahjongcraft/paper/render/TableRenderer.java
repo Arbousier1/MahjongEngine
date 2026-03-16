@@ -39,7 +39,9 @@ public final class TableRenderer {
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
     private static final double CENTER_LABEL_Y_OFFSET = 0.3D + FLOATING_TEXT_Y_OFFSET - 0.5D;
-    private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.28D;
+    private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
+    private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
+    private static final Color CENTER_LAST_DISCARD_TILE_GLOW = Color.fromRGB(255, 220, 96);
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
     private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
@@ -496,13 +498,7 @@ public final class TableRenderer {
             Color.fromARGB(112, 20, 80, 20)
         ));
         if (session.lastPublicDiscardTile() != null) {
-            spawned.add(spawnPublicTile(
-                session,
-                center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
-                0.0F,
-                session.lastPublicDiscardTile(),
-                DisplayEntities.TileRenderPose.FLAT_FACE_UP
-            ));
+            spawned.add(spawnCenterLastDiscardTile(session, center, session.lastPublicDiscardTile()));
         }
         return List.copyOf(spawned);
     }
@@ -521,13 +517,7 @@ public final class TableRenderer {
             Color.fromARGB(112, 20, 80, 20)
         ));
         if (snapshot.lastPublicDiscardTile() != null) {
-            spawned.add(spawnPublicTile(
-                session,
-                center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
-                0.0F,
-                snapshot.lastPublicDiscardTile(),
-                DisplayEntities.TileRenderPose.FLAT_FACE_UP
-            ));
+            spawned.add(spawnCenterLastDiscardTile(session, center, snapshot.lastPublicDiscardTile()));
         }
         return List.copyOf(spawned);
     }
@@ -885,6 +875,25 @@ public final class TableRenderer {
 
     private static Entity spawnPublicTile(MahjongTableSession session, TableRenderLayout.TilePlacement placement) {
         return spawnPublicTile(session, toLocation(session, placement.point()), placement.yaw(), placement.tile(), placement.pose());
+    }
+
+    private static Entity spawnCenterLastDiscardTile(
+        MahjongTableSession session,
+        Location center,
+        MahjongTile tile
+    ) {
+        return DisplayEntities.spawnTileDisplay(
+            session.plugin(),
+            center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
+            0.0F,
+            tile,
+            DisplayEntities.TileRenderPose.STANDING,
+            null,
+            true,
+            null,
+            CENTER_LAST_DISCARD_TILE_SCALE,
+            CENTER_LAST_DISCARD_TILE_GLOW
+        );
     }
 
     private static Location toLocation(MahjongTableSession session, TableRenderLayout.Point point) {
