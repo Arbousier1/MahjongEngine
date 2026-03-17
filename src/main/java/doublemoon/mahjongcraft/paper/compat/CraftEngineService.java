@@ -176,25 +176,25 @@ public final class CraftEngineService {
     }
 
     public Entity placeHandTileHitbox(Location location, DisplayClickAction action) {
-        Entity entity = this.placeFurniture(location, HAND_TILE_HITBOX_ITEM_ID);
-        if (entity != null && action != null) {
-            TableDisplayRegistry.register(entity.getEntityId(), action);
-        }
-        return entity;
+        return this.placeFurniture(location, HAND_TILE_HITBOX_ITEM_ID, action);
     }
 
     public Entity placeSeatHitbox(Location location, DisplayClickAction action) {
-        Entity entity = this.placeFurniture(location, SEAT_HITBOX_ITEM_ID);
-        if (entity != null && action != null) {
-            TableDisplayRegistry.register(entity.getEntityId(), action);
-        }
-        return entity;
+        return this.placeFurniture(location, SEAT_HITBOX_ITEM_ID, action);
     }
 
     public Entity placeSeatFurniture(Location location, String furnitureItemId, DisplayClickAction action) {
         Entity entity = this.placeFurniture(location, furnitureItemId);
         if (entity != null && action != null) {
             TableDisplayRegistry.register(entity.getEntityId(), action);
+        }
+        return entity;
+    }
+
+    public Entity placeFurniture(Location location, String furnitureItemId, DisplayClickAction action) {
+        Entity entity = this.placeFurniture(location, furnitureItemId);
+        if (entity != null) {
+            this.applyDisplayClickAction(entity, action);
         }
         return entity;
     }
@@ -601,6 +601,36 @@ public final class CraftEngineService {
         }
     }
 
+    public boolean reconcileFurniture(Entity entity, Location location, String furnitureItemId, DisplayClickAction action) {
+        if (entity == null || location == null || furnitureItemId == null || furnitureItemId.isBlank()) {
+            return false;
+        }
+        String existingFurnitureId = this.furnitureItemId(entity);
+        if (!Objects.equals(existingFurnitureId, furnitureItemId)) {
+            return false;
+        }
+        Location target = location.clone();
+        entity.teleport(target);
+        entity.setRotation(target.getYaw(), target.getPitch());
+        this.applyDisplayClickAction(entity, action);
+        return true;
+    }
+
+    public String furnitureItemId(Entity entity) {
+        if (entity == null || this.furnitureReflectionUnavailable) {
+            return null;
+        }
+        Plugin craftEngine = this.craftEnginePlugin();
+        if (craftEngine == null || !craftEngine.isEnabled()) {
+            return null;
+        }
+        NamespacedKey furnitureKey = this.resolveFurnitureDataKey(craftEngine);
+        if (furnitureKey == null) {
+            return null;
+        }
+        return entity.getPersistentDataContainer().get(furnitureKey, PersistentDataType.STRING);
+    }
+
     public boolean isSeatEntity(Entity entity) {
         if (entity == null || this.furnitureReflectionUnavailable) {
             return false;
@@ -647,6 +677,14 @@ public final class CraftEngineService {
             );
             return null;
         }
+    }
+
+    public boolean canPlaceFurniture() {
+        if (!this.preferFurnitureHitbox || this.furnitureReflectionUnavailable) {
+            return false;
+        }
+        Plugin craftEngine = this.craftEnginePlugin();
+        return craftEngine != null && craftEngine.isEnabled() && this.furnitureBridge(craftEngine) != null;
     }
 
     public boolean seatPlayerOnFurniture(Entity furnitureEntity, Player player) {
@@ -722,6 +760,17 @@ public final class CraftEngineService {
 
     private static boolean proxyEquals(Object proxy, Object[] args) {
         return args != null && args.length == 1 && proxy == args[0];
+    }
+
+    private void applyDisplayClickAction(Entity entity, DisplayClickAction action) {
+        if (entity == null) {
+            return;
+        }
+        if (action == null) {
+            TableDisplayRegistry.unregister(entity.getEntityId());
+            return;
+        }
+        TableDisplayRegistry.register(entity.getEntityId(), action);
     }
 
     private static int maxDistance(Entity entity) {

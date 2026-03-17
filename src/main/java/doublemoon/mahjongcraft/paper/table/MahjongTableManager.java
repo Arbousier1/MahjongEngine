@@ -7,7 +7,6 @@ import doublemoon.mahjongcraft.paper.render.DisplayClickAction.ActionType;
 import doublemoon.mahjongcraft.paper.render.DisplayEntities;
 import doublemoon.mahjongcraft.paper.render.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -48,25 +47,21 @@ public final class MahjongTableManager implements Listener {
     private static final double ADMIN_NEAREST_TABLE_RADIUS = 4.5D;
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
-    private final int startupRebuildBatchSize;
     private final Map<String, MahjongTableSession> tables = new LinkedHashMap<>();
     private final Map<UUID, String> playerTables = new LinkedHashMap<>();
     private final Map<UUID, String> spectatorTables = new LinkedHashMap<>();
     private final Map<TableChunkKey, Set<String>> tablesByChunk = new LinkedHashMap<>();
-    private final Set<String> pendingArtifactCleanupTableIds = new HashSet<>();
-    private final StartupRefreshQueue startupRefreshQueue = new StartupRefreshQueue();
     private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new HashMap<>();
-    private final Set<UUID> seatDismountBypass = new HashSet<>();
+    private final TableSeatCoordinator seatCoordinator;
+    private final TableRefreshCoordinator refreshCoordinator;
     private final BukkitTask tableTickTask;
-    private final BukkitTask seatLockTask;
-    private BukkitTask startupRefreshTask;
 
     public MahjongTableManager(MahjongPaperPlugin plugin) {
         this.plugin = plugin;
         this.persistentTableStore = new PersistentTableStore(plugin);
-        this.startupRebuildBatchSize = Math.max(1, plugin.settings().tableStartupRebuildBatchSize());
+        this.seatCoordinator = new TableSeatCoordinator(plugin, this);
+        this.refreshCoordinator = new TableRefreshCoordinator(plugin, this, this.seatCoordinator, plugin.settings().tableStartupRebuildBatchSize());
         this.tableTickTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> this.tables.values().forEach(MahjongTableSession::tick), 20L, 20L);
-        this.seatLockTask = Bukkit.getScheduler().runTaskTimer(plugin, this::maintainProtectedSeats, 1L, 1L);
     }
 
     public MahjongTableSession createTable(Player owner) {
@@ -122,7 +117,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addPlayer(player)) {
             return null;
         }
-        this.cleanupLoadedTableArtifactsIfNeeded(session);
+        this.refreshCoordinator.cleanupLoadedTableArtifactsIfNeeded(session);
         this.playerTables.put(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " joined table " + session.id());
         session.render();
@@ -150,7 +145,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addPlayer(player, wind)) {
             return null;
         }
-        this.cleanupLoadedTableArtifactsIfNeeded(session);
+        this.refreshCoordinator.cleanupLoadedTableArtifactsIfNeeded(session);
         this.spectatorTables.remove(playerId);
         session.removeSpectator(playerId);
         this.playerTables.put(playerId, session.id());
@@ -171,7 +166,7 @@ public final class MahjongTableManager implements Listener {
         if (!session.addSpectator(player)) {
             return null;
         }
-        this.cleanupLoadedTableArtifactsIfNeeded(session);
+        this.refreshCoordinator.cleanupLoadedTableArtifactsIfNeeded(session);
         this.spectatorTables.put(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " is spectating table " + session.id());
         session.render();
@@ -190,12 +185,12 @@ public final class MahjongTableManager implements Listener {
             return new LeaveResult(LeaveStatus.BLOCKED, session);
         }
         SeatWind seatWind = session.seatOf(playerId);
-        this.ejectSeatOccupant(playerId);
+        this.seatCoordinator.ejectSeatOccupant(playerId);
         if (!session.removePlayer(playerId)) {
             return new LeaveResult(LeaveStatus.BLOCKED, session);
         }
         this.playerTables.remove(playerId);
-        this.movePlayerToSeatExit(playerId, session, seatWind);
+        this.seatCoordinator.movePlayerToSeatExit(playerId, session, seatWind);
         this.plugin.debug().log("table", "Player " + playerId + " left table " + session.id());
         this.handleSeatMembershipChanged(session, true);
         return new LeaveResult(LeaveStatus.LEFT, session);
@@ -273,7 +268,7 @@ public final class MahjongTableManager implements Listener {
                 this.deleteTable(id);
             }
             this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.rule());
-            this.enqueueStartupRefresh(id);
+            this.refreshCoordinator.enqueueStartupRefresh(id);
             this.plugin.debug().log("table", "Queued persistent table " + id + " for startup rebuild");
         }
         this.persistTables();
@@ -286,10 +281,10 @@ public final class MahjongTableManager implements Listener {
     public void refreshPersistentTablesAfterStartup() {
         for (MahjongTableSession session : this.tables.values()) {
             if (session.isPersistentRoom()) {
-                this.enqueueStartupRefresh(session.id());
+                this.refreshCoordinator.enqueueStartupRefresh(session.id());
             }
         }
-        this.scheduleStartupRefreshTask();
+        this.refreshCoordinator.scheduleStartupRefreshTask();
     }
 
     public MahjongTableSession.ReadyResult start(Player player) {
@@ -320,13 +315,13 @@ public final class MahjongTableManager implements Listener {
         Location center = session.center();
 
         for (UUID playerId : session.players()) {
-            this.ejectSeatOccupant(playerId);
+            this.seatCoordinator.ejectSeatOccupant(playerId);
             this.playerTables.remove(playerId);
         }
         for (UUID spectatorId : session.spectators()) {
             this.spectatorTables.remove(spectatorId);
         }
-        this.pendingArtifactCleanupTableIds.remove(session.id());
+        this.refreshCoordinator.clearPendingArtifactCleanup(session.id());
         this.unindexTable(session);
         session.shutdown();
         this.cleanupTableArtifacts(center);
@@ -367,7 +362,7 @@ public final class MahjongTableManager implements Listener {
                 return false;
             }
             this.plugin.messages().send(player, "command.joined_table", this.plugin.messages().tag("table_id", session.id()));
-            this.scheduleSeatRestore(player, session, action.seatWind());
+            this.seatCoordinator.requestSeatRestore(player, session, action.seatWind());
             return true;
         }
         if (action.actionType() == ActionType.TOGGLE_READY) {
@@ -383,20 +378,14 @@ public final class MahjongTableManager implements Listener {
 
     public void shutdown() {
         this.tableTickTask.cancel();
-        this.seatLockTask.cancel();
-        if (this.startupRefreshTask != null) {
-            this.startupRefreshTask.cancel();
-            this.startupRefreshTask = null;
-        }
+        this.seatCoordinator.shutdown();
+        this.refreshCoordinator.shutdown();
         this.persistentTableStore.flush(this.tables.values());
         this.tables.values().forEach(MahjongTableSession::shutdown);
         this.tables.clear();
         this.playerTables.clear();
         this.spectatorTables.clear();
         this.tablesByChunk.clear();
-        this.pendingArtifactCleanupTableIds.clear();
-        this.startupRefreshQueue.clear();
-        this.seatDismountBypass.clear();
     }
 
     @EventHandler
@@ -416,14 +405,14 @@ public final class MahjongTableManager implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        DisplayClickAction action = this.seatAction(event.getMount());
+        DisplayClickAction action = this.seatCoordinator.seatAction(event.getMount());
         if (action == null || action.actionType() != ActionType.JOIN_SEAT) {
             return;
         }
         MahjongTableSession session = this.join(player, action.tableId(), action.seatWind());
         if (session != null) {
             this.plugin.messages().send(player, "command.joined_table", this.plugin.messages().tag("table_id", session.id()));
-            this.scheduleSeatRestore(player, session, action.seatWind());
+            this.seatCoordinator.requestSeatRestore(player, session, action.seatWind());
             return;
         }
         event.setCancelled(true);
@@ -435,17 +424,18 @@ public final class MahjongTableManager implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        DisplayClickAction action = this.seatAction(event.getDismounted());
+        DisplayClickAction action = this.seatCoordinator.seatAction(event.getDismounted());
         if (action == null) {
             return;
         }
-        if (this.seatDismountBypass.remove(player.getUniqueId())) {
+        if (this.seatCoordinator.consumeDismountBypass(player.getUniqueId())) {
             return;
         }
         MahjongTableSession session = this.resolveTable(action.tableId());
         if (session != null && session.isStarted()) {
             event.setCancelled(true);
-            this.scheduleSeatRestore(player, session, action.seatWind());
+            this.seatCoordinator.startSeatWatchdog(session, player.getUniqueId(), action.seatWind());
+            this.seatCoordinator.requestSeatRestore(player, session, action.seatWind());
             this.plugin.messages().actionBar(player, "command.leave_blocked_started");
             return;
         }
@@ -462,10 +452,11 @@ public final class MahjongTableManager implements Listener {
         if (session == null || !session.isStarted() || !player.isInsideVehicle()) {
             return;
         }
-        if (this.seatAction(player.getVehicle()) == null) {
+        if (this.seatCoordinator.seatAction(player.getVehicle()) == null) {
             return;
         }
         event.setCancelled(true);
+        this.seatCoordinator.startSeatWatchdog(session, player.getUniqueId(), session.seatOf(player.getUniqueId()));
         this.plugin.messages().actionBar(player, "command.leave_blocked_started");
     }
 
@@ -492,17 +483,7 @@ public final class MahjongTableManager implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
-        for (String tableId : this.tableIdsNearChunk(event.getChunk())) {
-            MahjongTableSession session = this.resolveTable(tableId);
-            if (session == null || !this.affectsTableArea(event.getChunk(), session)) {
-                continue;
-            }
-            if (!this.isTableAreaLoaded(session)) {
-                continue;
-            }
-            this.cleanupLoadedTableArtifactsIfNeeded(session);
-            session.render();
-        }
+        this.refreshCoordinator.handleChunkLoad(event.getChunk(), this.tableIdsNearChunk(event.getChunk()));
     }
 
     @EventHandler
@@ -568,53 +549,8 @@ public final class MahjongTableManager implements Listener {
         }
     }
 
-    private void cleanupLoadedTableArtifactsIfNeeded(MahjongTableSession session) {
-        if (session == null || !this.pendingArtifactCleanupTableIds.remove(session.id())) {
-            return;
-        }
-        this.refreshPersistentTableArtifacts(session);
-        this.plugin.debug().log("table", "Deferred startup cleanup finished for persistent table " + session.id());
-    }
-
-    private void refreshPersistentTableArtifacts(MahjongTableSession session) {
-        if (session == null) {
-            return;
-        }
-        this.pendingArtifactCleanupTableIds.remove(session.id());
-        Location center = session.center();
-        session.clearDisplays();
+    void cleanupTableArtifactsAt(Location center) {
         this.cleanupTableArtifacts(center);
-    }
-
-    private boolean affectsTableArea(Chunk chunk, MahjongTableSession session) {
-        Location center = session.center();
-        World world = center.getWorld();
-        if (world == null || !world.equals(chunk.getWorld())) {
-            return false;
-        }
-        int centerChunkX = center.getBlockX() >> 4;
-        int centerChunkZ = center.getBlockZ() >> 4;
-        return Math.abs(centerChunkX - chunk.getX()) <= 1 && Math.abs(centerChunkZ - chunk.getZ()) <= 1;
-    }
-
-    private boolean isTableAreaLoaded(MahjongTableSession session) {
-        if (session == null) {
-            return false;
-        }
-        Location center = session.center();
-        World world = center.getWorld();
-        if (world == null) {
-            return false;
-        }
-        int centerChunkX = center.getBlockX() >> 4;
-        int centerChunkZ = center.getBlockZ() >> 4;
-        Set<ChunkNeighborhood.ChunkKey> loadedChunks = new HashSet<>();
-        for (ChunkNeighborhood.ChunkKey chunkKey : ChunkNeighborhood.around(world.getUID(), centerChunkX, centerChunkZ)) {
-            if (world.isChunkLoaded(chunkKey.chunkX(), chunkKey.chunkZ())) {
-                loadedChunks.add(chunkKey);
-            }
-        }
-        return TableAreaChunks.allLoaded(world.getUID(), centerChunkX, centerChunkZ, loadedChunks);
     }
 
     private record RecentHandTileClick(String tableId, UUID ownerId, int tileIndex, long timestampNanos) {
@@ -645,145 +581,12 @@ public final class MahjongTableManager implements Listener {
         return session.playerAt(wind) == null;
     }
 
-    private void ejectSeatOccupant(UUID playerId) {
-        if (playerId == null) {
-            return;
-        }
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null || !player.isInsideVehicle()) {
-            return;
-        }
-        Entity vehicle = player.getVehicle();
-        if (this.seatAction(vehicle) == null) {
-            return;
-        }
-        this.seatDismountBypass.add(playerId);
-        player.leaveVehicle();
+    public void startSeatWatchdog(MahjongTableSession session, long durationTicks) {
+        this.seatCoordinator.startSeatWatchdog(session, durationTicks);
     }
 
-    private void scheduleSeatRestore(Player player, MahjongTableSession session, SeatWind wind) {
-        if (player == null || session == null || wind == null) {
-            return;
-        }
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
-            if (!player.isOnline()) {
-                return;
-            }
-            if (this.tableFor(player.getUniqueId()) != session) {
-                return;
-            }
-            if (player.isInsideVehicle()) {
-                return;
-            }
-            Entity furniture = this.findSeatFurniture(session, wind);
-            if (furniture != null) {
-                this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
-            }
-        });
-    }
-
-    private void movePlayerToSeatExit(UUID playerId, MahjongTableSession session, SeatWind wind) {
-        if (playerId == null || session == null || wind == null) {
-            return;
-        }
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null || !player.isOnline()) {
-            return;
-        }
-        Location seatAnchor = session.seatAnchorLocation(wind);
-        Location tableCenter = session.center();
-        if (seatAnchor.getWorld() == null || tableCenter.getWorld() == null || !seatAnchor.getWorld().equals(tableCenter.getWorld())) {
-            return;
-        }
-        double deltaX = seatAnchor.getX() - tableCenter.getX();
-        double deltaZ = seatAnchor.getZ() - tableCenter.getZ();
-        double horizontalLength = Math.hypot(deltaX, deltaZ);
-        double offsetX = horizontalLength > 0.0001D ? deltaX / horizontalLength * 0.8D : 0.0D;
-        double offsetZ = horizontalLength > 0.0001D ? deltaZ / horizontalLength * 0.8D : 0.0D;
-        Location exit = seatAnchor.clone().add(offsetX, 1.05D, offsetZ);
-        exit.setYaw(session.seatFacingYaw(wind));
-        exit.setPitch(0.0F);
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
-            if (player.isOnline() && !player.isInsideVehicle()) {
-                player.teleport(exit);
-            }
-        });
-    }
-
-    private void maintainProtectedSeats() {
-        for (MahjongTableSession session : this.tables.values()) {
-            if (!session.isStarted()) {
-                continue;
-            }
-            for (SeatWind wind : SeatWind.values()) {
-                UUID playerId = session.playerAt(wind);
-                if (playerId == null || session.isBot(playerId)) {
-                    continue;
-                }
-                Player player = Bukkit.getPlayer(playerId);
-                if (player == null || !player.isOnline() || this.isPlayerSeatedAt(player, session, wind)) {
-                    continue;
-                }
-                this.scheduleSeatRestore(player, session, wind);
-            }
-        }
-    }
-
-    private boolean isPlayerSeatedAt(Player player, MahjongTableSession session, SeatWind wind) {
-        if (player == null || session == null || wind == null || !player.isInsideVehicle()) {
-            return false;
-        }
-        DisplayClickAction action = this.seatAction(player.getVehicle());
-        return action != null
-            && action.seatWind() == wind
-            && session.id().equals(action.tableId());
-    }
-
-    private Entity findSeatFurniture(MahjongTableSession session, SeatWind wind) {
-        if (session == null || wind == null || this.plugin.craftEngine() == null) {
-            return null;
-        }
-        Location anchor = session.seatAnchorLocation(wind);
-        World world = anchor.getWorld();
-        if (world == null) {
-            return null;
-        }
-        for (Entity entity : world.getNearbyEntities(anchor, 1.6D, 1.6D, 1.6D)) {
-            if (!this.plugin.craftEngine().isFurnitureEntity(entity)) {
-                continue;
-            }
-            DisplayClickAction action = TableDisplayRegistry.get(entity.getEntityId());
-            if (action == null || !session.id().equals(action.tableId()) || action.seatWind() != wind) {
-                continue;
-            }
-            if (action.actionType() == ActionType.JOIN_SEAT || action.actionType() == ActionType.TOGGLE_READY) {
-                return entity;
-            }
-        }
-        return null;
-    }
-
-    private DisplayClickAction seatAction(Entity entity) {
-        if (entity == null || this.plugin.craftEngine() == null) {
-            return null;
-        }
-        Entity furniture = null;
-        if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
-            furniture = entity;
-        } else if (this.plugin.craftEngine().isSeatEntity(entity)) {
-            furniture = this.plugin.craftEngine().furnitureEntityForSeat(entity);
-        }
-        if (furniture == null) {
-            return null;
-        }
-        DisplayClickAction action = TableDisplayRegistry.get(furniture.getEntityId());
-        if (action == null) {
-            return null;
-        }
-        return switch (action.actionType()) {
-            case JOIN_SEAT, TOGGLE_READY -> action;
-            default -> null;
-        };
+    public void startSeatWatchdog(MahjongTableSession session, UUID playerId, SeatWind wind, long durationTicks) {
+        this.seatCoordinator.startSeatWatchdog(session, playerId, wind, durationTicks);
     }
 
     private MahjongTableSession resolveTable(String tableId) {
@@ -791,6 +594,10 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
         return this.tables.get(tableId.toUpperCase(Locale.ROOT));
+    }
+
+    MahjongTableSession resolveTableById(String tableId) {
+        return this.resolveTable(tableId);
     }
 
     private boolean isViewingAnyTable(UUID playerId) {
@@ -801,49 +608,13 @@ public final class MahjongTableManager implements Listener {
         String normalizedId = tableId.toUpperCase(Locale.ROOT);
         MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, rule, true);
         this.registerTable(session);
-        this.pendingArtifactCleanupTableIds.add(normalizedId);
+        this.refreshCoordinator.markPendingArtifactCleanup(normalizedId);
         return session;
     }
 
     private void registerTable(MahjongTableSession session) {
         this.tables.put(session.id(), session);
         this.indexTable(session);
-    }
-
-    private void enqueueStartupRefresh(String tableId) {
-        this.startupRefreshQueue.enqueue(tableId);
-    }
-
-    private void scheduleStartupRefreshTask() {
-        if (this.startupRefreshQueue.isEmpty()) {
-            return;
-        }
-        if (this.startupRefreshTask != null && !this.startupRefreshTask.isCancelled()) {
-            return;
-        }
-        this.startupRefreshTask = Bukkit.getScheduler().runTaskTimer(this.plugin, this::processStartupRefreshBatch, 1L, 1L);
-    }
-
-    private void processStartupRefreshBatch() {
-        int processed = 0;
-        while (processed < this.startupRebuildBatchSize && !this.startupRefreshQueue.isEmpty()) {
-            String tableId = this.startupRefreshQueue.poll();
-            MahjongTableSession session = this.resolveTable(tableId);
-            if (session == null || !session.isPersistentRoom()) {
-                continue;
-            }
-            if (!this.isTableAreaLoaded(session)) {
-                this.plugin.debug().log("table", "Deferred startup cleanup is waiting for chunks around persistent table " + session.id());
-                continue;
-            }
-            this.refreshPersistentTableArtifacts(session);
-            session.render();
-            processed++;
-        }
-        if (this.startupRefreshQueue.isEmpty() && this.startupRefreshTask != null) {
-            this.startupRefreshTask.cancel();
-            this.startupRefreshTask = null;
-        }
     }
 
     private void indexTable(MahjongTableSession session) {
@@ -877,7 +648,7 @@ public final class MahjongTableManager implements Listener {
             return;
         }
         for (UUID playerId : playerIds) {
-            this.ejectSeatOccupant(playerId);
+            this.seatCoordinator.ejectSeatOccupant(playerId);
             this.playerTables.remove(playerId);
             this.plugin.debug().log("table", "Player " + playerId + " left table " + session.id() + " after round end");
         }
@@ -931,7 +702,6 @@ public final class MahjongTableManager implements Listener {
         NOT_IN_TABLE,
         BLOCKED
     }
-
     private record TableChunkKey(UUID worldId, int chunkX, int chunkZ) {
         private static TableChunkKey from(org.bukkit.Location location) {
             return new TableChunkKey(location.getWorld().getUID(), location.getBlockX() >> 4, location.getBlockZ() >> 4);

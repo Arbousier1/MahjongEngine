@@ -2,6 +2,7 @@ package doublemoon.mahjongcraft.paper.table;
 
 import doublemoon.mahjongcraft.paper.MahjongPaperPlugin;
 import doublemoon.mahjongcraft.paper.i18n.LocalizedMessages;
+import doublemoon.mahjongcraft.paper.render.DisplayEntities;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.MeldView;
@@ -68,8 +69,6 @@ public final class MahjongTableSession {
     private final TableRenderer renderer = new TableRenderer();
     private final Map<UUID, String> botNames = new LinkedHashMap<>();
     private final Map<UUID, String> feedbackState = new HashMap<>();
-    private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
-    private final Map<UUID, String> viewerHudState = new HashMap<>();
     private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
     private final Set<UUID> readyPlayers = new LinkedHashSet<>();
     private final Set<UUID> leaveAfterRoundPlayers = new LinkedHashSet<>();
@@ -86,10 +85,8 @@ public final class MahjongTableSession {
     private long nextRoundDeadlineMillis;
     private int nextBotNumber = 1;
     private BukkitTask botTask;
-    private long renderRequestVersion;
-    private long renderCancellationNonce;
-    private boolean renderPrecomputeRunning;
-    private RenderSnapshot pendingRenderSnapshot;
+    private final TableRenderCoordinator renderCoordinator;
+    private final TableViewerPresentationCoordinator viewerPresentation;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
         this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
@@ -111,6 +108,8 @@ public final class MahjongTableSession {
         this.center = normalizedTableCenter(center);
         this.configuredRule = copyRule(configuredRule);
         this.persistentRoom = persistentRoom;
+        this.renderCoordinator = new TableRenderCoordinator(this);
+        this.viewerPresentation = new TableViewerPresentationCoordinator(this);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -175,7 +174,7 @@ public final class MahjongTableSession {
     }
 
     public boolean removeSpectator(UUID playerId) {
-        this.hideHud(playerId);
+        this.viewerPresentation.hideHud(playerId);
         return this.spectators.remove(playerId);
     }
 
@@ -224,7 +223,7 @@ public final class MahjongTableSession {
         if (this.engine != null && this.engine.getStarted()) {
             return false;
         }
-        this.hideHud(playerId);
+        this.viewerPresentation.hideHud(playerId);
         this.feedbackState.remove(playerId);
         this.botNames.remove(playerId);
         this.selectedHandTileIndices.remove(playerId);
@@ -375,6 +374,9 @@ public final class MahjongTableSession {
         this.regionFingerprints.clear();
         this.lastResolutionSoundFingerprint = "";
         this.render();
+        if (this.plugin.tableManager() != null) {
+            this.plugin.tableManager().startSeatWatchdog(this, 60L);
+        }
     }
 
     public boolean discard(UUID playerId, int tileIndex) {
@@ -461,94 +463,34 @@ public final class MahjongTableSession {
     }
 
     public void render() {
-        this.cancelBotTask();
-        this.pruneSelectedHandTiles();
-        this.scheduleAsyncRenderPrecompute();
-        this.syncPlayerFeedback();
-        this.syncHud();
-        this.playStateSounds();
-        BotActionScheduler.schedule(this);
+        this.renderCoordinator.render();
     }
 
     public void clearDisplays() {
-        this.invalidatePendingRenderPrecompute();
-        this.regionFingerprints.clear();
-        this.removeAllDisplays();
+        this.renderCoordinator.clearDisplays();
     }
 
-    private void scheduleAsyncRenderPrecompute() {
-        RenderSnapshot snapshot = this.captureRenderSnapshot(++this.renderRequestVersion);
-        this.pendingRenderSnapshot = snapshot;
-        if (this.renderPrecomputeRunning) {
-            return;
-        }
-        this.startAsyncRenderPrecompute(snapshot);
-    }
-
-    private void startAsyncRenderPrecompute(RenderSnapshot snapshot) {
-        this.renderPrecomputeRunning = true;
-        this.plugin.async().execute("render-precompute-" + this.id, () -> {
-            RenderPrecomputeResult result = new RenderPrecomputeResult(
-                snapshot,
-                this.precomputeRegionFingerprints(snapshot),
-                TableRenderLayout.precompute(snapshot)
-            );
-            Bukkit.getScheduler().runTask(this.plugin, () -> this.finishAsyncRenderPrecompute(result));
-        });
-    }
-
-    private void finishAsyncRenderPrecompute(RenderPrecomputeResult result) {
-        this.renderPrecomputeRunning = false;
-        if (result.snapshot().cancellationNonce() != this.renderCancellationNonce) {
-            this.startNextPendingRenderIfNeeded(result.snapshot().version());
-            return;
-        }
-
-        RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
-        if (latestSnapshot != null && latestSnapshot.version() > result.snapshot().version()) {
-            this.startNextPendingRenderIfNeeded(result.snapshot().version());
-            return;
-        }
-
-        this.applyRenderPrecompute(result);
-        this.startNextPendingRenderIfNeeded(result.snapshot().version());
-    }
-
-    private void startNextPendingRenderIfNeeded(long completedVersion) {
-        RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
-        if (latestSnapshot == null || latestSnapshot.version() <= completedVersion) {
-            return;
-        }
-        this.startAsyncRenderPrecompute(latestSnapshot);
-    }
-
-    private void applyRenderPrecompute(RenderPrecomputeResult result) {
+    void applyRenderPrecompute(RenderPrecomputeResult result) {
         RenderSnapshot snapshot = result.snapshot();
         TableRenderLayout.LayoutPlan plan = result.layout();
         Map<String, String> fingerprints = result.regionFingerprints();
 
         this.updateRegion(REGION_TABLE, fingerprints.get(REGION_TABLE), () -> this.renderer.renderTableStructure(this, plan));
         this.updateWallRegions(plan);
-        this.updateRegion(REGION_DORA, fingerprints.get(REGION_DORA), () -> this.renderer.renderDora(this, plan));
-        this.updateRegion(REGION_CENTER, fingerprints.get(REGION_CENTER), () -> this.renderer.renderCenterLabel(this, snapshot, plan));
+        this.updateRegionWithSpecs(REGION_DORA, fingerprints.get(REGION_DORA), () -> this.renderer.renderDoraSpecs(this, plan));
+        this.updateRegionWithSpecs(REGION_CENTER, fingerprints.get(REGION_CENTER), () -> this.renderer.renderCenterLabelSpecs(this, snapshot, plan));
         for (SeatWind wind : SeatWind.values()) {
             SeatRenderSnapshot seat = snapshot.seat(wind);
             TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
             this.updateRegion(this.seatRegionKey("visual", wind), fingerprints.get(this.seatRegionKey("visual", wind)), () -> this.renderer.renderSeatVisual(this, wind));
-            this.updateRegion(this.seatRegionKey("labels", wind), fingerprints.get(this.seatRegionKey("labels", wind)), () -> this.renderer.renderSeatLabels(this, seat, seatPlan));
+            this.updateRegionWithSpecs(this.seatRegionKey("labels", wind), fingerprints.get(this.seatRegionKey("labels", wind)), () -> this.renderer.renderSeatLabelSpecs(this, seat, seatPlan));
             this.updateRegion(this.seatRegionKey("sticks", wind), fingerprints.get(this.seatRegionKey("sticks", wind)), () -> this.renderer.renderSticks(this, seat, seatPlan));
             this.updatePublicHandRegions(snapshot, seat, seatPlan);
             this.updatePrivateHandRegions(seat, seatPlan);
             this.updateDiscardRegions(seat, seatPlan);
-            this.updateRegion(this.seatRegionKey("melds", wind), fingerprints.get(this.seatRegionKey("melds", wind)), () -> this.renderer.renderMelds(this, seat, seatPlan));
+            this.updateRegionWithSpecs(this.seatRegionKey("melds", wind), fingerprints.get(this.seatRegionKey("melds", wind)), () -> this.renderer.renderMeldSpecs(this, seat, seatPlan));
         }
-        this.updateViewerOverlayRegions();
-    }
-
-    private void invalidatePendingRenderPrecompute() {
-        this.renderCancellationNonce++;
-        this.pendingRenderSnapshot = null;
-        this.renderPrecomputeRunning = false;
+        this.viewerPresentation.flushIfNeeded();
     }
 
     public void inspectRender(Player viewer) {
@@ -720,29 +662,28 @@ public final class MahjongTableSession {
     public void shutdown() {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
-        this.invalidatePendingRenderPrecompute();
-        this.removeAllDisplays();
+        this.renderCoordinator.shutdown();
+        this.clearRenderDisplays();
         this.feedbackState.clear();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.lastPersistedRankFingerprint = "";
-        this.regionFingerprints.clear();
         this.lastTurnSoundFingerprint = "";
         this.lastRiichiSoundFingerprint = "";
         this.lastResolutionSoundFingerprint = "";
+        this.viewerPresentation.shutdown();
         this.readyPlayers.clear();
         this.leaveAfterRoundPlayers.clear();
         this.spectators.clear();
-        this.clearHud();
         this.engine = null;
     }
 
     public void forceEndMatch() {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
-        this.invalidatePendingRenderPrecompute();
+        this.renderCoordinator.shutdown();
         this.feedbackState.clear();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
@@ -753,6 +694,7 @@ public final class MahjongTableSession {
         this.lastTurnSoundFingerprint = "";
         this.lastRiichiSoundFingerprint = "";
         this.lastResolutionSoundFingerprint = "";
+        this.viewerPresentation.resetForLifecycleChange();
         this.leaveAfterRoundPlayers.clear();
         this.engine = null;
         this.resetReadyStateForNextRound();
@@ -762,15 +704,14 @@ public final class MahjongTableSession {
     public void resetForServerStartup() {
         this.cancelBotTask();
         this.cancelNextRoundCountdown();
-        this.invalidatePendingRenderPrecompute();
-        this.removeAllDisplays();
+        this.renderCoordinator.shutdown();
+        this.clearRenderDisplays();
         this.feedbackState.clear();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.lastPersistedRankFingerprint = "";
-        this.regionFingerprints.clear();
         this.lastTurnSoundFingerprint = "";
         this.lastRiichiSoundFingerprint = "";
         this.lastResolutionSoundFingerprint = "";
@@ -779,7 +720,7 @@ public final class MahjongTableSession {
         this.spectators.clear();
         this.botNames.clear();
         Collections.fill(this.seats, null);
-        this.clearHud();
+        this.viewerPresentation.shutdown();
         this.engine = null;
         this.nextBotNumber = 1;
     }
@@ -1265,9 +1206,11 @@ public final class MahjongTableSession {
     }
 
     public void tick() {
-        this.restoreDisplaysIfNeeded();
-        this.updateViewerOverlayRegions();
-        this.syncHud();
+        this.renderCoordinator.restoreDisplaysIfNeeded();
+        if (this.viewerPresentation.hasPresentationState()) {
+            this.viewerPresentation.markDirty();
+            this.viewerPresentation.flushIfNeeded();
+        }
         if (this.engine == null || this.engine.getStarted() || this.engine.getLastResolution() == null) {
             return;
         }
@@ -1339,7 +1282,7 @@ public final class MahjongTableSession {
         if (wind == null) {
             return;
         }
-        RenderSnapshot snapshot = this.captureRenderSnapshot(this.renderRequestVersion);
+        RenderSnapshot snapshot = this.captureRenderSnapshot(0L, 0L);
         SeatRenderSnapshot seat = snapshot.seat(wind);
         if (seat == null || seat.playerId() == null) {
             return;
@@ -1779,7 +1722,7 @@ public final class MahjongTableSession {
         return status.isBlank() ? riichi : status + " / " + riichi;
     }
 
-    private ViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
+    ViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
         Locale locale = this.plugin.messages().resolveLocale(viewer);
         UUID viewerId = viewer.getUniqueId();
         String regionKey = "viewer-overlay:" + viewerId;
@@ -1875,30 +1818,6 @@ public final class MahjongTableSession {
         return builder.toString();
     }
 
-    private void updateViewerOverlayRegions() {
-        List<Player> viewers = this.viewers();
-        Set<String> activeKeys = new LinkedHashSet<>();
-        for (Player viewer : viewers) {
-            ViewerOverlaySnapshot snapshot = this.captureViewerOverlaySnapshot(viewer);
-            activeKeys.add(snapshot.regionKey());
-            this.updateRegion(snapshot.regionKey(), snapshot.fingerprint(), () -> this.renderer.renderViewerOverlay(this, snapshot));
-        }
-        for (String regionKey : List.copyOf(this.regionDisplays.keySet())) {
-            if (regionKey.startsWith("viewer-overlay:") && !activeKeys.contains(regionKey)) {
-                this.removeRegionDisplays(regionKey);
-            }
-        }
-    }
-
-    private void syncHud() {
-        List<Player> viewers = this.viewers();
-        Set<UUID> onlineViewerIds = new LinkedHashSet<>();
-        for (Player viewer : viewers) {
-            this.syncViewerHud(viewer, onlineViewerIds);
-        }
-        this.hideOfflineHud(onlineViewerIds);
-    }
-
     private float hudProgress() {
         if (this.engine == null) {
             return Math.min(1.0F, this.size() / 4.0F);
@@ -1931,40 +1850,7 @@ public final class MahjongTableSession {
         return this.isSpectator(viewerId) ? BossBar.Color.BLUE : BossBar.Color.WHITE;
     }
 
-    private void syncViewerHud(Player viewer, Set<UUID> onlineViewerIds) {
-        UUID viewerId = viewer.getUniqueId();
-        onlineViewerIds.add(viewerId);
-        Locale locale = this.plugin.messages().resolveLocale(viewer);
-        ViewerHudSnapshot snapshot = this.captureViewerHudSnapshot(locale, viewerId);
-        BossBar bar = this.viewerHudBars.get(viewerId);
-        if (bar == null) {
-            bar = this.createHudBar(viewerId, viewer);
-        }
-        if (Objects.equals(this.viewerHudState.get(viewerId), snapshot.stateSignature())) {
-            return;
-        }
-        bar.name(snapshot.title());
-        bar.progress(snapshot.progress());
-        bar.color(snapshot.color());
-        this.viewerHudState.put(viewerId, snapshot.stateSignature());
-    }
-
-    private BossBar createHudBar(UUID viewerId, Player viewer) {
-        BossBar bar = BossBar.bossBar(Component.empty(), 1.0F, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
-        this.viewerHudBars.put(viewerId, bar);
-        viewer.showBossBar(bar);
-        return bar;
-    }
-
-    private void hideOfflineHud(Set<UUID> onlineViewerIds) {
-        for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
-            if (!onlineViewerIds.contains(viewerId)) {
-                this.hideHud(viewerId);
-            }
-        }
-    }
-
-    private ViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
+    ViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
         float progress = this.hudProgress();
         BossBar.Color color = this.hudColor(viewerId);
         ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
@@ -2064,19 +1950,16 @@ public final class MahjongTableSession {
         return new ViewerHudSnapshot(title, progress, color, stateSignature);
     }
 
-    private void hideHud(UUID viewerId) {
-        BossBar bar = this.viewerHudBars.remove(viewerId);
-        this.viewerHudState.remove(viewerId);
-        Player player = Bukkit.getPlayer(viewerId);
-        if (bar != null && player != null) {
-            player.hideBossBar(bar);
-        }
+    void updateViewerOverlayRegion(ViewerOverlaySnapshot snapshot) {
+        this.updateRegionWithSpecs(snapshot.regionKey(), snapshot.fingerprint(), () -> this.renderer.renderViewerOverlaySpecs(this, snapshot));
     }
 
-    private void clearHud() {
-        for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
-            this.hideHud(viewerId);
-        }
+    List<String> viewerOverlayRegionKeys() {
+        return List.copyOf(this.regionDisplays.keySet());
+    }
+
+    void removeManagedRegionDisplays(String regionKey) {
+        this.removeRegionDisplays(regionKey);
     }
 
     private void playStateSounds() {
@@ -2257,7 +2140,20 @@ public final class MahjongTableSession {
         return Math.max(0L, (long) Math.ceil((this.nextRoundDeadlineMillis - System.currentTimeMillis()) / 1000.0D));
     }
 
-    private RenderSnapshot captureRenderSnapshot(long version) {
+    void prepareRenderRequest() {
+        this.cancelBotTask();
+        this.pruneSelectedHandTiles();
+        this.viewerPresentation.markDirty();
+    }
+
+    void completeRenderFlush() {
+        this.syncPlayerFeedback();
+        this.viewerPresentation.flushIfNeeded();
+        this.playStateSounds();
+        BotActionScheduler.schedule(this);
+    }
+
+    RenderSnapshot captureRenderSnapshot(long version, long cancellationNonce) {
         Location tableCenter = this.center();
         EnumMap<SeatWind, SeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {
@@ -2286,7 +2182,7 @@ public final class MahjongTableSession {
         }
         return new RenderSnapshot(
             version,
-            this.renderCancellationNonce,
+            cancellationNonce,
             Objects.toString(tableCenter.getWorld() == null ? null : tableCenter.getWorld().getName(), ""),
             tableCenter.getX(),
             tableCenter.getY(),
@@ -2309,6 +2205,10 @@ public final class MahjongTableSession {
             List.copyOf(this.doraIndicators()),
             seats
         );
+    }
+
+    RenderPrecomputeResult precomputeRender(RenderSnapshot snapshot) {
+        return new RenderPrecomputeResult(snapshot, this.precomputeRegionFingerprints(snapshot), TableRenderLayout.precompute(snapshot));
     }
 
     private Map<String, String> precomputeRegionFingerprints(RenderSnapshot snapshot) {
@@ -2449,10 +2349,10 @@ public final class MahjongTableSession {
                 continue;
             }
             int index = tileIndex;
-            this.updateRegion(
+            this.updateRegionWithSpecs(
                 regionKey,
                 this.handPrivateTileFingerprint(seat, plan, tileIndex),
-                () -> this.renderer.renderHandPrivateTile(this, seat, plan, index)
+                () -> this.renderer.renderHandPrivateTileSpecs(this, seat, plan, index)
             );
         }
     }
@@ -2484,10 +2384,10 @@ public final class MahjongTableSession {
                 continue;
             }
             int index = tileIndex;
-            this.updateRegion(
+            this.updateRegionWithSpecs(
                 regionKey,
                 this.handPublicTileFingerprint(snapshot, seat, plan, tileIndex),
-                () -> this.renderer.renderHandPublicTile(this, snapshot, seat, plan, index)
+                () -> this.renderer.renderHandPublicTileSpecs(this, snapshot, seat, plan, index)
             );
         }
     }
@@ -2521,10 +2421,10 @@ public final class MahjongTableSession {
                 continue;
             }
             int index = discardIndex;
-            this.updateRegion(
+            this.updateRegionWithSpecs(
                 regionKey,
                 this.discardTileFingerprint(seat, plan, discardIndex),
-                () -> this.renderer.renderDiscardTile(this, seat, plan, index)
+                () -> this.renderer.renderDiscardTileSpecs(this, seat, plan, index)
             );
         }
     }
@@ -2556,10 +2456,10 @@ public final class MahjongTableSession {
                 continue;
             }
             int index = wallIndex;
-            this.updateRegion(
+            this.updateRegionWithSpecs(
                 regionKey,
                 this.wallTileFingerprint(plan, wallIndex),
-                () -> this.renderer.renderWallTile(this, plan, index)
+                () -> this.renderer.renderWallTileSpecs(this, plan, index)
             );
         }
     }
@@ -2597,6 +2497,30 @@ public final class MahjongTableSession {
         this.regionFingerprints.put(regionKey, fingerprint);
     }
 
+    private void updateRegionWithSpecs(String regionKey, String fingerprint, RegionSpecRenderer renderer) {
+        String previousFingerprint = this.regionFingerprints.get(regionKey);
+        List<Entity> currentEntities = this.regionDisplays.get(regionKey);
+        if (this.hasInvalidDisplayEntity(currentEntities)) {
+            this.removeRegionDisplays(regionKey);
+            previousFingerprint = null;
+            currentEntities = null;
+        }
+        if (Objects.equals(previousFingerprint, fingerprint) && (currentEntities != null || this.regionFingerprints.containsKey(regionKey))) {
+            return;
+        }
+        List<DisplayEntities.EntitySpec> specs = renderer.render();
+        if (currentEntities != null && DisplayEntities.reconcile(this.plugin, currentEntities, specs)) {
+            this.regionFingerprints.put(regionKey, fingerprint);
+            return;
+        }
+        this.removeRegionDisplays(regionKey);
+        List<Entity> entities = DisplayEntities.spawnAll(this.plugin, specs);
+        if (!entities.isEmpty()) {
+            this.regionDisplays.put(regionKey, entities);
+        }
+        this.regionFingerprints.put(regionKey, fingerprint);
+    }
+
     private void clearRegion(String regionKey) {
         this.removeRegionDisplays(regionKey);
         this.regionFingerprints.remove(regionKey);
@@ -2613,20 +2537,22 @@ public final class MahjongTableSession {
             && Math.floorDiv(this.center.getBlockZ(), 16) == chunk.getZ();
     }
 
-    private void restoreDisplaysIfNeeded() {
-        if (!this.isCenterChunkLoaded() || !this.hasStaleDisplayRegions()) {
-            return;
-        }
-        this.render();
+    void clearRenderDisplays() {
+        this.regionFingerprints.clear();
+        this.removeAllDisplays();
     }
 
-    private boolean isCenterChunkLoaded() {
+    boolean hasRegionDisplays() {
+        return !this.regionDisplays.isEmpty();
+    }
+
+    boolean isCenterChunkLoaded() {
         World world = this.center.getWorld();
         return world != null
             && world.isChunkLoaded(Math.floorDiv(this.center.getBlockX(), 16), Math.floorDiv(this.center.getBlockZ(), 16));
     }
 
-    private boolean hasStaleDisplayRegions() {
+    boolean hasStaleDisplayRegions() {
         for (List<Entity> entities : this.regionDisplays.values()) {
             if (this.hasInvalidDisplayEntity(entities)) {
                 return true;
@@ -2732,6 +2658,11 @@ public final class MahjongTableSession {
     @FunctionalInterface
     private interface RegionRenderer {
         List<Entity> render();
+    }
+
+    @FunctionalInterface
+    private interface RegionSpecRenderer {
+        List<DisplayEntities.EntitySpec> render();
     }
 
     public record RenderSnapshot(
@@ -2852,7 +2783,7 @@ public final class MahjongTableSession {
     ) {
     }
 
-    private record ViewerHudSnapshot(
+    record ViewerHudSnapshot(
         Component title,
         float progress,
         BossBar.Color color,
@@ -2860,7 +2791,7 @@ public final class MahjongTableSession {
     ) {
     }
 
-    private record RenderPrecomputeResult(
+    record RenderPrecomputeResult(
         RenderSnapshot snapshot,
         Map<String, String> regionFingerprints,
         TableRenderLayout.LayoutPlan layout

@@ -3,6 +3,7 @@ package doublemoon.mahjongcraft.paper.render;
 import doublemoon.mahjongcraft.paper.model.MahjongTile;
 import net.kyori.adventure.text.Component;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +35,206 @@ public final class DisplayEntities {
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
 
     private DisplayEntities() {
+    }
+
+    public static List<Entity> spawnAll(Plugin plugin, List<EntitySpec> specs) {
+        if (specs == null || specs.isEmpty()) {
+            return List.of();
+        }
+        return specs.stream()
+            .map(spec -> spec.spawn(plugin))
+            .filter(java.util.Objects::nonNull)
+            .toList();
+    }
+
+    public static boolean reconcile(Plugin plugin, List<Entity> entities, List<EntitySpec> specs) {
+        if (plugin == null || entities == null || specs == null || entities.size() != specs.size()) {
+            return false;
+        }
+        for (int i = 0; i < specs.size(); i++) {
+            Entity entity = entities.get(i);
+            EntitySpec spec = specs.get(i);
+            if (entity == null || spec == null || !spec.canReuse(plugin, entity)) {
+                return false;
+            }
+            if (!spec.managesOwnReuse() && !isManagedEntity(plugin, entity)) {
+                return false;
+            }
+        }
+        for (int i = 0; i < specs.size(); i++) {
+            specs.get(i).apply(plugin, entities.get(i));
+        }
+        return true;
+    }
+
+    public static TileDisplaySpec tileDisplaySpec(
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault
+    ) {
+        return new TileDisplaySpec(location, yaw, tile, pose, clickAction, visibleByDefault, null, TILE_SCALE, null, null);
+    }
+
+    public static TileDisplaySpec tileDisplaySpec(
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers
+    ) {
+        return new TileDisplaySpec(location, yaw, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null);
+    }
+
+    public static TileDisplaySpec tileDisplaySpec(
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard
+    ) {
+        return new TileDisplaySpec(location, yaw, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard);
+    }
+
+    public static LabelSpec labelSpec(Plugin plugin, Location location, Component text, Color color) {
+        return new LabelSpec(location, text, color, null, Display.Billboard.CENTER, 0.0F, 0.0F, true);
+    }
+
+    public static LabelSpec labelSpec(Location location, Component text, Color color) {
+        return new LabelSpec(location, text, color, null, Display.Billboard.CENTER, 0.0F, 0.0F, true);
+    }
+
+    public static LabelSpec labelSpec(
+        Location location,
+        Component text,
+        Color color,
+        Collection<UUID> privateViewers,
+        Display.Billboard billboard,
+        float yaw,
+        float pitch,
+        boolean shadowed
+    ) {
+        return new LabelSpec(location, text, color, privateViewers, billboard, yaw, pitch, shadowed);
+    }
+
+    public static InteractionSpec interactionSpec(
+        Location location,
+        float width,
+        float height,
+        DisplayClickAction clickAction,
+        Collection<UUID> privateViewers
+    ) {
+        return new InteractionSpec(location, width, height, clickAction, privateViewers);
+    }
+
+    public interface EntitySpec {
+        Entity spawn(Plugin plugin);
+
+        boolean canReuse(Plugin plugin, Entity entity);
+
+        void apply(Plugin plugin, Entity entity);
+
+        default boolean managesOwnReuse() {
+            return false;
+        }
+    }
+
+    public record TileDisplaySpec(
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard
+    ) implements EntitySpec {
+        public TileDisplaySpec {
+            privateViewers = privateViewers == null ? null : List.copyOf(privateViewers);
+        }
+
+        @Override
+        public Entity spawn(Plugin plugin) {
+            return spawnTileDisplay(plugin, this.location, this.yaw, this.tile, this.pose, this.clickAction, this.visibleByDefault, this.privateViewers, this.scale, this.glowColor, this.billboard);
+        }
+
+        @Override
+        public boolean canReuse(Plugin plugin, Entity entity) {
+            return entity instanceof ItemDisplay;
+        }
+
+        @Override
+        public void apply(Plugin plugin, Entity entity) {
+            applyTileDisplay(plugin, (ItemDisplay) entity, this);
+        }
+    }
+
+    public record LabelSpec(
+        Location location,
+        Component text,
+        Color color,
+        Collection<UUID> privateViewers,
+        Display.Billboard billboard,
+        float yaw,
+        float pitch,
+        boolean shadowed
+    ) implements EntitySpec {
+        public LabelSpec {
+            privateViewers = privateViewers == null ? null : List.copyOf(privateViewers);
+        }
+
+        @Override
+        public Entity spawn(Plugin plugin) {
+            return spawnLabel(plugin, this.location, this.text, this.color, this.privateViewers, this.billboard, this.yaw, this.pitch, this.shadowed);
+        }
+
+        @Override
+        public boolean canReuse(Plugin plugin, Entity entity) {
+            return entity instanceof TextDisplay;
+        }
+
+        @Override
+        public void apply(Plugin plugin, Entity entity) {
+            applyLabel(plugin, (TextDisplay) entity, this);
+        }
+    }
+
+    public record InteractionSpec(
+        Location location,
+        float width,
+        float height,
+        DisplayClickAction clickAction,
+        Collection<UUID> privateViewers
+    ) implements EntitySpec {
+        public InteractionSpec {
+            privateViewers = privateViewers == null ? null : List.copyOf(privateViewers);
+        }
+
+        @Override
+        public Entity spawn(Plugin plugin) {
+            return spawnInteraction(plugin, this.location, this.width, this.height, this.clickAction, this.privateViewers);
+        }
+
+        @Override
+        public boolean canReuse(Plugin plugin, Entity entity) {
+            return entity instanceof Interaction;
+        }
+
+        @Override
+        public void apply(Plugin plugin, Entity entity) {
+            applyInteraction(plugin, (Interaction) entity, this);
+        }
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -291,6 +492,94 @@ public final class DisplayEntities {
         return display;
     }
 
+    private static void applyTileDisplay(Plugin plugin, ItemDisplay display, TileDisplaySpec spec) {
+        applyEntityLocation(display, spec.location(), spec.yaw(), 0.0F);
+        display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
+        display.setInterpolationDuration(1);
+        display.setInterpolationDelay(0);
+        display.setTeleportDuration(1);
+        display.setViewRange(32.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setDisplayWidth(0.4F * spec.scale());
+        display.setDisplayHeight(0.6F * spec.scale());
+        display.setBillboard(spec.billboard() == null ? Display.Billboard.FIXED : spec.billboard());
+        if (spec.glowColor() != null) {
+            display.setGlowing(true);
+            display.setGlowColorOverride(spec.glowColor());
+            display.setBrightness(new Display.Brightness(15, 15));
+        } else {
+            display.setGlowing(false);
+            display.setGlowColorOverride(null);
+            display.setBrightness(null);
+        }
+        display.setTransformation(new Transformation(
+            new Vector3f(),
+            new AxisAngle4f((float) Math.toRadians(spec.pose().xRotationDegrees()), 1.0F, 0.0F, 0.0F),
+            new Vector3f(spec.scale(), spec.scale(), spec.scale()),
+            new AxisAngle4f()
+        ));
+        display.setItemStack(tileItem(plugin, spec.tile(), spec.pose().faceDown()));
+        applyClickAction(display.getEntityId(), spec.clickAction());
+        applyPrivateVisibility(plugin, display, spec.privateViewers(), spec.visibleByDefault());
+    }
+
+    private static void applyLabel(Plugin plugin, TextDisplay display, LabelSpec spec) {
+        applyEntityLocation(display, spec.location(), spec.yaw(), spec.pitch());
+        display.text(spec.text());
+        display.setSeeThrough(false);
+        display.setShadowed(spec.shadowed());
+        display.setDefaultBackground(false);
+        display.setBillboard(spec.billboard());
+        display.setLineWidth(160);
+        display.setViewRange(LABEL_VIEW_RANGE);
+        display.setBrightness(new Display.Brightness(15, 15));
+        display.setBackgroundColor(spec.color());
+        applyPrivateVisibility(plugin, display, spec.privateViewers(), true);
+    }
+
+    private static void applyInteraction(Plugin plugin, Interaction interaction, InteractionSpec spec) {
+        applyEntityLocation(interaction, spec.location(), interaction.getYaw(), interaction.getPitch());
+        interaction.setResponsive(true);
+        interaction.setInteractionWidth(spec.width());
+        interaction.setInteractionHeight(spec.height());
+        applyClickAction(interaction.getEntityId(), spec.clickAction());
+        applyPrivateVisibility(plugin, interaction, spec.privateViewers(), true);
+    }
+
+    private static void applyEntityLocation(Entity entity, Location location, float yaw, float pitch) {
+        Location target = location.clone();
+        target.setYaw(yaw);
+        target.setPitch(pitch);
+        entity.teleport(target);
+        entity.setRotation(yaw, pitch);
+    }
+
+    private static void applyClickAction(int entityId, DisplayClickAction clickAction) {
+        if (clickAction == null) {
+            TableDisplayRegistry.unregister(entityId);
+            return;
+        }
+        TableDisplayRegistry.register(entityId, clickAction);
+    }
+
+    private static void applyPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
+        boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
+        entity.setVisibleByDefault(!privateOnly && visibleByDefault);
+        if (privateViewers == null) {
+            DisplayVisibilityRegistry.unregister(entity.getEntityId());
+            syncPublicVisibility(plugin, entity);
+            return;
+        }
+        if (privateViewers.isEmpty()) {
+            DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
+            syncPrivateVisibility(plugin, entity, privateViewers);
+            return;
+        }
+        DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
+        syncPrivateVisibility(plugin, entity, privateViewers);
+    }
+
     private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
             if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
@@ -298,6 +587,12 @@ public final class DisplayEntities {
             } else {
                 player.hideEntity(plugin, entity);
             }
+        }
+    }
+
+    private static void syncPublicVisibility(Plugin plugin, Entity entity) {
+        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+            player.showEntity(plugin, entity);
         }
     }
 
