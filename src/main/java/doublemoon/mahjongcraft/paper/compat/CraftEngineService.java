@@ -187,6 +187,14 @@ public final class CraftEngineService {
         return entity;
     }
 
+    public Entity placeSeatFurniture(Location location, String furnitureItemId, DisplayClickAction action) {
+        Entity entity = this.placeFurniture(location, furnitureItemId);
+        if (entity != null && action != null) {
+            TableDisplayRegistry.register(entity.getEntityId(), action);
+        }
+        return entity;
+    }
+
     public Entity placeFurniture(Location location, String furnitureItemId) {
         if (!this.preferFurnitureHitbox || this.furnitureReflectionUnavailable) {
             return null;
@@ -287,6 +295,15 @@ public final class CraftEngineService {
             int entityId = (int) entityIdMethod.invoke(furniture);
             DisplayClickAction action = TableDisplayRegistry.get(entityId);
             if (action == null) {
+                return;
+            }
+            if (action.actionType() == DisplayClickAction.ActionType.JOIN_SEAT) {
+                if (!tableManager.canUseSeat(player, action.tableId(), action.seatWind())) {
+                    if (event instanceof Cancellable cancellable) {
+                        cancellable.setCancelled(true);
+                    }
+                    this.plugin.messages().actionBar(player, "command.join_failed");
+                }
                 return;
             }
             if (event instanceof Cancellable cancellable) {
@@ -589,6 +606,54 @@ public final class CraftEngineService {
         }
     }
 
+    public boolean isSeatEntity(Entity entity) {
+        if (entity == null || this.furnitureReflectionUnavailable) {
+            return false;
+        }
+        Plugin craftEngine = this.craftEnginePlugin();
+        FurnitureBridge bridge = this.furnitureBridge(craftEngine);
+        if (bridge == null || bridge.isSeatMethod() == null) {
+            return false;
+        }
+        try {
+            Object isSeat = bridge.isSeatMethod().invoke(null, entity);
+            return isSeat instanceof Boolean flag && flag;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.furnitureReflectionUnavailable = true;
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine seat detection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+            return false;
+        }
+    }
+
+    public Entity furnitureEntityForSeat(Entity seatEntity) {
+        if (seatEntity == null || this.furnitureReflectionUnavailable) {
+            return null;
+        }
+        Plugin craftEngine = this.craftEnginePlugin();
+        FurnitureBridge bridge = this.furnitureBridge(craftEngine);
+        if (bridge == null || bridge.loadedFurnitureBySeatMethod() == null) {
+            return null;
+        }
+        try {
+            Object furniture = bridge.loadedFurnitureBySeatMethod().invoke(null, seatEntity);
+            if (furniture == null) {
+                return null;
+            }
+            Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
+            return bukkitEntity instanceof Entity entity ? entity : null;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.furnitureReflectionUnavailable = true;
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine seat owner bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+            return null;
+        }
+    }
+
     private NamespacedKey resolveFurnitureDataKey(Plugin craftEngine) {
         NamespacedKey cached = this.furnitureDataKey;
         if (cached != null) {
@@ -777,6 +842,8 @@ public final class CraftEngineService {
                 keyClass.getMethod("of", String.class),
                 furnitureClass.getMethod("place", Location.class, keyClass),
                 furnitureClass.getMethod("isFurniture", Entity.class),
+                furnitureClass.getMethod("isSeat", Entity.class),
+                furnitureClass.getMethod("getLoadedFurnitureBySeat", Entity.class),
                 removeMethod,
                 removeWithFlagsMethod
             );
@@ -808,6 +875,8 @@ public final class CraftEngineService {
         Method keyOfMethod,
         Method placeMethod,
         Method isFurnitureMethod,
+        Method isSeatMethod,
+        Method loadedFurnitureBySeatMethod,
         Method removeMethod,
         Method removeWithFlagsMethod
     ) {

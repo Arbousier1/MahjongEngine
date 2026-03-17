@@ -19,6 +19,7 @@ class PluginSettingsTest {
         assertFalse(settings.rankingEnabled())
         assertTrue(settings.tablePersistenceEnabled())
         assertEquals("tables.yml", settings.tablePersistenceFile())
+        assertEquals("mahjongpaper:seat_chair", settings.craftEngineSeatFurnitureId())
         assertEquals("SILVER", settings.rankingEastRoom())
         assertEquals("GOLD", settings.rankingSouthRoom())
     }
@@ -29,6 +30,7 @@ class PluginSettingsTest {
         config.set("tablePersistence.enabled", false)
         config.set("tablePersistence.file", "custom.yml")
         config.set("tables.startup-rebuild-batch-size", 7)
+        config.set("craftengine.furniture.seat-furniture-id", "custom:chair")
         config.set("ranking.eastRoom", "jade")
         config.set("ranking.southRoom", "throne")
 
@@ -37,6 +39,7 @@ class PluginSettingsTest {
         assertFalse(settings.tablePersistenceEnabled())
         assertEquals("custom.yml", settings.tablePersistenceFile())
         assertEquals(7, settings.tableStartupRebuildBatchSize())
+        assertEquals("custom:chair", settings.craftEngineSeatFurnitureId())
         assertEquals("jade", settings.rankingEastRoom())
         assertEquals("throne", settings.rankingSouthRoom())
     }

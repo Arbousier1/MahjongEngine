@@ -125,6 +125,14 @@ public final class MahjongTableSession {
         return normalizedTableCenter(this.center);
     }
 
+    public Location seatAnchorLocation(SeatWind wind) {
+        return wind == null ? this.center() : this.renderer.seatAnchorLocation(this, wind);
+    }
+
+    public float seatFacingYaw(SeatWind wind) {
+        return wind == null ? 0.0F : this.renderer.seatFacingYaw(wind);
+    }
+
     public MahjongRule configuredRuleSnapshot() {
         return copyRule(this.configuredRule);
     }

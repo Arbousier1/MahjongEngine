@@ -1,0 +1,108 @@
+{
+  "credit": "Generated for MahjongPaper CraftEngine furniture",
+  "texture_size": [16, 16],
+  "textures": {
+    "frame": "minecraft:block/dark_oak_planks",
+    "seat": "minecraft:block/oak_planks",
+    "cushion": "minecraft:block/red_wool",
+    "particle": "minecraft:block/dark_oak_planks"
+  },
+  "elements": [
+    {
+      "from": [3, -10, 3],
+      "to": [13, -8, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 10, 2], "texture": "#seat"},
+        "east": {"uv": [0, 0, 10, 2], "texture": "#seat"},
+        "south": {"uv": [0, 0, 10, 2], "texture": "#seat"},
+        "west": {"uv": [0, 0, 10, 2], "texture": "#seat"},
+        "up": {"uv": [0, 0, 10, 10], "texture": "#seat"},
+        "down": {"uv": [0, 0, 10, 10], "texture": "#seat"}
+      }
+    },
+    {
+      "from": [4, -8, 4],
+      "to": [12, -7, 12],
+      "faces": {
+        "north": {"uv": [0, 0, 8, 1], "texture": "#cushion"},
+        "east": {"uv": [0, 0, 8, 1], "texture": "#cushion"},
+        "south": {"uv": [0, 0, 8, 1], "texture": "#cushion"},
+        "west": {"uv": [0, 0, 8, 1], "texture": "#cushion"},
+        "up": {"uv": [0, 0, 8, 8], "texture": "#cushion"},
+        "down": {"uv": [0, 0, 8, 8], "texture": "#cushion"}
+      }
+    },
+    {
+      "from": [3, -8, 11.5],
+      "to": [13, 3, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 10, 11], "texture": "#frame"},
+        "east": {"uv": [0, 0, 1.5, 11], "texture": "#frame"},
+        "south": {"uv": [0, 0, 10, 11], "texture": "#frame"},
+        "west": {"uv": [0, 0, 1.5, 11], "texture": "#frame"},
+        "up": {"uv": [0, 0, 10, 1.5], "texture": "#frame"},
+        "down": {"uv": [0, 0, 10, 1.5], "texture": "#frame"}
+      }
+    },
+    {
+      "from": [3.5, -7.5, 11.6],
+      "to": [12.5, 1.5, 12.8],
+      "faces": {
+        "north": {"uv": [0, 0, 9, 9], "texture": "#cushion"},
+        "east": {"uv": [0, 0, 1.2, 9], "texture": "#cushion"},
+        "south": {"uv": [0, 0, 9, 9], "texture": "#cushion"},
+        "west": {"uv": [0, 0, 1.2, 9], "texture": "#cushion"},
+        "up": {"uv": [0, 0, 9, 1.2], "texture": "#cushion"},
+        "down": {"uv": [0, 0, 9, 1.2], "texture": "#cushion"}
+      }
+    },
+    {
+      "from": [3.5, -16, 3.5],
+      "to": [5, -8, 5],
+      "faces": {
+        "north": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "east": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "south": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "west": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "up": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"},
+        "down": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"}
+      }
+    },
+    {
+      "from": [11, -16, 3.5],
+      "to": [12.5, -8, 5],
+      "faces": {
+        "north": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "east": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "south": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "west": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "up": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"},
+        "down": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"}
+      }
+    },
+    {
+      "from": [3.5, -16, 11],
+      "to": [5, -8, 12.5],
+      "faces": {
+        "north": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "east": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "south": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "west": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "up": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"},
+        "down": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"}
+      }
+    },
+    {
+      "from": [11, -16, 11],
+      "to": [12.5, -8, 12.5],
+      "faces": {
+        "north": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "east": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "south": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "west": {"uv": [0, 0, 1.5, 8], "texture": "#frame"},
+        "up": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"},
+        "down": {"uv": [0, 0, 1.5, 1.5], "texture": "#frame"}
+      }
+    }
+  ]
+}
