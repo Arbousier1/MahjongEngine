@@ -20,7 +20,26 @@ The library explicitly provides:
 - ASCII hand-string parsing
 - detailed per-fan composition output
 
-## Current Codebase Gap
+## What Is Already Landed
+
+The branch is no longer only planning work. The following pieces are already in place:
+
+- table/session runtime can switch between `RIICHI` and `GB`
+- `MahjongTableSession` now uses a round-controller abstraction instead of directly hard-binding to `RiichiRoundEngine`
+- GB tables use `GbTableRoundController`
+- the GB JNI bridge is wired to a vendored copy of `zheng-fan/GB-Mahjong`
+- GB flow now supports:
+  - start/deal
+  - discard
+  - ting prompts
+  - ron / tsumo
+  - chi / pon / open kan / concealed kan / added kan
+  - robbing-kong reaction windows
+  - multi-ron settlement aggregation
+- settlement UI has a GB-specific presentation branch
+- bot scheduling and command behavior are variant-aware at runtime
+
+## Remaining Gap
 
 This repository is currently tightly coupled to a riichi ruleset:
 
@@ -34,29 +53,21 @@ This repository is currently tightly coupled to a riichi ruleset:
   - chankan / rinshan / haitei handling
 - settlement UI and messages are also riichi-oriented
 
-Because of that, implementing GB Mahjong is not a small rules toggle. It requires extracting or replacing the current riichi-first game engine assumptions.
+Because of that, GB support still is not “finished forever”. The remaining work is mostly calibration and production hardening rather than raw branch bootstrap.
 
-## Recommended Implementation Order
+## Remaining Implementation Focus
 
-1. Introduce a ruleset abstraction above the current round engine.
-   - Define a game-variant boundary so table/runtime code does not directly depend on `RiichiRoundEngine`.
-2. Split rule-neutral table state from riichi-specific state.
-   - seat occupancy
-   - wall / hand / discard ownership
-   - meld visibility
-   - turn order
-3. Add a GB-specific engine package.
-   - suggested package root: `doublemoon.mahjongcraft.paper.gb`
-4. Implement GB settlement data structures.
-   - fan list
-   - total fan
-   - flower handling
-   - minimum fan threshold
-5. Adapt commands and UI so they are ruleset-aware.
-   - hide riichi-only actions on GB tables
-   - render GB settlement terminology
-6. Add persistence/versioning for the table ruleset.
-   - existing stored tables currently deserialize directly into riichi-flavored rule objects
+1. Native build verification in CI and release packaging.
+   - the source is vendored and wired, but this workstation does not have a native toolchain
+2. Rule-detail calibration against more upstream cases.
+   - especially edge-case flags and tournament-specific settlement expectations
+3. Flower-tile gameplay support.
+   - request models already allow flower data, but live table flow still does not model flower draws
+4. Round progression beyond the current single-hand controller focus.
+   - prevailing wind / dealership advancement for long GB matches can still be refined
+5. More translation coverage for GB fan names and player-facing copy.
+6. Broader regression coverage.
+   - native integration tests once CI can build the JNI library
 
 ## Expected Hotspots
 
@@ -68,12 +79,17 @@ Because of that, implementing GB Mahjong is not a small rules toggle. It require
 
 ## JNI Direction
 
-This branch is currently taking a JNI-first path for the GB backend.
+This branch is now on a real JNI path rather than a stub-only path.
 
 - JVM bridge docs: `docs/gb-mahjong-jni.md`
-- native stub project: `native/gbmahjong/`
+- native project: `native/gbmahjong/`
+- upstream vendored source: `native/gbmahjong/vendor/GB-Mahjong/`
 
 ## Practical Constraint
 
 `GB-Mahjong` is a C++ project, not a JVM library, so it cannot be dropped into this plugin directly.
-With JNI chosen, the practical constraint becomes API surface design and native packaging instead of direct JVM reimplementation.
+With JNI chosen, the practical constraint is now mostly:
+
+- native packaging for each target platform
+- CI verification of the shared library build
+- keeping the plugin-side table flow and the upstream fan engine aligned over time

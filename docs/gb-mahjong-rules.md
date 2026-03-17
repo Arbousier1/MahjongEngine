@@ -28,11 +28,12 @@ The JNI backend in this branch should be designed around those same responsibili
 
 ## Current Status
 
-At the moment, this branch only contains:
+This branch now contains more than just scaffolding:
 
-- the GB branch scaffold
-- JNI loading/bootstrap code
-- a native C++ stub project
+- GB tables can be selected as a live runtime variant
+- the plugin-side round flow supports GB actions such as chi / pon / kan / ron / tsumo
+- the JNI bridge is wired to a vendored copy of `GB-Mahjong`
+- native `fan`, `ting`, and `win` entry points are implemented at source level
 
-It does **not** yet mean the in-game GB rules are fully implemented.
-The confirmation made here is about the implementation target and rule source, not about feature completeness today.
+That still does **not** mean every possible tournament edge case is permanently complete.
+The important guarantee here is that the GB implementation direction is locked to `zheng-fan/GB-Mahjong`, and the current code actively routes legality/fan evaluation through that native rule source rather than treating GB as a loose placeholder mode.

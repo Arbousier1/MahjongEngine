@@ -4,6 +4,7 @@ import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
 import doublemoon.mahjongcraft.paper.model.SeatWind
 import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine
+import doublemoon.mahjongcraft.paper.table.core.round.RiichiTableRoundController
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.mockito.Mockito.`when`
@@ -75,13 +76,34 @@ class MahjongTableSessionTest {
         assertEquals(emptyList(), session.scoringSticks(null))
     }
 
+    @Test
+    fun `gb preset switches table variant to gb`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val session = MahjongTableSession(plugin, "TABLE04", Location(null, 0.0, 64.0, 0.0), false)
+
+        assertTrue(session.applyRulePreset("GB"))
+        assertEquals(MahjongVariant.GB, session.currentVariant())
+    }
+
+    @Test
+    fun `gb helpers stay inactive before a gb round is created`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val session = MahjongTableSession(plugin, "TABLE05", Location(null, 0.0, 64.0, 0.0), false)
+
+        session.applyRulePreset("GB")
+
+        assertFalse(session.hasRoundController())
+        assertFalse(session.gbCanWinByTsumo(UUID.fromString("00000000-0000-0000-0000-000000000005")))
+        assertFalse(session.gbTingOptions(UUID.fromString("00000000-0000-0000-0000-000000000005")).valid)
+    }
+
     private fun attachEngine(session: MahjongTableSession, started: Boolean, seatIds: List<UUID>) {
         val engine = mock(RiichiRoundEngine::class.java)
         `when`(engine.started).thenReturn(started)
         `when`(engine.seats).thenReturn(seatIds.map(::mockSeatPlayer).toMutableList())
-        val engineField = MahjongTableSession::class.java.getDeclaredField("engine")
-        engineField.isAccessible = true
-        engineField.set(session, engine)
+        val controllerField = MahjongTableSession::class.java.getDeclaredField("roundController")
+        controllerField.isAccessible = true
+        controllerField.set(session, RiichiTableRoundController(engine))
     }
 
     private fun mockSeatPlayer(playerId: UUID): RiichiPlayerState {

@@ -65,6 +65,7 @@ final class PersistentTableStore {
             loaded.add(new LoadedTable(
                 table.getString("id", key).toUpperCase(),
                 center,
+                this.loadVariant(table.getString("variant", "RIICHI")),
                 this.loadRule(table.getConfigurationSection("rule"))
             ));
         }
@@ -125,6 +126,7 @@ final class PersistentTableStore {
                 center.getX(),
                 center.getY(),
                 center.getZ(),
+                session.configuredVariant(),
                 session.configuredRuleSnapshot()
             ));
         }
@@ -141,6 +143,7 @@ final class PersistentTableStore {
             table.set("x", snapshot.x());
             table.set("y", snapshot.y());
             table.set("z", snapshot.z());
+            table.set("variant", snapshot.variant().name());
             this.saveRule(table.createSection("rule"), snapshot.rule());
         }
         this.file.getParentFile().mkdirs();
@@ -170,6 +173,18 @@ final class PersistentTableStore {
         return rule;
     }
 
+    private MahjongVariant loadVariant(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return MahjongVariant.RIICHI;
+        }
+        try {
+            return MahjongVariant.valueOf(rawValue.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            this.plugin.getLogger().warning("Invalid persisted variant '" + rawValue + "', using RIICHI instead.");
+            return MahjongVariant.RIICHI;
+        }
+    }
+
     private <E extends Enum<E>> E enumValue(String rawValue, Class<E> enumType, E fallback) {
         if (rawValue == null || rawValue.isBlank()) {
             return fallback;
@@ -194,7 +209,7 @@ final class PersistentTableStore {
         section.set("localYaku", rule.getLocalYaku());
     }
 
-    record LoadedTable(String id, Location center, MahjongRule rule) {
+    record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule) {
     }
 
     private record TableSnapshot(
@@ -203,6 +218,7 @@ final class PersistentTableStore {
         double x,
         double y,
         double z,
+        MahjongVariant variant,
         MahjongRule rule
     ) {
     }

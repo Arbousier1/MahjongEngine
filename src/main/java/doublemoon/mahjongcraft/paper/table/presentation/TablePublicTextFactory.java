@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper.table.presentation;
 
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
 import java.util.Locale;
@@ -35,10 +36,22 @@ public final class TablePublicTextFactory {
     }
 
     public String ruleDisplaySummary(Locale locale) {
+        MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
+        if (variant == MahjongVariant.GB) {
+            return this.session.plugin().messages().plain(
+                locale,
+                "table.rule_display_summary_gb",
+                this.session.plugin().messages().tag("variant", this.variantLabel(locale, variant)),
+                this.session.plugin().messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
+                this.session.plugin().messages().number(locale, "start", rule.getStartingPoints()),
+                this.session.plugin().messages().number(locale, "goal", rule.getMinPointsToWin())
+            );
+        }
         return this.session.plugin().messages().plain(
             locale,
             "table.rule_display_summary",
+            this.session.plugin().messages().tag("variant", this.variantLabel(locale, variant)),
             this.session.plugin().messages().tag("length", this.ruleLengthLabel(locale, rule.getLength())),
             this.session.plugin().messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
             this.session.plugin().messages().tag("red", this.ruleRedFiveLabel(locale, rule.getRedFive())),
@@ -49,10 +62,23 @@ public final class TablePublicTextFactory {
     }
 
     public String ruleSummary(Locale locale) {
+        MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
+        if (variant == MahjongVariant.GB) {
+            return this.session.plugin().messages().plain(
+                locale,
+                "table.rule_summary_gb",
+                this.session.plugin().messages().tag("variant", this.variantLabel(locale, variant)),
+                this.session.plugin().messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
+                this.session.plugin().messages().tag("spectate", this.booleanLabel(locale, rule.getSpectate())),
+                this.session.plugin().messages().number(locale, "start_points", rule.getStartingPoints()),
+                this.session.plugin().messages().number(locale, "goal", rule.getMinPointsToWin())
+            );
+        }
         return this.session.plugin().messages().plain(
             locale,
             "table.rule_summary",
+            this.session.plugin().messages().tag("variant", this.variantLabel(locale, variant)),
             this.session.plugin().messages().tag("length", this.ruleLengthLabel(locale, rule.getLength())),
             this.session.plugin().messages().tag("thinking", this.ruleThinkingLabel(locale, rule.getThinkingTime())),
             this.session.plugin().messages().tag("min_han", this.ruleMinimumHanLabel(locale, rule.getMinimumHan())),
@@ -66,23 +92,24 @@ public final class TablePublicTextFactory {
     }
 
     public String roundDisplay(Locale locale) {
-        if (this.session.engine() == null) {
+        if (!this.session.hasRoundController()) {
             return this.session.plugin().messages().plain(locale, "table.round_not_started");
         }
         return this.session.plugin().messages().plain(
             locale,
             "table.round_display",
             this.session.plugin().messages().tag("wind", this.roundWindText(locale)),
-            this.session.plugin().messages().number(locale, "round", this.session.engine().getRound().getRound() + 1),
-            this.session.plugin().messages().number(locale, "honba", this.session.engine().getRound().getHonba())
+            this.session.plugin().messages().number(locale, "round", this.session.roundIndex() + 1),
+            this.session.plugin().messages().number(locale, "honba", this.session.honbaCount())
         );
     }
 
     public String dealerName(Locale locale) {
-        if (this.session.engine() == null) {
+        UUID dealerId = this.session.playerAt(this.session.dealerSeat());
+        if (dealerId == null) {
             return this.session.plugin().messages().plain(locale, "common.unknown");
         }
-        return this.session.displayName(UUID.fromString(this.session.engine().getDealer().getUuid()), locale);
+        return this.session.displayName(dealerId, locale);
     }
 
     public String seatDisplayName(SeatWind wind, Locale locale) {
@@ -100,7 +127,7 @@ public final class TablePublicTextFactory {
             );
         }
         String status = this.waitingSeatStatus(locale, playerId);
-        if (this.session.isStarted() && this.session.isRiichi(playerId)) {
+        if (this.session.currentVariant() == MahjongVariant.RIICHI && this.session.isStarted() && this.session.isRiichi(playerId)) {
             String riichi = this.session.plugin().messages().plain(locale, "overlay.status_riichi");
             status = status.isBlank() ? riichi : status + " | " + riichi;
         }
@@ -136,21 +163,24 @@ public final class TablePublicTextFactory {
     }
 
     private MahjongRule currentRule() {
-        return this.session.engine() == null ? this.session.configuredRuleSnapshot() : this.session.engine().getRule();
+        return this.session.configuredRuleSnapshot();
     }
 
     private String roundWindText(Locale locale) {
-        return switch (this.session.engine().getRound().getWind().name()) {
-            case "EAST" -> this.session.plugin().messages().plain(locale, "seat.wind.east");
-            case "SOUTH" -> this.session.plugin().messages().plain(locale, "seat.wind.south");
-            case "WEST" -> this.session.plugin().messages().plain(locale, "seat.wind.west");
-            case "NORTH" -> this.session.plugin().messages().plain(locale, "seat.wind.north");
-            default -> this.session.engine().getRound().getWind().name();
+        return switch (this.session.dealerSeat()) {
+            case EAST -> this.session.plugin().messages().plain(locale, "seat.wind.east");
+            case SOUTH -> this.session.plugin().messages().plain(locale, "seat.wind.south");
+            case WEST -> this.session.plugin().messages().plain(locale, "seat.wind.west");
+            case NORTH -> this.session.plugin().messages().plain(locale, "seat.wind.north");
         };
     }
 
     private String ruleLengthLabel(Locale locale, MahjongRule.GameLength length) {
         return this.session.plugin().messages().plain(locale, "rule.length." + length.name().toLowerCase(Locale.ROOT));
+    }
+
+    private String variantLabel(Locale locale, MahjongVariant variant) {
+        return this.session.plugin().messages().plain(locale, variant.translationKey());
     }
 
     private String ruleThinkingLabel(Locale locale, MahjongRule.ThinkingTime thinkingTime) {

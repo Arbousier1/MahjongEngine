@@ -542,6 +542,40 @@ val generateCraftEngineBundle = tasks.register("generateCraftEngineBundle") {
     }
 }
 
+val gbNativeSourceDir = layout.projectDirectory.dir("native/gbmahjong")
+val gbNativeBuildDir = layout.buildDirectory.dir("native/gbmahjong")
+
+val configureGbMahjongNative = tasks.register<Exec>("configureGbMahjongNative") {
+    group = "build"
+    description = "Configure the JNI GB Mahjong native project with CMake."
+    val sourceDir = gbNativeSourceDir.asFile
+    val buildDir = gbNativeBuildDir.get().asFile
+    inputs.dir(sourceDir)
+    outputs.dir(buildDir)
+    doFirst {
+        buildDir.mkdirs()
+    }
+    commandLine(
+        "cmake",
+        "-S", sourceDir.absolutePath,
+        "-B", buildDir.absolutePath
+    )
+}
+
+val buildGbMahjongNative = tasks.register<Exec>("buildGbMahjongNative") {
+    group = "build"
+    description = "Build the JNI GB Mahjong native project with CMake."
+    dependsOn(configureGbMahjongNative)
+    val buildDir = gbNativeBuildDir.get().asFile
+    inputs.dir(gbNativeSourceDir)
+    outputs.dir(buildDir)
+    commandLine(
+        "cmake",
+        "--build", buildDir.absolutePath,
+        "--config", "Release"
+    )
+}
+
 dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
     implementation("io.github.ssttkkl:mahjong-utils-jvm:$mahjongUtilsVersion")

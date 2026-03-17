@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper.table.core;
 
 import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin;
+import doublemoon.mahjongcraft.paper.gb.runtime.GbNativeRulesGateway;
 import doublemoon.mahjongcraft.paper.i18n.LocalizedMessages;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.scene.MeldView;
@@ -12,6 +13,9 @@ import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongSoulScoring;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
+import doublemoon.mahjongcraft.paper.table.core.round.GbTableRoundController;
+import doublemoon.mahjongcraft.paper.table.core.round.RiichiTableRoundController;
+import doublemoon.mahjongcraft.paper.table.core.round.TableRoundController;
 import doublemoon.mahjongcraft.paper.table.presentation.TablePlayerFeedbackCoordinator;
 import doublemoon.mahjongcraft.paper.table.presentation.TablePublicTextFactory;
 import doublemoon.mahjongcraft.paper.table.presentation.TableStateSoundCoordinator;
@@ -56,7 +60,7 @@ public final class MahjongTableSession {
     private final TableRegionFingerprintService regionFingerprintService = new TableRegionFingerprintService();
     private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
     private MahjongRule configuredRule;
-    private RiichiRoundEngine engine;
+    private TableRoundController roundController;
     private doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
     private long nextRoundDeadlineMillis;
@@ -70,25 +74,31 @@ public final class MahjongTableSession {
     private final TablePlayerFeedbackCoordinator playerFeedbackCoordinator;
     private final TableStateSoundCoordinator stateSoundCoordinator;
     private final TablePublicTextFactory publicTextFactory;
+    private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
-        this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
+        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
         this.addPlayer(owner);
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
-        this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
+        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner, boolean persistentRoom) {
-        this(plugin, id, center, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
+        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
         this.addPlayer(owner);
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongRule configuredRule, boolean persistentRoom) {
+        this(plugin, id, center, MahjongVariant.RIICHI, configuredRule, persistentRoom);
+    }
+
+    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongVariant configuredVariant, MahjongRule configuredRule, boolean persistentRoom) {
         this.plugin = plugin;
         this.id = id;
         this.center = normalizedTableCenter(center);
+        this.configuredVariant = configuredVariant == null ? MahjongVariant.RIICHI : configuredVariant;
         this.configuredRule = copyRule(configuredRule);
         this.persistentRoom = persistentRoom;
         this.renderCoordinator = new TableRenderCoordinator(this);
@@ -128,6 +138,10 @@ public final class MahjongTableSession {
 
     public MahjongRule configuredRuleSnapshot() {
         return copyRule(this.configuredRule);
+    }
+
+    public MahjongVariant configuredVariant() {
+        return this.configuredVariant;
     }
 
     public boolean addPlayer(Player player) {
@@ -180,7 +194,7 @@ public final class MahjongTableSession {
     }
 
     public boolean removePlayer(UUID playerId) {
-        if (this.engine != null && this.engine.getStarted()) {
+        if (this.roundController != null && this.roundController.started()) {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
@@ -270,7 +284,7 @@ public final class MahjongTableSession {
 
     public void startRound() {
         if (this.size() != 4) {
-            throw new IllegalStateException("A riichi table needs exactly 4 players");
+            throw new IllegalStateException("A table needs exactly 4 players");
         }
 
         for (SeatWind wind : SeatWind.values()) {
@@ -281,19 +295,11 @@ public final class MahjongTableSession {
         }
 
         this.cancelNextRoundCountdown();
-        if (this.engine == null || this.engine.getGameFinished()) {
-            List<RiichiPlayerState> players = new ArrayList<>(SeatWind.values().length);
-            for (SeatWind wind : SeatWind.values()) {
-                UUID playerId = this.playerAt(wind);
-                if (playerId == null) {
-                    throw new IllegalStateException("A riichi table needs exactly 4 occupied seats");
-                }
-                players.add(new RiichiPlayerState(this.displayName(playerId), playerId.toString(), !this.isBot(playerId)));
-            }
-            this.engine = new RiichiRoundEngine(players, this.copyRule());
+        if (this.roundController == null || this.roundController.gameFinished() || this.roundController.variant() != this.currentVariant()) {
+            this.roundController = this.createRoundController();
         }
 
-        this.engine.startRound();
+        this.roundController.startRound();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
         this.playerFeedbackCoordinator.resetForRoundStart();
@@ -306,11 +312,11 @@ public final class MahjongTableSession {
     }
 
     public boolean discard(UUID playerId, int tileIndex) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
         doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
-        boolean result = this.engine.discard(playerId.toString(), tileIndex);
+        boolean result = this.roundController.discard(playerId, tileIndex);
         if (result) {
             this.selectedHandTileIndices.clear();
             this.rememberPublicDiscard(playerId, discardedTile);
@@ -320,11 +326,11 @@ public final class MahjongTableSession {
     }
 
     public boolean declareRiichi(UUID playerId, int tileIndex) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
         doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
-        boolean result = this.engine.declareRiichi(playerId.toString(), tileIndex);
+        boolean result = this.roundController.declareRiichi(playerId, tileIndex);
         if (result) {
             this.selectedHandTileIndices.clear();
             this.rememberPublicDiscard(playerId, discardedTile);
@@ -334,10 +340,10 @@ public final class MahjongTableSession {
     }
 
     public boolean declareTsumo(UUID playerId) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
-        boolean result = this.engine.tryTsumo(playerId.toString());
+        boolean result = this.roundController.declareTsumo(playerId);
         if (result) {
             this.selectedHandTileIndices.clear();
         }
@@ -346,10 +352,10 @@ public final class MahjongTableSession {
     }
 
     public boolean declareKyuushuKyuuhai(UUID playerId) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
-        boolean result = this.engine.declareKyuushuKyuuhai(playerId.toString());
+        boolean result = this.roundController.declareKyuushuKyuuhai(playerId);
         if (result) {
             this.selectedHandTileIndices.clear();
         }
@@ -358,10 +364,10 @@ public final class MahjongTableSession {
     }
 
     public boolean react(UUID playerId, ReactionResponse response) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
-        boolean result = this.engine.react(playerId.toString(), response);
+        boolean result = this.roundController.react(playerId, response);
         if (result) {
             this.selectedHandTileIndices.clear();
             this.stateSoundCoordinator.playReactionSound(response);
@@ -371,21 +377,15 @@ public final class MahjongTableSession {
     }
 
     public boolean declareKan(UUID playerId, String tileName) {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return false;
         }
-        try {
-            doublemoon.mahjongcraft.paper.riichi.model.MahjongTile tile =
-                doublemoon.mahjongcraft.paper.riichi.model.MahjongTile.valueOf(tileName.toUpperCase(Locale.ROOT));
-            boolean result = this.engine.tryAnkanOrKakan(playerId.toString(), tile);
-            if (result) {
-                this.selectedHandTileIndices.clear();
-            }
-            this.render();
-            return result;
-        } catch (IllegalArgumentException ex) {
-            return false;
+        boolean result = this.roundController.declareKan(playerId, tileName);
+        if (result) {
+            this.selectedHandTileIndices.clear();
         }
+        this.render();
+        return result;
     }
 
     public void render() {
@@ -468,7 +468,7 @@ public final class MahjongTableSession {
     }
 
     public void clearEngineForLifecycle() {
-        this.engine = null;
+        this.roundController = null;
     }
 
     public void cancelNextRoundCountdownForFeedback() {
@@ -492,15 +492,18 @@ public final class MahjongTableSession {
     }
 
     public SeatWind currentSeat() {
-        if (this.engine == null || !this.engine.getStarted()) {
+        if (this.roundController == null || !this.roundController.started()) {
             return SeatWind.EAST;
         }
-        return SeatWind.fromIndex(this.engine.getCurrentPlayerIndex());
+        return this.roundController.currentSeat();
     }
 
     public UUID playerAt(SeatWind wind) {
-        if (this.engine != null && this.engine.getStarted() && !this.engine.getSeats().isEmpty()) {
-            return UUID.fromString(this.engine.getSeats().get(wind.index()).getUuid());
+        if (this.roundController != null && this.roundController.started()) {
+            UUID startedSeat = this.roundController.playerAt(wind);
+            if (startedSeat != null) {
+                return startedSeat;
+            }
         }
         return this.participants.playerAt(wind);
     }
@@ -524,8 +527,8 @@ public final class MahjongTableSession {
         if (this.participants.isBot(playerId)) {
             return this.botDisplayName(playerId, locale);
         }
-        if (this.engine != null) {
-            RiichiPlayerState seatPlayer = this.engine.seatPlayer(playerId.toString());
+        if (this.engine() != null) {
+            RiichiPlayerState seatPlayer = this.engine().seatPlayer(playerId.toString());
             if (seatPlayer != null) {
                 return seatPlayer.getDisplayName();
             }
@@ -541,46 +544,44 @@ public final class MahjongTableSession {
         if (playerId == null) {
             return 0;
         }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        if (player != null) {
-            return player.getPoints();
+        if (this.roundController != null) {
+            int roundPoints = this.roundController.points(playerId);
+            if (roundPoints > 0) {
+                return roundPoints;
+            }
         }
         return this.contains(playerId) ? this.configuredRule.getStartingPoints() : 0;
     }
 
     public boolean isRiichi(UUID playerId) {
-        if (playerId == null) {
-            return false;
-        }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        return player != null && (player.getRiichi() || player.getDoubleRiichi());
+        return playerId != null && this.roundController != null && this.roundController.isRiichi(playerId);
     }
 
     public int dicePoints() {
-        return this.engine == null ? 0 : this.engine.getDicePoints();
+        return this.roundController == null ? 0 : this.roundController.dicePoints();
     }
 
     public int kanCount() {
-        return this.engine == null ? 0 : this.engine.getKanCount();
+        return this.roundController == null ? 0 : this.roundController.kanCount();
     }
 
     public int roundIndex() {
-        return this.engine == null ? 0 : this.engine.getRound().getRound();
+        return this.roundController == null ? 0 : this.roundController.roundIndex();
     }
 
     public SeatWind openDoorSeat() {
-        if (this.engine == null) {
+        if (this.roundController == null) {
             return SeatWind.EAST;
         }
         return SeatWind.fromIndex(Math.floorMod(this.dicePoints() - 1 + this.roundIndex(), SeatWind.values().length));
     }
 
     public int honbaCount() {
-        return this.engine == null ? 0 : this.engine.getRound().getHonba();
+        return this.roundController == null ? 0 : this.roundController.honbaCount();
     }
 
     public SeatWind dealerSeat() {
-        return this.engine == null ? SeatWind.EAST : SeatWind.fromIndex(this.engine.getRound().getRound());
+        return this.roundController == null ? SeatWind.EAST : this.roundController.dealerSeat();
     }
 
     public String waitingSummary() {
@@ -626,6 +627,13 @@ public final class MahjongTableSession {
                         return false;
                     }
                 }
+                case "variant", "ruleset" -> {
+                    MahjongVariant variant = MahjongVariant.valueOf(rawValue.toUpperCase(Locale.ROOT));
+                    this.configuredVariant = variant;
+                    this.configuredRule = variant == MahjongVariant.GB
+                        ? gbRule()
+                        : majsoulRule(MahjongRule.GameLength.TWO_WIND);
+                }
                 case "length" -> this.configuredRule.setLength(MahjongRule.GameLength.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "thinkingtime", "thinking" -> this.configuredRule.setThinkingTime(MahjongRule.ThinkingTime.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "minimumhan", "minhan" -> this.configuredRule.setMinimumHan(MahjongRule.MinimumHan.valueOf(rawValue.toUpperCase(Locale.ROOT)));
@@ -648,12 +656,13 @@ public final class MahjongTableSession {
     }
 
     public List<String> ruleKeys() {
-        return List.of("preset", "mode", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
+        return List.of("preset", "mode", "variant", "ruleset", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
     }
 
     public List<String> ruleValues(String key) {
         return switch (key.toLowerCase(Locale.ROOT)) {
-            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN");
+            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN", "GB");
+            case "variant", "ruleset" -> List.of("RIICHI", "GB");
             case "length" -> List.of("ONE_GAME", "EAST", "SOUTH", "TWO_WIND");
             case "thinkingtime", "thinking" -> List.of("VERY_SHORT", "SHORT", "NORMAL", "LONG", "VERY_LONG");
             case "minimumhan", "minhan" -> List.of("ONE", "TWO", "FOUR", "YAKUMAN");
@@ -666,36 +675,21 @@ public final class MahjongTableSession {
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand(UUID playerId) {
-        if (playerId == null) {
-            return List.of();
-        }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        if (player == null) {
-            return List.of();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(player.getHands().size());
-        player.getHands().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile.getMahjongTile().name())));
-        return tiles;
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.hand(playerId);
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> discards(UUID playerId) {
-        if (playerId == null) {
-            return List.of();
-        }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        if (player == null) {
-            return List.of();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(player.getDiscardedTilesForDisplay().size());
-        player.getDiscardedTilesForDisplay().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile.getMahjongTile().name())));
-        return tiles;
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.discards(playerId);
     }
 
     public int riichiDiscardIndex(UUID playerId) {
+        if (this.engine() == null) {
+            return -1;
+        }
         if (playerId == null) {
             return -1;
         }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
+        RiichiPlayerState player = this.engine().seatPlayer(playerId.toString());
         if (player == null || player.getRiichiSengenTile() == null) {
             return -1;
         }
@@ -719,70 +713,15 @@ public final class MahjongTableSession {
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> remainingWall() {
-        if (this.engine == null) {
-            return List.of();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(this.engine.getWall().size());
-        this.engine.getWall().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.UNKNOWN));
-        return tiles;
+        return this.roundController == null ? List.of() : this.roundController.remainingWall();
     }
 
     public List<MeldView> fuuro(UUID playerId) {
-        if (playerId == null) {
-            return List.of();
-        }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        if (player == null) {
-            return List.of();
-        }
-        List<MeldView> melds = new ArrayList<>(player.getFuuroList().size());
-        player.getFuuroList().forEach(fuuro -> {
-            List<doublemoon.mahjongcraft.paper.riichi.model.TileInstance> orderedInstances = new ArrayList<>(fuuro.getTileInstances());
-            doublemoon.mahjongcraft.paper.riichi.model.TileInstance addedKanTile = null;
-            if ("KAKAN".equals(fuuro.getType().name()) && !orderedInstances.isEmpty()) {
-                addedKanTile = orderedInstances.remove(orderedInstances.size() - 1);
-            } else if (!"KAKAN".equals(fuuro.getType().name())) {
-                orderedInstances.sort((left, right) -> Integer.compare(right.getMahjongTile().getSortOrder(), left.getMahjongTile().getSortOrder()));
-            }
-
-            doublemoon.mahjongcraft.paper.riichi.model.TileInstance claimTile = fuuro.getClaimTile();
-            orderedInstances.remove(claimTile);
-            int claimTileIndex = switch (fuuro.getClaimTarget().name()) {
-                case "RIGHT" -> 0;
-                case "ACROSS" -> 1;
-                case "LEFT" -> orderedInstances.size();
-                default -> -1;
-            };
-            if (claimTileIndex >= 0) {
-                orderedInstances.add(Math.min(claimTileIndex, orderedInstances.size()), claimTile);
-            }
-
-            List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(orderedInstances.size());
-            List<Boolean> faceDownFlags = new ArrayList<>(orderedInstances.size());
-            boolean concealedKan = fuuro.isKan() && !fuuro.isOpen();
-            for (int i = 0; i < orderedInstances.size(); i++) {
-                tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(orderedInstances.get(i).getMahjongTile().name()));
-                faceDownFlags.add(concealedKan && (i == 0 || i == orderedInstances.size() - 1));
-            }
-            int claimYawOffset = switch (fuuro.getClaimTarget().name()) {
-                case "RIGHT", "ACROSS" -> 90;
-                case "LEFT" -> -90;
-                default -> 0;
-            };
-            doublemoon.mahjongcraft.paper.model.MahjongTile addedKanView = addedKanTile == null
-                ? null
-                : doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(addedKanTile.getMahjongTile().name());
-            melds.add(new MeldView(List.copyOf(tiles), List.copyOf(faceDownFlags), claimTileIndex, claimYawOffset, addedKanView));
-        });
-        return List.copyOf(melds);
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.fuuro(playerId);
     }
 
     public List<ScoringStick> scoringSticks(UUID playerId) {
-        if (playerId == null) {
-            return List.of();
-        }
-        RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
-        return player == null ? List.of() : List.copyOf(player.getSticks());
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.scoringSticks(playerId);
     }
 
     public List<ScoringStick> cornerSticks(SeatWind wind) {
@@ -841,25 +780,15 @@ public final class MahjongTableSession {
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> doraIndicators() {
-        if (this.engine == null) {
-            return List.of();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(this.engine.getDoraIndicators().size());
-        this.engine.getDoraIndicators().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile.getMahjongTile().name())));
-        return tiles;
+        return this.roundController == null ? List.of() : this.roundController.doraIndicators();
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> uraDoraIndicators() {
-        if (this.engine == null) {
-            return List.of();
-        }
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(this.engine.getUraDoraIndicators().size());
-        this.engine.getUraDoraIndicators().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile.getMahjongTile().name())));
-        return tiles;
+        return this.roundController == null ? List.of() : this.roundController.uraDoraIndicators();
     }
 
     public doublemoon.mahjongcraft.paper.riichi.RoundResolution lastResolution() {
-        return this.engine == null ? null : this.engine.getLastResolution();
+        return this.roundController == null ? null : this.roundController.lastResolution();
     }
 
     public boolean openSettlementUi(Player player) {
@@ -910,7 +839,7 @@ public final class MahjongTableSession {
         if (this.currentSeat() == wind && this.isStarted()) {
             status = this.plugin.messages().plain(locale, "overlay.status_turn");
         }
-        if (!this.isRiichi(playerId)) {
+        if (this.currentVariant() != MahjongVariant.RIICHI || !this.isRiichi(playerId)) {
             return status;
         }
         String riichi = this.plugin.messages().plain(locale, "overlay.status_riichi");
@@ -918,11 +847,70 @@ public final class MahjongTableSession {
     }
 
     public boolean isStarted() {
-        return this.engine != null && this.engine.getStarted();
+        return this.roundController != null && this.roundController.started();
     }
 
     public RiichiRoundEngine engine() {
-        return this.engine;
+        return this.roundController == null ? null : this.roundController.asRiichiEngine();
+    }
+
+    public boolean hasRoundController() {
+        return this.roundController != null;
+    }
+
+    public boolean isRoundFinished() {
+        return this.roundController != null && this.roundController.gameFinished();
+    }
+
+    public String currentTurnDisplayName() {
+        return this.roundController == null ? "" : this.roundController.currentPlayerDisplayName();
+    }
+
+    public doublemoon.mahjongcraft.paper.riichi.ReactionOptions availableReactions(UUID playerId) {
+        return playerId == null || this.roundController == null ? null : this.roundController.availableReactions(playerId);
+    }
+
+    public boolean hasPendingReaction() {
+        return this.roundController != null && this.roundController.hasPendingReaction();
+    }
+
+    public String pendingReactionFingerprint() {
+        return this.roundController == null ? "" : this.roundController.pendingReactionFingerprint();
+    }
+
+    public String pendingReactionTileKey() {
+        return this.roundController == null ? "" : this.roundController.pendingReactionTileKey();
+    }
+
+    public boolean canDeclareRiichi(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareRiichi(playerId);
+    }
+
+    public boolean canDeclareKan(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareKan(playerId);
+    }
+
+    public boolean canDeclareKyuushu(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareKyuushu(playerId);
+    }
+
+    public List<Integer> suggestedRiichiIndices(UUID playerId) {
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedRiichiIndices(playerId);
+    }
+
+    public List<String> suggestedKanTiles(UUID playerId) {
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedKanTiles(playerId);
+    }
+
+    public doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse gbTingOptions(UUID playerId) {
+        if (!(this.roundController instanceof GbTableRoundController gbController) || playerId == null) {
+            return new doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse(false, List.of(), "GB round is inactive.");
+        }
+        return gbController.tingOptions(playerId);
+    }
+
+    public boolean gbCanWinByTsumo(UUID playerId) {
+        return this.roundController instanceof GbTableRoundController gbController && playerId != null && gbController.canWinByTsumo(playerId);
     }
 
     public void setBotTask(BukkitTask botTask) {
@@ -942,20 +930,56 @@ public final class MahjongTableSession {
             this.viewerPresentation.markDirty();
             this.viewerPresentation.flushIfNeeded();
         }
-        if (this.engine == null || this.engine.getStarted() || this.engine.getLastResolution() == null) {
+        if (this.roundController == null || this.roundController.started() || this.roundController.lastResolution() == null) {
             return;
         }
         this.processDeferredLeaves();
     }
 
     private MahjongRule currentRule() {
-        return this.engine == null ? this.configuredRule : this.engine.getRule();
+        return this.roundController == null ? this.configuredRule : this.roundController.rule();
+    }
+
+    private TableRoundController createRoundController() {
+        EnumMap<SeatWind, UUID> seats = new EnumMap<>(SeatWind.class);
+        Map<UUID, String> displayNames = new HashMap<>();
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = this.participants.playerAt(wind);
+            if (playerId == null) {
+                throw new IllegalStateException("A table needs exactly 4 occupied seats");
+            }
+            seats.put(wind, playerId);
+            displayNames.put(playerId, this.displayName(playerId));
+        }
+        if (this.currentVariant() == MahjongVariant.GB) {
+            return new GbTableRoundController(this.copyRule(), seats, displayNames, new GbNativeRulesGateway());
+        }
+        List<RiichiPlayerState> players = new ArrayList<>(SeatWind.values().length);
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = seats.get(wind);
+            players.add(new RiichiPlayerState(displayNames.get(playerId), playerId.toString(), !this.isBot(playerId)));
+        }
+        return new RiichiTableRoundController(new RiichiRoundEngine(players, this.copyRule()));
+    }
+
+    public MahjongVariant currentVariant() {
+        return this.configuredVariant;
     }
 
     public boolean applyRulePreset(String rawValue) {
         switch (rawValue.toUpperCase(Locale.ROOT)) {
-            case "MAJSOUL_TONPUU", "TONPUU", "TONPUSEN", "EAST" -> this.configuredRule = majsoulRule(MahjongRule.GameLength.EAST);
-            case "MAJSOUL_HANCHAN", "HANCHAN", "TWO_WIND", "SOUTH" -> this.configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
+            case "MAJSOUL_TONPUU", "TONPUU", "TONPUSEN", "EAST" -> {
+                this.configuredVariant = MahjongVariant.RIICHI;
+                this.configuredRule = majsoulRule(MahjongRule.GameLength.EAST);
+            }
+            case "MAJSOUL_HANCHAN", "HANCHAN", "TWO_WIND", "SOUTH" -> {
+                this.configuredVariant = MahjongVariant.RIICHI;
+                this.configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
+            }
+            case "GB", "GUOBIAO", "ZHONGGUO", "CHINESE_OFFICIAL" -> {
+                this.configuredVariant = MahjongVariant.GB;
+                this.configuredRule = gbRule();
+            }
             default -> {
                 return false;
             }
@@ -995,17 +1019,10 @@ public final class MahjongTableSession {
     }
 
     private boolean canSelectHandTile(UUID playerId, int tileIndex) {
-        if (!this.contains(playerId) || tileIndex < 0 || this.engine == null) {
-            return false;
-        }
-        RiichiPlayerState player = this.engine.seatPlayer(playerId.toString());
-        if (player == null || tileIndex >= player.getHands().size()) {
-            return false;
-        }
-        if (!this.engine.getStarted() || this.engine.getPendingReaction() != null) {
-            return false;
-        }
-        return this.engine.getCurrentPlayer().getUuid().equals(playerId.toString());
+        return this.contains(playerId)
+            && tileIndex >= 0
+            && this.roundController != null
+            && this.roundController.canSelectHandTile(playerId, tileIndex);
     }
 
     private void refreshSelectedHandTileView(UUID playerId) {
@@ -1072,10 +1089,37 @@ public final class MahjongTableSession {
     }
 
     public List<FinalStanding> finalStandings() {
-        if (this.engine == null || !this.engine.getGameFinished()) {
+        if (this.roundController == null || !this.roundController.gameFinished()) {
             return List.of();
         }
-        List<RiichiPlayerState> seatOrder = this.engine.getSeats();
+        if (this.currentVariant() != MahjongVariant.RIICHI || this.engine() == null) {
+            List<FinalStanding> standings = new ArrayList<>();
+            for (UUID playerId : this.players()) {
+                standings.add(new FinalStanding(
+                    playerId,
+                    this.displayName(playerId),
+                    0,
+                    this.points(playerId),
+                    (this.points(playerId) - this.currentRule().getStartingPoints()) / 1000.0D,
+                    this.isBot(playerId)
+                ));
+            }
+            standings.sort((left, right) -> {
+                int scoreCompare = Integer.compare(right.points(), left.points());
+                if (scoreCompare != 0) {
+                    return scoreCompare;
+                }
+                return Integer.compare(this.players().indexOf(left.playerId()), this.players().indexOf(right.playerId()));
+            });
+            List<FinalStanding> ranked = new ArrayList<>(standings.size());
+            for (int i = 0; i < standings.size(); i++) {
+                FinalStanding standing = standings.get(i);
+                ranked.add(new FinalStanding(standing.playerId(), standing.displayName(), i + 1, standing.points(), standing.gameScore(), standing.bot()));
+            }
+            return List.copyOf(ranked);
+        }
+        RiichiRoundEngine engine = this.engine();
+        List<RiichiPlayerState> seatOrder = engine.getSeats();
         List<RiichiPlayerState> ranked = new ArrayList<>(seatOrder);
         ranked.sort((left, right) -> {
             int scoreCompare = Integer.compare(right.getPoints(), left.getPoints());
@@ -1513,6 +1557,20 @@ public final class MahjongTableSession {
             true,
             MahjongRule.RedFive.THREE,
             true,
+            false
+        );
+    }
+
+    private static MahjongRule gbRule() {
+        return new MahjongRule(
+            MahjongRule.GameLength.TWO_WIND,
+            MahjongRule.ThinkingTime.NORMAL,
+            25000,
+            30000,
+            MahjongRule.MinimumHan.ONE,
+            true,
+            MahjongRule.RedFive.NONE,
+            false,
             false
         );
     }

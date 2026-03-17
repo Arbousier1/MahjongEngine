@@ -7,11 +7,10 @@ import doublemoon.mahjongcraft.paper.i18n.MessageService;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
 import doublemoon.mahjongcraft.paper.riichi.ReactionType;
-import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile;
-import doublemoon.mahjongcraft.paper.riichi.model.TileInstance;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -282,7 +281,14 @@ public final class MahjongCommand implements BasicCommand {
             }
             case "riichi" -> {
                 MahjongTableSession table = requireTable(player);
-                if (table == null || args.length < 2) {
+                if (table == null) {
+                    return;
+                }
+                if (table.currentVariant() != MahjongVariant.RIICHI) {
+                    this.messages.send(player, "command.variant_action_unavailable", this.messages.tag("action", "riichi"), this.messages.tag("variant", table.currentVariant().name()));
+                    return;
+                }
+                if (args.length < 2) {
                     this.messages.send(player, "command.riichi_usage");
                     return;
                 }
@@ -326,6 +332,10 @@ public final class MahjongCommand implements BasicCommand {
             case "kyuushu", "kyuushukyuuhai" -> {
                 MahjongTableSession table = requireTable(player);
                 if (table == null) {
+                    return;
+                }
+                if (table.currentVariant() != MahjongVariant.RIICHI) {
+                    this.messages.send(player, "command.variant_action_unavailable", this.messages.tag("action", "kyuushu"), this.messages.tag("variant", table.currentVariant().name()));
                     return;
                 }
                 this.messages.send(player, table.declareKyuushuKyuuhai(player.getUniqueId()) ? "command.kyuushu_success" : "command.kyuushu_failed");
@@ -497,12 +507,17 @@ public final class MahjongCommand implements BasicCommand {
     }
 
     private List<String> visibleRootCommands(CommandSender sender) {
-        if (sender.hasPermission("mahjongpaper.admin")) {
-            return ROOT_COMMANDS;
+        List<String> commands = sender.hasPermission("mahjongpaper.admin")
+            ? new ArrayList<>(ROOT_COMMANDS)
+            : ROOT_COMMANDS.stream().filter(command -> !this.isAdminRootCommand(command)).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        if (sender instanceof Player player) {
+            MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+            if (table != null && table.currentVariant() == MahjongVariant.GB) {
+                commands.remove("riichi");
+                commands.remove("kyuushu");
+            }
         }
-        return ROOT_COMMANDS.stream()
-            .filter(command -> !this.isAdminRootCommand(command))
-            .toList();
+        return List.copyOf(commands);
     }
 
     private MahjongTableSession resolveAdminTable(Player player, String[] args) {
@@ -536,45 +551,14 @@ public final class MahjongCommand implements BasicCommand {
 
     private List<String> suggestedRiichiIndices(Player player) {
         MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
-        if (table == null || table.engine() == null) {
-            return List.of();
-        }
-        RiichiPlayerState state = table.engine().seatPlayer(player.getUniqueId().toString());
-        if (state == null || !state.isRiichiable()) {
-            return List.of();
-        }
-        Set<MahjongTile> discardables = new LinkedHashSet<>();
-        state.getTilePairsForRiichi().forEach(pair -> discardables.add(pair.getFirst()));
-        List<String> indices = new ArrayList<>();
-        for (int i = 0; i < state.getHands().size(); i++) {
-            if (discardables.contains(state.getHands().get(i).getMahjongTile())) {
-                indices.add(String.valueOf(i));
-            }
-        }
-        return indices;
+        return table == null
+            ? List.of()
+            : table.suggestedRiichiIndices(player.getUniqueId()).stream().map(String::valueOf).toList();
     }
 
     private List<String> suggestedKanTiles(Player player) {
         MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
-        if (table == null || table.engine() == null) {
-            return List.of();
-        }
-        RiichiPlayerState state = table.engine().seatPlayer(player.getUniqueId().toString());
-        if (state == null) {
-            return List.of();
-        }
-        Set<String> suggestions = new LinkedHashSet<>();
-        state.getTilesCanAnkan().forEach(tile -> suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT)));
-        if (state.getCanKakan()) {
-            for (TileInstance tile : state.getHands()) {
-                boolean matchesMeld = state.getFuuroList().stream()
-                    .anyMatch(fuuro -> fuuro.getTileInstances().stream().anyMatch(existing -> existing.getMahjongTile() == tile.getMahjongTile()));
-                if (matchesMeld) {
-                    suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT));
-                }
-            }
-        }
-        return List.copyOf(suggestions);
+        return table == null ? List.of() : table.suggestedKanTiles(player.getUniqueId());
     }
 
     private List<String> suggestedChiiFirstTiles(Player player) {
@@ -604,10 +588,7 @@ public final class MahjongCommand implements BasicCommand {
 
     private ReactionOptions currentReactionOptions(Player player) {
         MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
-        if (table == null || table.engine() == null) {
-            return null;
-        }
-        return table.engine().availableReactions(player.getUniqueId().toString());
+        return table == null ? null : table.availableReactions(player.getUniqueId());
     }
 
     private List<String> matchPrefix(String raw, Collection<String> values) {

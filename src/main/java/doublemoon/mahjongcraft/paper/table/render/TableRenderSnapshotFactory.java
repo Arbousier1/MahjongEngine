@@ -23,7 +23,7 @@ public final class TableRenderSnapshotFactory {
             tableCenter.getY(),
             tableCenter.getZ(),
             session.isStarted(),
-            session.engine() != null && session.engine().getGameFinished(),
+            session.isRoundFinished(),
             session.remainingWall().size(),
             session.kanCount(),
             session.dicePoints(),

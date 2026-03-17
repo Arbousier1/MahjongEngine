@@ -18,7 +18,7 @@ public final class TableStateSoundCoordinator {
     }
 
     public void syncStateSounds() {
-        if (this.session.engine() == null) {
+        if (!this.session.hasRoundController()) {
             this.reset();
             return;
         }
@@ -48,8 +48,8 @@ public final class TableStateSoundCoordinator {
     }
 
     private void syncTurnSound() {
-        String turnFingerprint = this.session.engine().getStarted()
-            ? this.session.engine().getCurrentPlayerIndex() + ":" + this.session.engine().getWall().size() + ":" + Objects.toString(this.session.engine().getPendingReaction(), "")
+        String turnFingerprint = this.session.isStarted()
+            ? this.session.currentSeat() + ":" + this.session.remainingWall().size() + ":" + this.session.pendingReactionFingerprint()
             : "";
         if (!turnFingerprint.isBlank() && !turnFingerprint.equals(this.lastTurnSoundFingerprint)) {
             this.broadcastSound(Sound.UI_BUTTON_CLICK, 0.5F, 1.6F);
@@ -66,9 +66,9 @@ public final class TableStateSoundCoordinator {
     }
 
     private void syncResolutionSound() {
-        String resolutionFingerprint = Objects.toString(this.session.engine().getLastResolution(), "");
+        String resolutionFingerprint = Objects.toString(this.session.lastResolution(), "");
         if (!resolutionFingerprint.isBlank() && !resolutionFingerprint.equals(this.lastResolutionSoundFingerprint)) {
-            Sound sound = this.session.engine().getLastResolution().getDraw() == null
+            Sound sound = this.session.lastResolution().getDraw() == null
                 ? Sound.UI_TOAST_CHALLENGE_COMPLETE
                 : Sound.BLOCK_NOTE_BLOCK_BELL;
             this.broadcastSound(sound, 0.9F, 1.0F);

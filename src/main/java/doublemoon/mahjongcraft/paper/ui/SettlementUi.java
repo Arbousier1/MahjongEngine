@@ -124,7 +124,7 @@ public final class SettlementUi {
             if (!item.getRankFloatText().isBlank()) {
                 lore.add(messages.render(locale, "ui.score.rank_shift", messages.tag("value", rankShiftLabel(session, locale, item.getRankFloatText()))));
             }
-            if (session.engine() != null && session.engine().getGameFinished()) {
+            if (session.isRoundFinished()) {
                 MahjongTableSession.FinalStanding standing = finalStanding(session, item.getScoreItem().getStringUUID());
                 if (standing != null) {
                     lore.add(messages.render(locale, "ui.score.place", messages.number(locale, "value", standing.place())));
@@ -163,6 +163,9 @@ public final class SettlementUi {
     }
 
     static List<Component> settlementLore(Locale locale, MahjongTableSession session, YakuSettlement settlement) {
+        if (session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
+            return gbSettlementLore(locale, session, settlement);
+        }
         MessageService messages = session.plugin().messages();
         List<Component> lore = new ArrayList<>();
         lore.add(messages.render(locale, "ui.fu_han", messages.number(locale, "fu", settlement.getFu()), messages.number(locale, "han", settlement.getHan())));
@@ -195,6 +198,26 @@ public final class SettlementUi {
         }
         if (!settlement.getUraDoraIndicators().isEmpty()) {
             lore.add(messages.render(locale, "ui.uradora", messages.tag("value", joinTiles(session, locale, settlement.getUraDoraIndicators()))));
+        }
+        return lore;
+    }
+
+    private static List<Component> gbSettlementLore(Locale locale, MahjongTableSession session, YakuSettlement settlement) {
+        MessageService messages = session.plugin().messages();
+        List<Component> lore = new ArrayList<>();
+        lore.add(messages.render(locale, "ui.gb_total_fan", messages.number(locale, "value", settlement.getHan())));
+        lore.add(messages.render(locale, "ui.score", messages.number(locale, "value", settlement.getScore())));
+        lore.add(messages.render(locale, "ui.winning_tile_line", messages.tag("value", tileLabel(session, locale, settlement.getWinningTile().name()))));
+        lore.add(messages.render(locale, "ui.hand", messages.tag("value", joinTiles(session, locale, settlement.getHands()))));
+        if (!settlement.getFuuroList().isEmpty()) {
+            List<String> melds = new ArrayList<>();
+            settlement.getFuuroList().forEach(pair -> melds.add(meldPrefix(session, locale, pair.getFirst()) + ":" + joinTiles(session, locale, pair.getSecond())));
+            lore.add(messages.render(locale, "ui.melds", messages.tag("value", String.join(" | ", melds))));
+        }
+        if (settlement.getYakuList().isEmpty()) {
+            lore.add(messages.render(locale, "ui.gb_no_fan_breakdown"));
+        } else {
+            settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fan))));
         }
         return lore;
     }

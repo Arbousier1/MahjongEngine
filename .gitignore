@@ -4,7 +4,9 @@
 /build/
 /logs/
 /_upstream/
+/.tmp-gb-ref/
 /%TEMP%/
+/native/**/build/
 /.idea/
 /*.iml
 Thumbs.db

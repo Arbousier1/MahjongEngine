@@ -84,12 +84,13 @@ public final class MahjongTableManager implements Listener {
 
         String id = this.nextId();
         MahjongTableSession session = new MahjongTableSession(this.plugin, id, owner.getLocation().toCenterLocation(), owner, false);
+        if (preset != null && !preset.isBlank()) {
+            if (!session.applyRulePreset(preset) || session.currentVariant() != MahjongVariant.RIICHI) {
+                return null;
+            }
+        }
         this.registerTable(session);
         this.directory.assignPlayer(owner.getUniqueId(), id);
-
-        if (preset != null && !preset.isBlank()) {
-            session.applyRulePreset(preset);
-        }
 
         while (session.size() < 4) {
             session.addBot();
@@ -261,7 +262,7 @@ public final class MahjongTableManager implements Listener {
                 this.plugin.getLogger().warning("Persistent table id " + id + " already exists in memory, deleting it before startup rebuild.");
                 this.deleteTable(id);
             }
-            this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.rule());
+            this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.variant(), loadedTable.rule());
             this.refreshCoordinator.enqueueStartupRefresh(id);
             this.plugin.debug().log("table", "Queued persistent table " + id + " for startup rebuild");
         }
@@ -633,9 +634,14 @@ public final class MahjongTableManager implements Listener {
         return this.directory.isViewingAnyTable(playerId);
     }
 
-    private MahjongTableSession createPersistentTable(String tableId, Location center, doublemoon.mahjongcraft.paper.riichi.model.MahjongRule rule) {
+    private MahjongTableSession createPersistentTable(
+        String tableId,
+        Location center,
+        MahjongVariant variant,
+        doublemoon.mahjongcraft.paper.riichi.model.MahjongRule rule
+    ) {
         String normalizedId = tableId.toUpperCase(Locale.ROOT);
-        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, rule, true);
+        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, variant, rule, true);
         this.registerTable(session);
         this.refreshCoordinator.markPendingArtifactCleanup(normalizedId);
         return session;

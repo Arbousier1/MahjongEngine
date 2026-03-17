@@ -29,12 +29,12 @@ public final class TablePlayerFeedbackCoordinator {
     }
 
     public void sync() {
-        if (this.session.engine() == null) {
+        if (!this.session.hasRoundController()) {
             this.resetState();
             return;
         }
 
-        String settlementFingerprint = Objects.toString(this.session.engine().getLastResolution(), "");
+        String settlementFingerprint = Objects.toString(this.session.lastResolution(), "");
         this.persistSettlementIfNeeded(settlementFingerprint);
         this.persistRankIfNeeded(settlementFingerprint);
         boolean settlementChanged = SettlementFeedbackGate.isNewSettlement(settlementFingerprint, this.lastSettlementFingerprint);
@@ -69,7 +69,7 @@ public final class TablePlayerFeedbackCoordinator {
             || this.session.plugin().database() == null) {
             return;
         }
-        this.session.plugin().database().persistRoundResultAsync(this.session, this.session.engine().getLastResolution());
+        this.session.plugin().database().persistRoundResultAsync(this.session, this.session.lastResolution());
         this.lastPersistedSettlementFingerprint = settlementFingerprint;
     }
 
@@ -106,7 +106,7 @@ public final class TablePlayerFeedbackCoordinator {
     private void openSettlementForViewers() {
         for (Player player : this.session.viewers()) {
             this.session.openSettlementUi(player);
-            if (!this.session.engine().getGameFinished()) {
+            if (!this.session.isRoundFinished()) {
                 this.session.plugin().messages().send(player, "table.round_finished_ready");
             } else {
                 this.session.plugin().messages().send(player, "table.match_finished_ready");
@@ -150,28 +150,47 @@ public final class TablePlayerFeedbackCoordinator {
 
     private PlayerFeedbackSnapshot capturePlayerFeedbackSnapshot(Player player, UUID playerId) {
         Locale locale = this.session.plugin().messages().resolveLocale(player);
-        ReactionOptions options = this.session.engine().availableReactions(playerId.toString());
-        if (options != null && this.session.engine().getPendingReaction() != null) {
+        ReactionOptions options = this.session.availableReactions(playerId);
+        if (options != null && this.session.hasPendingReaction()) {
             Component actionBar = this.session.plugin().messages().render(locale, "table.reaction_available");
             Component reactionPrompt = this.reactionPrompt(locale, options);
             String signature = fingerprintBuilder(192)
                 .field("reaction")
                 .field(playerId)
-                .field(this.session.engine().getPendingReaction().getTile().getId())
+                .field(this.session.pendingReactionTileKey())
                 .field(options)
                 .toString();
             return new PlayerFeedbackSnapshot(playerId, signature, actionBar, reactionPrompt);
         }
-        if (this.session.engine().getStarted() && this.session.engine().getCurrentPlayer().getUuid().equals(playerId.toString())) {
+        if (this.session.isStarted() && this.session.currentSeat() == this.session.seatOf(playerId)) {
             List<String> actions = new ArrayList<>(4);
-            if (this.session.engine().getCurrentPlayer().isRiichiable()) {
+            if (this.session.canDeclareRiichi(playerId)) {
                 actions.add("/mahjong riichi <index>");
             }
-            if (this.session.engine().getCurrentPlayer().getCanAnkan() || this.session.engine().getCurrentPlayer().getCanKakan()) {
+            if (this.session.canDeclareKan(playerId)) {
                 actions.add("/mahjong kan <tile>");
             }
-            if (this.session.engine().canKyuushuKyuuhai(playerId.toString())) {
+            if (this.session.canDeclareKyuushu(playerId)) {
                 actions.add("/mahjong kyuushu");
+            }
+            if (this.session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
+                doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
+                if (this.session.gbCanWinByTsumo(playerId)) {
+                    actions.add("/mahjong tsumo");
+                }
+                String suffix = ting.getValid()
+                    ? " | " + this.session.plugin().messages().plain(locale, "table.gb_ting_prompt", this.session.plugin().messages().number(locale, "count", ting.getWaits().size()))
+                    : "";
+                Component actionBar = this.session.plugin().messages().render(locale, "table.turn_prompt", this.session.plugin().messages().tag("suffix", suffix));
+                String signature = fingerprintBuilder(192)
+                    .field("turn-gb")
+                    .field(playerId)
+                    .field(this.session.remainingWall().size())
+                    .field(ting.getValid())
+                    .field(ting.getWaits().size())
+                    .field(this.session.gbCanWinByTsumo(playerId))
+                    .toString();
+                return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
             }
             actions.add("/mahjong tsumo");
             String suffix = actions.isEmpty() ? "" : " | " + String.join(" ", actions);
@@ -183,11 +202,10 @@ public final class TablePlayerFeedbackCoordinator {
             String signature = fingerprintBuilder(192)
                 .field("turn")
                 .field(playerId)
-                .field(this.session.engine().getWall().size())
-                .field(this.session.engine().getCurrentPlayer().isRiichiable())
-                .field(this.session.engine().getCurrentPlayer().getCanAnkan())
-                .field(this.session.engine().getCurrentPlayer().getCanKakan())
-                .field(this.session.engine().canKyuushuKyuuhai(playerId.toString()))
+                .field(this.session.remainingWall().size())
+                .field(this.session.canDeclareRiichi(playerId))
+                .field(this.session.canDeclareKan(playerId))
+                .field(this.session.canDeclareKyuushu(playerId))
                 .field(suffix)
                 .toString();
             return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
