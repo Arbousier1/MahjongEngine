@@ -5,11 +5,13 @@ Branch: `feature/gb-mahjong`
 Reference rules source:
 
 - <https://github.com/zheng-fan/GB-Mahjong>
+- See also: `docs/gb-mahjong-rules.md`
 
 ## Reference Summary
 
 The referenced `GB-Mahjong` project is a C++ library for Chinese Official Mahjong (Guobiao / GB Mahjong).
 According to its README, it is primarily based on the 1998 `中国麻将竞赛规则（试行）`, with scoring behavior aligned to common practice from large tournaments such as the World Mahjong Sports Games and major Chinese GB Mahjong events.
+This branch treats that repository as the authoritative gameplay/scoring target for the future GB variant.
 
 The library explicitly provides:
 
@@ -64,7 +66,14 @@ Because of that, implementing GB Mahjong is not a small rules toggle. It require
 - `src/main/java/doublemoon/mahjongcraft/paper/command/MahjongCommand.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/ui/SettlementUi.java`
 
+## JNI Direction
+
+This branch is currently taking a JNI-first path for the GB backend.
+
+- JVM bridge docs: `docs/gb-mahjong-jni.md`
+- native stub project: `native/gbmahjong/`
+
 ## Practical Constraint
 
 `GB-Mahjong` is a C++ project, not a JVM library, so it cannot be dropped into this plugin directly.
-For this branch, the realistic path is to re-implement or port the required GB rules/scoring behavior on the JVM while using the referenced project as the scoring/rules reference.
+With JNI chosen, the practical constraint becomes API surface design and native packaging instead of direct JVM reimplementation.
