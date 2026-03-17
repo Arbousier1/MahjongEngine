@@ -4,6 +4,7 @@
 /build/
 /logs/
 /_upstream/
+/%TEMP%/
 /.idea/
 /*.iml
 Thumbs.db
