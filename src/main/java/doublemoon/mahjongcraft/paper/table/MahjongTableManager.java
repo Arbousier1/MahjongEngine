@@ -341,7 +341,7 @@ public final class MahjongTableManager implements Listener {
             return true;
         }
         this.plugin.debug().log("table", player.getName() + " clicked tile index " + tileIndex + " on table " + tableId);
-        boolean accepted = session.clickHandTile(ownerId, tileIndex);
+        boolean accepted = session.clickHandTile(ownerId, tileIndex, player.isSneaking());
         if (accepted) {
             this.rememberHandTileClick(playerId, tableId, ownerId, tileIndex);
         }

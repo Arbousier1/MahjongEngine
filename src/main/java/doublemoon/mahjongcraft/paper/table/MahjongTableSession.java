@@ -1277,17 +1277,21 @@ public final class MahjongTableSession {
         return true;
     }
 
-    public boolean clickHandTile(UUID playerId, int tileIndex) {
+    public boolean clickHandTile(UUID playerId, int tileIndex, boolean cancelSelection) {
         if (!this.canSelectHandTile(playerId, tileIndex)) {
             return false;
         }
         Integer selectedIndex = this.selectedHandTileIndices.get(playerId);
         if (selectedIndex != null && selectedIndex == tileIndex) {
+            if (cancelSelection) {
+                this.selectedHandTileIndices.remove(playerId);
+                this.refreshSelectedHandTileView(playerId);
+                return true;
+            }
             return this.discard(playerId, tileIndex);
         }
         this.selectedHandTileIndices.put(playerId, tileIndex);
         this.refreshSelectedHandTileView(playerId);
-        this.render();
         return true;
     }
 
@@ -1463,6 +1467,7 @@ public final class MahjongTableSession {
             return;
         }
         this.resetReadyStateForNextRound();
+        this.render();
         this.openSettlementForViewers();
         this.cancelNextRoundCountdown();
         this.promptPlayersToReady();
