@@ -16,7 +16,7 @@ public final class TableRegionFingerprintService {
 
     public Map<String, String> precomputeRegionFingerprints(MahjongTableSession session, MahjongTableSession.RenderSnapshot snapshot) {
         Map<String, String> fingerprints = new HashMap<>();
-        fingerprints.put(REGION_TABLE, this.tableFingerprint(snapshot));
+        fingerprints.put(REGION_TABLE, this.tableFingerprint(session, snapshot));
         fingerprints.put(REGION_WALL, this.wallFingerprint(snapshot));
         fingerprints.put(REGION_DORA, this.doraFingerprint(snapshot));
         fingerprints.put(REGION_CENTER, this.centerFingerprint(snapshot));
@@ -115,13 +115,14 @@ public final class TableRegionFingerprintService {
             .toString();
     }
 
-    private String tableFingerprint(MahjongTableSession.RenderSnapshot snapshot) {
+    private String tableFingerprint(MahjongTableSession session, MahjongTableSession.RenderSnapshot snapshot) {
         return fingerprintBuilder(48)
             .field("table")
             .field(snapshot.worldName())
             .field((int) Math.floor(snapshot.centerX()))
             .field((int) Math.floor(snapshot.centerY()))
             .field((int) Math.floor(snapshot.centerZ()))
+            .field(Objects.toString(session.plugin().settings().craftEngineTableFurnitureId(), ""))
             .toString();
     }
 

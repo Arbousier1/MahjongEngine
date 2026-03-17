@@ -31,7 +31,7 @@ public final class TableRenderer {
     private static final double STICK_WIDTH = 0.4D;
     private static final double STICK_HEIGHT = 0.0125D;
     private static final double STICK_DEPTH = 0.0625D;
-    private static final double STICK_Y_OFFSET = 0.5D;
+    private static final double STICK_Y_OFFSET = 0.515625D;
     private static final int STICKS_PER_STACK = 5;
     private static final double TABLE_BOTTOM_SIZE = 14.0D * ONE_SIXTEENTH;
     private static final double TABLE_BOTTOM_HEIGHT = 2.0D * ONE_SIXTEENTH;
@@ -44,6 +44,7 @@ public final class TableRenderer {
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
     private static final double TABLE_FELT_INSET = ONE_SIXTEENTH;
     private static final double TABLE_FELT_THICKNESS = ONE_SIXTEENTH / 2.0D;
+    private static final double TABLE_FELT_Y_OFFSET = ONE_SIXTEENTH / 16.0D;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
@@ -129,7 +130,7 @@ public final class TableRenderer {
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
             centeredCuboid(
-                tableCenter.clone().add(0.0D, 0.0D, 0.0D),
+                tableCenter.clone().add(0.0D, TABLE_FELT_Y_OFFSET, 0.0D),
                 topWidth - TABLE_FELT_INSET * 2.0D,
                 TABLE_FELT_THICKNESS,
                 topDepth - TABLE_FELT_INSET * 2.0D
@@ -218,7 +219,7 @@ public final class TableRenderer {
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
             centeredCuboid(
-                tableCenter.clone().add(0.0D, 0.0D, 0.0D),
+                tableCenter.clone().add(0.0D, TABLE_FELT_Y_OFFSET, 0.0D),
                 topWidth - TABLE_FELT_INSET * 2.0D,
                 TABLE_FELT_THICKNESS,
                 topDepth - TABLE_FELT_INSET * 2.0D
@@ -1183,15 +1184,22 @@ public final class TableRenderer {
         return placed;
     }
 
+    private static String configuredTableFurnitureId(MahjongTableSession session) {
+        return configuredFurnitureId(session, session.plugin().settings().craftEngineTableFurnitureId());
+    }
+
     private static String configuredSeatFurnitureId(MahjongTableSession session) {
+        return configuredFurnitureId(session, session.plugin().settings().craftEngineSeatFurnitureId());
+    }
+
+    private static String configuredFurnitureId(MahjongTableSession session, String configuredValue) {
         if (session.plugin().craftEngine() == null) {
             return null;
         }
-        String value = session.plugin().settings().craftEngineSeatFurnitureId();
-        if (value == null) {
+        if (configuredValue == null) {
             return null;
         }
-        String trimmed = value.trim();
+        String trimmed = configuredValue.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
 
@@ -1201,10 +1209,11 @@ public final class TableRenderer {
     }
 
     private static Entity spawnTableVisual(MahjongTableSession session, Location tableCenter) {
-        if (session.plugin().craftEngine() == null) {
+        String tableFurnitureId = configuredTableFurnitureId(session);
+        if (tableFurnitureId == null) {
             return null;
         }
-        return session.plugin().craftEngine().placeFurniture(tableVisualAnchor(tableCenter), TABLE_VISUAL_FURNITURE_ID);
+        return session.plugin().craftEngine().placeFurniture(tableVisualAnchor(tableCenter), tableFurnitureId);
     }
 
     private static Location tableVisualAnchor(Location tableCenter) {

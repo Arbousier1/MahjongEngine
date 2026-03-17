@@ -79,6 +79,11 @@ integrations:
       # Prefer CraftEngine furniture hitboxes for table and seat interaction.
       preferHitboxInteraction: true
 
+      # CraftEngine furniture id used for the table visual.
+      # Set to "" to use the built-in block-display table fallback instead.
+      # This only replaces the table visual; the table interaction hitbox stays managed separately.
+      tableFurnitureId: mahjongpaper:table_visual
+
       # CraftEngine furniture id used for each table seat.
       # Set to "" to use the built-in block-display chair fallback instead.
       # This furniture should define its own hitbox and seats in CraftEngine.

@@ -19,7 +19,7 @@ public final class TableRenderLayout {
     private static final double STICK_WIDTH = 0.4D;
     private static final double STICK_HEIGHT = 0.0125D;
     private static final double STICK_DEPTH = 0.0625D;
-    private static final double STICK_Y_OFFSET = 0.5D;
+    private static final double STICK_Y_OFFSET = 0.515625D;
     private static final int STICKS_PER_STACK = 5;
     private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;

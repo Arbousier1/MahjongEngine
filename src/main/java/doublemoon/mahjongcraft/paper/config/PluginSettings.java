@@ -11,6 +11,7 @@ public final class PluginSettings {
     private final boolean tablePersistenceEnabled;
     private final String tablePersistenceFile;
     private final int tableStartupRebuildBatchSize;
+    private final String craftEngineTableFurnitureId;
     private final String craftEngineSeatFurnitureId;
     private final boolean rankingEnabled;
     private final String rankingEastRoom;
@@ -24,6 +25,7 @@ public final class PluginSettings {
         boolean tablePersistenceEnabled,
         String tablePersistenceFile,
         int tableStartupRebuildBatchSize,
+        String craftEngineTableFurnitureId,
         String craftEngineSeatFurnitureId,
         boolean rankingEnabled,
         String rankingEastRoom,
@@ -36,6 +38,7 @@ public final class PluginSettings {
         this.tablePersistenceEnabled = tablePersistenceEnabled;
         this.tablePersistenceFile = tablePersistenceFile;
         this.tableStartupRebuildBatchSize = tableStartupRebuildBatchSize;
+        this.craftEngineTableFurnitureId = craftEngineTableFurnitureId;
         this.craftEngineSeatFurnitureId = craftEngineSeatFurnitureId;
         this.rankingEnabled = rankingEnabled;
         this.rankingEastRoom = rankingEastRoom;
@@ -57,6 +60,7 @@ public final class PluginSettings {
             ConfigAccess.bool(tablePersistenceSection, true, "enabled"),
             ConfigAccess.string(tablePersistenceSection, "tables.yml", "file"),
             Math.max(1, ConfigAccess.integer(tablesSection, 3, "startupRebuildBatchSize", "startup-rebuild-batch-size")),
+            ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:table_visual", "tableFurnitureId", "table-furniture-id"),
             ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id"),
             ConfigAccess.bool(rankingSection, true, "enabled"),
             ConfigAccess.string(rankingSection, "SILVER", "eastRoom"),
@@ -90,6 +94,10 @@ public final class PluginSettings {
 
     public int tableStartupRebuildBatchSize() {
         return this.tableStartupRebuildBatchSize;
+    }
+
+    public String craftEngineTableFurnitureId() {
+        return this.craftEngineTableFurnitureId;
     }
 
     public String craftEngineSeatFurnitureId() {
