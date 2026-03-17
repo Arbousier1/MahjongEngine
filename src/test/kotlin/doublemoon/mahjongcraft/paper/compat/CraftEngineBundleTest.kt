@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class CraftEngineBundleTest {
     @Test
@@ -64,5 +65,21 @@ class CraftEngineBundleTest {
                 setOf(RegexOption.DOT_MATCHES_ALL)
             ).containsMatchIn(text)
         )
+    }
+
+    @Test
+    fun `hand tile hitbox width stays narrower than hand tile spacing`() {
+        val stream = javaClass.classLoader.getResourceAsStream("craftengine/mahjongpaper/configuration/items/mahjong_tiles.yml")
+        assertNotNull(stream)
+
+        val text = stream.bufferedReader().use { it.readText() }
+        val match = Regex(
+            """mahjongpaper:hand_tile_hitbox:.*?hitboxes:\s+- type: interaction\s+position: 0,0,0\s+width: ([0-9.]+)""",
+            setOf(RegexOption.DOT_MATCHES_ALL)
+        ).find(text) ?: fail("Could not find hand tile hitbox width in generated CraftEngine bundle")
+
+        val width = match.groupValues[1].toDouble()
+        val handTileStep = 0.1125 + 0.0025
+        assertTrue(width < handTileStep, "Expected hand tile hitbox width $width to stay below hand tile step $handTileStep")
     }
 }

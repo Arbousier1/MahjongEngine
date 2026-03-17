@@ -4,7 +4,6 @@
   "textures": {
     "wood": "minecraft:block/dark_oak_log",
     "stone": "minecraft:block/smooth_stone",
-    "felt": "minecraft:block/green_wool",
     "border": "minecraft:block/stripped_oak_log",
     "particle": "minecraft:block/smooth_stone"
   },
@@ -43,18 +42,6 @@
         "west": {"uv": [0, 0, 16, 2], "texture": "#stone"},
         "up": {"uv": [0, 0, 16, 16], "texture": "#stone"},
         "down": {"uv": [0, 0, 16, 16], "texture": "#stone"}
-      }
-    },
-    {
-      "from": [-14.5, 0.08, -14.5],
-      "to": [30.5, 0.58, 30.5],
-      "faces": {
-        "north": {"uv": [0, 0, 16, 1], "texture": "#felt"},
-        "east": {"uv": [0, 0, 16, 1], "texture": "#felt"},
-        "south": {"uv": [0, 0, 16, 1], "texture": "#felt"},
-        "west": {"uv": [0, 0, 16, 1], "texture": "#felt"},
-        "up": {"uv": [0, 0, 16, 16], "texture": "#felt"},
-        "down": {"uv": [0, 0, 16, 16], "texture": "#felt"}
       }
     },
     {

@@ -1,5 +1,6 @@
 package doublemoon.mahjongcraft.paper.table
 
+import doublemoon.mahjongcraft.paper.table.presentation.SettlementFeedbackGate
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

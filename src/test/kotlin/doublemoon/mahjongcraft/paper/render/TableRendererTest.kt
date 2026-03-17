@@ -2,8 +2,11 @@ package doublemoon.mahjongcraft.paper.render
 
 import doublemoon.mahjongcraft.paper.model.MahjongTile
 import doublemoon.mahjongcraft.paper.model.SeatWind
+import doublemoon.mahjongcraft.paper.render.layout.DiscardLayout
+import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout
+import doublemoon.mahjongcraft.paper.render.layout.WallLayout
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
-import doublemoon.mahjongcraft.paper.table.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
 import java.util.EnumMap
 import java.util.UUID
 import kotlin.test.Test
@@ -72,14 +75,14 @@ class TableRendererTest {
 
     @Test
     fun `waiting snapshot skips live wall and dora layout`() {
-        val snapshot = startedSnapshot().let {
-            MahjongTableSession.RenderSnapshot(
-                it.version(),
-                it.cancellationNonce(),
-                it.worldName(),
-                it.centerX(),
-                it.centerY(),
-                it.centerZ(),
+        val base = startedSnapshot()
+        val snapshot = MahjongTableSession.RenderSnapshot(
+                base.version(),
+                base.cancellationNonce(),
+                base.worldName(),
+                base.centerX(),
+                base.centerY(),
+                base.centerZ(),
                 false,
                 false,
                 0,
@@ -90,15 +93,14 @@ class TableRendererTest {
                 SeatWind.EAST,
                 SeatWind.EAST,
                 SeatWind.EAST,
-                it.waitingDisplaySummary(),
-                it.ruleDisplaySummary(),
+                base.waitingDisplaySummary(),
+                base.ruleDisplaySummary(),
                 "waiting",
                 null,
                 null,
                 emptyList(),
-                it.seats()
+                base.seats()
             )
-        }
 
         val plan = TableRenderLayout.precompute(snapshot)
 

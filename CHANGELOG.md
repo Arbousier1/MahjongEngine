@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 - 2026-03-17
+
+Stability and interaction fix release.
+
+- Fixed outdated test imports/packages so `./gradlew test jacocoTestReport` passes again in CI.
+- Removed the green felt layer from both the built-in table render path and the CraftEngine `table_visual` model.
+- Narrowed the CraftEngine hand-tile hitbox so adjacent hand tiles no longer overlap and mis-select under the pointer.
+
 ## 0.3.0 - 2026-03-17
 
 Critical fix release.

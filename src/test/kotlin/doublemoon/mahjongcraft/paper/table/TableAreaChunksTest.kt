@@ -1,4 +1,4 @@
-package doublemoon.mahjongcraft.paper.table
+package doublemoon.mahjongcraft.paper.table.runtime
 
 import java.util.UUID
 import kotlin.test.Test

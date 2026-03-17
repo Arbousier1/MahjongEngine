@@ -1,5 +1,6 @@
 package doublemoon.mahjongcraft.paper.table
 
+import doublemoon.mahjongcraft.paper.table.runtime.ChunkNeighborhood
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,8 +1,7 @@
 package doublemoon.mahjongcraft.paper.db
 
-import doublemoon.mahjongcraft.paper.AsyncService
-import doublemoon.mahjongcraft.paper.MahjongPaperPlugin
-import doublemoon.mahjongcraft.paper.PluginSettings
+import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
+import doublemoon.mahjongcraft.paper.config.PluginSettings
 import doublemoon.mahjongcraft.paper.debug.DebugService
 import doublemoon.mahjongcraft.paper.model.MahjongTile as DisplayMahjongTile
 import doublemoon.mahjongcraft.paper.riichi.RoundResolution
@@ -13,7 +12,8 @@ import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
-import doublemoon.mahjongcraft.paper.table.MahjongTableSession
+import doublemoon.mahjongcraft.paper.runtime.AsyncService
+import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
 import org.bukkit.configuration.file.YamlConfiguration
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -26,6 +26,7 @@ import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class DatabaseIntegrationTest {
     private lateinit var tempDir: java.nio.file.Path
@@ -168,9 +169,5 @@ class DatabaseIntegrationTest {
         field.isAccessible = true
         val dataSource = field.get(service) as DataSource
         dataSource.connection.use(block)
-    }
-
-    private fun assertTrue(value: Boolean) {
-        kotlin.test.assertTrue(value)
     }
 }

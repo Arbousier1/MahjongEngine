@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "doublemoon.mahjongcraft"
-version = "0.3.0"
+version = "0.3.1"
 
 val kotlinRuntimeVersion = "2.2.0"
 val kotlinSerializationVersion = "1.9.0"
@@ -332,7 +332,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("            hitboxes:")
         appendLine("              - type: interaction")
         appendLine("                position: 0,0,0")
-        appendLine("                width: 0.14")
+        appendLine("                width: 0.1")
         appendLine("                height: 0.18")
         appendLine("                blocks-building: false")
         appendLine("                interactive: true")

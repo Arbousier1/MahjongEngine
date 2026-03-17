@@ -1,6 +1,6 @@
 package doublemoon.mahjongcraft.paper.ui
 
-import doublemoon.mahjongcraft.paper.MahjongPaperPlugin
+import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
 import doublemoon.mahjongcraft.paper.compat.CraftEngineService
 import doublemoon.mahjongcraft.paper.i18n.MessageService
 import doublemoon.mahjongcraft.paper.riichi.RoundResolution
@@ -10,7 +10,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
-import doublemoon.mahjongcraft.paper.table.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`

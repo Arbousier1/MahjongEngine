@@ -42,9 +42,6 @@ public final class TableRenderer {
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_OUTWARD_OFFSET = 0.0D;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
-    private static final double TABLE_FELT_INSET = ONE_SIXTEENTH;
-    private static final double TABLE_FELT_THICKNESS = ONE_SIXTEENTH / 2.0D;
-    private static final double TABLE_FELT_Y_OFFSET = ONE_SIXTEENTH / 16.0D;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
@@ -72,7 +69,7 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    private static final float HAND_INTERACTION_WIDTH = 0.14F;
+    private static final float HAND_INTERACTION_WIDTH = 0.1F;
     private static final float HAND_INTERACTION_HEIGHT = 0.18F;
     private static final float SEAT_INTERACTION_WIDTH = 0.8F;
     private static final float SEAT_INTERACTION_HEIGHT = 0.8F;
@@ -126,19 +123,6 @@ public final class TableRenderer {
             (float) topWidth,
             (float) TABLE_TOP_THICKNESS,
             (float) topDepth
-        ));
-        spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
-            centeredCuboid(
-                tableCenter.clone().add(0.0D, TABLE_FELT_Y_OFFSET, 0.0D),
-                topWidth - TABLE_FELT_INSET * 2.0D,
-                TABLE_FELT_THICKNESS,
-                topDepth - TABLE_FELT_INSET * 2.0D
-            ),
-            Material.GREEN_WOOL,
-            (float) (topWidth - TABLE_FELT_INSET * 2.0D),
-            (float) TABLE_FELT_THICKNESS,
-            (float) (topDepth - TABLE_FELT_INSET * 2.0D)
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
@@ -215,19 +199,6 @@ public final class TableRenderer {
             (float) topWidth,
             (float) TABLE_TOP_THICKNESS,
             (float) topDepth
-        ));
-        spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
-            centeredCuboid(
-                tableCenter.clone().add(0.0D, TABLE_FELT_Y_OFFSET, 0.0D),
-                topWidth - TABLE_FELT_INSET * 2.0D,
-                TABLE_FELT_THICKNESS,
-                topDepth - TABLE_FELT_INSET * 2.0D
-            ),
-            Material.GREEN_WOOL,
-            (float) (topWidth - TABLE_FELT_INSET * 2.0D),
-            (float) TABLE_FELT_THICKNESS,
-            (float) (topDepth - TABLE_FELT_INSET * 2.0D)
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),

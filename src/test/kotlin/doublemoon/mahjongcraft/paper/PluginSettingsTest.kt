@@ -1,5 +1,6 @@
 package doublemoon.mahjongcraft.paper
 
+import doublemoon.mahjongcraft.paper.config.PluginSettings
 import org.bukkit.configuration.file.YamlConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package doublemoon.mahjongcraft.paper.table
+package doublemoon.mahjongcraft.paper.table.runtime
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
