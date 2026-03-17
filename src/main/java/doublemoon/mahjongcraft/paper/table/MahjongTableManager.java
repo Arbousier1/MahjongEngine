@@ -362,6 +362,7 @@ public final class MahjongTableManager implements Listener {
                 return false;
             }
             this.plugin.messages().send(player, "command.joined_table", this.plugin.messages().tag("table_id", session.id()));
+            this.scheduleSeatRestore(player, session, action.seatWind());
             return true;
         }
         if (action.actionType() == ActionType.TOGGLE_READY) {

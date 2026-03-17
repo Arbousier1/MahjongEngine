@@ -301,15 +301,6 @@ public final class CraftEngineService {
             if (action == null) {
                 return;
             }
-            if (action.actionType() == DisplayClickAction.ActionType.JOIN_SEAT) {
-                if (!tableManager.canUseSeat(player, action.tableId(), action.seatWind())) {
-                    if (event instanceof Cancellable cancellable) {
-                        cancellable.setCancelled(true);
-                    }
-                    this.plugin.messages().actionBar(player, "command.join_failed");
-                }
-                return;
-            }
             if (event instanceof Cancellable cancellable) {
                 cancellable.setCancelled(true);
             }
