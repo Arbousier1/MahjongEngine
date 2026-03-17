@@ -75,9 +75,16 @@ integrations:
       # Prefer CraftEngine custom items for tile visuals when available.
       preferCustomItems: true
 
-      # Prefix used to resolve CraftEngine item ids for Mahjong tiles.
-      # MahjongPaper appends the tile name automatically, such as east, m1, or back.
+      # Prefix used to resolve CraftEngine item ids for all Mahjong tile visuals.
+      # This controls CraftEngine custom items only. Tiles still render through ItemDisplay,
+      # so this setting does not place CraftEngine furniture entities for each tile.
+      # MahjongPaper appends the lowercase tile name automatically, such as east, m1, or back.
+      # Face-down tiles use back, so you only provide the shared prefix, not every full id.
       # Example: custom:tile_ -> custom:tile_east, custom:tile_m1, custom:tile_back
+      # With the default value mahjongpaper:, MahjongPaper resolves ids like
+      # mahjongpaper:east, mahjongpaper:m1, and mahjongpaper:back.
+      # If preferCustomItems is false, or the resolved CraftEngine item cannot be built,
+      # MahjongPaper falls back to its built-in direct item_model tile items.
       tileItemIdPrefix: mahjongpaper:
 
     furniture:

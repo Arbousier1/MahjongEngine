@@ -73,9 +73,16 @@ integrations:
       # 可用时优先用 CraftEngine 自定义物品显示麻将牌。
       preferCustomItems: true
 
-      # 用于解析麻将牌 CraftEngine 物品 id 的前缀。
-      # MahjongPaper 会自动拼接牌名，例如 east、m1 或 back。
+      # 用于解析所有麻将牌视觉所用 CraftEngine 物品 id 的前缀。
+      # 这个配置只控制 CraftEngine 自定义物品；麻将牌本身仍通过 ItemDisplay 渲染，
+      # 不会因为这里的配置改成逐张放置 CraftEngine 家具实体。
+      # MahjongPaper 会自动拼接小写牌名，例如 east、m1 或 back。
+      # 背面牌统一使用 back，所以你只需要提供公共前缀，不需要把每张牌完整写一遍。
       # 例: custom:tile_ -> custom:tile_east、custom:tile_m1、custom:tile_back
+      # 默认值 mahjongpaper: 会解析成 mahjongpaper:east、mahjongpaper:m1、
+      # mahjongpaper:back 这样的物品 id。
+      # 如果 preferCustomItems 为 false，或解析出的 CraftEngine 物品无法构建，
+      # MahjongPaper 会回退到内置的 direct item_model 麻将牌物品。
       tileItemIdPrefix: mahjongpaper:
 
     furniture:

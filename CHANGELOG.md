@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 - 2026-03-17
+
+Config documentation clarification release.
+
+- Expanded the `integrations.craftengine.items.tileItemIdPrefix` comments in all config templates.
+- Clarified that the setting resolves CraftEngine custom item ids, not furniture entities.
+- Documented the automatic tile-name suffix rules, including the `back` id for face-down tiles.
+- Documented the fallback behavior when `preferCustomItems` is disabled or a CraftEngine custom item cannot be built.
+
 ## 0.4.0 - 2026-03-17
 
 CraftEngine and localization update release.
