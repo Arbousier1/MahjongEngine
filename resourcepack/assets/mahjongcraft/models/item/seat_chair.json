@@ -4,7 +4,7 @@
   "textures": {
     "frame": "minecraft:block/dark_oak_planks",
     "seat": "minecraft:block/oak_planks",
-    "cushion": "minecraft:block/red_wool",
+    "cushion": "minecraft:block/green_wool",
     "particle": "minecraft:block/dark_oak_planks"
   },
   "elements": [

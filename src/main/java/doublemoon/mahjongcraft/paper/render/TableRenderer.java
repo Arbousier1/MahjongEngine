@@ -36,6 +36,8 @@ public final class TableRenderer {
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_OUTWARD_OFFSET = 0.0D;
     private static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
+    private static final double TABLE_FELT_INSET = ONE_SIXTEENTH;
+    private static final double TABLE_FELT_THICKNESS = ONE_SIXTEENTH / 2.0D;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
     private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
@@ -50,6 +52,8 @@ public final class TableRenderer {
     private static final double SEAT_BACKREST_HEIGHT = 0.72D;
     private static final double SEAT_BACKREST_DEPTH = 0.12D;
     private static final double SEAT_BACKREST_OFFSET = 0.26D;
+    private static final double SEAT_CARPET_INSET = 0.08D;
+    private static final double SEAT_CARPET_THICKNESS = 0.04D;
     private static final double CENTER_LABEL_Y_OFFSET = 0.3D + FLOATING_TEXT_Y_OFFSET - 0.5D;
     private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
     private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
@@ -114,6 +118,19 @@ public final class TableRenderer {
             (float) topWidth,
             (float) TABLE_TOP_THICKNESS,
             (float) topDepth
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(
+                tableCenter.clone().add(0.0D, 0.0D, 0.0D),
+                topWidth - TABLE_FELT_INSET * 2.0D,
+                TABLE_FELT_THICKNESS,
+                topDepth - TABLE_FELT_INSET * 2.0D
+            ),
+            Material.GREEN_WOOL,
+            (float) (topWidth - TABLE_FELT_INSET * 2.0D),
+            (float) TABLE_FELT_THICKNESS,
+            (float) (topDepth - TABLE_FELT_INSET * 2.0D)
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
@@ -190,6 +207,19 @@ public final class TableRenderer {
             (float) topWidth,
             (float) TABLE_TOP_THICKNESS,
             (float) topDepth
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(
+                tableCenter.clone().add(0.0D, 0.0D, 0.0D),
+                topWidth - TABLE_FELT_INSET * 2.0D,
+                TABLE_FELT_THICKNESS,
+                topDepth - TABLE_FELT_INSET * 2.0D
+            ),
+            Material.GREEN_WOOL,
+            (float) (topWidth - TABLE_FELT_INSET * 2.0D),
+            (float) TABLE_FELT_THICKNESS,
+            (float) (topDepth - TABLE_FELT_INSET * 2.0D)
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
             session.plugin(),
@@ -876,6 +906,19 @@ public final class TableRenderer {
             (float) SEAT_BASE_WIDTH,
             (float) SEAT_BASE_HEIGHT,
             (float) SEAT_BASE_WIDTH
+        ));
+        spawned.add(DisplayEntities.spawnBlockDisplay(
+            session.plugin(),
+            centeredCuboid(
+                seatBase.clone().add(0.0D, SEAT_BASE_HEIGHT, 0.0D),
+                SEAT_BASE_WIDTH - SEAT_CARPET_INSET * 2.0D,
+                SEAT_CARPET_THICKNESS,
+                SEAT_BASE_WIDTH - SEAT_CARPET_INSET * 2.0D
+            ),
+            Material.GREEN_WOOL,
+            (float) (SEAT_BASE_WIDTH - SEAT_CARPET_INSET * 2.0D),
+            (float) SEAT_CARPET_THICKNESS,
+            (float) (SEAT_BASE_WIDTH - SEAT_CARPET_INSET * 2.0D)
         ));
 
         Offset backrestOffset = offsetTowardSeatFront(wind, -SEAT_BACKREST_OFFSET);
