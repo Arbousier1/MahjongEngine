@@ -61,6 +61,20 @@ class MahjongTableSessionTest {
         assertEquals(eastId, session.playerAt(SeatWind.SOUTH))
     }
 
+    @Test
+    fun `empty seat accessors stay null safe for render snapshots`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val session = MahjongTableSession(plugin, "TABLE03", Location(null, 0.0, 64.0, 0.0), false)
+
+        assertEquals(0, session.points(null))
+        assertFalse(session.isRiichi(null))
+        assertEquals(emptyList(), session.hand(null))
+        assertEquals(emptyList(), session.discards(null))
+        assertEquals(-1, session.riichiDiscardIndex(null))
+        assertEquals(emptyList(), session.fuuro(null))
+        assertEquals(emptyList(), session.scoringSticks(null))
+    }
+
     private fun attachEngine(session: MahjongTableSession, started: Boolean, seatIds: List<UUID>) {
         val engine = mock(RiichiRoundEngine::class.java)
         `when`(engine.started).thenReturn(started)

@@ -347,6 +347,11 @@ public final class MahjongTableManager implements Listener {
             return this.clickTile(player, action.tableId(), action.ownerId(), action.tileIndex());
         }
         if (action.actionType() == ActionType.JOIN_SEAT) {
+            MahjongTableSession currentSeat = this.tableFor(player.getUniqueId());
+            if (isSameSeatJoin(currentSeat, player.getUniqueId(), action)) {
+                this.seatCoordinator.requestSeatRestore(player, currentSeat, action.seatWind());
+                return true;
+            }
             MahjongTableSession session = this.join(player, action.tableId(), action.seatWind());
             if (session == null) {
                 return false;
@@ -394,6 +399,10 @@ public final class MahjongTableManager implements Listener {
         }
         DisplayClickAction action = this.seatCoordinator.seatAction(event.getMount());
         if (action == null || action.actionType() != ActionType.JOIN_SEAT) {
+            return;
+        }
+        MahjongTableSession currentSeat = this.tableFor(player.getUniqueId());
+        if (isSameSeatJoin(currentSeat, player.getUniqueId(), action)) {
             return;
         }
         MahjongTableSession session = this.join(player, action.tableId(), action.seatWind());
@@ -635,6 +644,15 @@ public final class MahjongTableManager implements Listener {
 
     private void sendReadyPrompt(Player player) {
         this.plugin.messages().send(player, "command.ready_prompt");
+    }
+
+    static boolean isSameSeatJoin(MahjongTableSession currentSeat, UUID playerId, DisplayClickAction action) {
+        return currentSeat != null
+            && playerId != null
+            && action != null
+            && action.actionType() == ActionType.JOIN_SEAT
+            && currentSeat.id().equals(action.tableId())
+            && currentSeat.seatOf(playerId) == action.seatWind();
     }
 
     public void sendReadyResult(Player player, MahjongTableSession.ReadyResult result) {

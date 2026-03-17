@@ -538,6 +538,9 @@ public final class MahjongTableSession {
     }
 
     public int points(UUID playerId) {
+        if (playerId == null) {
+            return 0;
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         if (player != null) {
             return player.getPoints();
@@ -546,6 +549,9 @@ public final class MahjongTableSession {
     }
 
     public boolean isRiichi(UUID playerId) {
+        if (playerId == null) {
+            return false;
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         return player != null && (player.getRiichi() || player.getDoubleRiichi());
     }
@@ -660,6 +666,9 @@ public final class MahjongTableSession {
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand(UUID playerId) {
+        if (playerId == null) {
+            return List.of();
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         if (player == null) {
             return List.of();
@@ -670,6 +679,9 @@ public final class MahjongTableSession {
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> discards(UUID playerId) {
+        if (playerId == null) {
+            return List.of();
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         if (player == null) {
             return List.of();
@@ -680,6 +692,9 @@ public final class MahjongTableSession {
     }
 
     public int riichiDiscardIndex(UUID playerId) {
+        if (playerId == null) {
+            return -1;
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         if (player == null || player.getRiichiSengenTile() == null) {
             return -1;
@@ -713,6 +728,9 @@ public final class MahjongTableSession {
     }
 
     public List<MeldView> fuuro(UUID playerId) {
+        if (playerId == null) {
+            return List.of();
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         if (player == null) {
             return List.of();
@@ -760,6 +778,9 @@ public final class MahjongTableSession {
     }
 
     public List<ScoringStick> scoringSticks(UUID playerId) {
+        if (playerId == null) {
+            return List.of();
+        }
         RiichiPlayerState player = this.engine == null ? null : this.engine.seatPlayer(playerId.toString());
         return player == null ? List.of() : List.copyOf(player.getSticks());
     }

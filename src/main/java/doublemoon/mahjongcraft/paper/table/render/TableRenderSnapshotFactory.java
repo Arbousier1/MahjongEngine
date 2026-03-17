@@ -44,25 +44,26 @@ public final class TableRenderSnapshotFactory {
 
     private MahjongTableSession.SeatRenderSnapshot captureSeatSnapshot(MahjongTableSession session, SeatWind wind) {
         UUID playerId = session.playerAt(wind);
+        boolean occupied = playerId != null;
         return new MahjongTableSession.SeatRenderSnapshot(
             wind,
             playerId,
             session.displayName(playerId),
             session.publicSeatStatus(wind),
-            session.points(playerId),
-            session.isRiichi(playerId),
-            session.isReady(playerId),
-            session.isQueuedToLeave(playerId),
-            playerId != null && session.onlinePlayer(playerId) != null,
-            playerId == null ? "" : session.viewerMembershipSignatureFor(playerId),
-            playerId == null ? -1 : session.selectedHandTileIndex(playerId),
-            playerId == null ? -1 : session.riichiDiscardIndex(playerId),
+            occupied ? session.points(playerId) : 0,
+            occupied && session.isRiichi(playerId),
+            occupied && session.isReady(playerId),
+            occupied && session.isQueuedToLeave(playerId),
+            occupied && session.onlinePlayer(playerId) != null,
+            occupied ? session.viewerMembershipSignatureFor(playerId) : "",
+            occupied ? session.selectedHandTileIndex(playerId) : -1,
+            occupied ? session.riichiDiscardIndex(playerId) : -1,
             session.stickLayoutCount(wind),
-            playerId == null ? List.of() : session.viewerIdsExcluding(playerId),
-            playerId == null ? List.of() : session.hand(playerId),
-            playerId == null ? List.of() : session.discards(playerId),
-            playerId == null ? List.of() : session.fuuro(playerId),
-            playerId == null ? List.of() : session.scoringSticks(playerId),
+            occupied ? session.viewerIdsExcluding(playerId) : List.of(),
+            occupied ? session.hand(playerId) : List.of(),
+            occupied ? session.discards(playerId) : List.of(),
+            occupied ? session.fuuro(playerId) : List.of(),
+            occupied ? session.scoringSticks(playerId) : List.of(),
             session.cornerSticks(wind)
         );
     }

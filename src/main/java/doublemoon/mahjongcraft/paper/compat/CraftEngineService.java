@@ -604,6 +604,11 @@ public final class CraftEngineService {
         if (entity == null || location == null || furnitureItemId == null || furnitureItemId.isBlank()) {
             return false;
         }
+        // Hand-tile hitboxes move every discard/draw; respawning them avoids stale
+        // CraftEngine interaction offsets when the furniture entity is teleported.
+        if (HAND_TILE_HITBOX_ITEM_ID.equals(furnitureItemId)) {
+            return false;
+        }
         String existingFurnitureId = this.furnitureItemId(entity);
         if (!Objects.equals(existingFurnitureId, furnitureItemId)) {
             return false;
