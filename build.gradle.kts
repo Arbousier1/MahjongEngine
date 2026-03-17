@@ -21,6 +21,39 @@ val hikariVersion = "6.3.0"
 val adventureVersion = "4.17.0"
 val junitVersion = "5.12.2"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
+val generatedNativeResourcesDir = layout.buildDirectory.dir("generated/resources/native")
+
+fun findExecutable(executableName: String): String? {
+    val candidates = linkedSetOf<String>()
+    val isWindows = System.getProperty("os.name", "").contains("Windows", ignoreCase = true)
+    val normalizedName = if (isWindows && !executableName.endsWith(".exe", ignoreCase = true)) {
+        "$executableName.exe"
+    } else {
+        executableName
+    }
+
+    (System.getenv("PATH") ?: "")
+        .split(File.pathSeparatorChar)
+        .filter { it.isNotBlank() }
+        .forEach { entry ->
+            candidates += File(entry, normalizedName).absolutePath
+        }
+
+    val localAppData = System.getenv("LOCALAPPDATA")
+    if (!localAppData.isNullOrBlank()) {
+        val winGetPackagesDir = File(localAppData, "Microsoft/WinGet/Packages")
+        if (winGetPackagesDir.isDirectory) {
+            winGetPackagesDir.listFiles()?.forEach { packageDir ->
+                packageDir.walkTopDown()
+                    .maxDepth(4)
+                    .filter { it.isFile && it.name.equals(normalizedName, ignoreCase = true) }
+                    .forEach { candidates += it.absolutePath }
+            }
+        }
+    }
+
+    return candidates.firstOrNull { File(it).isFile }
+}
 
 fun jsonString(value: String): String = buildString {
     append('"')
@@ -544,10 +577,16 @@ val generateCraftEngineBundle = tasks.register("generateCraftEngineBundle") {
 
 val gbNativeSourceDir = layout.projectDirectory.dir("native/gbmahjong")
 val gbNativeBuildDir = layout.buildDirectory.dir("native/gbmahjong")
+val gbNativeCmakeExecutable = findExecutable("cmake")
+val gbNativeGxxExecutable = findExecutable("g++")
+val gbNativeNinjaExecutable = findExecutable("ninja")
+val gbNativeToolchainAvailable = gbNativeCmakeExecutable != null && gbNativeGxxExecutable != null
+val gbNativeWindowsRuntimeDir = gbNativeGxxExecutable?.let { File(it).parentFile }
 
 val configureGbMahjongNative = tasks.register<Exec>("configureGbMahjongNative") {
     group = "build"
     description = "Configure the JNI GB Mahjong native project with CMake."
+    onlyIf { gbNativeToolchainAvailable }
     val sourceDir = gbNativeSourceDir.asFile
     val buildDir = gbNativeBuildDir.get().asFile
     inputs.dir(sourceDir)
@@ -555,25 +594,57 @@ val configureGbMahjongNative = tasks.register<Exec>("configureGbMahjongNative") 
     doFirst {
         buildDir.mkdirs()
     }
-    commandLine(
-        "cmake",
+    val command = mutableListOf(
+        gbNativeCmakeExecutable ?: "cmake",
         "-S", sourceDir.absolutePath,
         "-B", buildDir.absolutePath
     )
+    if (gbNativeNinjaExecutable != null) {
+        command += listOf("-G", "Ninja", "-DCMAKE_MAKE_PROGRAM=${gbNativeNinjaExecutable}")
+    }
+    if (gbNativeGxxExecutable != null) {
+        command += listOf("-DCMAKE_CXX_COMPILER=${gbNativeGxxExecutable}")
+    }
+    commandLine(command)
 }
 
 val buildGbMahjongNative = tasks.register<Exec>("buildGbMahjongNative") {
     group = "build"
     description = "Build the JNI GB Mahjong native project with CMake."
     dependsOn(configureGbMahjongNative)
+    onlyIf { gbNativeToolchainAvailable }
     val buildDir = gbNativeBuildDir.get().asFile
     inputs.dir(gbNativeSourceDir)
     outputs.dir(buildDir)
     commandLine(
-        "cmake",
+        gbNativeCmakeExecutable ?: "cmake",
         "--build", buildDir.absolutePath,
         "--config", "Release"
     )
+}
+
+val packageGbMahjongNative = tasks.register("packageGbMahjongNative") {
+    group = "build"
+    description = "Copy built GB Mahjong native runtime files into generated resources."
+    dependsOn(buildGbMahjongNative)
+    onlyIf { gbNativeToolchainAvailable }
+    val buildDir = gbNativeBuildDir.get().asFile
+    val outputDir = generatedNativeResourcesDir.get().asFile.resolve("native/windows-x86_64")
+    inputs.dir(buildDir)
+    outputs.dir(outputDir)
+    doLast {
+        outputDir.mkdirs()
+        val library = buildDir.resolve("mahjongpaper_gb.dll")
+        if (!library.isFile) {
+            throw GradleException("Expected GB Mahjong native library at ${library.absolutePath}")
+        }
+        library.copyTo(outputDir.resolve(library.name), overwrite = true)
+
+        val winPthread = gbNativeWindowsRuntimeDir?.resolve("libwinpthread-1.dll")
+        if (winPthread?.isFile == true) {
+            winPthread.copyTo(outputDir.resolve(winPthread.name), overwrite = true)
+        }
+    }
 }
 
 dependencies {
@@ -624,9 +695,10 @@ tasks {
     }
 
     processResources {
-        dependsOn(generateMessageIndex, verifyMahjongTileResources, generateCraftEngineBundle)
+        dependsOn(generateMessageIndex, verifyMahjongTileResources, generateCraftEngineBundle, packageGbMahjongNative)
         filteringCharset = Charsets.UTF_8.name()
         from(generatedResourcesDir)
+        from(generatedNativeResourcesDir)
         filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
             expand(
                 "version" to project.version,

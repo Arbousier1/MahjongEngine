@@ -20,9 +20,14 @@ target_link_libraries(mahjongpaper_gb PRIVATE JNI::JNI)
 target_compile_features(mahjongpaper_gb PRIVATE cxx_std_20)
 
 set_target_properties(mahjongpaper_gb PROPERTIES
+    PREFIX ""
     OUTPUT_NAME "mahjongpaper_gb"
 )
 
 if (MSVC)
     target_compile_options(mahjongpaper_gb PRIVATE /utf-8)
+endif()
+
+if (MINGW)
+    target_link_options(mahjongpaper_gb PRIVATE -static-libgcc -static-libstdc++)
 endif()

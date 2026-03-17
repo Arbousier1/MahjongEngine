@@ -1,11 +1,13 @@
 package doublemoon.mahjongcraft.paper.i18n
 
 import java.util.Locale
+import java.util.Properties
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class MessageServiceTest {
     private val messages = LocalizedMessages()
@@ -105,5 +107,30 @@ class MessageServiceTest {
         val text = stream.bufferedReader().use { it.readText() }
         assertContains(text, "language/messages.properties")
         assertContains(text, "language/messages_zh_CN.properties")
+    }
+
+    @Test
+    fun `localized bundles contain every english message key`() {
+        val english = loadBundle("language/messages.properties").stringPropertyNames()
+        val localizedBundles = listOf(
+            "language/messages_zh_CN.properties",
+            "language/messages_zh_TW.properties",
+            "language/messages_zh_HK.properties",
+            "language/messages_zh_MO.properties"
+        )
+
+        localizedBundles.forEach { resource ->
+            val localized = loadBundle(resource).stringPropertyNames()
+            val missing = english - localized
+            assertTrue(missing.isEmpty(), "$resource is missing keys: $missing")
+        }
+    }
+
+    private fun loadBundle(resource: String): Properties {
+        val stream = javaClass.classLoader.getResourceAsStream(resource)
+        assertNotNull(stream, "Missing resource $resource")
+        return Properties().apply {
+            stream.reader(Charsets.UTF_8).use { load(it) }
+        }
     }
 }
