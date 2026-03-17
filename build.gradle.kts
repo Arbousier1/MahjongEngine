@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "doublemoon.mahjongcraft"
-version = "0.3.3"
+version = "0.4.0"
 
 val kotlinRuntimeVersion = "2.2.0"
 val kotlinSerializationVersion = "1.9.0"
@@ -51,17 +51,21 @@ fun parseMahjongTileNames(sourceFile: File): List<String> {
 }
 
 fun writeMessageIndex(inputDir: File, outputFile: File, defaultLocale: String) {
-    val bundleFiles = inputDir.walkTopDown().filter { it.isFile && it.name.matches(Regex("""messages.*\.properties""")) }.sortedBy { it.name }.toList()
+    val languageDir = inputDir.resolve("language")
+    val bundleFiles = languageDir.walkTopDown()
+        .filter { it.isFile && it.name.matches(Regex("""messages.*\.properties""")) }
+        .sortedBy { it.name }
+        .toList()
     val bundles = linkedMapOf<String, String>()
     if (bundleFiles.none { it.name == "messages.properties" }) {
-        throw GradleException("Expected src/main/resources/messages.properties to exist.")
+        throw GradleException("Expected src/main/resources/language/messages.properties to exist.")
     }
-    bundles["en"] = "messages.properties"
+    bundles["en"] = "language/messages.properties"
     bundleFiles
         .filter { it.name != "messages.properties" }
         .forEach { file ->
             val localeTag = file.name.removePrefix("messages_").removeSuffix(".properties").replace('_', '-')
-            bundles[localeTag] = file.name
+            bundles[localeTag] = "language/" + file.name
         }
     if (!bundles.containsKey(defaultLocale)) {
         throw GradleException("Default locale $defaultLocale is missing from generated message bundles.")
@@ -163,7 +167,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
 
     outputRoot.resolve("pack.yml").writeText(
         """
-        author: OpenAI
+        author: openai and ellan
         version: ${project.version}
         description: MahjongPaper CraftEngine assets
         namespace: mahjongpaper
@@ -214,7 +218,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("                shadow-radius: 0")
         appendLine("                shadow-strength: 0")
         appendLine("            hitboxes:")
-        listOf("-1,-1,-1", "-1,-1,0", "-1,-1,1", "0,-1,-1", "0,-1,0", "0,-1,1", "1,-1,-1", "1,-1,0", "1,-1,1").forEach { position ->
+        listOf("-1,-1.5,-1", "-1,-1.5,0", "-1,-1.5,1", "0,-1.5,-1", "0,-1.5,0", "0,-1.5,1", "1,-1.5,-1", "1,-1.5,0", "1,-1.5,1").forEach { position ->
             appendLine("              - position: $position")
             appendLine("                type: shulker")
             appendLine("                direction: up")
@@ -306,7 +310,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("                shadow-radius: 0")
         appendLine("                shadow-strength: 0")
         appendLine("            hitboxes:")
-        listOf("-1,-1,-1", "-1,-1,0", "-1,-1,1", "0,-1,-1", "0,-1,0", "0,-1,1", "1,-1,-1", "1,-1,0", "1,-1,1").forEach { position ->
+        listOf("-1,-1.5,-1", "-1,-1.5,0", "-1,-1.5,1", "0,-1.5,-1", "0,-1.5,0", "0,-1.5,1", "1,-1.5,-1", "1,-1.5,0", "1,-1.5,1").forEach { position ->
             appendLine("              - position: $position")
             appendLine("                type: shulker")
             appendLine("                direction: up")

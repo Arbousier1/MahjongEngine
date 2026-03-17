@@ -2,6 +2,7 @@ package doublemoon.mahjongcraft.paper.bootstrap;
 
 import doublemoon.mahjongcraft.paper.command.MahjongCommand;
 import doublemoon.mahjongcraft.paper.compat.CraftEngineService;
+import doublemoon.mahjongcraft.paper.config.LocalizedConfigResource;
 import doublemoon.mahjongcraft.paper.config.PluginSettings;
 import doublemoon.mahjongcraft.paper.debug.DebugService;
 import doublemoon.mahjongcraft.paper.db.DatabaseService;
@@ -10,6 +11,7 @@ import doublemoon.mahjongcraft.paper.render.display.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.display.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.runtime.AsyncService;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Level;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,7 +27,8 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        this.saveDefaultConfig();
+        LocalizedConfigResource.saveIfMissing(this, Locale.getDefault());
+        this.reloadConfig();
         this.settings = PluginSettings.from(this.getConfig());
         this.debug = new DebugService(this.getLogger(), this.settings.debugSection());
         this.async = new AsyncService(this.getLogger());

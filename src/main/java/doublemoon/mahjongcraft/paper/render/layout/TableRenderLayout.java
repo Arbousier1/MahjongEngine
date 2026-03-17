@@ -7,6 +7,7 @@ import doublemoon.mahjongcraft.paper.render.scene.MeldView;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 
@@ -134,7 +135,10 @@ public final class TableRenderLayout {
         }
 
         List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(displayCenter, snapshot);
-        List<TilePlacement> placements = new ArrayList<>(liveWallCount + DEAD_WALL_SIZE - snapshot.doraIndicators().size());
+        List<TilePlacement> placements = new ArrayList<>(TOTAL_WALL_TILES);
+        for (int i = 0; i < TOTAL_WALL_TILES; i++) {
+            placements.add(null);
+        }
         int breakTileIndex = wallBreakTileIndex(snapshot);
         for (int i = 0; i < liveWallCount; i++) {
             int wallSlot = Math.floorMod(breakTileIndex + frontDrawCount + i, TOTAL_WALL_TILES);
@@ -143,7 +147,7 @@ public final class TableRenderLayout {
             if (kanCount % 2 == 1 && i == liveWallCount - 1) {
                 point = point.add(0.0D, -TILE_DEPTH, 0.0D);
             }
-            placements.add(new TilePlacement(point, seatYaw(wind), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
+            placements.set(wallSlot, new TilePlacement(point, seatYaw(wind), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
         }
 
         for (int i = 0; i < DEAD_WALL_SIZE; i++) {
@@ -151,9 +155,9 @@ public final class TableRenderLayout {
                 continue;
             }
             DeadWallPlacement placement = deadWallPlacements.get(i);
-            placements.add(new TilePlacement(placement.point(), placement.yaw(), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
+            placements.set(placement.wallSlot(), new TilePlacement(placement.point(), placement.yaw(), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
         }
-        return List.copyOf(placements);
+        return Collections.unmodifiableList(new ArrayList<>(placements));
     }
 
     private static List<TilePlacement> precomputeDora(Point displayCenter, MahjongTableSession.RenderSnapshot snapshot) {
@@ -386,6 +390,7 @@ public final class TableRenderLayout {
             int wallSlot = Math.floorMod(breakTileIndex - DEAD_WALL_SIZE + i, TOTAL_WALL_TILES);
             SeatWind face = WallLayout.wallSeat(wallSlot);
             placements.add(new DeadWallPlacementMutable(
+                wallSlot,
                 face,
                 seatYaw(face),
                 add(wallSlotPoint(center, wallSlot), deadWallGapOffset(face))
@@ -421,7 +426,7 @@ public final class TableRenderLayout {
 
         List<DeadWallPlacement> result = new ArrayList<>(placements.size());
         for (DeadWallPlacementMutable placement : placements) {
-            result.add(new DeadWallPlacement(placement.point(), placement.yaw()));
+            result.add(new DeadWallPlacement(placement.wallSlot(), placement.point(), placement.yaw()));
         }
         return result;
     }
@@ -690,14 +695,20 @@ public final class TableRenderLayout {
     }
 
     private static final class DeadWallPlacementMutable {
+        private final int wallSlot;
         private final SeatWind face;
         private float yaw;
         private Point point;
 
-        private DeadWallPlacementMutable(SeatWind face, float yaw, Point point) {
+        private DeadWallPlacementMutable(int wallSlot, SeatWind face, float yaw, Point point) {
+            this.wallSlot = wallSlot;
             this.face = face;
             this.yaw = yaw;
             this.point = point;
+        }
+
+        private int wallSlot() {
+            return this.wallSlot;
         }
 
         private SeatWind face() {
@@ -725,7 +736,7 @@ public final class TableRenderLayout {
         }
     }
 
-    private record DeadWallPlacement(Point point, float yaw) {
+    private record DeadWallPlacement(int wallSlot, Point point, float yaw) {
     }
 }
 

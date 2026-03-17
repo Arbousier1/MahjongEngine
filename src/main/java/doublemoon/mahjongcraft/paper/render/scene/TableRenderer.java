@@ -486,7 +486,9 @@ public final class TableRenderer {
         }
         List<Entity> spawned = new ArrayList<>(plan.wallTiles().size());
         for (TableRenderLayout.TilePlacement placement : plan.wallTiles()) {
-            spawned.add(spawnPublicTile(session, placement));
+            if (placement != null) {
+                spawned.add(spawnPublicTile(session, placement));
+            }
         }
         return spawned;
     }
@@ -495,14 +497,16 @@ public final class TableRenderer {
         if (!session.isStarted() || wallIndex < 0 || wallIndex >= plan.wallTiles().size()) {
             return List.of();
         }
-        return List.of(spawnPublicTile(session, plan.wallTiles().get(wallIndex)));
+        TableRenderLayout.TilePlacement placement = plan.wallTiles().get(wallIndex);
+        return placement == null ? List.of() : List.of(spawnPublicTile(session, placement));
     }
 
     public List<DisplayEntities.EntitySpec> renderWallTileSpecs(MahjongTableSession session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
         if (!session.isStarted() || wallIndex < 0 || wallIndex >= plan.wallTiles().size()) {
             return List.of();
         }
-        return List.of(publicTileSpec(session, plan.wallTiles().get(wallIndex)));
+        TableRenderLayout.TilePlacement placement = plan.wallTiles().get(wallIndex);
+        return placement == null ? List.of() : List.of(publicTileSpec(session, placement));
     }
 
     public List<Entity> renderSticks(

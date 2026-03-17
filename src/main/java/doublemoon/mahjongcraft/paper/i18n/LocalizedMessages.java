@@ -154,11 +154,11 @@ public final class LocalizedMessages {
         private static final MessageBundleIndex FALLBACK = new MessageBundleIndex(
             DEFAULT_LOCALE,
             Map.of(
-                "en", "messages.properties",
-                DEFAULT_LOCALE.toLanguageTag(), "messages_zh_CN.properties",
-                "zh-TW", "messages_zh_TW.properties",
-                "zh-HK", "messages_zh_HK.properties",
-                "zh-MO", "messages_zh_MO.properties"
+                "en", "language/messages.properties",
+                DEFAULT_LOCALE.toLanguageTag(), "language/messages_zh_CN.properties",
+                "zh-TW", "language/messages_zh_TW.properties",
+                "zh-HK", "language/messages_zh_HK.properties",
+                "zh-MO", "language/messages_zh_MO.properties"
             )
         );
 

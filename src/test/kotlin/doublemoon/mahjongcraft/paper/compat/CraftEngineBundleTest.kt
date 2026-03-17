@@ -30,14 +30,28 @@ class CraftEngineBundleTest {
     }
 
     @Test
-    fun `table visual embeds centered 3x3 hitbox in craftengine bundle`() {
+    fun `table visual embeds lowered centered 3x3 hitbox in craftengine bundle`() {
         val stream = javaClass.classLoader.getResourceAsStream("craftengine/mahjongpaper/configuration/items/mahjong_tiles.yml")
         assertNotNull(stream)
 
         val text = stream.bufferedReader().use { it.readText() }
         assertTrue(
             Regex(
-                """mahjongpaper:table_visual:.*?hitboxes:\s+- position: -1,-1,-1.*?position: -1,-1,0.*?position: -1,-1,1.*?position: 0,-1,-1.*?position: 0,-1,0.*?position: 0,-1,1.*?position: 1,-1,-1.*?position: 1,-1,0.*?position: 1,-1,1""",
+                """mahjongpaper:table_visual:.*?hitboxes:\s+- position: -1,-1\.5,-1.*?position: -1,-1\.5,0.*?position: -1,-1\.5,1.*?position: 0,-1\.5,-1.*?position: 0,-1\.5,0.*?position: 0,-1\.5,1.*?position: 1,-1\.5,-1.*?position: 1,-1\.5,0.*?position: 1,-1\.5,1""",
+                setOf(RegexOption.DOT_MATCHES_ALL)
+            ).containsMatchIn(text)
+        )
+    }
+
+    @Test
+    fun `fallback table hitbox furniture is lowered by half a block in craftengine bundle`() {
+        val stream = javaClass.classLoader.getResourceAsStream("craftengine/mahjongpaper/configuration/items/mahjong_tiles.yml")
+        assertNotNull(stream)
+
+        val text = stream.bufferedReader().use { it.readText() }
+        assertTrue(
+            Regex(
+                """mahjongpaper:table_hitbox:.*?hitboxes:\s+- position: -1,-1\.5,-1.*?position: -1,-1\.5,0.*?position: -1,-1\.5,1.*?position: 0,-1\.5,-1.*?position: 0,-1\.5,0.*?position: 0,-1\.5,1.*?position: 1,-1\.5,-1.*?position: 1,-1\.5,0.*?position: 1,-1\.5,1""",
                 setOf(RegexOption.DOT_MATCHES_ALL)
             ).containsMatchIn(text)
         )

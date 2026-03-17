@@ -1,0 +1,106 @@
+# MahjongPaper 設定檔
+#
+# 外掛會在啟動時讀取並快取這個檔案。修改後請重新啟動伺服器或外掛程序，
+# 這樣資料庫、CraftEngine 與牌桌持久化設定才會一併重新載入。
+#
+# 現在更建議使用新的分組鍵名，但程式仍相容舊的扁平鍵名。
+
+database:
+  # 設為 false 可完全停用對局歷史持久化。
+  enabled: true
+
+  # 若為 true，當資料庫初始化失敗時外掛會直接停用自身。
+  failOnError: false
+
+  connection:
+    # 支援的值: h2, mariadb
+    type: h2
+
+    # 僅用於 MariaDB。
+    host: 127.0.0.1
+    port: 3306
+    name: mahjongpaper
+
+    # MariaDB 額外的 JDBC 查詢參數。
+    parameters: useUnicode=true&characterEncoding=utf8&useSsl=false
+
+  credentials:
+    # 僅用於 MariaDB。
+    username: root
+    password: change_me
+
+  h2:
+    # 相對路徑會以外掛資料夾為基準解析。
+    path: data/mahjongpaper
+    username: sa
+    password: ""
+    parameters: MODE=MariaDB;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+
+  pool:
+    maxSize: 10
+    minIdle: 2
+    connectionTimeoutMillis: 10000
+
+tables:
+  # 伺服器啟動後，每 tick 重建多少張持久化牌桌。
+  # 數值越低越能減少啟動卡頓，越高則能更快完成恢復。
+  startupRebuildBatchSize: 3
+
+  persistence:
+    # 持久化牌桌會在啟動時從這個檔案還原。
+    enabled: true
+    file: tables.yml
+
+ranking:
+  # 雀魂風格的段位分與段位持久化。
+  # 需要 database.enabled=true。
+  enabled: true
+
+  # 四麻東風戰與半莊戰使用的排位房間預設。
+  # 支援: BRONZE, SILVER, GOLD, JADE, THRONE
+  eastRoom: SILVER
+  southRoom: GOLD
+
+integrations:
+  craftengine:
+    # 啟動時匯出內建的 MahjongPaper CraftEngine 資源包。
+    exportBundleOnEnable: true
+
+    bundle:
+      folder: mahjongpaper
+
+    items:
+      # 可用時優先使用 CraftEngine 自訂物品顯示麻將牌。
+      preferCustomItems: true
+
+      # 用於解析麻將牌 CraftEngine 物品 id 的前綴。
+      # MahjongPaper 會自動拼接牌名，例如 east、m1 或 back。
+      # 例: custom:tile_ -> custom:tile_east、custom:tile_m1、custom:tile_back
+      tileItemIdPrefix: mahjongpaper:
+
+    furniture:
+      # 桌子與座位互動優先使用 CraftEngine 家具 hitbox。
+      preferHitboxInteraction: true
+
+      # 牌桌視覺使用的 CraftEngine 家具 id。
+      # 設為 "" 時改用內建的 block-display 牌桌後備方案。
+      # 設定後，MahjongPaper 會完整使用該家具自身的 hitbox 與其他行為。
+      # 留空時，則使用內建 block-display 牌桌並補上 MahjongPaper 的回退桌面 hitbox。
+      tableFurnitureId: mahjongpaper:table_visual
+
+      # 每個座位使用的 CraftEngine 家具 id。
+      # 設為 "" 時改用內建的 block-display 椅子後備方案。
+      # 這個家具應在 CraftEngine 中自行定義 hitbox 與 seats。
+      seatFurnitureId: mahjongpaper:seat_chair
+
+debug:
+  enabled: false
+
+  # 留空表示 debug 開啟時輸出所有分類。
+  categories:
+    - lifecycle
+    - table
+    - command
+    - packet
+    - render
+    - database

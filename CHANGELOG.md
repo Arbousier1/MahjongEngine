@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-03-17
+
+CraftEngine and localization update release.
+
+- Fixed the wall render layout so drawing from the live wall no longer causes all wall regions to shift and visually shake.
+- Added localized config templates so a newly generated `config.yml` can use English, Simplified Chinese, or Traditional Chinese comments based on the system locale.
+- Added `integrations.craftengine.items.tileItemIdPrefix` so all Mahjong tile visuals can resolve CraftEngine custom item ids from a configured prefix.
+- Moved all message bundles into `src/main/resources/language/` and updated message index generation and runtime loading to match.
+- Updated exported metadata authors to `openai and ellan`.
+
 ## 0.3.3 - 2026-03-17
 
 Post-match seat and table state fix release.

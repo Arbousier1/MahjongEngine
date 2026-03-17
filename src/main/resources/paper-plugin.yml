@@ -5,7 +5,8 @@ version: ${version}
 api-version: "1.21.11"
 description: Riichi Mahjong Paper plugin rewrite built around display entities, item_model and CraftEngine.
 authors:
-  - OpenAI
+  - openai
+  - ellan
 dependencies:
   server:
     CraftEngine:

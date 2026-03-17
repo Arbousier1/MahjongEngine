@@ -408,8 +408,7 @@ public final class CraftEngineService {
     }
 
     public String customItemId(MahjongTile tile, boolean faceDown) {
-        String tileName = faceDown ? "back" : tile.name().toLowerCase();
-        return "mahjongpaper:" + tileName;
+        return CraftEngineTileItemResolver.resolve(this.plugin.settings().craftEngineTileItemIdPrefix(), tile, faceDown);
     }
 
     private Object createCullableProxy(Entity entity, ReflectionBridge bridge, Object cullingData) {

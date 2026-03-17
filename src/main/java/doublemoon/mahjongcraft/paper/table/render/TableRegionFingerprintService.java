@@ -91,6 +91,12 @@ public final class TableRegionFingerprintService {
 
     String wallTileFingerprint(TableRenderLayout.LayoutPlan plan, int wallIndex) {
         TableRenderLayout.TilePlacement placement = plan.wallTiles().get(wallIndex);
+        if (placement == null) {
+            return fingerprintBuilder(32)
+                .field("wall-empty")
+                .field(wallIndex)
+                .toString();
+        }
         return fingerprintBuilder(160)
             .field("wall-tile")
             .field(wallIndex)

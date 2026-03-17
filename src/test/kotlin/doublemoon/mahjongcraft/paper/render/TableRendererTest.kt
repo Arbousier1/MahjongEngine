@@ -66,7 +66,8 @@ class TableRendererTest {
 
         val plan = TableRenderLayout.precompute(snapshot)
 
-        assertEquals(70 + 14 - 2, plan.wallTiles().size)
+        assertEquals(136, plan.wallTiles().size)
+        assertEquals(70 + 14 - 2, plan.wallTiles().count { it != null })
         assertEquals(2, plan.doraTiles().size)
         assertEquals(13, plan.seat(SeatWind.EAST).publicHandPoints().size)
         assertEquals(13, plan.seat(SeatWind.EAST).privateHandPoints().size)
@@ -106,6 +107,45 @@ class TableRendererTest {
 
         assertTrue(plan.wallTiles().isEmpty())
         assertTrue(plan.doraTiles().isEmpty())
+    }
+
+    @Test
+    fun `wall layout keeps physical slots stable when one live wall tile is drawn`() {
+        val base = startedSnapshot()
+        val before = TableRenderLayout.precompute(base)
+        val after = TableRenderLayout.precompute(
+            MahjongTableSession.RenderSnapshot(
+                base.version(),
+                base.cancellationNonce(),
+                base.worldName(),
+                base.centerX(),
+                base.centerY(),
+                base.centerZ(),
+                base.started(),
+                base.gameFinished(),
+                69,
+                base.kanCount(),
+                base.dicePoints(),
+                base.roundIndex(),
+                base.honbaCount(),
+                base.dealerSeat(),
+                base.currentSeat(),
+                base.openDoorSeat(),
+                base.waitingDisplaySummary(),
+                base.ruleDisplaySummary(),
+                base.publicCenterText(),
+                base.lastPublicDiscardPlayerId(),
+                base.lastPublicDiscardTile(),
+                base.doraIndicators(),
+                base.seats()
+            )
+        )
+
+        val changedSlots = before.wallTiles().indices.count { index ->
+            !samePlacement(before.wallTiles()[index], after.wallTiles()[index])
+        }
+
+        assertEquals(1, changedSlots)
     }
 
     private fun startedSnapshot(): MahjongTableSession.RenderSnapshot {
@@ -181,4 +221,17 @@ class TableRendererTest {
         scoringSticks,
         cornerSticks
     )
+
+    private fun samePlacement(
+        left: TableRenderLayout.TilePlacement?,
+        right: TableRenderLayout.TilePlacement?
+    ): Boolean {
+        if (left == null || right == null) {
+            return left == right
+        }
+        return left.point() == right.point()
+            && left.yaw() == right.yaw()
+            && left.tile() == right.tile()
+            && left.pose() == right.pose()
+    }
 }

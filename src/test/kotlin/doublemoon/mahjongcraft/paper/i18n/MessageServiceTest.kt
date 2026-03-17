@@ -4,6 +4,7 @@ import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 
 class MessageServiceTest {
@@ -94,5 +95,15 @@ class MessageServiceTest {
 
         assertContains(englishRendered, "25,000")
         assertContains(chineseRendered, "25,000")
+    }
+
+    @Test
+    fun `message bundle index points to language resources`() {
+        val stream = javaClass.classLoader.getResourceAsStream("i18n/_index.json")
+        assertNotNull(stream)
+
+        val text = stream.bufferedReader().use { it.readText() }
+        assertContains(text, "language/messages.properties")
+        assertContains(text, "language/messages_zh_CN.properties")
     }
 }

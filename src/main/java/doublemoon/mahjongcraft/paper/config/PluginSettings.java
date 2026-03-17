@@ -11,6 +11,7 @@ public final class PluginSettings {
     private final boolean tablePersistenceEnabled;
     private final String tablePersistenceFile;
     private final int tableStartupRebuildBatchSize;
+    private final String craftEngineTileItemIdPrefix;
     private final String craftEngineTableFurnitureId;
     private final String craftEngineSeatFurnitureId;
     private final boolean rankingEnabled;
@@ -25,6 +26,7 @@ public final class PluginSettings {
         boolean tablePersistenceEnabled,
         String tablePersistenceFile,
         int tableStartupRebuildBatchSize,
+        String craftEngineTileItemIdPrefix,
         String craftEngineTableFurnitureId,
         String craftEngineSeatFurnitureId,
         boolean rankingEnabled,
@@ -38,6 +40,7 @@ public final class PluginSettings {
         this.tablePersistenceEnabled = tablePersistenceEnabled;
         this.tablePersistenceFile = tablePersistenceFile;
         this.tableStartupRebuildBatchSize = tableStartupRebuildBatchSize;
+        this.craftEngineTileItemIdPrefix = craftEngineTileItemIdPrefix;
         this.craftEngineTableFurnitureId = craftEngineTableFurnitureId;
         this.craftEngineSeatFurnitureId = craftEngineSeatFurnitureId;
         this.rankingEnabled = rankingEnabled;
@@ -50,6 +53,7 @@ public final class PluginSettings {
         ConfigurationSection databaseSection = ConfigAccess.firstSection(config, "database");
         ConfigurationSection rankingSection = ConfigAccess.firstSection(config, "ranking");
         ConfigurationSection craftEngineSection = ConfigAccess.firstSection(config, "integrations.craftengine", "craftengine");
+        ConfigurationSection craftEngineItemsSection = ConfigAccess.firstSection(config, "integrations.craftengine.items", "craftengine.items");
         ConfigurationSection craftEngineFurnitureSection = ConfigAccess.firstSection(config, "integrations.craftengine.furniture", "craftengine.furniture");
         ConfigurationSection tablePersistenceSection = ConfigAccess.firstSection(config, "tables.persistence", "tablePersistence");
         return new PluginSettings(
@@ -60,6 +64,7 @@ public final class PluginSettings {
             ConfigAccess.bool(tablePersistenceSection, true, "enabled"),
             ConfigAccess.string(tablePersistenceSection, "tables.yml", "file"),
             Math.max(1, ConfigAccess.integer(tablesSection, 3, "startupRebuildBatchSize", "startup-rebuild-batch-size")),
+            ConfigAccess.string(craftEngineItemsSection, "mahjongpaper:", "tileItemIdPrefix", "tile-item-id-prefix"),
             ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:table_visual", "tableFurnitureId", "table-furniture-id"),
             ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id"),
             ConfigAccess.bool(rankingSection, true, "enabled"),
@@ -94,6 +99,10 @@ public final class PluginSettings {
 
     public int tableStartupRebuildBatchSize() {
         return this.tableStartupRebuildBatchSize;
+    }
+
+    public String craftEngineTileItemIdPrefix() {
+        return this.craftEngineTileItemIdPrefix;
     }
 
     public String craftEngineTableFurnitureId() {
