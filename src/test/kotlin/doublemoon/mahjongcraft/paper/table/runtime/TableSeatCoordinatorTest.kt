@@ -1,0 +1,94 @@
+package doublemoon.mahjongcraft.paper.table.runtime
+
+import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
+import doublemoon.mahjongcraft.paper.model.SeatWind
+import doublemoon.mahjongcraft.paper.runtime.PluginTask
+import doublemoon.mahjongcraft.paper.runtime.ServerScheduler
+import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager
+import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
+import org.bukkit.Bukkit
+import org.bukkit.entity.Player
+import org.mockito.Mockito
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import java.util.UUID
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class TableSeatCoordinatorTest {
+    @Test
+    fun `starting seat watchdog no longer depends on Bukkit current tick`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val tableManager = mock(MahjongTableManager::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val session = mock(MahjongTableSession::class.java)
+        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000301")
+
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
+        `when`(task.isCancelled()).thenReturn(false)
+        `when`(session.id()).thenReturn("TABLE01")
+
+        Mockito.mockStatic(Bukkit::class.java).use { bukkit ->
+            bukkit.`when`<Int> { Bukkit.getCurrentTick() }.thenThrow(IllegalStateException("No currently ticking region"))
+
+            coordinator.startSeatWatchdog(session, playerId, SeatWind.EAST, 40L)
+        }
+
+        verify(scheduler, times(1)).runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.eq(1L), Mockito.eq(2L))
+        assertEquals(1, seatWatchdogs(coordinator).size)
+    }
+
+    @Test
+    fun `seat watchdog expires after configured logical duration without Bukkit tick access`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val tableManager = mock(MahjongTableManager::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val session = mock(MahjongTableSession::class.java)
+        val player = mock(Player::class.java)
+        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000302")
+
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
+        `when`(task.isCancelled()).thenReturn(false)
+        `when`(session.id()).thenReturn("TABLE02")
+        `when`(tableManager.resolveTableById("TABLE02")).thenReturn(session)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.seatOf(playerId)).thenReturn(SeatWind.SOUTH)
+        `when`(player.isOnline).thenReturn(true)
+
+        Mockito.mockStatic(Bukkit::class.java).use { bukkit ->
+            bukkit.`when`<Player?> { Bukkit.getPlayer(playerId) }.thenReturn(player)
+
+            coordinator.startSeatWatchdog(session, playerId, SeatWind.SOUTH, 4L)
+            invokeRunSeatWatchdogs(coordinator)
+            assertEquals(1, seatWatchdogs(coordinator).size)
+
+            invokeRunSeatWatchdogs(coordinator)
+            assertEquals(1, seatWatchdogs(coordinator).size)
+
+            invokeRunSeatWatchdogs(coordinator)
+            assertTrue(seatWatchdogs(coordinator).isEmpty())
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun seatWatchdogs(coordinator: TableSeatCoordinator): MutableMap<UUID, Any?> {
+        val field = coordinator.javaClass.getDeclaredField("seatWatchdogs")
+        field.isAccessible = true
+        return field.get(coordinator) as MutableMap<UUID, Any?>
+    }
+
+    private fun invokeRunSeatWatchdogs(coordinator: TableSeatCoordinator) {
+        val method = coordinator.javaClass.getDeclaredMethod("runSeatWatchdogs")
+        method.isAccessible = true
+        method.invoke(coordinator)
+    }
+}

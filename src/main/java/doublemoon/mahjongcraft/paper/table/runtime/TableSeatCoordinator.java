@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -31,6 +32,7 @@ public final class TableSeatCoordinator {
     private final Map<UUID, SeatWatchdogBinding> seatWatchdogs = new ConcurrentHashMap<>();
     private final Map<UUID, Long> seatRestoreCooldownUntilMillis = new ConcurrentHashMap<>();
     private final Set<UUID> seatDismountBypass = ConcurrentHashMap.newKeySet();
+    private final AtomicLong seatWatchdogClock = new AtomicLong();
     private PluginTask seatWatchdogTask;
 
     public TableSeatCoordinator(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
@@ -44,6 +46,7 @@ public final class TableSeatCoordinator {
             this.seatWatchdogTask = null;
         }
         this.seatWatchdogs.clear();
+        this.seatWatchdogClock.set(0L);
         this.seatRestoreCooldownUntilMillis.clear();
         this.seatDismountBypass.clear();
     }
@@ -171,7 +174,7 @@ public final class TableSeatCoordinator {
         if (session == null || playerId == null || wind == null || durationTicks <= 0L) {
             return;
         }
-        long expiresAtTick = currentTick() + durationTicks;
+        long expiresAtTick = this.seatWatchdogClock.get() + durationTicks;
         SeatWatchdogBinding existing = this.seatWatchdogs.get(playerId);
         if (existing == null || existing.expiresAtTick() < expiresAtTick) {
             this.seatWatchdogs.put(playerId, new SeatWatchdogBinding(session.id(), wind, expiresAtTick));
@@ -191,7 +194,7 @@ public final class TableSeatCoordinator {
             this.stopSeatWatchdogTask();
             return;
         }
-        long nowTick = currentTick();
+        long nowTick = this.seatWatchdogClock.updateAndGet(current -> current + SEAT_WATCHDOG_PERIOD_TICKS);
         for (Map.Entry<UUID, SeatWatchdogBinding> entry : List.copyOf(this.seatWatchdogs.entrySet())) {
             UUID playerId = entry.getKey();
             SeatWatchdogBinding binding = entry.getValue();
@@ -266,10 +269,6 @@ public final class TableSeatCoordinator {
             }
         }
         return null;
-    }
-
-    private static long currentTick() {
-        return Bukkit.getCurrentTick();
     }
 
     private record SeatWatchdogBinding(String tableId, SeatWind wind, long expiresAtTick) {
