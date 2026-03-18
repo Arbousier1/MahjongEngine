@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - main
-      - virtual-threads
-      - feature/gb-mahjong
-      - feature/folia-compat
+      - dev
   pull_request:
   workflow_dispatch:
 
