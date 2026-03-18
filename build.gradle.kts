@@ -23,6 +23,32 @@ val junitVersion = "5.12.2"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
 val generatedNativeResourcesDir = layout.buildDirectory.dir("generated/resources/native")
 
+fun nativeLibraryFileName(osName: String): String {
+    val normalized = osName.trim().lowercase()
+    return when {
+        "win" in normalized -> "mahjongpaper_gb.dll"
+        "mac" in normalized || "darwin" in normalized -> "libmahjongpaper_gb.dylib"
+        else -> "libmahjongpaper_gb.so"
+    }
+}
+
+fun nativePlatformKey(osName: String, architecture: String): String {
+    val normalizedOs = osName.trim().lowercase()
+    val normalizedArch = architecture.trim().lowercase()
+    val osKey = when {
+        "win" in normalizedOs -> "windows"
+        "mac" in normalizedOs || "darwin" in normalizedOs -> "macos"
+        else -> "linux"
+    }
+    val archKey = when (normalizedArch) {
+        "amd64", "x86_64", "x64" -> "x86_64"
+        "aarch64", "arm64" -> "aarch64"
+        "" -> "unknown"
+        else -> normalizedArch
+    }
+    return "$osKey-$archKey"
+}
+
 fun findExecutable(executableName: String): String? {
     val candidates = linkedSetOf<String>()
     val isWindows = System.getProperty("os.name", "").contains("Windows", ignoreCase = true)
@@ -582,6 +608,10 @@ val gbNativeGxxExecutable = findExecutable("g++")
 val gbNativeNinjaExecutable = findExecutable("ninja")
 val gbNativeToolchainAvailable = gbNativeCmakeExecutable != null && gbNativeGxxExecutable != null
 val gbNativeWindowsRuntimeDir = gbNativeGxxExecutable?.let { File(it).parentFile }
+val gbNativeCurrentOsName = System.getProperty("os.name", "")
+val gbNativeCurrentArch = System.getProperty("os.arch", "")
+val gbNativePlatformKey = nativePlatformKey(gbNativeCurrentOsName, gbNativeCurrentArch)
+val gbNativeLibraryFileName = nativeLibraryFileName(gbNativeCurrentOsName)
 
 val configureGbMahjongNative = tasks.register<Exec>("configureGbMahjongNative") {
     group = "build"
@@ -629,20 +659,22 @@ val packageGbMahjongNative = tasks.register("packageGbMahjongNative") {
     dependsOn(buildGbMahjongNative)
     onlyIf { gbNativeToolchainAvailable }
     val buildDir = gbNativeBuildDir.get().asFile
-    val outputDir = generatedNativeResourcesDir.get().asFile.resolve("native/windows-x86_64")
+    val outputDir = generatedNativeResourcesDir.get().asFile.resolve("native/$gbNativePlatformKey")
     inputs.dir(buildDir)
     outputs.dir(outputDir)
     doLast {
         outputDir.mkdirs()
-        val library = buildDir.resolve("mahjongpaper_gb.dll")
+        val library = buildDir.resolve(gbNativeLibraryFileName)
         if (!library.isFile) {
             throw GradleException("Expected GB Mahjong native library at ${library.absolutePath}")
         }
         library.copyTo(outputDir.resolve(library.name), overwrite = true)
 
-        val winPthread = gbNativeWindowsRuntimeDir?.resolve("libwinpthread-1.dll")
-        if (winPthread?.isFile == true) {
-            winPthread.copyTo(outputDir.resolve(winPthread.name), overwrite = true)
+        if (gbNativePlatformKey == "windows-x86_64") {
+            val winPthread = gbNativeWindowsRuntimeDir?.resolve("libwinpthread-1.dll")
+            if (winPthread?.isFile == true) {
+                winPthread.copyTo(outputDir.resolve(winPthread.name), overwrite = true)
+            }
         }
     }
 }
