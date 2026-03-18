@@ -970,7 +970,7 @@ public final class DisplayEntities {
 
     private static void syncExcludedVisibility(Plugin plugin, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            runForViewer(plugin, player, () -> {
+            runForViewer(plugin, entity, player, () -> {
                 if (hiddenViewers.contains(player.getUniqueId())) {
                     player.hideEntity(plugin, entity);
                 } else if (visibleByDefault) {
@@ -984,7 +984,7 @@ public final class DisplayEntities {
 
     private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            runForViewer(plugin, player, () -> {
+            runForViewer(plugin, entity, player, () -> {
                 if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
                     player.showEntity(plugin, entity);
                 } else {
@@ -996,13 +996,18 @@ public final class DisplayEntities {
 
     private static void syncPublicVisibility(Plugin plugin, Entity entity) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            runForViewer(plugin, player, () -> player.showEntity(plugin, entity));
+            runForViewer(plugin, entity, player, () -> player.showEntity(plugin, entity));
         }
     }
 
-    private static void runForViewer(Plugin plugin, org.bukkit.entity.Player player, Runnable runnable) {
+    private static void runForViewer(Plugin plugin, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
         if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            mahjongPlugin.scheduler().runEntity(player, runnable);
+            mahjongPlugin.scheduler().runEntity(entity, () -> {
+                if (!player.isOnline() || !plugin.getServer().isOwnedByCurrentRegion(player)) {
+                    return;
+                }
+                runnable.run();
+            });
             return;
         }
         runnable.run();

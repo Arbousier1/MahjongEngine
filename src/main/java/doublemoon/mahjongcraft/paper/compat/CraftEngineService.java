@@ -526,10 +526,13 @@ public final class CraftEngineService {
     }
 
     private void scheduleViewerVisibility(int entityId, Entity entity, Player viewer, boolean visible) {
-        if (viewer == null) {
+        if (entity == null || viewer == null) {
             return;
         }
-        this.plugin.scheduler().runEntity(viewer, () -> {
+        this.plugin.scheduler().runEntity(entity, () -> {
+            if (!this.plugin.getServer().isOwnedByCurrentRegion(viewer)) {
+                return;
+            }
             if (!viewer.isOnline()) {
                 return;
             }

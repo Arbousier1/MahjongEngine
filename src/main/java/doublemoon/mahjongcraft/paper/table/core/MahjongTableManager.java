@@ -30,6 +30,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.Listener;
@@ -477,6 +478,13 @@ public final class MahjongTableManager implements Listener {
         this.handleDisplayInteract(event.getPlayer(), event.getRightClicked(), event);
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onProtectedDisplayDamage(EntityDamageEvent event) {
+        if (this.isProtectedTableEntity(event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onDisplayInteractAt(PlayerInteractAtEntityEvent event) {
         this.handleDisplayInteract(event.getPlayer(), event.getRightClicked(), event);
@@ -508,6 +516,34 @@ public final class MahjongTableManager implements Listener {
                 this.plugin.messages().actionBar(player, "command.join_failed");
             }
         }
+    }
+
+    private boolean isProtectedTableEntity(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        if (DisplayEntities.isManagedEntity(this.plugin, entity)) {
+            return true;
+        }
+        if (TableDisplayRegistry.get(entity.getEntityId()) != null || this.seatCoordinator.seatAction(entity) != null) {
+            return true;
+        }
+        if (this.plugin.craftEngine() == null) {
+            return false;
+        }
+        if (this.plugin.craftEngine().isSeatEntity(entity)) {
+            return true;
+        }
+        if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
+            String furnitureId = this.plugin.craftEngine().furnitureItemId(entity);
+            return furnitureId != null && furnitureId.startsWith("mahjongpaper:");
+        }
+        Entity furnitureEntity = this.plugin.craftEngine().furnitureEntityForSeat(entity);
+        if (furnitureEntity == null) {
+            return false;
+        }
+        String furnitureId = this.plugin.craftEngine().furnitureItemId(furnitureEntity);
+        return furnitureId != null && furnitureId.startsWith("mahjongpaper:");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
