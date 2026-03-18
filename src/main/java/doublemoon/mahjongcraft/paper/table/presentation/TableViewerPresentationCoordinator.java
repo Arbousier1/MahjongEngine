@@ -10,14 +10,20 @@ import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public final class TableViewerPresentationCoordinator {
+    private static final long OVERLAY_REFRESH_INTERVAL_TICKS = 20L;
+    private static final long HUD_REFRESH_INTERVAL_TICKS = 20L;
+
     private final MahjongTableSession session;
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
     private boolean viewerOverlayDirty = true;
     private boolean viewerHudDirty = true;
+    private long nextOverlayRefreshTick;
+    private long nextHudRefreshTick;
 
     public TableViewerPresentationCoordinator(MahjongTableSession session) {
         this.session = session;
@@ -29,13 +35,16 @@ public final class TableViewerPresentationCoordinator {
     }
 
     public void flushIfNeeded() {
-        if (this.viewerOverlayDirty || this.hasViewerOverlayRegions()) {
+        long nowTick = Bukkit.getCurrentTick();
+        if (this.shouldRefreshOverlay(nowTick)) {
             this.updateViewerOverlayRegions();
             this.viewerOverlayDirty = false;
+            this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
         }
-        if (this.viewerHudDirty || !this.viewerHudBars.isEmpty()) {
+        if (this.shouldRefreshHud(nowTick)) {
             this.syncHud();
             this.viewerHudDirty = false;
+            this.nextHudRefreshTick = nowTick + HUD_REFRESH_INTERVAL_TICKS;
         }
     }
 
@@ -49,6 +58,8 @@ public final class TableViewerPresentationCoordinator {
 
     public void shutdown() {
         this.markDirty();
+        this.nextOverlayRefreshTick = 0L;
+        this.nextHudRefreshTick = 0L;
         this.clearHud();
     }
 
@@ -130,6 +141,14 @@ public final class TableViewerPresentationCoordinator {
                 this.hideHud(viewerId);
             }
         }
+    }
+
+    private boolean shouldRefreshOverlay(long nowTick) {
+        return this.viewerOverlayDirty || (this.hasViewerOverlayRegions() && nowTick >= this.nextOverlayRefreshTick);
+    }
+
+    private boolean shouldRefreshHud(long nowTick) {
+        return this.viewerHudDirty || (!this.viewerHudBars.isEmpty() && nowTick >= this.nextHudRefreshTick);
     }
 
     private boolean hasViewerOverlayRegions() {
