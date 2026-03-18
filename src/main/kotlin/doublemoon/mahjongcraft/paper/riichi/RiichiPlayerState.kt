@@ -41,6 +41,11 @@ open class RiichiPlayerState(
     var points: Int = 0
     var basicThinkingTime: Int = 0
     var extraThinkingTime: Int = 0
+    private var analysisStateVersion: Long = 0
+    private var cachedTilePairsForRiichiVersion: Long = -1
+    private var cachedTilePairsForRiichi: List<Pair<MahjongTile, List<MahjongTile>>> = emptyList()
+    private var cachedMachiVersion: Long = -1
+    private var cachedMachi: List<MahjongTile> = emptyList()
 
     val riichiStickAmount: Int
         get() = sticks.count { it == ScoringStick.P1000 }
@@ -73,6 +78,7 @@ open class RiichiPlayerState(
         hands -= tileShuntsu.filter { it != tile }.toSet()
         target.discardedTilesForDisplay -= tile
         fuuroList += fuuro
+        invalidateHandAnalysis()
     }
 
     fun pon(tile: TileInstance, claimTarget: ClaimTarget, target: RiichiPlayerState) {
@@ -81,6 +87,7 @@ open class RiichiPlayerState(
         hands -= tilesForPon.filter { it != tile }.toSet()
         target.discardedTilesForDisplay -= tile
         fuuroList += fuuro
+        invalidateHandAnalysis()
     }
 
     fun minkan(tile: TileInstance, claimTarget: ClaimTarget, target: RiichiPlayerState) {
@@ -89,6 +96,7 @@ open class RiichiPlayerState(
         hands -= tilesForMinkan.filter { it != tile }.toSet()
         target.discardedTilesForDisplay -= tile
         fuuroList += fuuro
+        invalidateHandAnalysis()
     }
 
     fun ankan(tile: TileInstance) {
@@ -97,6 +105,7 @@ open class RiichiPlayerState(
         hands -= tilesForAnkan.toSet()
         discardedTilesForDisplay -= tile
         fuuroList += fuuro
+        invalidateHandAnalysis()
     }
 
     fun kakan(tile: TileInstance) {
@@ -106,6 +115,7 @@ open class RiichiPlayerState(
         val fuuro = Fuuro(MeldType.KAKAN, tiles, minPon.claimTarget, minPon.claimTile)
         hands -= tile
         fuuroList += fuuro
+        invalidateHandAnalysis()
     }
 
     fun canPon(tile: TileInstance): Boolean = !(riichi || doubleRiichi) && sameTilesInHands(tile).size >= 2
@@ -209,18 +219,25 @@ open class RiichiPlayerState(
     }
 
     val tilePairsForRiichi: List<Pair<MahjongTile, List<MahjongTile>>>
-        get() = buildList {
-            if (hands.size != 14) return@buildList
-            val results = buildList {
-                hands.forEach { tile ->
-                    val nowHands = hands.toMutableList().also { it -= tile }.toMahjongTileList()
-                    val nowMachi = calculateMachi(hands = nowHands)
-                    if (nowMachi.isNotEmpty()) {
-                        add(tile.mahjongTile to nowMachi)
+        get() {
+            if (cachedTilePairsForRiichiVersion == analysisStateVersion) {
+                return cachedTilePairsForRiichi
+            }
+            cachedTilePairsForRiichi = buildList {
+                if (hands.size != 14) return@buildList
+                val results = buildList {
+                    hands.forEach { tile ->
+                        val nowHands = hands.toMutableList().also { it -= tile }.toMahjongTileList()
+                        val nowMachi = calculateMachi(hands = nowHands)
+                        if (nowMachi.isNotEmpty()) {
+                            add(tile.mahjongTile to nowMachi)
+                        }
                     }
                 }
+                addAll(results.distinct())
             }
-            addAll(results.distinct())
+            cachedTilePairsForRiichiVersion = analysisStateVersion
+            return cachedTilePairsForRiichi
         }
 
     private fun sameTilesInHands(tile: TileInstance): MutableList<TileInstance> =
@@ -230,7 +247,13 @@ open class RiichiPlayerState(
         get() = machi.isNotEmpty()
 
     private val machi: List<MahjongTile>
-        get() = calculateMachi()
+        get() {
+            if (cachedMachiVersion != analysisStateVersion) {
+                cachedMachi = calculateMachi()
+                cachedMachiVersion = analysisStateVersion
+            }
+            return cachedMachi
+        }
 
     private fun calculateMachi(
         hands: List<MahjongTile> = this.hands.toMahjongTileList(),
@@ -481,6 +504,7 @@ open class RiichiPlayerState(
     fun declareRiichi(riichiSengenTile: TileInstance, isFirstRound: Boolean) {
         this.riichiSengenTile = riichiSengenTile
         if (isFirstRound) doubleRiichi = true else riichi = true
+        invalidateHandAnalysis()
     }
 
     fun discardTile(tile: MahjongTile): TileInstance? =
@@ -488,7 +512,23 @@ open class RiichiPlayerState(
             hands -= it
             discardedTiles += it
             discardedTilesForDisplay += it
+            invalidateHandAnalysis()
         }
+
+    fun resetRoundState() {
+        hands.clear()
+        fuuroList.clear()
+        discardedTiles.clear()
+        discardedTilesForDisplay.clear()
+        riichiSengenTile = null
+        riichi = false
+        doubleRiichi = false
+        invalidateHandAnalysis()
+    }
+
+    private fun invalidateHandAnalysis() {
+        analysisStateVersion++
+    }
 
     private fun List<MahjongTile>.toUtilsTiles(): List<Tile> =
         map { it.utilsTile }

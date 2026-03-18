@@ -173,7 +173,10 @@ class RiichiRoundEngine(
     fun declareRiichi(playerUuid: String, tileIndex: Int): Boolean {
         if (!started || pendingReaction != null) return false
         val player = currentPlayer
-        if (player.uuid != playerUuid || !player.isRiichiable || tileIndex !in player.hands.indices) return false
+        if (player.uuid != playerUuid || tileIndex !in player.hands.indices) return false
+        if (!player.isMenzenchin || player.riichi || player.doubleRiichi || player.points < ScoringStick.P1000.point) return false
+        val discardTile = player.hands[tileIndex].mahjongTile
+        if (player.tilePairsForRiichi.none { it.first == discardTile }) return false
         val tile = player.hands[tileIndex]
         player.declareRiichi(tile, isFirstRound)
         player.points -= ScoringStick.P1000.point
@@ -273,13 +276,7 @@ class RiichiRoundEngine(
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
         seats.forEach {
-            it.hands.clear()
-            it.fuuroList.clear()
-            it.discardedTiles.clear()
-            it.discardedTilesForDisplay.clear()
-            it.riichiSengenTile = null
-            it.riichi = false
-            it.doubleRiichi = false
+            it.resetRoundState()
         }
     }
 

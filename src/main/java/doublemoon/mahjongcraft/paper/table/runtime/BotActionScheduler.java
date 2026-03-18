@@ -142,8 +142,9 @@ public final class BotActionScheduler {
                 return;
             }
         }
-        if (player.isRiichiable() && !player.getTilePairsForRiichi().isEmpty()) {
-            MahjongTile discardTile = player.getTilePairsForRiichi().getFirst().getFirst();
+        java.util.List<Pair<MahjongTile, java.util.List<MahjongTile>>> riichiPairs = player.getTilePairsForRiichi();
+        if (player.isMenzenchin() && !player.getRiichi() && !player.getDoubleRiichi() && player.getPoints() >= 1000 && !riichiPairs.isEmpty()) {
+            MahjongTile discardTile = riichiPairs.getFirst().getFirst();
             int discardIndex = findDiscardIndex(player, discardTile);
             if (discardIndex >= 0 && session.declareRiichi(playerId, discardIndex)) {
                 return;
