@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ConcurrentHashMap;
@@ -535,15 +536,43 @@ public final class MahjongTableManager implements Listener {
             return true;
         }
         if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
-            String furnitureId = this.plugin.craftEngine().furnitureItemId(entity);
-            return furnitureId != null && furnitureId.startsWith("mahjongpaper:");
+            return this.isProtectedFurnitureId(this.plugin.craftEngine().furnitureItemId(entity));
         }
         Entity furnitureEntity = this.plugin.craftEngine().furnitureEntityForSeat(entity);
         if (furnitureEntity == null) {
             return false;
         }
-        String furnitureId = this.plugin.craftEngine().furnitureItemId(furnitureEntity);
-        return furnitureId != null && furnitureId.startsWith("mahjongpaper:");
+        return this.isProtectedFurnitureId(this.plugin.craftEngine().furnitureItemId(furnitureEntity));
+    }
+
+    private boolean isProtectedFurnitureId(String furnitureId) {
+        if (furnitureId == null || furnitureId.isBlank()) {
+            return false;
+        }
+        if (furnitureId.startsWith("mahjongpaper:")) {
+            return true;
+        }
+        if (Objects.equals(furnitureId, this.plugin.settings().craftEngineTableFurnitureId())
+            || Objects.equals(furnitureId, this.plugin.settings().craftEngineSeatFurnitureId())) {
+            return true;
+        }
+        for (String protectedId : this.plugin.settings().craftEngineProtectedFurnitureIds()) {
+            if (matchesProtectedFurnitureRule(furnitureId, protectedId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesProtectedFurnitureRule(String furnitureId, String rule) {
+        if (rule == null || rule.isBlank()) {
+            return false;
+        }
+        if (rule.endsWith("*")) {
+            String prefix = rule.substring(0, rule.length() - 1);
+            return !prefix.isEmpty() && furnitureId.startsWith(prefix);
+        }
+        return Objects.equals(furnitureId, rule);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

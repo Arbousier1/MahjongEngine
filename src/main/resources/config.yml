@@ -118,6 +118,12 @@ integrations:
       # This furniture should define its own hitbox and seats in CraftEngine.
       seatFurnitureId: mahjongpaper:seat_chair
 
+      # Extra CraftEngine furniture ids protected from breaking by MahjongPaper.
+      # Supports exact ids and prefix rules ending with "*", for example:
+      # - mypack:rose_chair
+      # - mypack:seat_*
+      protectedFurnitureIds: []
+
 debug:
   enabled: false
 

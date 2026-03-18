@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper.config;
 
 import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
+import java.util.List;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -17,6 +18,7 @@ public final class PluginSettings {
     private final String craftEngineGbTileItemIdPrefix;
     private final String craftEngineTableFurnitureId;
     private final String craftEngineSeatFurnitureId;
+    private final List<String> craftEngineProtectedFurnitureIds;
     private final boolean rankingEnabled;
     private final String rankingEastRoom;
     private final String rankingSouthRoom;
@@ -34,6 +36,7 @@ public final class PluginSettings {
         String craftEngineGbTileItemIdPrefix,
         String craftEngineTableFurnitureId,
         String craftEngineSeatFurnitureId,
+        List<String> craftEngineProtectedFurnitureIds,
         boolean rankingEnabled,
         String rankingEastRoom,
         String rankingSouthRoom
@@ -50,6 +53,7 @@ public final class PluginSettings {
         this.craftEngineGbTileItemIdPrefix = craftEngineGbTileItemIdPrefix;
         this.craftEngineTableFurnitureId = craftEngineTableFurnitureId;
         this.craftEngineSeatFurnitureId = craftEngineSeatFurnitureId;
+        this.craftEngineProtectedFurnitureIds = List.copyOf(craftEngineProtectedFurnitureIds);
         this.rankingEnabled = rankingEnabled;
         this.rankingEastRoom = rankingEastRoom;
         this.rankingSouthRoom = rankingSouthRoom;
@@ -77,6 +81,10 @@ public final class PluginSettings {
             ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "gbTileItemIdPrefix", "gb-tile-item-id-prefix"),
             ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:table_visual", "tableFurnitureId", "table-furniture-id"),
             ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id"),
+            ConfigAccess.stringList(craftEngineFurnitureSection, "protectedFurnitureIds", "protected-furniture-ids").stream()
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .toList(),
             ConfigAccess.bool(rankingSection, true, "enabled"),
             ConfigAccess.string(rankingSection, "SILVER", "eastRoom"),
             ConfigAccess.string(rankingSection, "GOLD", "southRoom")
@@ -136,6 +144,10 @@ public final class PluginSettings {
 
     public String craftEngineSeatFurnitureId() {
         return this.craftEngineSeatFurnitureId;
+    }
+
+    public List<String> craftEngineProtectedFurnitureIds() {
+        return this.craftEngineProtectedFurnitureIds;
     }
 
     public boolean rankingEnabled() {
