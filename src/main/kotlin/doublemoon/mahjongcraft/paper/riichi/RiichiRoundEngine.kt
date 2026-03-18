@@ -25,11 +25,12 @@ enum class ReactionType {
     SKIP
 }
 
-data class ReactionOptions(
+data class ReactionOptions @JvmOverloads constructor(
     val canRon: Boolean,
     val canPon: Boolean,
     val canMinkan: Boolean,
-    val chiiPairs: List<Pair<MahjongTile, MahjongTile>>
+    val chiiPairs: List<Pair<MahjongTile, MahjongTile>>,
+    val suggestedResponse: ReactionResponse? = null
 )
 
 data class ReactionResponse(
@@ -179,8 +180,8 @@ class RiichiRoundEngine(
         }
         val player = currentPlayer
         if (tileIndex !in player.hands.indices) return false
-        val tile = player.hands[tileIndex].mahjongTile
-        val discarded = player.discardTile(tile) ?: return false
+        val selectedTile = player.hands[tileIndex]
+        val discarded = player.discardTile(selectedTile) ?: return false
         currentDrawIsRinshan = false
         discards += discarded
         pendingReaction = computePendingReaction(player, discarded)
@@ -207,7 +208,8 @@ class RiichiRoundEngine(
     fun tryTsumo(playerUuid: String): Boolean {
         if (!started || pendingReaction != null || currentPlayer.uuid != playerUuid) return false
         val player = currentPlayer
-        val winningTile = player.hands.lastOrNull()?.mahjongTile ?: return false
+        val winningTileInstance = player.lastDrawnTile ?: return false
+        val winningTile = winningTileInstance.mahjongTile
         if (!player.canWin(
                 winningTile,
                 true,
@@ -218,7 +220,7 @@ class RiichiRoundEngine(
         ) {
             return false
         }
-        resolveTsumo(player, player.hands.last(), isRinshanKaihoh = currentDrawIsRinshan)
+        resolveTsumo(player, winningTileInstance, isRinshanKaihoh = currentDrawIsRinshan)
         return true
     }
 
@@ -371,11 +373,9 @@ class RiichiRoundEngine(
                 generalSituation = generalSituation,
                 personalSituation = personalSituation(candidate, isTsumo = false)
             ) && !candidate.isFuriten(tile, discards)
-            val canPon = candidate.canPon(tile)
-            val canMinkan = candidate.canMinkan(tile)
-            val chiiPairs = if (target == ClaimTarget.LEFT) candidate.availableChiiPairs(tile) else emptyList()
-            if (canRon || canPon || canMinkan || chiiPairs.isNotEmpty()) {
-                options[candidate.uuid] = ReactionOptions(canRon, canPon, canMinkan, chiiPairs)
+            val reactionOptions = candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
+            if (reactionOptions != null) {
+                options[candidate.uuid] = reactionOptions
             }
         }
         return options.takeIf { it.isNotEmpty() }?.let { PendingReaction(discarder.uuid, tile, it) }
@@ -392,7 +392,13 @@ class RiichiRoundEngine(
                 personalSituation = personalSituation(candidate, isTsumo = false, isChankan = true)
             ) && !candidate.isFuriten(tile, discards) && (!allowOnlyKokushi || candidate.isKokushimuso(tile.mahjongTile))
             if (canRon) {
-                options[candidate.uuid] = ReactionOptions(canRon = true, canPon = false, canMinkan = false, chiiPairs = emptyList())
+                options[candidate.uuid] = ReactionOptions(
+                    canRon = true,
+                    canPon = false,
+                    canMinkan = false,
+                    chiiPairs = emptyList(),
+                    suggestedResponse = ReactionResponse(ReactionType.RON, null)
+                )
             }
         }
         return options.takeIf { it.isNotEmpty() }?.let {

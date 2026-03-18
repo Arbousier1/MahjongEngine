@@ -284,7 +284,10 @@ public final class TableViewerSnapshotFactory {
             return this.reactionSummary(locale, options);
         }
         if (this.session.currentSeat() == this.session.seatOf(viewerId) && this.session.isStarted()) {
-            return this.session.plugin().messages().plain(locale, "overlay.your_turn");
+            String suggestion = this.discardSuggestion(locale, viewerId);
+            return suggestion.isBlank()
+                ? this.session.plugin().messages().plain(locale, "overlay.your_turn")
+                : this.session.plugin().messages().plain(locale, "overlay.your_turn") + " | " + suggestion;
         }
         if (spectator) {
             return this.session.plugin().messages().plain(locale, "overlay.spectating_turn") + " " + currentTurnName;
@@ -377,7 +380,15 @@ public final class TableViewerSnapshotFactory {
         if (!options.getChiiPairs().isEmpty()) {
             actions.add(this.session.plugin().messages().plain(locale, "table.action.chii"));
         }
-        return this.session.plugin().messages().plain(locale, "overlay.reactions") + " " + String.join("/", actions);
+        String summary = this.session.plugin().messages().plain(locale, "overlay.reactions") + " " + String.join("/", actions);
+        if (options.getSuggestedResponse() == null) {
+            return summary;
+        }
+        return summary + " | " + this.session.plugin().messages().plain(
+            locale,
+            "table.suggested_action",
+            this.session.plugin().messages().tag("action", this.reactionLabel(locale, options.getSuggestedResponse()))
+        );
     }
 
     private void appendReactionActionLabels(StringBuilder builder, Locale locale, ReactionOptions options) {
@@ -393,6 +404,38 @@ public final class TableViewerSnapshotFactory {
         if (!options.getChiiPairs().isEmpty()) {
             builder.append(' ').append(this.session.plugin().messages().plain(locale, "table.action.chii"));
         }
+    }
+
+    private String discardSuggestion(Locale locale, UUID viewerId) {
+        List<String> suggestions = this.session.suggestedDiscardTiles(viewerId);
+        if (suggestions.isEmpty()) {
+            return "";
+        }
+        String labels = suggestions.stream()
+            .limit(3)
+            .map(tileName -> this.session.tileLabelForDisplay(locale, tileName))
+            .reduce((left, right) -> left + "/" + right)
+            .orElse("");
+        return labels.isBlank()
+            ? ""
+            : this.session.plugin().messages().plain(locale, "table.suggested_discards", this.session.plugin().messages().tag("tiles", labels));
+    }
+
+    private String reactionLabel(Locale locale, doublemoon.mahjongcraft.paper.riichi.ReactionResponse response) {
+        return switch (response.getType()) {
+            case RON -> this.session.plugin().messages().plain(locale, "table.action.ron");
+            case PON -> this.session.plugin().messages().plain(locale, "table.action.pon");
+            case MINKAN -> this.session.plugin().messages().plain(locale, "table.action.minkan");
+            case SKIP -> this.session.plugin().messages().plain(locale, "table.action.skip");
+            case CHII -> {
+                if (response.getChiiPair() == null) {
+                    yield this.session.plugin().messages().plain(locale, "table.action.chii");
+                }
+                yield this.session.plugin().messages().plain(locale, "table.action.chii") + " "
+                    + this.session.tileLabelForDisplay(locale, response.getChiiPair().getFirst().name()) + " "
+                    + this.session.tileLabelForDisplay(locale, response.getChiiPair().getSecond().name());
+            }
+        };
     }
 
     private String resolutionLabel(Locale locale, String title) {

@@ -352,6 +352,22 @@ public final class RiichiTableRoundController implements TableRoundController {
     }
 
     @Override
+    public List<String> suggestedDiscardTiles(UUID playerId) {
+        RiichiPlayerState player = this.seatPlayer(playerId);
+        if (player == null || !this.isCurrentPlayer(playerId)) {
+            return List.of();
+        }
+        List<String> suggestions = new ArrayList<>();
+        player.bestDiscardSuggestions().forEach(tile -> {
+            String tileName = tile.name().toLowerCase(Locale.ROOT);
+            if (!suggestions.contains(tileName)) {
+                suggestions.add(tileName);
+            }
+        });
+        return List.copyOf(suggestions);
+    }
+
+    @Override
     public RiichiRoundEngine asRiichiEngine() {
         return this.engine;
     }

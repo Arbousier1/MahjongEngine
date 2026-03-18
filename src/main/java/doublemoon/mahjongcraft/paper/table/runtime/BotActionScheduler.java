@@ -78,21 +78,9 @@ public final class BotActionScheduler {
         if (options == null) {
             return;
         }
-        if (options.getCanRon()) {
-            session.react(playerId, new ReactionResponse(ReactionType.RON, null));
-            return;
-        }
-        if (options.getCanPon()) {
-            session.react(playerId, new ReactionResponse(ReactionType.PON, null));
-            return;
-        }
-        if (options.getCanMinkan()) {
-            session.react(playerId, new ReactionResponse(ReactionType.MINKAN, null));
-            return;
-        }
-        if (!options.getChiiPairs().isEmpty()) {
-            Pair<MahjongTile, MahjongTile> pair = options.getChiiPairs().getFirst();
-            session.react(playerId, new ReactionResponse(ReactionType.CHII, pair));
+        ReactionResponse suggestion = options.getSuggestedResponse();
+        if (suggestion != null) {
+            session.react(playerId, suggestion);
             return;
         }
         session.react(playerId, new ReactionResponse(ReactionType.SKIP, null));
@@ -189,69 +177,13 @@ public final class BotActionScheduler {
         if (player.getRiichi() || player.getDoubleRiichi()) {
             return player.getHands().size() - 1;
         }
-
-        int bestIndex = player.getHands().size() - 1;
-        int bestScore = Integer.MIN_VALUE;
-        for (int i = 0; i < player.getHands().size(); i++) {
-            MahjongTile tile = player.getHands().get(i).getMahjongTile();
-            int score = discardScore(player, tile);
-            if (score > bestScore) {
-                bestScore = score;
-                bestIndex = i;
+        for (MahjongTile tile : player.bestDiscardSuggestions()) {
+            int index = findDiscardIndex(player, tile);
+            if (index >= 0) {
+                return index;
             }
         }
-        return bestIndex;
-    }
-
-    private static int discardScore(RiichiPlayerState player, MahjongTile tile) {
-        int duplicates = 0;
-        boolean hasPrev = false;
-        boolean hasNext = false;
-        boolean hasPrevPrev = false;
-        boolean hasNextNext = false;
-        for (TileInstance handTile : player.getHands()) {
-            MahjongTile other = handTile.getMahjongTile();
-            if (other == tile) {
-                duplicates++;
-                continue;
-            }
-            if (isHonorTile(tile)) {
-                continue;
-            }
-            if (tileSuit(other) != tileSuit(tile)) {
-                continue;
-            }
-            if (other == tile.getPreviousTile()) hasPrev = true;
-            if (other == tile.getNextTile()) hasNext = true;
-            if (other == tile.getPreviousTile().getPreviousTile()) hasPrevPrev = true;
-            if (other == tile.getNextTile().getNextTile()) hasNextNext = true;
-        }
-        int score = 0;
-        if (tile.isRed()) score -= 5;
-        if (isHonorTile(tile) || tileNumber(tile) == 1 || tileNumber(tile) == 9) score += 3;
-        if (duplicates >= 2) score -= 4;
-        if (hasPrev) score -= 2;
-        if (hasNext) score -= 2;
-        if (hasPrevPrev) score -= 1;
-        if (hasNextNext) score -= 1;
-        return score;
-    }
-
-    private static boolean isHonorTile(MahjongTile tile) {
-        MahjongTile base = tile.getBaseTile();
-        return base.ordinal() >= MahjongTile.EAST.ordinal() && base.ordinal() <= MahjongTile.RED_DRAGON.ordinal();
-    }
-
-    private static char tileSuit(MahjongTile tile) {
-        return tile.getBaseTile().name().charAt(0);
-    }
-
-    private static int tileNumber(MahjongTile tile) {
-        if (isHonorTile(tile)) {
-            return 0;
-        }
-        String name = tile.getBaseTile().name();
-        return Character.digit(name.charAt(1), 10);
+        return player.getHands().size() - 1;
     }
 }
 

@@ -7,6 +7,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.TileInstance
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class RiichiRoundEngineTest {
@@ -104,20 +105,62 @@ class RiichiRoundEngineTest {
         val engine = RiichiRoundEngine(players, MahjongRule())
 
         engine.startRound()
+        val tenpaiHand = listOf(
+            MahjongTile.M1,
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M3,
+            MahjongTile.P4,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P5,
+            MahjongTile.S6,
+            MahjongTile.S6,
+            MahjongTile.EAST
+        )
         engine.seats.forEach { player ->
             player.hands.clear()
-            repeat(if (player == engine.currentPlayer) 14 else 13) { index ->
-                player.hands += TileInstance(mahjongTile = if (index % 2 == 0) MahjongTile.M1 else MahjongTile.P1)
+            tenpaiHand.forEach { tile ->
+                player.hands += TileInstance(mahjongTile = tile)
+            }
+            if (player == engine.currentPlayer) {
+                player.hands += TileInstance(mahjongTile = MahjongTile.WHITE_DRAGON)
             }
         }
         engine.wall.clear()
 
-        val result = engine.discard(engine.currentPlayer.uuid, 0)
+        val result = engine.discard(engine.currentPlayer.uuid, engine.currentPlayer.hands.lastIndex)
 
         assertTrue(result)
         val scoreChanges = engine.lastResolution?.scoreSettlement?.scoreList?.map { it.scoreChange }
         if (scoreChanges != null) {
             assertEquals(0, scoreChanges.sum())
         }
+    }
+
+    @Test
+    fun `discard uses the exact selected tile instance`() {
+        val players = listOf(
+            RiichiPlayerState("A", "a"),
+            RiichiPlayerState("B", "b"),
+            RiichiPlayerState("C", "c"),
+            RiichiPlayerState("D", "d")
+        )
+        val engine = RiichiRoundEngine(players, MahjongRule())
+
+        engine.startRound()
+
+        val player = engine.currentPlayer
+        player.resetRoundState()
+        val selected = TileInstance(mahjongTile = MahjongTile.M1)
+        val otherSameKind = TileInstance(mahjongTile = MahjongTile.M1)
+        player.hands += listOf(selected, otherSameKind, TileInstance(mahjongTile = MahjongTile.P5))
+
+        assertTrue(engine.discard(player.uuid, 0))
+        assertSame(selected, engine.discards.last())
+        assertFalse(player.hands.contains(selected))
+        assertTrue(player.hands.contains(otherSameKind))
     }
 }

@@ -201,6 +201,10 @@ public final class TablePlayerFeedbackCoordinator {
             }
             actions.add("/mahjong tsumo");
             String suffix = actions.isEmpty() ? "" : " | " + String.join(" ", actions);
+            String discardSuggestion = this.discardSuggestionSuffix(locale, playerId);
+            if (!discardSuggestion.isBlank()) {
+                suffix += " | " + discardSuggestion;
+            }
             Component actionBar = this.session.plugin().messages().render(
                 locale,
                 "table.turn_prompt",
@@ -241,7 +245,54 @@ public final class TablePlayerFeedbackCoordinator {
                 + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
             message = message.append(this.actionButton(label, command, NamedTextColor.GREEN)).append(Component.space());
         }
-        return message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.skip"), "/mahjong skip", NamedTextColor.GRAY));
+        message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.skip"), "/mahjong skip", NamedTextColor.GRAY));
+        Component suggestedAction = this.suggestedActionComponent(locale, options);
+        return suggestedAction == null ? message : message.append(Component.space()).append(suggestedAction);
+    }
+
+    private String discardSuggestionSuffix(Locale locale, UUID playerId) {
+        List<String> suggestions = this.session.suggestedDiscardTiles(playerId);
+        if (suggestions.isEmpty()) {
+            return "";
+        }
+        String labels = suggestions.stream()
+            .limit(3)
+            .map(tileName -> this.session.tileLabelForDisplay(locale, tileName))
+            .reduce((left, right) -> left + "/" + right)
+            .orElse("");
+        return labels.isBlank()
+            ? ""
+            : this.session.plugin().messages().plain(locale, "table.suggested_discards", this.session.plugin().messages().tag("tiles", labels));
+    }
+
+    private Component suggestedActionComponent(Locale locale, ReactionOptions options) {
+        if (options.getSuggestedResponse() == null) {
+            return null;
+        }
+        String label = this.session.plugin().messages().plain(
+            locale,
+            "table.suggested_action",
+            this.session.plugin().messages().tag("action", this.reactionLabel(locale, options.getSuggestedResponse()))
+        );
+        return Component.text("(" + label + ")", NamedTextColor.GRAY);
+    }
+
+    private String reactionLabel(Locale locale, doublemoon.mahjongcraft.paper.riichi.ReactionResponse response) {
+        return switch (response.getType()) {
+            case RON -> this.session.plugin().messages().plain(locale, "table.action.ron");
+            case PON -> this.session.plugin().messages().plain(locale, "table.action.pon");
+            case MINKAN -> this.session.plugin().messages().plain(locale, "table.action.minkan");
+            case SKIP -> this.session.plugin().messages().plain(locale, "table.action.skip");
+            case CHII -> {
+                Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile> pair = response.getChiiPair();
+                if (pair == null) {
+                    yield this.session.plugin().messages().plain(locale, "table.action.chii");
+                }
+                yield this.session.plugin().messages().plain(locale, "table.action.chii") + " "
+                    + this.session.tileLabelForDisplay(locale, pair.getFirst().name()) + " "
+                    + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
+            }
+        };
     }
 
     private Component actionButton(String label, String command, NamedTextColor color) {

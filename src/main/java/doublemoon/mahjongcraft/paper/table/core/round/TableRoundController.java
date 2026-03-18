@@ -135,6 +135,10 @@ public interface TableRoundController {
         return List.of();
     }
 
+    default List<String> suggestedDiscardTiles(UUID playerId) {
+        return List.of();
+    }
+
     default RiichiRoundEngine asRiichiEngine() {
         return null;
     }
