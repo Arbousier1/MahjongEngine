@@ -12,7 +12,7 @@ Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 
 ## Current Scope
 
-The current branch already supports a playable Riichi Mahjong flow on Paper:
+The current branch already supports playable Riichi Mahjong and GB Mahjong flows on Paper/Folia:
 
 - lobby-style tables that can persist across restart
 - empty-table creation, fixed east/south/west/north seats, click-to-join, and click-to-ready
@@ -20,8 +20,11 @@ The current branch already supports a playable Riichi Mahjong flow on Paper:
 - bots for unattended seats, with bots treated as ready by default
 - leaving before the round starts, or deferred leave after the current hand ends
 - dealing, drawing, discarding, riichi, tsumo, ron, chii, pon, minkan, ankan, and kakan
-- score settlement through `mahjong-utils`
+- opening dice roll animation and live public table state displays
+- Riichi scoring through `mahjong-utils`
+- GB Mahjong rule evaluation through the bundled JNI bridge and vendored `GB-Mahjong` source
 - spectator mode, private hand visibility, HUD overlays, and localized prompts
+- Mahjong Soul-style rank persistence when database-backed ranking is enabled
 - CraftEngine-backed seat/table interaction and CraftEngine bundle export
 - round history persistence through H2 by default, with optional MariaDB
 
@@ -30,7 +33,7 @@ The current branch already supports a playable Riichi Mahjong flow on Paper:
 - `/mahjong help`: show in-game command help
 - `/mahjong create`: create a new empty table at your location
 - `/mahjong botmatch [hanchan|tonpuu]`: create a 4-bot test match and spectate it
-- `/mahjong mode <tonpuu|hanchan>`: apply a preset before the next start
+- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB>`: apply a preset before the next start
 - `/mahjong join <tableId>`: join a table as a player
 - `/mahjong leave`: leave immediately before the hand starts, or queue a leave after the current hand
 - `/mahjong list`: list active tables and their locations
@@ -42,9 +45,11 @@ The current branch already supports a playable Riichi Mahjong flow on Paper:
 - `/mahjong state`: show the current table summary
 - `/mahjong riichi <index>`, `/mahjong tsumo`, `/mahjong ron`, `/mahjong pon`, `/mahjong minkan`, `/mahjong chii <tileA> <tileB>`, `/mahjong kan <tile>`, `/mahjong skip`, `/mahjong kyuushu`: round actions
 - `/mahjong settlement`: reopen the latest settlement UI
+- `/mahjong rank`: show your Mahjong Soul-style rank summary when ranking is enabled
 - `/mahjong render`, `/mahjong clear`, `/mahjong inspect`: table render maintenance and diagnostics
 - `/mahjong forceend [tableId]`: admin command to stop a running match
 - `/mahjong deletetable [tableId]`: admin command to delete a table
+- `/mahjong reload`: admin command to reload configuration and re-render active tables
 
 Admin targeting details:
 
@@ -79,13 +84,14 @@ The current human-friendly layout is:
 - `database.h2`: local embedded H2 settings
 - `database.pool`: connection pool sizing
 - `tables.persistence`: persistent table restore file
+- `ranking`: Mahjong Soul-style room presets and rank persistence
 - `integrations.craftengine`: CraftEngine export and interaction preferences
 - `debug`: debug logging switches
 
 Notes:
 
-- configuration is snapshotted during startup
-- restart after editing `config.yml`
+- configuration is snapshotted on load
+- `/mahjong reload` reloads config, rebuilds CraftEngine bridges, and re-renders active tables
 - older flat keys are still accepted for backward compatibility
 
 ## CraftEngine
@@ -113,6 +119,8 @@ The bundled resource pack lives in [resourcepack](./resourcepack).
 
 ## Upstream References
 
-- `MahjongCraft`
-- `Paper`
-- `CraftEngine`
+- `MahjongCraft`: <https://github.com/EndlessCheng/MahjongCraft>
+- `Paper`: <https://papermc.io/software/paper>
+- `CraftEngine`: <https://github.com/Xiao-MoMi/craft-engine>
+- `GB-Mahjong`: <https://github.com/zheng-fan/GB-Mahjong>
+- `mahjong_graphic`: <https://github.com/lietxia/mahjong_graphic>

@@ -1,116 +1,155 @@
 # GB Mahjong JNI Bridge
 
-This branch now uses a real JNI bridge for the GB Mahjong variant rather than a placeholder native stub.
+MahjongPaper ships a real JNI bridge for the GB Mahjong ruleset. The Java side keeps the plugin's table/session model, while the native side delegates legality, fan counting, ting analysis, and win evaluation to a vendored copy of the upstream `GB-Mahjong` project.
 
 Rule target:
 
-- `https://github.com/zheng-fan/GB-Mahjong`
-- see `docs/gb-mahjong-rules.md`
+- <https://github.com/zheng-fan/GB-Mahjong>
+- See also: [gb-mahjong-rules.md](./gb-mahjong-rules.md)
+
+## Architecture
+
+The bridge is split into three layers:
+
+1. Java/Kotlin request and response models
+2. A JNI bridge that marshals JSON payloads into native calls
+3. A C++ adapter that translates MahjongPaper state into the upstream `GB-Mahjong` APIs
+
+The plugin does not try to embed C++ logic directly into gameplay flow. Instead, the Java side builds structured requests, the native side evaluates them, and the plugin converts the native answer back into MahjongPaper settlement and UI models.
 
 ## JVM Side
 
-Bridge entry points:
+Main entry points:
 
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeLibrary.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeBridge.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/runtime/GbNativeRulesGateway.java`
+- `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
 
 Responsibilities:
 
-- load `mahjongpaper_gb` from `java.library.path`
-- or load an explicit library path from `-Dmahjongpaper.gb.native.path=/absolute/path/to/library`
-- expose handshake calls:
-  - `libraryVersion()`
-  - `ping()`
-- expose JSON JNI service entry points:
-  - `evaluateFan(GbFanRequest)`
-  - `evaluateTing(GbTingRequest)`
-  - `evaluateWin(GbWinRequest)`
+- resolve the correct native library name for the current platform
+- load the native library from one of several locations
+- expose availability checks and diagnostic detail
+- encode requests into JSON and decode JSON responses back into typed models
+- shield the rest of the plugin from JNI failures by converting them into invalid `fan`, `ting`, or `win` responses
 
-The request/response models live in:
+### Library Loading Order
 
-- `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
+`GbMahjongNativeLibrary` currently tries these locations in order:
+
+1. A path supplied with `-Dmahjongpaper.gb.native.path=/absolute/path/to/library`
+2. A bundled native resource under `native/<platform>/`
+3. Development build outputs such as `build/native/gbmahjong/...`
+4. The normal `java.library.path`
+
+The runtime also loads known sidecar dependencies when needed, such as `libwinpthread-1.dll` on `windows-x86_64`.
+
+### Bridge API
+
+`GbMahjongNativeBridge` exposes:
+
+- `isAvailable()`
+- `availabilityDetail()`
+- `libraryVersion()`
+- `ping()`
+- `evaluateFan(GbFanRequest)`
+- `evaluateTing(GbTingRequest)`
+- `evaluateWin(GbWinRequest)`
+
+`GbNativeRulesGateway` wraps those calls and converts missing bridge state, null responses, and runtime exceptions into safe fallback results instead of letting JNI failures tear down table flow.
 
 ## Native Side
 
-Native project:
+Native project files:
 
 - `native/gbmahjong/CMakeLists.txt`
 - `native/gbmahjong/src/gbmahjong_jni.cpp`
-
-Bundled reference source:
-
 - `native/gbmahjong/vendor/GB-Mahjong/mahjong/`
-- upstream license copied to `native/gbmahjong/vendor/GB-Mahjong/LICENSE`
 
-The JNI layer now:
+The vendored upstream license is kept at:
 
-- parses the JSON request payloads
-- converts them into `GB-Mahjong` hand-string expressions
-- calls the vendored `mahjong::Fan` / `mahjong::Handtiles` APIs
-- returns structured JSON for:
-  - fan counting
-  - ting waits
-  - win settlement fan breakdown
+- `native/gbmahjong/vendor/GB-Mahjong/LICENSE`
 
-### Request Mapping
+Responsibilities of the C++ layer:
 
-The plugin keeps its own structured request types and converts them to the hand-string grammar that `GB-Mahjong` expects.
+- parse JSON payloads from the JVM side
+- translate MahjongPaper tile names, melds, and situational flags into upstream-compatible inputs
+- call the vendored `GB-Mahjong` parser/fan logic
+- return normalized JSON payloads for fan, ting, and win evaluation
 
-Examples:
+## Request Mapping
 
-- `W1/T1/B1/F1/J1` are mapped to the upstream tile grammar (`m/s/p`, `ESWN`, `PFC`)
-- flower tiles use the upstream `a`-`h` ids (`plum`, `orchid`, `bamboo`, `chrysanthemum`, `spring`, `summer`, `autumn`, `winter`)
-- melds are mapped into upstream bracket notation such as `[123m,1]`, `[EEE,2]`, `[1111p,7]`
-- JNI flags are mapped into the upstream status suffix:
-  - `LAST_OF_KIND` -> juezhang bit
-  - `LAST_TILE` -> haidi bit
-  - `AFTER_KONG` / `ROBBING_KONG` -> gang bit
+MahjongPaper keeps its own structured request model and then converts it to the notation the upstream rule engine expects.
 
-## Settlement Scope
+Current mapping includes:
 
-`GB-Mahjong` itself provides hand parsing, ting calculation, and fan counting.
-It does not provide a full Paper-plugin settlement model, so the plugin still translates native fan output into:
+- suit tiles mapped to the upstream `m`, `p`, and `s` grammar
+- wind and dragon tiles mapped to the upstream honor notation
+- flower tiles mapped to the upstream `a` through `h` ids
+- melds rendered into upstream bracket notation
+- round-state flags such as last tile, robbing kong, or after kong folded into the native status bits expected by the upstream evaluator
 
-- `RoundResolution`
-- `ScoreSettlement`
-- `YakuSettlement`
+This design keeps the rest of the plugin readable and testable without forcing gameplay code to manipulate raw upstream hand strings directly.
 
-Current settlement transfer policy in the plugin:
+## What The Native Backend Owns
 
-- `RON`: discarder pays the winner `totalFan`
-- `TSUMO`: each non-winner pays the winner `totalFan`
+The JNI/native layer is the source of truth for:
 
-This keeps the in-game table flow consistent while still using the upstream GB fan engine as the source of truth for legality and fan composition.
+- fan counting
+- ting wait discovery
+- win legality
+- per-fan breakdown returned to the plugin
 
-## Local Build
+The plugin still owns:
 
-Gradle tasks:
+- region-thread-safe scheduling on Paper/Folia
+- round lifecycle and reaction windows
+- table UI, settlement UI, and messages
+- score settlement objects used by MahjongPaper itself
+- persistence and spectator/viewer state
+
+## Build And Packaging
+
+Relevant Gradle tasks:
 
 - `configureGbMahjongNative`
 - `buildGbMahjongNative`
+- `packageGbMahjongNative`
 
-Example:
+Typical full project build:
 
 ```powershell
-.\gradlew.bat buildGbMahjongNative
+.\gradlew.bat build --console plain
 ```
 
-Artifacts are built under:
+Native-only build:
+
+```powershell
+.\gradlew.bat buildGbMahjongNative --console plain
+```
+
+During packaging, native outputs are copied into generated resources under:
 
 ```text
-build/native/gbmahjong
+build/generated/resources/native/native/<platform>/
 ```
 
-## Verification Status
+Those resources are then bundled into the plugin jar so the runtime loader can extract them to a temporary directory when needed.
 
-Java/plugin-side tests are part of the normal Gradle test suite.
+## Verification
 
-On this development machine, the Java side was verified with:
+The bridge should be validated at three levels:
+
+1. Model serialization and deserialization
+2. Java-side controller tests that depend on `GbNativeRulesGateway`
+3. Real native build verification on a machine or CI runner with CMake and a C++ toolchain
+
+Useful checks:
 
 ```powershell
-.\gradlew.bat test --tests doublemoon.mahjongcraft.paper.table.core.round.GbTableRoundControllerTest --tests doublemoon.mahjongcraft.paper.table.MahjongTableSessionTest --tests doublemoon.mahjongcraft.paper.gb.jni.GbMahjongNativeJsonTest --no-daemon
+.\gradlew.bat test --console plain
+.\gradlew.bat buildGbMahjongNative --console plain
 ```
 
-The native library could not be compiled locally here because this machine currently has no `cmake` or C++ toolchain installed.
-The native source and CMake project are still checked in ready for compilation in CI or on a machine with the required toolchain.
+If the native bridge is unavailable at runtime, the plugin does not silently switch to an unrelated rules implementation. Instead, `GbNativeRulesGateway` reports invalid native responses, which makes failures easier to diagnose.

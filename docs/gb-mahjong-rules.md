@@ -1,39 +1,53 @@
 # GB Mahjong Rule Source
 
-Authoritative implementation target for the `feature/gb-mahjong` branch:
+MahjongPaper's GB Mahjong implementation is anchored to the upstream `GB-Mahjong` project:
 
-- `https://github.com/zheng-fan/GB-Mahjong`
+- <https://github.com/zheng-fan/GB-Mahjong>
 
 ## Rule Positioning
 
-The GB Mahjong variant in this repository is intended to follow the same rule positioning described by `GB-Mahjong`:
+The GB ruleset in this repository is intended to track the same rule direction described by `GB-Mahjong`:
 
-- base rules mainly follow the 1998 `中国麻将竞赛规则（试行）`
-- fan counting behavior follows the consensus used by major GB Mahjong tournaments
-- the project treats `《国标麻将规则释义（网络对局版）》` as an important reference
+- baseline rule positioning primarily follows the 1998 `中国麻将竞赛规则（试行）`
+- fan counting aims to match the practical expectations encoded by the upstream implementation
+- legality and fan composition are evaluated through the native bridge rather than a separate local scoring clone
 
-This means the GB variant here is **not** being designed as a loose “Chinese-style Mahjong” mode.
-Its intended behavior is to match the scoring and hand-judging expectations of `zheng-fan/GB-Mahjong` as closely as possible.
+This means the GB variant here is not treated as a loose “Chinese Mahjong” flavor mode.
+Its intended behavior is to stay as close as practical to the upstream `GB-Mahjong` interpretation used by the vendored native backend.
 
-## Functional Scope Expected From The Native Backend
+## What The Upstream Provides
 
-The referenced `GB-Mahjong` project explicitly provides:
+The upstream rule engine is used as the authoritative backend for:
 
-- hand-string parsing
+- hand parsing
 - fan counting
 - ting calculation
-- detailed per-fan composition output
+- per-fan composition output
 
-The JNI backend in this branch should be designed around those same responsibilities.
+MahjongPaper then translates those results into its own:
 
-## Current Status
+- table reaction flow
+- settlement UI
+- score settlement records
+- player-facing prompts and state summaries
 
-This branch now contains more than just scaffolding:
+## Practical Consequence For This Repository
 
-- GB tables can be selected as a live runtime variant
-- the plugin-side round flow supports GB actions such as chi / pon / kan / ron / tsumo
-- the JNI bridge is wired to a vendored copy of `GB-Mahjong`
-- native `fan`, `ting`, and `win` entry points are implemented at source level
+When GB behavior is questioned, the default expectation should be:
 
-That still does **not** mean every possible tournament edge case is permanently complete.
-The important guarantee here is that the GB implementation direction is locked to `zheng-fan/GB-Mahjong`, and the current code actively routes legality/fan evaluation through that native rule source rather than treating GB as a loose placeholder mode.
+1. inspect the request built by MahjongPaper
+2. inspect how it is mapped into the native bridge
+3. compare that mapped request against upstream `GB-Mahjong` expectations
+
+The plugin should not casually drift into a parallel local interpretation unless there is a deliberate, documented reason.
+
+## Current Implementation State
+
+In the current `dev` branch:
+
+- GB is selectable as a live table variant
+- GB round flow supports chi, pon, kan, ron, tsumo, flowers, and supplement draws
+- the JNI bridge is wired to vendored native source
+- native fan, ting, and win entry points are implemented in source
+
+That does not guarantee every tournament edge case is permanently solved, but it does lock the implementation direction: GB rule behavior is meant to flow through the upstream-native path, not through an unrelated fallback ruleset.

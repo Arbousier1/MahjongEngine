@@ -1,94 +1,96 @@
-# GB Mahjong Branch Plan
+# GB Mahjong Status And Roadmap
 
-Branch: `feature/gb-mahjong`
+This document tracks the current implementation state of GB Mahjong in the `dev` branch and the most likely follow-up areas.
 
 Reference rules source:
 
 - <https://github.com/zheng-fan/GB-Mahjong>
-- See also: `docs/gb-mahjong-rules.md`
+- See also: [gb-mahjong-rules.md](./gb-mahjong-rules.md)
+- JNI implementation notes: [gb-mahjong-jni.md](./gb-mahjong-jni.md)
 
-## Reference Summary
+## Current Status
 
-The referenced `GB-Mahjong` project is a C++ library for Chinese Official Mahjong (Guobiao / GB Mahjong).
-According to its README, it is primarily based on the 1998 `中国麻将竞赛规则（试行）`, with scoring behavior aligned to common practice from large tournaments such as the World Mahjong Sports Games and major Chinese GB Mahjong events.
-This branch treats that repository as the authoritative gameplay/scoring target for the future GB variant.
+GB Mahjong is no longer a placeholder branch experiment. It is integrated into the live table/session runtime and can be selected as a real ruleset through table rule presets.
 
-The library explicitly provides:
+What is already landed:
 
-- fan counting
-- ting calculation
-- ASCII hand-string parsing
-- detailed per-fan composition output
-
-## What Is Already Landed
-
-The branch is no longer only planning work. The following pieces are already in place:
-
-- table/session runtime can switch between `RIICHI` and `GB`
-- `MahjongTableSession` now uses a round-controller abstraction instead of directly hard-binding to `RiichiRoundEngine`
+- table runtime can switch between `RIICHI` and `GB`
+- `MahjongTableSession` delegates round behavior through a round-controller abstraction
 - GB tables use `GbTableRoundController`
-- the GB JNI bridge is wired to a vendored copy of `zheng-fan/GB-Mahjong`
-- GB flow now supports:
-  - start/deal
-  - flower tiles and supplement draws
-  - discard
-  - ting prompts
-  - ron / tsumo
-  - chi / pon / open kan / concealed kan / added kan
-  - robbing-kong reaction windows
-  - multi-ron settlement aggregation
-- settlement UI has a GB-specific presentation branch
-- bot scheduling and command behavior are variant-aware at runtime
+- GB tables support flower tiles and supplement draws
+- GB reaction windows support chi, pon, open kan, concealed kan, added kan, ron, and tsumo
+- robbing-kong handling is wired into GB reaction flow
+- settlement UI has GB-aware output
+- bot scheduling is variant-aware
+- command handling hides or blocks ruleset-specific actions where appropriate
+- the native GB evaluator is wired through a vendored copy of `GB-Mahjong`
 
-## Remaining Gap
+## Important Boundaries
 
-This repository is currently tightly coupled to a riichi ruleset:
+GB support is live, but it should not be described as “done forever”.
 
-- round engine: `src/main/kotlin/doublemoon/mahjongcraft/paper/riichi/RiichiRoundEngine.kt`
-- rule model and settlement types: `src/main/kotlin/doublemoon/mahjongcraft/paper/riichi/model/`
-- runtime actions and table flow still expose riichi-specific concepts such as:
-  - riichi
-  - tsumo / ron
-  - red fives
-  - dora / ura dora
-  - chankan / rinshan / haitei handling
-- settlement UI and messages are also riichi-oriented
+The current implementation deliberately splits ownership like this:
 
-Because of that, GB support still is not “finished forever”. The remaining work is mostly calibration and production hardening rather than raw branch bootstrap.
+- upstream `GB-Mahjong` owns fan counting, ting analysis, and win evaluation rules
+- MahjongPaper owns table flow, spectator state, rendering, persistence, UI, and region-thread-safe scheduling
 
-## Remaining Implementation Focus
+That means future work is more about hardening, coverage, and compatibility than about bootstrapping the ruleset from scratch.
 
-1. Native build verification in CI and release packaging.
-   - the source is vendored and wired, but this workstation does not have a native toolchain
-2. Rule-detail calibration against more upstream cases.
-   - especially edge-case flags and tournament-specific settlement expectations
-3. Round progression beyond the current single-hand controller focus.
-   - prevailing wind / dealership advancement for long GB matches can still be refined
-4. More translation coverage for GB fan names and player-facing copy.
-5. Broader regression coverage.
-   - native integration tests once CI can build the JNI library
+## Stable Hotspots In The Codebase
 
-## Expected Hotspots
+When changing GB behavior, these files are usually the highest-signal places to inspect first:
 
-- `src/main/kotlin/doublemoon/mahjongcraft/paper/riichi/RiichiRoundEngine.kt`
 - `src/main/java/doublemoon/mahjongcraft/paper/table/core/MahjongTableSession.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/table/core/PersistentTableStore.java`
+- `src/main/java/doublemoon/mahjongcraft/paper/table/core/round/GbTableRoundController.java`
+- `src/main/java/doublemoon/mahjongcraft/paper/table/core/round/TableRoundController.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/command/MahjongCommand.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/ui/SettlementUi.java`
+- `src/main/java/doublemoon/mahjongcraft/paper/gb/runtime/GbNativeRulesGateway.java`
+- `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
 
-## JNI Direction
+## Remaining Roadmap
 
-This branch is now on a real JNI path rather than a stub-only path.
+### 1. Native Build And Release Hardening
 
-- JVM bridge docs: `docs/gb-mahjong-jni.md`
-- native project: `native/gbmahjong/`
-- upstream vendored source: `native/gbmahjong/vendor/GB-Mahjong/`
+The JNI source and Gradle tasks already exist, but release discipline still matters:
 
-## Practical Constraint
+- confirm native builds for each supported target platform
+- validate bundled extraction paths on Windows, Linux, and macOS
+- verify that packaged jars include the expected native sidecar files
 
-`GB-Mahjong` is a C++ project, not a JVM library, so it cannot be dropped into this plugin directly.
-With JNI chosen, the practical constraint is now mostly:
+### 2. Rule Calibration Against More Upstream Cases
 
-- native packaging for each target platform
-- CI verification of the shared library build
-- keeping the plugin-side table flow and the upstream fan engine aligned over time
+The implementation direction is locked to `GB-Mahjong`, but complex edge cases still benefit from more parity testing:
+
+- unusual flower-heavy hands
+- multiple simultaneous reactions
+- robbing-kong edge cases
+- low-level flag mapping around last tile / after kong / robbed kong situations
+
+### 3. Broader Acceptance Coverage
+
+The codebase already includes GB controller tests, but practical coverage should continue expanding:
+
+- multi-hand live validation
+- table persistence and reload behavior while GB tables exist
+- UI and localization checks for GB-specific settlement output
+- more regression coverage for bot behavior and suggestion stability
+
+### 4. Player-Facing Documentation And Translation
+
+GB support now deserves first-class docs and copy quality, not just developer notes:
+
+- keep command help and README coverage aligned with actual GB behavior
+- expand translated player-facing fan names and descriptions where needed
+- maintain a practical live checklist for real server validation
+
+## What This Is Not
+
+This project is not aiming at a vague “Chinese-style Mahjong” mode with loosely interpreted rules.
+
+The intended contract is:
+
+- MahjongPaper follows the gameplay/session model of this plugin
+- GB legality and fan behavior are anchored to the upstream `GB-Mahjong` rules engine
+
+If behavior diverges, the preferred fix is usually to examine request mapping, settlement translation, or plugin-side state flow before inventing a new local rule interpretation.
