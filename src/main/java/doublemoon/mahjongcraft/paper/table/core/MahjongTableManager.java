@@ -123,6 +123,7 @@ public final class MahjongTableManager implements Listener {
         this.directory.assignPlayer(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " joined table " + session.id());
         session.render();
+        this.syncCraftEngineTrackedEntities(player);
         this.sendReadyPrompt(player);
         return session;
     }
@@ -153,6 +154,7 @@ public final class MahjongTableManager implements Listener {
         this.directory.assignPlayer(playerId, session.id());
         this.plugin.debug().log("table", player.getName() + " joined table " + session.id() + " at " + wind.name());
         session.render();
+        this.syncCraftEngineTrackedEntities(player);
         this.sendReadyPrompt(player);
         return session;
     }
@@ -172,6 +174,7 @@ public final class MahjongTableManager implements Listener {
         this.directory.assignSpectator(player.getUniqueId(), session.id());
         this.plugin.debug().log("table", player.getName() + " is spectating table " + session.id());
         session.render();
+        this.syncCraftEngineTrackedEntities(player);
         return session;
     }
 
@@ -216,6 +219,13 @@ public final class MahjongTableManager implements Listener {
 
     public MahjongTableSession sessionForViewer(UUID playerId) {
         return this.directory.sessionForViewer(playerId);
+    }
+
+    private void syncCraftEngineTrackedEntities(Player player) {
+        if (player == null || this.plugin.craftEngine() == null) {
+            return;
+        }
+        this.plugin.scheduler().runEntity(player, () -> this.plugin.craftEngine().syncTrackedEntitiesFor(player));
     }
 
     public boolean isSpectating(UUID playerId) {

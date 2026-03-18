@@ -160,7 +160,7 @@ public final class TableDiceAnimationCoordinator {
             return this.spawnResultLabel(text);
         }
         this.resultLabel.text(text);
-        this.resultLabel.teleport(this.center.clone().add(0.0D, RESULT_LABEL_Y, 0.0D));
+        this.teleport(this.resultLabel, this.center.clone().add(0.0D, RESULT_LABEL_Y, 0.0D));
         return this.resultLabel;
     }
 
@@ -189,7 +189,7 @@ public final class TableDiceAnimationCoordinator {
         double x = baseX + Math.sin(progress * Math.PI * 2.2D + yawBias) * 0.08D * damping;
         double z = driftZ * damping + Math.cos(progress * Math.PI * 2.8D + yawBias) * 0.04D;
         double y = DIE_Y + Math.sin(progress * Math.PI * 4.0D) * 0.06D * damping;
-        display.teleport(this.center.clone().add(x, y, z));
+        this.teleport(display, this.center.clone().add(x, y, z));
         display.setTransformation(new Transformation(
             this.zeroTranslation,
             new Quaternionf().rotateXYZ(
@@ -203,7 +203,7 @@ public final class TableDiceAnimationCoordinator {
     }
 
     private void positionSettledDie(ItemDisplay display, double xOffset, float yaw) {
-        display.teleport(this.baseLocation(xOffset));
+        this.teleport(display, this.baseLocation(xOffset));
         display.setRotation(yaw, 0.0F);
         display.setTransformation(new Transformation(
             this.zeroTranslation,
@@ -239,6 +239,10 @@ public final class TableDiceAnimationCoordinator {
 
     private Location baseLocation(double xOffset) {
         return this.center.clone().add(xOffset, DIE_Y, 0.0D);
+    }
+
+    private void teleport(Entity entity, Location location) {
+        this.session.plugin().scheduler().teleport(entity, location);
     }
 
     private void finish() {
