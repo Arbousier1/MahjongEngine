@@ -111,15 +111,29 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/universal extract/windows extract/macos
-          LINUX_JAR="$(find artifacts/linux -name '*.jar' | head -n 1)"
-          WINDOWS_JAR="$(find artifacts/windows -name '*.jar' | head -n 1)"
-          MACOS_JAR="$(find artifacts/macos -name '*.jar' | head -n 1)"
+          select_main_jar() {
+            find "$1" -name '*.jar' \
+              ! -name '*-sources.jar' \
+              ! -name '*-dev.jar' \
+              | sort \
+              | head -n 1
+          }
+
+          LINUX_JAR="$(select_main_jar artifacts/linux)"
+          WINDOWS_JAR="$(select_main_jar artifacts/windows)"
+          MACOS_JAR="$(select_main_jar artifacts/macos)"
+
+          if [[ -z "$LINUX_JAR" || -z "$WINDOWS_JAR" || -z "$MACOS_JAR" ]]; then
+            echo "Could not find all platform plugin jars"
+            exit 1
+          fi
+
           UNIVERSAL_JAR="build/universal/$(basename "$LINUX_JAR" .jar)-universal.jar"
 
           cp "$LINUX_JAR" "$UNIVERSAL_JAR"
-          (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native/windows-x86_64)
-          (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native/macos-x86_64)
-          jar uf "$UNIVERSAL_JAR" -C extract/windows native/windows-x86_64 -C extract/macos native/macos-x86_64
+          (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native)
+          (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native)
+          jar uf "$UNIVERSAL_JAR" -C extract/windows native -C extract/macos native
 
       - name: Upload universal jar
         uses: actions/upload-artifact@v4
