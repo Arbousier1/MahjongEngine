@@ -77,7 +77,7 @@ public final class DisplayEntities {
         DisplayClickAction clickAction,
         boolean visibleByDefault
     ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, null, TILE_SCALE, null, null, true);
+        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, null, null, TILE_SCALE, null, null, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -88,7 +88,7 @@ public final class DisplayEntities {
         DisplayClickAction clickAction,
         boolean visibleByDefault
     ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, null, TILE_SCALE, null, null, true);
+        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, null, null, TILE_SCALE, null, null, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -101,7 +101,7 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null, true);
+        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -113,7 +113,21 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null, true);
+        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null, true);
+    }
+
+    public static TileDisplaySpec tileDisplaySpec(
+        Location location,
+        float yaw,
+        MahjongVariant variant,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers
+    ) {
+        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, TILE_SCALE, null, null, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -129,7 +143,7 @@ public final class DisplayEntities {
         Color glowColor,
         Display.Billboard billboard
     ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, true);
+        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -144,7 +158,7 @@ public final class DisplayEntities {
         Color glowColor,
         Display.Billboard billboard
     ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, true);
+        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, true);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -161,7 +175,7 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, smoothMovement);
+        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
     }
 
     public static TileDisplaySpec tileDisplaySpec(
@@ -177,7 +191,7 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, smoothMovement);
+        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
     }
 
     public static LabelSpec labelSpec(Plugin plugin, Location location, Component text, Color color) {
@@ -232,6 +246,7 @@ public final class DisplayEntities {
         DisplayClickAction clickAction,
         boolean visibleByDefault,
         Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
         float scale,
         Color glowColor,
         Display.Billboard billboard,
@@ -239,6 +254,7 @@ public final class DisplayEntities {
     ) implements EntitySpec {
         public TileDisplaySpec {
             privateViewers = privateViewers == null ? null : List.copyOf(privateViewers);
+            hiddenViewers = hiddenViewers == null ? null : List.copyOf(hiddenViewers);
         }
 
         @Override
@@ -252,6 +268,7 @@ public final class DisplayEntities {
                 this.clickAction,
                 this.visibleByDefault,
                 this.privateViewers,
+                this.hiddenViewers,
                 this.scale,
                 this.glowColor,
                 this.billboard,
@@ -363,7 +380,7 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null);
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -376,7 +393,22 @@ public final class DisplayEntities {
         boolean visibleByDefault,
         Collection<UUID> privateViewers
     ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, TILE_SCALE, null, null);
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongVariant variant,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, TILE_SCALE, null, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -392,7 +424,24 @@ public final class DisplayEntities {
         float scale,
         Color glowColor
     ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, null);
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongVariant variant,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -407,7 +456,23 @@ public final class DisplayEntities {
         float scale,
         Color glowColor
     ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, null);
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, null);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -424,7 +489,25 @@ public final class DisplayEntities {
         Color glowColor,
         Display.Billboard billboard
     ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, true);
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongVariant variant,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, true);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -440,7 +523,24 @@ public final class DisplayEntities {
         Color glowColor,
         Display.Billboard billboard
     ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, true);
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard
+    ) {
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, true);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -458,7 +558,26 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return spawnTileDisplayInternal(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, smoothMovement);
+        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongVariant variant,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard,
+        boolean smoothMovement
+    ) {
+        return spawnTileDisplayInternal(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -475,7 +594,25 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return spawnTileDisplayInternal(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, scale, glowColor, billboard, smoothMovement);
+        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
+    }
+
+    public static ItemDisplay spawnTileDisplay(
+        Plugin plugin,
+        Location location,
+        float yaw,
+        MahjongTile tile,
+        TileRenderPose pose,
+        DisplayClickAction clickAction,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        float scale,
+        Color glowColor,
+        Display.Billboard billboard,
+        boolean smoothMovement
+    ) {
+        return spawnTileDisplayInternal(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
     }
 
     private static ItemDisplay spawnTileDisplayInternal(
@@ -488,6 +625,7 @@ public final class DisplayEntities {
         DisplayClickAction clickAction,
         boolean visibleByDefault,
         Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
         float scale,
         Color glowColor,
         Display.Billboard billboard,
@@ -540,6 +678,9 @@ public final class DisplayEntities {
                 DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
             }
             syncPrivateVisibility(plugin, display, privateViewers);
+        } else if (hiddenViewers != null && !hiddenViewers.isEmpty()) {
+            DisplayVisibilityRegistry.registerExcluded(display.getEntityId(), hiddenViewers);
+            syncExcludedVisibility(plugin, display, hiddenViewers, visibleByDefault);
         }
         registerForCraftEngineCulling(plugin, display);
         return display;
@@ -724,7 +865,7 @@ public final class DisplayEntities {
         ));
         display.setItemStack(tileItem(plugin, spec.variant(), spec.tile(), spec.pose().faceDown()));
         applyClickAction(display.getEntityId(), spec.clickAction());
-        applyPrivateVisibility(plugin, display, spec.privateViewers(), spec.visibleByDefault());
+        applyTileVisibility(plugin, display, spec.privateViewers(), spec.hiddenViewers(), spec.visibleByDefault());
     }
 
     private static void applyLabel(Plugin plugin, TextDisplay display, LabelSpec spec) {
@@ -769,10 +910,48 @@ public final class DisplayEntities {
         TableDisplayRegistry.register(entityId, clickAction);
     }
 
+    private static void applyTileVisibility(
+        Plugin plugin,
+        Entity entity,
+        Collection<UUID> privateViewers,
+        Collection<UUID> hiddenViewers,
+        boolean visibleByDefault
+    ) {
+        if (privateViewers != null && hiddenViewers != null && !hiddenViewers.isEmpty()) {
+            throw new IllegalArgumentException("Tile visibility cannot define both private viewers and hidden viewers");
+        }
+        boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
+        boolean hiddenSpecific = hiddenViewers != null && !hiddenViewers.isEmpty();
+        entity.setVisibleByDefault(!privateOnly && visibleByDefault);
+        if (privateViewers != null) {
+            if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
+                return;
+            }
+            if (privateViewers.isEmpty()) {
+                DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
+                syncPrivateVisibility(plugin, entity, privateViewers);
+                return;
+            }
+            DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
+            syncPrivateVisibility(plugin, entity, privateViewers);
+            return;
+        }
+        if (hiddenSpecific) {
+            if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesExcluded(entity.getEntityId(), hiddenViewers)) {
+                return;
+            }
+            DisplayVisibilityRegistry.registerExcluded(entity.getEntityId(), hiddenViewers);
+            syncExcludedVisibility(plugin, entity, hiddenViewers, visibleByDefault);
+            return;
+        }
+        DisplayVisibilityRegistry.unregister(entity.getEntityId());
+        syncPublicVisibility(plugin, entity);
+    }
+
     private static void applyPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
         boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
-        if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matches(entity.getEntityId(), privateViewers)) {
+        if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
             return;
         }
         if (privateViewers == null) {
@@ -787,6 +966,20 @@ public final class DisplayEntities {
         }
         DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
         syncPrivateVisibility(plugin, entity, privateViewers);
+    }
+
+    private static void syncExcludedVisibility(Plugin plugin, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
+        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+            runForViewer(plugin, player, () -> {
+                if (hiddenViewers.contains(player.getUniqueId())) {
+                    player.hideEntity(plugin, entity);
+                } else if (visibleByDefault) {
+                    player.showEntity(plugin, entity);
+                } else {
+                    player.hideEntity(plugin, entity);
+                }
+            });
+        }
     }
 
     private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {

@@ -2,9 +2,11 @@ package doublemoon.mahjongcraft.paper.render
 
 import doublemoon.mahjongcraft.paper.model.MahjongTile
 import doublemoon.mahjongcraft.paper.model.SeatWind
+import doublemoon.mahjongcraft.paper.render.display.DisplayEntities
 import doublemoon.mahjongcraft.paper.render.layout.DiscardLayout
 import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout
 import doublemoon.mahjongcraft.paper.render.layout.WallLayout
+import doublemoon.mahjongcraft.paper.render.scene.TableRenderer
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
 import java.util.EnumMap
@@ -12,6 +14,9 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.bukkit.Location
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class TableRendererTest {
     private val tileWidth = 0.1125
@@ -146,6 +151,23 @@ class TableRendererTest {
         }
 
         assertEquals(1, changedSlots)
+    }
+
+    @Test
+    fun `public hand specs hide owner while remaining public to others`() {
+        val renderer = TableRenderer()
+        val snapshot = startedSnapshot()
+        val seat = snapshot.seat(SeatWind.EAST)
+        val plan = TableRenderLayout.precompute(snapshot).seat(SeatWind.EAST)
+        val session = mock(MahjongTableSession::class.java)
+
+        `when`(session.center()).thenReturn(Location(null, snapshot.centerX(), snapshot.centerY(), snapshot.centerZ()))
+        `when`(session.currentVariant()).thenReturn(doublemoon.mahjongcraft.paper.table.core.MahjongVariant.RIICHI)
+
+        val spec = renderer.renderHandPublicTileSpecs(session, snapshot, seat, plan, 0).single() as DisplayEntities.TileDisplaySpec
+
+        assertEquals(null, spec.privateViewers())
+        assertEquals(listOf(seat.playerId()), spec.hiddenViewers())
     }
 
     private fun startedSnapshot(): MahjongTableSession.RenderSnapshot {

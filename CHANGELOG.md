@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2 - 2026-03-18
+
+Folia dice animation hotfix release.
+
+- Fixed opening dice animation display teleports so Folia region tasks now use async-safe entity teleport handling instead of synchronous teleports.
+- Kept the existing Paper compatibility path unchanged by routing the dice animation updates through the shared scheduler teleport wrapper.
+
 ## 0.5.1 - 2026-03-18
 
 Folia compatibility hotfix release.

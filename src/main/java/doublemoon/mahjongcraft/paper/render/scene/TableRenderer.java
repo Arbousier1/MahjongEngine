@@ -826,7 +826,8 @@ public final class TableRenderer {
                 DisplayEntities.TileRenderPose.STANDING,
                 null,
                 true,
-                seat.viewerIdsExcluding()
+                null,
+                List.of(seat.playerId())
             ));
         }
         return spawned;
@@ -853,7 +854,8 @@ public final class TableRenderer {
             DisplayEntities.TileRenderPose.STANDING,
             null,
             true,
-            seat.viewerIdsExcluding()
+            null,
+            List.of(seat.playerId())
         ));
     }
 
@@ -877,7 +879,8 @@ public final class TableRenderer {
             DisplayEntities.TileRenderPose.STANDING,
             null,
             true,
-            seat.viewerIdsExcluding()
+            null,
+            List.of(seat.playerId())
         ));
     }
 

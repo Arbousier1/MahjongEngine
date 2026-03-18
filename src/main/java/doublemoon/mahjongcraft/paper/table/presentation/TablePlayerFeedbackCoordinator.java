@@ -98,13 +98,20 @@ public final class TablePlayerFeedbackCoordinator {
         }
         this.session.resetReadyStateForNextRoundForFeedback();
         this.session.render();
-        this.openSettlementForViewers();
+        this.openSettlementForPlayers();
         this.session.cancelNextRoundCountdownForFeedback();
         this.session.promptPlayersToReadyForFeedback();
     }
 
-    private void openSettlementForViewers() {
-        for (Player player : this.session.viewers()) {
+    private void openSettlementForPlayers() {
+        for (UUID playerId : this.session.seatIds()) {
+            if (playerId == null || this.session.isBot(playerId)) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) {
+                continue;
+            }
             this.session.openSettlementUi(player);
             if (!this.session.isRoundFinished()) {
                 this.session.plugin().messages().send(player, "table.round_finished_ready");
