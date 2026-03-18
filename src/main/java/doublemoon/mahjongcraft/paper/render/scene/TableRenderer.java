@@ -97,7 +97,7 @@ public final class TableRenderer {
         Entity tableVisual = spawnTableVisual(session, tableCenter);
         if (tableVisual != null) {
             spawned.add(tableVisual);
-            spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+            spawned.addAll(this.renderTableHitboxes(session, tableCenter, true));
             return spawned;
         }
 
@@ -157,7 +157,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_HEIGHT,
             (float) borderSpanZ
         ));
-        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+        spawned.addAll(this.renderTableHitboxes(session, tableCenter, false));
         return spawned;
     }
 
@@ -173,7 +173,7 @@ public final class TableRenderer {
         Entity tableVisual = spawnTableVisual(session, tableCenter);
         if (tableVisual != null) {
             spawned.add(tableVisual);
-            spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+            spawned.addAll(this.renderTableHitboxes(session, tableCenter, true));
             return spawned;
         }
 
@@ -233,7 +233,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_HEIGHT,
             (float) borderSpanZ
         ));
-        spawned.addAll(this.renderTableHitboxes(session, tableCenter));
+        spawned.addAll(this.renderTableHitboxes(session, tableCenter, false));
         return spawned;
     }
 
@@ -1075,7 +1075,9 @@ public final class TableRenderer {
         String seatFurnitureId = configuredSeatFurnitureId(session);
         if (seatFurnitureId != null) {
             Entity furniture = spawnSeatFurniture(session, seatBaseLocation(handBase, wind), wind, seatFurnitureId, action);
-            return furniture == null ? List.of() : List.of(furniture);
+            if (furniture != null) {
+                return List.of(furniture);
+            }
         }
 
         List<Entity> spawned = new ArrayList<>(3);
@@ -1212,8 +1214,8 @@ public final class TableRenderer {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private List<Entity> renderTableHitboxes(MahjongTableSession session, Location tableCenter) {
-        if (configuredTableFurnitureId(session) != null) {
+    private List<Entity> renderTableHitboxes(MahjongTableSession session, Location tableCenter, boolean usingFurnitureVisual) {
+        if (usingFurnitureVisual) {
             return List.of();
         }
         Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(tableCenter.clone());
