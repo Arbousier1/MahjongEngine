@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 - 2026-03-18
+
+Folia compatibility hotfix release.
+
+- Fixed CraftEngine viewer visibility scheduling so Folia no longer reads display-entity state from the viewer region thread during culling show and hide callbacks.
+- Reworked tracked cullable metadata to use cached entity ids and UUIDs in cross-thread visibility paths, avoiding `Thread failed main thread check` crashes on active tables.
+
 ## 0.5.0 - 2026-03-18
 
 Folia performance and opening flow release.
