@@ -39,9 +39,9 @@ final class GbMahjongNativeLibrary {
             return DEFAULT_LIBRARY_NAME + ".dll";
         }
         if (normalized.contains("mac") || normalized.contains("darwin")) {
-            return "lib" + DEFAULT_LIBRARY_NAME + ".dylib";
+            return DEFAULT_LIBRARY_NAME + ".dylib";
         }
-        return "lib" + DEFAULT_LIBRARY_NAME + ".so";
+        return DEFAULT_LIBRARY_NAME + ".so";
     }
 
     private static LoadState loadLibrary() {

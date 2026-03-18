@@ -27,8 +27,8 @@ fun nativeLibraryFileName(osName: String): String {
     val normalized = osName.trim().lowercase()
     return when {
         "win" in normalized -> "mahjongpaper_gb.dll"
-        "mac" in normalized || "darwin" in normalized -> "libmahjongpaper_gb.dylib"
-        else -> "libmahjongpaper_gb.so"
+        "mac" in normalized || "darwin" in normalized -> "mahjongpaper_gb.dylib"
+        else -> "mahjongpaper_gb.so"
     }
 }
 

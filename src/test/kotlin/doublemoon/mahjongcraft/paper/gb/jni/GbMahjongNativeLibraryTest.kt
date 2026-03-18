@@ -12,12 +12,12 @@ class GbMahjongNativeLibraryTest {
 
     @Test
     fun `linux library name uses so`() {
-        assertEquals("libmahjongpaper_gb.so", GbMahjongNativeLibrary.platformLibraryFileName("Linux"))
+        assertEquals("mahjongpaper_gb.so", GbMahjongNativeLibrary.platformLibraryFileName("Linux"))
     }
 
     @Test
     fun `mac library name uses dylib`() {
-        assertEquals("libmahjongpaper_gb.dylib", GbMahjongNativeLibrary.platformLibraryFileName("Mac OS X"))
+        assertEquals("mahjongpaper_gb.dylib", GbMahjongNativeLibrary.platformLibraryFileName("Mac OS X"))
     }
 
     @Test
