@@ -3,8 +3,10 @@ package doublemoon.mahjongcraft.paper.table.render;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -19,9 +21,15 @@ public final class TableRenderSnapshotFactory {
             .distinct()
             .toList();
         Set<UUID> onlineViewerIdSet = new HashSet<>(onlineViewerIds);
+        Map<UUID, String> viewerMembershipSignatures = new HashMap<>();
+        Map<UUID, List<UUID>> viewerIdsExcluding = new HashMap<>();
+        for (UUID viewerId : onlineViewerIds) {
+            viewerMembershipSignatures.put(viewerId, this.viewerMembershipSignature(onlineViewerIds, viewerId));
+            viewerIdsExcluding.put(viewerId, this.viewerIdsExcluding(onlineViewerIds, viewerId));
+        }
         EnumMap<SeatWind, MahjongTableSession.SeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {
-            seats.put(wind, this.captureSeatSnapshot(session, wind, onlineViewerIds, onlineViewerIdSet));
+            seats.put(wind, this.captureSeatSnapshot(session, wind, onlineViewerIdSet, viewerMembershipSignatures, viewerIdsExcluding));
         }
         return new MahjongTableSession.RenderSnapshot(
             version,
@@ -32,7 +40,7 @@ public final class TableRenderSnapshotFactory {
             tableCenter.getZ(),
             session.isStarted(),
             session.isRoundFinished(),
-            session.remainingWall().size(),
+            session.remainingWallCount(),
             session.kanCount(),
             session.dicePoints(),
             session.roundIndex(),
@@ -53,8 +61,9 @@ public final class TableRenderSnapshotFactory {
     private MahjongTableSession.SeatRenderSnapshot captureSeatSnapshot(
         MahjongTableSession session,
         SeatWind wind,
-        List<UUID> onlineViewerIds,
-        Set<UUID> onlineViewerIdSet
+        Set<UUID> onlineViewerIdSet,
+        Map<UUID, String> viewerMembershipSignatures,
+        Map<UUID, List<UUID>> viewerIdsExcluding
     ) {
         UUID playerId = session.playerAt(wind);
         boolean occupied = playerId != null;
@@ -68,11 +77,11 @@ public final class TableRenderSnapshotFactory {
             occupied && session.isReady(playerId),
             occupied && session.isQueuedToLeave(playerId),
             occupied && onlineViewerIdSet.contains(playerId),
-            occupied ? this.viewerMembershipSignature(onlineViewerIds, playerId) : "",
+            occupied ? viewerMembershipSignatures.getOrDefault(playerId, "") : "",
             occupied ? session.selectedHandTileIndex(playerId) : -1,
             occupied ? session.riichiDiscardIndex(playerId) : -1,
             session.stickLayoutCount(wind),
-            occupied ? this.viewerIdsExcluding(onlineViewerIds, playerId) : List.of(),
+            occupied ? viewerIdsExcluding.getOrDefault(playerId, List.of()) : List.of(),
             occupied ? session.hand(playerId) : List.of(),
             occupied ? session.discards(playerId) : List.of(),
             occupied ? session.fuuro(playerId) : List.of(),

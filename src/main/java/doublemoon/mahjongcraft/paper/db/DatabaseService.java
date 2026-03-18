@@ -261,7 +261,7 @@ public final class DatabaseService {
             statement.setString(3, session.roundDisplay());
             statement.setString(4, session.dealerName());
             statement.setString(5, resolution.getDraw() == null ? null : resolution.getDraw().name());
-            statement.setInt(6, session.remainingWall().size());
+            statement.setInt(6, session.remainingWallCount());
             statement.setInt(7, session.dicePoints());
             statement.setString(8, this.joinTokens(session.doraIndicators()));
             statement.setString(9, this.joinTokens(session.uraDoraIndicators()));

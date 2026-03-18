@@ -1,4 +1,5 @@
 ﻿import org.gradle.api.GradleException
+import org.gradle.api.tasks.testing.Test
 import java.io.File
 
 plugins {
@@ -10,7 +11,7 @@ plugins {
 }
 
 group = "doublemoon.mahjongcraft"
-version = "0.4.3"
+version = "0.5.0"
 
 val kotlinRuntimeVersion = "2.2.0"
 val kotlinSerializationVersion = "1.9.0"
@@ -745,9 +746,31 @@ tasks {
     }
 
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            excludeTags("perf")
+        }
         jvmArgs("-Dnet.bytebuddy.experimental=true")
         finalizedBy(jacocoTestReport)
+    }
+
+    register<Test>("perfTest") {
+        group = "verification"
+        description = "Runs performance benchmarks tagged with @Tag(\"perf\")."
+        dependsOn(testClasses)
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+        useJUnitPlatform {
+            includeTags("perf")
+        }
+        jvmArgs("-Dnet.bytebuddy.experimental=true")
+        systemProperty("mahjong.perf.warmupIterations", providers.gradleProperty("perfWarmups").orElse("5").get())
+        systemProperty("mahjong.perf.measurementIterations", providers.gradleProperty("perfIterations").orElse("10").get())
+        systemProperty("mahjong.perf.batchSize", providers.gradleProperty("perfBatchSize").orElse("200").get())
+        systemProperty(
+            "mahjong.perf.reportDir",
+            layout.buildDirectory.dir("reports/performance").get().asFile.absolutePath
+        )
+        shouldRunAfter(test)
     }
 
     assemble {

@@ -772,6 +772,9 @@ public final class DisplayEntities {
     private static void applyPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
         boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
+        if (DisplayVisibilityRegistry.matches(entity.getEntityId(), privateViewers)) {
+            return;
+        }
         if (privateViewers == null) {
             DisplayVisibilityRegistry.unregister(entity.getEntityId());
             syncPublicVisibility(plugin, entity);

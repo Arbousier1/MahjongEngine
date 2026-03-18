@@ -47,6 +47,11 @@ public final class RiichiTableRoundController implements TableRoundController {
     }
 
     @Override
+    public void setPendingDiceRoll(OpeningDiceRoll diceRoll) {
+        this.engine.setPendingDiceRoll(diceRoll);
+    }
+
+    @Override
     public boolean discard(UUID playerId, int tileIndex) {
         return playerId != null && this.engine.discard(playerId.toString(), tileIndex);
     }
@@ -177,6 +182,11 @@ public final class RiichiTableRoundController implements TableRoundController {
         List<doublemoon.mahjongcraft.paper.model.MahjongTile> tiles = new ArrayList<>(this.engine.getWall().size());
         this.engine.getWall().forEach(tile -> tiles.add(doublemoon.mahjongcraft.paper.model.MahjongTile.UNKNOWN));
         return List.copyOf(tiles);
+    }
+
+    @Override
+    public int remainingWallCount() {
+        return this.engine.getWall().size();
     }
 
     @Override

@@ -49,7 +49,7 @@ public final class TableStateSoundCoordinator {
 
     private void syncTurnSound() {
         String turnFingerprint = this.session.isStarted()
-            ? this.session.currentSeat() + ":" + this.session.remainingWall().size() + ":" + this.session.pendingReactionFingerprint()
+            ? this.session.currentSeat() + ":" + this.session.remainingWallCount() + ":" + this.session.pendingReactionFingerprint()
             : "";
         if (!turnFingerprint.isBlank() && !turnFingerprint.equals(this.lastTurnSoundFingerprint)) {
             this.broadcastSound(Sound.UI_BUTTON_CLICK, 0.5F, 1.6F);

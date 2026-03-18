@@ -24,6 +24,9 @@ public interface TableRoundController {
 
     void startRound();
 
+    default void setPendingDiceRoll(OpeningDiceRoll diceRoll) {
+    }
+
     boolean discard(UUID playerId, int tileIndex);
 
     default boolean declareRiichi(UUID playerId, int tileIndex) {
@@ -73,6 +76,10 @@ public interface TableRoundController {
     List<MahjongTile> discards(UUID playerId);
 
     List<MahjongTile> remainingWall();
+
+    default int remainingWallCount() {
+        return this.remainingWall().size();
+    }
 
     List<MeldView> fuuro(UUID playerId);
 

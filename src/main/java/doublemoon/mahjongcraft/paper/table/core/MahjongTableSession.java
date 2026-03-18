@@ -14,8 +14,10 @@ import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongSoulScoring;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.table.core.round.GbTableRoundController;
+import doublemoon.mahjongcraft.paper.table.core.round.OpeningDiceRoll;
 import doublemoon.mahjongcraft.paper.table.core.round.RiichiTableRoundController;
 import doublemoon.mahjongcraft.paper.table.core.round.TableRoundController;
+import doublemoon.mahjongcraft.paper.table.presentation.TableDiceAnimationCoordinator;
 import doublemoon.mahjongcraft.paper.table.presentation.TablePlayerFeedbackCoordinator;
 import doublemoon.mahjongcraft.paper.table.presentation.TablePublicTextFactory;
 import doublemoon.mahjongcraft.paper.table.presentation.TableStateSoundCoordinator;
@@ -61,6 +63,7 @@ public final class MahjongTableSession {
     private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
     private MahjongRule configuredRule;
     private TableRoundController roundController;
+    private boolean roundStartInProgress;
     private doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
     private long nextRoundDeadlineMillis;
@@ -71,6 +74,7 @@ public final class MahjongTableSession {
     private final TableRenderInspectCoordinator renderInspectCoordinator;
     private final TableLifecycleCoordinator lifecycleCoordinator;
     private final TableViewerSnapshotFactory viewerSnapshotFactory;
+    private final TableDiceAnimationCoordinator diceAnimationCoordinator;
     private final TablePlayerFeedbackCoordinator playerFeedbackCoordinator;
     private final TableStateSoundCoordinator stateSoundCoordinator;
     private final TablePublicTextFactory publicTextFactory;
@@ -107,6 +111,7 @@ public final class MahjongTableSession {
         this.renderInspectCoordinator = new TableRenderInspectCoordinator(this);
         this.lifecycleCoordinator = new TableLifecycleCoordinator(this);
         this.viewerSnapshotFactory = new TableViewerSnapshotFactory(this);
+        this.diceAnimationCoordinator = new TableDiceAnimationCoordinator(this);
         this.playerFeedbackCoordinator = new TablePlayerFeedbackCoordinator(this);
         this.stateSoundCoordinator = new TableStateSoundCoordinator(this);
         this.publicTextFactory = new TablePublicTextFactory(this);
@@ -167,7 +172,7 @@ public final class MahjongTableSession {
     }
 
     public boolean addBot() {
-        if (this.isStarted() || this.size() >= 4) {
+        if (this.isStarted() || this.roundStartInProgress || this.size() >= 4) {
             return false;
         }
         UUID botId = this.participants.createNextBotId(this.id);
@@ -180,7 +185,7 @@ public final class MahjongTableSession {
     }
 
     public boolean removeBot() {
-        if (this.isStarted()) {
+        if (this.isStarted() || this.roundStartInProgress) {
             return false;
         }
         UUID playerId = this.participants.removeLastBot();
@@ -194,7 +199,7 @@ public final class MahjongTableSession {
     }
 
     public boolean removePlayer(UUID playerId) {
-        if (this.roundController != null && this.roundController.started()) {
+        if (this.roundStartInProgress || (this.roundController != null && this.roundController.started())) {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
@@ -260,7 +265,7 @@ public final class MahjongTableSession {
     }
 
     public ReadyResult toggleReady(UUID playerId) {
-        if (playerId == null || !this.contains(playerId) || this.isBot(playerId) || this.isStarted()) {
+        if (playerId == null || !this.contains(playerId) || this.isBot(playerId) || this.isStarted() || this.roundStartInProgress) {
             return ReadyResult.BLOCKED;
         }
 
@@ -283,6 +288,9 @@ public final class MahjongTableSession {
     }
 
     public void startRound() {
+        if (this.roundStartInProgress) {
+            return;
+        }
         if (this.size() != 4) {
             throw new IllegalStateException("A table needs exactly 4 players");
         }
@@ -299,16 +307,19 @@ public final class MahjongTableSession {
             this.roundController = this.createRoundController();
         }
 
-        this.roundController.startRound();
         this.selectedHandTileIndices.clear();
         this.clearLastPublicDiscard();
         this.playerFeedbackCoordinator.resetForRoundStart();
         this.regionDisplayCoordinator.invalidateFingerprints();
         this.stateSoundCoordinator.resetForRoundStart();
-        this.render();
-        if (this.plugin.tableManager() != null) {
-            this.plugin.tableManager().startSeatWatchdog(this, 60L);
+        this.roundStartInProgress = true;
+        OpeningDiceRoll diceRoll = OpeningDiceRoll.random();
+        this.roundController.setPendingDiceRoll(diceRoll);
+        if (!this.diceAnimationCoordinator.shouldAnimate()) {
+            this.completeRoundStart();
+            return;
         }
+        this.diceAnimationCoordinator.start(diceRoll, this::completeRoundStart);
     }
 
     public boolean discard(UUID playerId, int tileIndex) {
@@ -394,6 +405,7 @@ public final class MahjongTableSession {
 
     public void clearDisplays() {
         this.renderCoordinator.clearDisplays();
+        this.diceAnimationCoordinator.clear();
     }
 
     public void applyRenderPrecompute(RenderPrecomputeResult result) {
@@ -438,6 +450,8 @@ public final class MahjongTableSession {
     }
 
     public void clearRoundTrackingState() {
+        this.roundStartInProgress = false;
+        this.diceAnimationCoordinator.clear();
         this.clearLastPublicDiscard();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
@@ -720,6 +734,10 @@ public final class MahjongTableSession {
         return this.roundController == null ? List.of() : this.roundController.remainingWall();
     }
 
+    public int remainingWallCount() {
+        return this.roundController == null ? 0 : this.roundController.remainingWallCount();
+    }
+
     public List<MeldView> fuuro(UUID playerId) {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.fuuro(playerId);
     }
@@ -854,6 +872,10 @@ public final class MahjongTableSession {
         return this.roundController != null && this.roundController.started();
     }
 
+    public boolean isRoundStartInProgress() {
+        return this.roundStartInProgress;
+    }
+
     public RiichiRoundEngine engine() {
         return this.roundController == null ? null : this.roundController.asRiichiEngine();
     }
@@ -949,7 +971,7 @@ public final class MahjongTableSession {
     public void tick() {
         this.renderCoordinator.restoreDisplaysIfNeeded();
         this.viewerPresentation.flushIfNeeded();
-        if (this.roundController == null || this.roundController.started() || this.roundController.lastResolution() == null) {
+        if (this.roundStartInProgress || this.roundController == null || this.roundController.started() || this.roundController.lastResolution() == null) {
             return;
         }
         this.processDeferredLeaves();
@@ -1298,6 +1320,19 @@ public final class MahjongTableSession {
         this.viewerPresentation.markDirty();
     }
 
+    private void completeRoundStart() {
+        if (this.roundController == null) {
+            this.roundStartInProgress = false;
+            return;
+        }
+        this.roundController.startRound();
+        this.roundStartInProgress = false;
+        this.render();
+        if (this.plugin.tableManager() != null) {
+            this.plugin.tableManager().startSeatWatchdog(this, 60L);
+        }
+    }
+
     public void completeRenderFlush() {
         this.playerFeedbackCoordinator.sync();
         this.viewerPresentation.flushIfNeeded();
@@ -1533,7 +1568,7 @@ public final class MahjongTableSession {
     }
 
     private boolean maybeStartRoundIfReady() {
-        if (this.isStarted() || this.size() != 4) {
+        if (this.isStarted() || this.roundStartInProgress || this.size() != 4) {
             return false;
         }
         for (SeatWind wind : SeatWind.values()) {

@@ -29,6 +29,17 @@ public final class DisplayVisibilityRegistry {
         return viewers == null || viewers.contains(viewerId);
     }
 
+    public static boolean matches(int entityId, Collection<UUID> viewers) {
+        Set<UUID> current = VIEWERS.get(entityId);
+        if (viewers == null) {
+            return current == null;
+        }
+        if (viewers.isEmpty()) {
+            return current != null && current.isEmpty();
+        }
+        return current != null && current.equals(Set.copyOf(viewers));
+    }
+
     public static void unregister(int entityId) {
         VIEWERS.remove(entityId);
     }

@@ -209,7 +209,7 @@ public final class TableViewerSnapshotFactory {
 
         String round = this.session.roundDisplay(locale);
         String turn = this.session.currentTurnDisplayName();
-        int wall = this.session.remainingWall().size();
+        int wall = this.session.remainingWallCount();
         String roleLabel = this.viewerRoleLabel(locale, viewerId);
         String lastDiscardSummary = this.lastDiscardSummary(locale);
         ReactionOptions options = this.session.availableReactions(viewerId);
@@ -319,7 +319,7 @@ public final class TableViewerSnapshotFactory {
             return builder.field("no-engine").toString();
         }
         builder.field(this.session.roundDisplay())
-            .field(this.session.remainingWall().size())
+            .field(this.session.remainingWallCount())
             .field(this.session.currentSeat())
             .field(this.session.lastPublicDiscardPlayerId())
             .field(this.session.lastPublicDiscardTile())
@@ -337,10 +337,11 @@ public final class TableViewerSnapshotFactory {
         if (!this.session.isStarted()) {
             return this.session.size() == 0 ? 0.0F : Math.max(0.0F, Math.min(1.0F, this.session.readyCount() / (float) this.session.size()));
         }
-        if (this.session.remainingWall().isEmpty()) {
+        int remainingWallCount = this.session.remainingWallCount();
+        if (remainingWallCount <= 0) {
             return 0.0F;
         }
-        return Math.max(0.03F, Math.min(1.0F, this.session.remainingWall().size() / 70.0F));
+        return Math.max(0.03F, Math.min(1.0F, remainingWallCount / 70.0F));
     }
 
     private BossBar.Color hudColor(UUID viewerId) {

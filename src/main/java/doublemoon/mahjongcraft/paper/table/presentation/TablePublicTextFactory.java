@@ -147,7 +147,7 @@ public final class TablePublicTextFactory {
                 locale,
                 "table.public.center_active",
                 this.session.plugin().messages().tag("round", this.roundDisplay(locale)),
-                this.session.plugin().messages().number(locale, "wall", this.session.remainingWall().size()),
+                this.session.plugin().messages().number(locale, "wall", this.session.remainingWallCount()),
                 this.session.plugin().messages().number(locale, "dice", this.session.dicePoints()),
                 this.session.plugin().messages().tag("dealer", this.dealerName(locale)),
                 this.session.plugin().messages().tag("last_discard", this.centerLastDiscardSummary(locale))

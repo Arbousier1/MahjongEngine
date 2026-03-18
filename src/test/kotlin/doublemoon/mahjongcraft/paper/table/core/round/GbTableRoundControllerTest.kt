@@ -18,6 +18,8 @@ import doublemoon.mahjongcraft.paper.riichi.ReactionType
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule
 import java.util.EnumMap
 import java.util.UUID
+import java.util.function.IntSupplier
+import java.util.function.Supplier
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,6 +38,18 @@ class GbTableRoundControllerTest {
         assertEquals(13, controller.hand(player(SeatWind.SOUTH)).size)
         assertEquals(13, controller.hand(player(SeatWind.WEST)).size)
         assertEquals(13, controller.hand(player(SeatWind.NORTH)).size)
+    }
+
+    @Test
+    fun `gb round rolls dice and breaks wall from the matching side`() {
+        val sourceWall = deterministicWall()
+        val controller = controller(wall = sourceWall)
+        controller.setPendingDiceRoll(OpeningDiceRoll(3, 4))
+
+        controller.startRound()
+
+        assertEquals(7, controller.dicePoints())
+        assertEquals(reorderWall(sourceWall, 7, 0).drop(53), currentWall(controller))
     }
 
     @Test
@@ -502,7 +516,11 @@ class GbTableRoundControllerTest {
         assertEquals("RON", controller.lastResolution()?.title)
     }
 
-    private fun controller(gateway: GbNativeRulesGateway = defaultGateway()): GbTableRoundController {
+    private fun controller(
+        gateway: GbNativeRulesGateway = defaultGateway(),
+        dicePoints: Int? = null,
+        wall: List<MahjongTile>? = null
+    ): GbTableRoundController {
         val seats = EnumMap<SeatWind, UUID>(SeatWind::class.java)
         val names = mutableMapOf<UUID, String>()
         SeatWind.values().forEach { wind ->
@@ -510,7 +528,18 @@ class GbTableRoundControllerTest {
             seats[wind] = playerId
             names[playerId] = wind.name
         }
-        return GbTableRoundController(MahjongRule(), seats, names, gateway)
+        return if (dicePoints == null && wall == null) {
+            GbTableRoundController(MahjongRule(), seats, names, gateway)
+        } else {
+            GbTableRoundController(
+                MahjongRule(),
+                seats,
+                names,
+                gateway,
+                IntSupplier { dicePoints ?: 7 },
+                Supplier { wall ?: deterministicWall() }
+            )
+        }
     }
 
     private fun defaultGateway(): GbNativeRulesGateway = object : GbNativeRulesGateway() {
@@ -569,6 +598,28 @@ class GbTableRoundControllerTest {
         @Suppress("UNCHECKED_CAST")
         val flowers = flowersField.get(controller) as MutableMap<UUID, MutableList<doublemoon.mahjongcraft.paper.model.MahjongTile>>
         flowers[playerId] = tiles.map(doublemoon.mahjongcraft.paper.model.MahjongTile::valueOf).toMutableList()
+    }
+
+    private fun currentWall(controller: GbTableRoundController): List<MahjongTile> {
+        val wallField = GbTableRoundController::class.java.getDeclaredField("wall")
+        wallField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        return wallField.get(controller) as List<MahjongTile>
+    }
+
+    private fun deterministicWall(): List<MahjongTile> {
+        val sequence = MahjongTile.values().filter { tile ->
+            tile != MahjongTile.UNKNOWN && !tile.isRedFive && !tile.isFlower
+        }
+        return List(144) { sequence[it % sequence.size] }
+    }
+
+    private fun reorderWall(wall: List<MahjongTile>, dicePoints: Int, roundIndex: Int): List<MahjongTile> {
+        val seatCount = SeatWind.values().size
+        val wallTilesPerSide = wall.size / seatCount
+        val directionIndex = seatCount - (((dicePoints % seatCount) - 1 + roundIndex) % seatCount)
+        val breakIndex = (directionIndex * wallTilesPerSide + dicePoints * 2).mod(wall.size)
+        return List(wall.size) { offset -> wall[(breakIndex + offset) % wall.size] }
     }
 
     private fun encodedTiles(vararg names: String): List<String> =

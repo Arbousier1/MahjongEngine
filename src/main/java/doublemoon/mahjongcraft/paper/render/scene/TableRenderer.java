@@ -447,7 +447,7 @@ public final class TableRenderer {
             return List.of();
         }
         Location center = displayCenter(session);
-        int liveWallCount = session.remainingWall().size();
+        int liveWallCount = session.remainingWallCount();
         int kanCount = session.kanCount();
         int frontDrawCount = Math.max(0, LIVE_WALL_SIZE - liveWallCount - kanCount);
         boolean[] doraSlots = new boolean[DEAD_WALL_SIZE];

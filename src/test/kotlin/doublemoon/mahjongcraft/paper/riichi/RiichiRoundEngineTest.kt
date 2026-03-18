@@ -1,5 +1,6 @@
 package doublemoon.mahjongcraft.paper.riichi
 
+import doublemoon.mahjongcraft.paper.table.core.round.OpeningDiceRoll
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile
 import doublemoon.mahjongcraft.paper.riichi.model.TileInstance
@@ -44,6 +45,22 @@ class RiichiRoundEngineTest {
         )
 
         assertTrue(engine.seats.all { it.points == 32000 })
+    }
+
+    @Test
+    fun `engine uses pending opening dice roll when provided`() {
+        val players = listOf(
+            RiichiPlayerState("A", "a"),
+            RiichiPlayerState("B", "b"),
+            RiichiPlayerState("C", "c"),
+            RiichiPlayerState("D", "d")
+        )
+        val engine = RiichiRoundEngine(players, MahjongRule())
+        engine.setPendingDiceRoll(OpeningDiceRoll(3, 4))
+
+        engine.startRound()
+
+        assertEquals(7, engine.dicePoints)
     }
 
     @Test

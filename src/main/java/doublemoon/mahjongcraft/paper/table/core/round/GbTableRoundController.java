@@ -39,6 +39,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import kotlin.Pair;
 
 public final class GbTableRoundController implements TableRoundController {
@@ -48,6 +51,8 @@ public final class GbTableRoundController implements TableRoundController {
     private final GbNativeRulesGateway nativeGateway;
     private final EnumMap<SeatWind, UUID> seats;
     private final Map<UUID, String> displayNames;
+    private final IntSupplier dicePointsSupplier;
+    private final Supplier<List<MahjongTile>> wallSupplier;
     private final MahjongRound round;
     private final Map<UUID, Integer> points = new HashMap<>();
     private final Map<UUID, List<MahjongTile>> hands = new HashMap<>();
@@ -59,17 +64,32 @@ public final class GbTableRoundController implements TableRoundController {
     private List<MahjongTile> wall = List.of();
     private boolean started;
     private boolean gameFinished;
+    private int dicePoints;
     private int currentPlayerIndex;
     private int kanCount;
     private RoundResolution lastResolution;
     private PendingReactionWindow pendingReactionWindow;
+    private OpeningDiceRoll pendingDiceRoll;
     private UUID afterKanTsumoPlayer;
 
     public GbTableRoundController(MahjongRule rule, EnumMap<SeatWind, UUID> seats, Map<UUID, String> displayNames, GbNativeRulesGateway nativeGateway) {
+        this(rule, seats, displayNames, nativeGateway, GbTableRoundController::rollDicePoints, GbTableRoundController::buildWall);
+    }
+
+    public GbTableRoundController(
+        MahjongRule rule,
+        EnumMap<SeatWind, UUID> seats,
+        Map<UUID, String> displayNames,
+        GbNativeRulesGateway nativeGateway,
+        IntSupplier dicePointsSupplier,
+        Supplier<List<MahjongTile>> wallSupplier
+    ) {
         this.rule = rule;
         this.nativeGateway = nativeGateway;
         this.seats = new EnumMap<>(seats);
         this.displayNames = new HashMap<>(displayNames);
+        this.dicePointsSupplier = dicePointsSupplier;
+        this.wallSupplier = wallSupplier;
         this.round = rule.getLength().getStartingRound();
         for (UUID playerId : seats.values()) {
             if (playerId == null) {
@@ -107,7 +127,12 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public void startRound() {
-        this.wall = buildWall();
+        OpeningDiceRoll diceRoll = this.pendingDiceRoll;
+        this.pendingDiceRoll = null;
+        this.dicePoints = diceRoll == null
+            ? this.requireValidDicePoints(this.dicePointsSupplier.getAsInt())
+            : diceRoll.total();
+        this.wall = reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.round.getRound());
         this.pendingReactionWindow = null;
         this.lastResolution = null;
         this.started = true;
@@ -270,7 +295,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public int dicePoints() {
-        return 0;
+        return this.dicePoints;
     }
 
     @Override
@@ -326,6 +351,11 @@ public final class GbTableRoundController implements TableRoundController {
             hiddenWall.add(MahjongTile.UNKNOWN);
         }
         return List.copyOf(hiddenWall);
+    }
+
+    @Override
+    public int remainingWallCount() {
+        return this.wall.size();
     }
 
     @Override
@@ -479,11 +509,12 @@ public final class GbTableRoundController implements TableRoundController {
         }
         GbBotDiscardChoice best = null;
         List<GbMeldState> currentMelds = this.melds.getOrDefault(playerId, List.of());
+        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
         for (int i = 0; i < hand.size(); i++) {
             MahjongTile discarded = hand.get(i);
             List<MahjongTile> remaining = new ArrayList<>(hand);
             remaining.remove(i);
-            GbTingResponse response = this.evaluateTing(playerId, remaining, currentMelds);
+            GbTingResponse response = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, currentMelds));
             GbBotDiscardChoice candidate = new GbBotDiscardChoice(i, botReadyScore(response), botDiscardPreference(hand, discarded));
             if (best == null || candidate.compareTo(best) > 0) {
                 best = candidate;
@@ -868,6 +899,11 @@ public final class GbTableRoundController implements TableRoundController {
         }
     }
 
+    @Override
+    public void setPendingDiceRoll(OpeningDiceRoll diceRoll) {
+        this.pendingDiceRoll = diceRoll;
+    }
+
     private List<ScoreItem> toScoreItems(Map<UUID, Integer> originalPoints) {
         List<ScoreItem> scoreItems = new ArrayList<>(SeatWind.values().length);
         for (SeatWind wind : SeatWind.values()) {
@@ -1172,16 +1208,22 @@ public final class GbTableRoundController implements TableRoundController {
         return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.CHII, pair));
     }
 
-    private GbBotReactionChoice bestBotClaimDiscard(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates, ReactionResponse response) {
+    private GbBotReactionChoice bestBotClaimDiscard(
+        UUID playerId,
+        List<MahjongTile> hand,
+        List<GbMeldState> meldStates,
+        ReactionResponse response
+    ) {
         if (hand.isEmpty()) {
             return new GbBotReactionChoice(response, 0, 0);
         }
         GbBotDiscardChoice best = null;
+        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
         for (int i = 0; i < hand.size(); i++) {
             MahjongTile discarded = hand.get(i);
             List<MahjongTile> remaining = new ArrayList<>(hand);
             remaining.remove(i);
-            GbTingResponse ting = this.evaluateTing(playerId, remaining, meldStates);
+            GbTingResponse ting = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, meldStates));
             GbBotDiscardChoice candidate = new GbBotDiscardChoice(i, botReadyScore(ting), botDiscardPreference(hand, discarded));
             if (best == null || candidate.compareTo(best) > 0) {
                 best = candidate;
@@ -1192,10 +1234,13 @@ public final class GbTableRoundController implements TableRoundController {
 
     private long botReadyScoreForBestDiscard(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
         long best = 0;
+        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
         for (int i = 0; i < hand.size(); i++) {
+            MahjongTile discarded = hand.get(i);
             List<MahjongTile> remaining = new ArrayList<>(hand);
             remaining.remove(i);
-            best = Math.max(best, botReadyScore(this.evaluateTing(playerId, remaining, meldStates)));
+            GbTingResponse ting = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, meldStates));
+            best = Math.max(best, botReadyScore(ting));
         }
         return best;
     }
@@ -1417,6 +1462,17 @@ public final class GbTableRoundController implements TableRoundController {
         return List.copyOf(converted);
     }
 
+    private int requireValidDicePoints(int value) {
+        if (value < 2 || value > 12) {
+            throw new IllegalStateException("Dice points must be between 2 and 12 but was " + value);
+        }
+        return value;
+    }
+
+    private static int rollDicePoints() {
+        return ThreadLocalRandom.current().nextInt(1, 7) + ThreadLocalRandom.current().nextInt(1, 7);
+    }
+
     private static List<MahjongTile> buildWall() {
         List<MahjongTile> wall = new ArrayList<>(144);
         for (MahjongTile tile : MahjongTile.values()) {
@@ -1430,6 +1486,22 @@ public final class GbTableRoundController implements TableRoundController {
         }
         Collections.shuffle(wall);
         return List.copyOf(wall);
+    }
+
+    private static List<MahjongTile> reorderWallForDice(List<MahjongTile> wall, int dicePoints, int roundIndex) {
+        if (wall == null || wall.isEmpty()) {
+            return List.of();
+        }
+        int seatCount = SeatWind.values().length;
+        int wallTilesPerSide = wall.size() / seatCount;
+        int directionIndex = seatCount - (((dicePoints % seatCount) - 1 + roundIndex) % seatCount);
+        int startingStackIndex = 2 * dicePoints;
+        List<MahjongTile> reordered = new ArrayList<>(wall.size());
+        for (int i = 0; i < wall.size(); i++) {
+            int tileIndex = Math.floorMod(directionIndex * wallTilesPerSide + startingStackIndex + i, wall.size());
+            reordered.add(wall.get(tileIndex));
+        }
+        return List.copyOf(reordered);
     }
 
     private record GbBotState(List<MahjongTile> hand, List<GbMeldState> melds) {

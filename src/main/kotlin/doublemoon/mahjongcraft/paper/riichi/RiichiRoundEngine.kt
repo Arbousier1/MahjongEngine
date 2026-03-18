@@ -1,5 +1,6 @@
 package doublemoon.mahjongcraft.paper.riichi
 
+import doublemoon.mahjongcraft.paper.table.core.round.OpeningDiceRoll
 import doublemoon.mahjongcraft.paper.riichi.model.ClaimTarget
 import doublemoon.mahjongcraft.paper.riichi.model.ExhaustiveDraw
 import doublemoon.mahjongcraft.paper.riichi.model.GeneralSituation
@@ -64,6 +65,7 @@ class RiichiRoundEngine(
         private set
     var dicePoints: Int = 0
         private set
+    private var openingDiceRoll: OpeningDiceRoll? = null
     var currentPlayerIndex: Int = 0
         private set
     var pendingReaction: PendingReaction? = null
@@ -148,6 +150,10 @@ class RiichiRoundEngine(
         pendingReaction = null
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
+    }
+
+    fun setPendingDiceRoll(diceRoll: OpeningDiceRoll?) {
+        openingDiceRoll = diceRoll
     }
 
     fun discard(playerUuid: String, tileIndex: Int): Boolean {
@@ -287,7 +293,9 @@ class RiichiRoundEngine(
             MahjongRule.RedFive.FOUR -> MahjongTile.redFive4Wall
         }.shuffled(Random.Default).map { TileInstance(mahjongTile = it) }
         wall += tiles
-        dicePoints = Random.nextInt(1, 7) + Random.nextInt(1, 7)
+        val diceRoll = openingDiceRoll ?: OpeningDiceRoll(Random.nextInt(1, 7), Random.nextInt(1, 7))
+        openingDiceRoll = null
+        dicePoints = diceRoll.total()
         val directionIndex = (4 - ((dicePoints % 4 - 1) + round.round) % 4)
         val startingStackIndex = 2 * dicePoints
         val reordered = MutableList(wall.size) {

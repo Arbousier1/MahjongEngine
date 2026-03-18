@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 - 2026-03-18
+
+Folia performance and opening flow release.
+
+- Reduced redundant private-entity visibility synchronization so unchanged private viewer sets no longer trigger full `showEntity` and `hideEntity` passes.
+- Cached per-viewer render snapshot metadata and switched wall-size consumers to count-only accessors to cut avoidable render flush allocations.
+- Memoized GB bot ting evaluation inside discard, kan, and reaction searches to reduce repeated JNI-style scoring work during a single decision window.
+- Added benchmark coverage for render snapshot creation and duplicated-hand GB bot discard suggestion so optimization work can be verified before release.
+
 ## 0.4.3 - 2026-03-17
 
 Interaction and CraftEngine furniture alignment release.
