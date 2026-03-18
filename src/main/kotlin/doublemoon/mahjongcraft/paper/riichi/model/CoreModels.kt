@@ -44,10 +44,24 @@ enum class MahjongTile {
     M5_RED,
     P5_RED,
     S5_RED,
+    PLUM,
+    ORCHID,
+    BAMBOO,
+    CHRYSANTHEMUM,
+    SPRING,
+    SUMMER,
+    AUTUMN,
+    WINTER,
     UNKNOWN;
 
     val isRed: Boolean
         get() = this == M5_RED || this == P5_RED || this == S5_RED
+
+    val isFlower: Boolean
+        get() = when (this) {
+            PLUM, ORCHID, BAMBOO, CHRYSANTHEMUM, SPRING, SUMMER, AUTUMN, WINTER -> true
+            else -> false
+        }
 
     val code: Int = ordinal
 
@@ -98,6 +112,8 @@ enum class MahjongTile {
             M5_RED -> Tile.get(TileType.M, 0)
             P5_RED -> Tile.get(TileType.P, 0)
             S5_RED -> Tile.get(TileType.S, 0)
+            PLUM, ORCHID, BAMBOO, CHRYSANTHEMUM, SPRING, SUMMER, AUTUMN, WINTER ->
+                Tile.get(TileType.M, 1)
             UNKNOWN -> Tile.get(TileType.M, 1)
         }
 
@@ -113,7 +129,9 @@ enum class MahjongTile {
         }
 
     val nextTile: MahjongTile
-        get() = when (baseTile) {
+        get() = if (isFlower) {
+            this
+        } else when (baseTile) {
             EAST -> SOUTH
             SOUTH -> WEST
             WEST -> NORTH
@@ -133,7 +151,9 @@ enum class MahjongTile {
         }
 
     val previousTile: MahjongTile
-        get() = when (baseTile) {
+        get() = if (isFlower) {
+            this
+        } else when (baseTile) {
             EAST -> NORTH
             SOUTH -> EAST
             WEST -> SOUTH
@@ -152,7 +172,8 @@ enum class MahjongTile {
             }
         }
 
-    fun sameKind(other: MahjongTile): Boolean = scoringTile == other.scoringTile
+    fun sameKind(other: MahjongTile): Boolean =
+        if (isFlower || other.isFlower) this == other else scoringTile == other.scoringTile
 
     fun itemModelPath(): String = "mahjong_tile/${name.lowercase()}"
 

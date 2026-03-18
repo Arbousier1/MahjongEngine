@@ -76,14 +76,33 @@ integrations:
       # 用于解析所有麻将牌视觉所用 CraftEngine 物品 id 的前缀。
       # 这个配置只控制 CraftEngine 自定义物品；麻将牌本身仍通过 ItemDisplay 渲染，
       # 不会因为这里的配置改成逐张放置 CraftEngine 家具实体。
-      # MahjongPaper 会自动拼接小写牌名，例如 east、m1 或 back。
+      # MahjongPaper 会自动拼接小写牌名，例如 east、m1、back、unknown，
+      # 以及国麻花牌的 plum、orchid、bamboo、chrysanthemum、spring、summer、autumn、winter。
+      # 完整后缀列表：
+      # m1 m2 m3 m4 m5 m5_red m6 m7 m8 m9
+      # p1 p2 p3 p4 p5 p5_red p6 p7 p8 p9
+      # s1 s2 s3 s4 s5 s5_red s6 s7 s8 s9
+      # east south west north white_dragon green_dragon red_dragon
+      # plum orchid bamboo chrysanthemum spring summer autumn winter
+      # back unknown
       # 背面牌统一使用 back，所以你只需要提供公共前缀，不需要把每张牌完整写一遍。
       # 例: custom:tile_ -> custom:tile_east、custom:tile_m1、custom:tile_back
+      # 花牌例子: custom:tile_plum、custom:tile_orchid、custom:tile_bamboo、custom:tile_winter
       # 默认值 mahjongpaper: 会解析成 mahjongpaper:east、mahjongpaper:m1、
-      # mahjongpaper:back 这样的物品 id。
+      # mahjongpaper:back 和 mahjongpaper:unknown 这样的物品 id。
+      # 这是共享兼容前缀；下面的日麻/国麻专用前缀会优先覆盖它。
+      tileItemIdPrefix: "mahjongpaper:"
+
+      # 日麻牌桌使用的 CraftEngine 物品前缀。
+      riichiTileItemIdPrefix: "mahjongpaper:"
+
+      # 国标牌桌使用的 CraftEngine 物品前缀。
+      gbTileItemIdPrefix: "mahjongpaper:"
+
+      # 如果某张正面牌解析出的 CE 物品不存在，插件会先尝试对应规则集的
+      # unknown 牌面物品，便于不完整资源包先临时显示。
       # 如果 preferCustomItems 为 false，或解析出的 CraftEngine 物品无法构建，
       # MahjongPaper 会回退到内置的 direct item_model 麻将牌物品。
-      tileItemIdPrefix: "mahjongpaper:"
 
     furniture:
       # 桌子和座位交互优先使用 CraftEngine 家具 hitbox。

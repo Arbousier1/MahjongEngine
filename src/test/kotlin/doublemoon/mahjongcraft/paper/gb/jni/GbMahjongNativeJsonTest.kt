@@ -23,6 +23,7 @@ class GbMahjongNativeJsonTest {
             winType = "DISCARD",
             seatWind = "EAST",
             roundWind = "EAST",
+            flowerTiles = listOf("a", "h"),
             flags = listOf("LAST_TILE")
         )
 
@@ -32,6 +33,7 @@ class GbMahjongNativeJsonTest {
         assert(encoded.contains("\"winningTile\":\"J1\""))
         assert(encoded.contains("\"winType\":\"DISCARD\""))
         assert(encoded.contains("\"type\":\"PUNG\""))
+        assert(encoded.contains("\"flowerTiles\":[\"a\",\"h\"]"))
     }
 
     @Test

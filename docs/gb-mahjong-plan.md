@@ -30,6 +30,7 @@ The branch is no longer only planning work. The following pieces are already in 
 - the GB JNI bridge is wired to a vendored copy of `zheng-fan/GB-Mahjong`
 - GB flow now supports:
   - start/deal
+  - flower tiles and supplement draws
   - discard
   - ting prompts
   - ron / tsumo
@@ -61,12 +62,10 @@ Because of that, GB support still is not “finished forever”. The remaining w
    - the source is vendored and wired, but this workstation does not have a native toolchain
 2. Rule-detail calibration against more upstream cases.
    - especially edge-case flags and tournament-specific settlement expectations
-3. Flower-tile gameplay support.
-   - request models already allow flower data, but live table flow still does not model flower draws
-4. Round progression beyond the current single-hand controller focus.
+3. Round progression beyond the current single-hand controller focus.
    - prevailing wind / dealership advancement for long GB matches can still be refined
-5. More translation coverage for GB fan names and player-facing copy.
-6. Broader regression coverage.
+4. More translation coverage for GB fan names and player-facing copy.
+5. Broader regression coverage.
    - native integration tests once CI can build the JNI library
 
 ## Expected Hotspots

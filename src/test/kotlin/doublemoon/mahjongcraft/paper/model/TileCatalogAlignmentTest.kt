@@ -22,5 +22,7 @@ class TileCatalogAlignmentTest {
 
         assertContains(indexText, "\"name\": \"east\"")
         assertContains(indexText, "\"item\": \"mahjongcraft:mahjong_tile/east\"")
+        assertContains(indexText, "\"name\": \"plum\"")
+        assertContains(indexText, "\"item\": \"mahjongcraft:mahjong_tile/plum\"")
     }
 }

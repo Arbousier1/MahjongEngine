@@ -29,6 +29,14 @@ public final class GbTileEncoding {
             case WHITE_DRAGON -> "J1";
             case GREEN_DRAGON -> "J2";
             case RED_DRAGON -> "J3";
+            case PLUM -> "a";
+            case ORCHID -> "b";
+            case BAMBOO -> "c";
+            case CHRYSANTHEMUM -> "d";
+            case SPRING -> "e";
+            case SUMMER -> "f";
+            case AUTUMN -> "g";
+            case WINTER -> "h";
             default -> throw new IllegalArgumentException("Unsupported GB tile: " + tile.name().toLowerCase(Locale.ROOT));
         };
     }

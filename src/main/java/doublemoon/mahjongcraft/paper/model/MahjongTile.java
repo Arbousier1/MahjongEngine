@@ -42,6 +42,14 @@ public enum MahjongTile {
     WHITE_DRAGON,
     GREEN_DRAGON,
     RED_DRAGON,
+    PLUM,
+    ORCHID,
+    BAMBOO,
+    CHRYSANTHEMUM,
+    SPRING,
+    SUMMER,
+    AUTUMN,
+    WINTER,
     UNKNOWN;
 
     public String itemModelPath() {
@@ -52,10 +60,17 @@ public enum MahjongTile {
         return this == M5_RED || this == P5_RED || this == S5_RED;
     }
 
+    public boolean isFlower() {
+        return switch (this) {
+            case PLUM, ORCHID, BAMBOO, CHRYSANTHEMUM, SPRING, SUMMER, AUTUMN, WINTER -> true;
+            default -> false;
+        };
+    }
+
     public static List<MahjongTile> createRiichiWall(boolean redFives) {
         List<MahjongTile> wall = new ArrayList<>(136);
         for (MahjongTile tile : values()) {
-            if (tile.isRedFive()) {
+            if (tile.isRedFive() || tile.isFlower() || tile == UNKNOWN) {
                 continue;
             }
             int copies = 4;

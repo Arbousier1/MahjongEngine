@@ -60,6 +60,7 @@ The plugin keeps its own structured request types and converts them to the hand-
 Examples:
 
 - `W1/T1/B1/F1/J1` are mapped to the upstream tile grammar (`m/s/p`, `ESWN`, `PFC`)
+- flower tiles use the upstream `a`-`h` ids (`plum`, `orchid`, `bamboo`, `chrysanthemum`, `spring`, `summer`, `autumn`, `winter`)
 - melds are mapped into upstream bracket notation such as `[123m,1]`, `[EEE,2]`, `[1111p,7]`
 - JNI flags are mapped into the upstream status suffix:
   - `LAST_OF_KIND` -> juezhang bit

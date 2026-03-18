@@ -75,17 +75,33 @@ integrations:
       # Prefer CraftEngine custom items for tile visuals when available.
       preferCustomItems: true
 
-      # Prefix used to resolve CraftEngine item ids for all Mahjong tile visuals.
-      # This controls CraftEngine custom items only. Tiles still render through ItemDisplay,
-      # so this setting does not place CraftEngine furniture entities for each tile.
-      # MahjongPaper appends the lowercase tile name automatically, such as east, m1, or back.
-      # Face-down tiles use back, so you only provide the shared prefix, not every full id.
-      # Example: custom:tile_ -> custom:tile_east, custom:tile_m1, custom:tile_back
-      # With the default value mahjongpaper:, MahjongPaper resolves ids like
-      # mahjongpaper:east, mahjongpaper:m1, and mahjongpaper:back.
-      # If preferCustomItems is false, or the resolved CraftEngine item cannot be built,
-      # MahjongPaper falls back to its built-in direct item_model tile items.
+      # Legacy shared fallback prefix for CraftEngine tile item ids.
+      # MahjongPaper appends the lowercase tile name automatically, such as east, m1, back, unknown,
+      # or the GB flower ids plum, orchid, bamboo, chrysanthemum, spring, summer, autumn, winter.
+      # Full tile suffix list:
+      # m1 m2 m3 m4 m5 m5_red m6 m7 m8 m9
+      # p1 p2 p3 p4 p5 p5_red p6 p7 p8 p9
+      # s1 s2 s3 s4 s5 s5_red s6 s7 s8 s9
+      # east south west north white_dragon green_dragon red_dragon
+      # plum orchid bamboo chrysanthemum spring summer autumn winter
+      # back unknown
+      # Example: custom:tile_ -> custom:tile_east, custom:tile_m1, custom:tile_back, custom:tile_unknown
+      # Example flower ids: custom:tile_plum, custom:tile_orchid, custom:tile_bamboo, custom:tile_winter
+      # Variant-specific prefixes below override this value when set.
       tileItemIdPrefix: "mahjongpaper:"
+
+      # CraftEngine item id prefix for Riichi tables.
+      # Leave this equal to the shared prefix unless you want a dedicated Riichi tile pack.
+      riichiTileItemIdPrefix: "mahjongpaper:"
+
+      # CraftEngine item id prefix for GB tables.
+      # This lets Riichi and GB tables use different CE item ids at the same time.
+      gbTileItemIdPrefix: "mahjongpaper:"
+
+      # If a resolved front-face item id is missing, MahjongPaper tries the same variant's
+      # unknown tile item first, so incomplete packs can still render through CraftEngine.
+      # If preferCustomItems is false, or CraftEngine item building is unavailable,
+      # MahjongPaper falls back to its built-in direct item_model tile items.
 
     furniture:
       # Prefer CraftEngine furniture hitboxes for table and seat interaction.
