@@ -10,12 +10,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            artifact: linux
+            gradle: ./gradlew
+            needs_chmod: true
+          - os: windows-latest
+            platform: windows-x86_64
+            artifact: windows
+            gradle: .\gradlew.bat
+            needs_chmod: false
+          - os: macos-13
+            platform: macos-x86_64
+            artifact: macos
+            gradle: ./gradlew
+            needs_chmod: true
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Windows native toolchain
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Add MSYS2 tools to PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -27,13 +64,64 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make Gradle wrapper executable
+        if: matrix.needs_chmod
         run: chmod +x ./gradlew
 
-      - name: Build plugin
-        run: ./gradlew build -x test
+      - name: Build platform plugin
+        run: ${{ matrix.gradle }} build -x test
 
-      - name: Upload jars
+      - name: Upload platform jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: mahjong-paper-jar-${{ matrix.artifact }}
+          path: build/libs/*.jar
+
+  package-universal:
+    needs: build-platform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Download Linux jar
+        uses: actions/download-artifact@v4
+        with:
+          name: mahjong-paper-jar-linux
+          path: artifacts/linux
+
+      - name: Download Windows jar
+        uses: actions/download-artifact@v4
+        with:
+          name: mahjong-paper-jar-windows
+          path: artifacts/windows
+
+      - name: Download macOS jar
+        uses: actions/download-artifact@v4
+        with:
+          name: mahjong-paper-jar-macos
+          path: artifacts/macos
+
+      - name: Assemble universal plugin jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/universal extract/windows extract/macos
+          LINUX_JAR="$(find artifacts/linux -name '*.jar' | head -n 1)"
+          WINDOWS_JAR="$(find artifacts/windows -name '*.jar' | head -n 1)"
+          MACOS_JAR="$(find artifacts/macos -name '*.jar' | head -n 1)"
+          UNIVERSAL_JAR="build/universal/$(basename "$LINUX_JAR" .jar)-universal.jar"
+
+          cp "$LINUX_JAR" "$UNIVERSAL_JAR"
+          (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native/windows-x86_64)
+          (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native/macos-x86_64)
+          jar uf "$UNIVERSAL_JAR" -C extract/windows native/windows-x86_64 -C extract/macos native/macos-x86_64
+
+      - name: Upload universal jar
         uses: actions/upload-artifact@v4
         with:
           name: mahjong-paper-jars
-          path: build/libs/*.jar
+          path: build/universal/*.jar
