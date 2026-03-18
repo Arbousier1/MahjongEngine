@@ -25,7 +25,7 @@ jobs:
             artifact: windows
             gradle: .\gradlew.bat
             needs_chmod: false
-          - os: macos-13
+          - os: macos-15-intel
             platform: macos-x86_64
             artifact: macos
             gradle: ./gradlew
