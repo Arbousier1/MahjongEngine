@@ -5,6 +5,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.scene.MeldView;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
+import doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion;
 import doublemoon.mahjongcraft.paper.riichi.RoundResolution;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule;
@@ -136,6 +137,10 @@ public interface TableRoundController {
     }
 
     default List<String> suggestedDiscardTiles(UUID playerId) {
+        return List.of();
+    }
+
+    default List<RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
         return List.of();
     }
 

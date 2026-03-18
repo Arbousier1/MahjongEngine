@@ -113,7 +113,7 @@ public final class TablePublicTextFactory {
     }
 
     public String seatDisplayName(SeatWind wind, Locale locale) {
-        return this.session.plugin().messages().plain(locale, wind.translationKey());
+        return this.session.plugin().messages().plain(locale, this.displaySeatWind(wind).translationKey());
     }
 
     public String publicSeatStatus(SeatWind wind) {
@@ -173,6 +173,17 @@ public final class TablePublicTextFactory {
             case WEST -> this.session.plugin().messages().plain(locale, "seat.wind.west");
             case NORTH -> this.session.plugin().messages().plain(locale, "seat.wind.north");
         };
+    }
+
+    private SeatWind displaySeatWind(SeatWind physicalSeat) {
+        if (physicalSeat == null || !this.session.hasRoundController()) {
+            return physicalSeat;
+        }
+        SeatWind dealerSeat = this.session.dealerSeat();
+        if (dealerSeat == null) {
+            return physicalSeat;
+        }
+        return SeatWind.fromIndex(Math.floorMod(physicalSeat.index() - dealerSeat.index(), SeatWind.values().length));
     }
 
     private String ruleLengthLabel(Locale locale, MahjongRule.GameLength length) {

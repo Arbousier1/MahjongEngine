@@ -3,6 +3,7 @@ package doublemoon.mahjongcraft.paper.table.runtime;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
 import doublemoon.mahjongcraft.paper.riichi.ReactionType;
+import doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion;
 import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile;
@@ -177,8 +178,8 @@ public final class BotActionScheduler {
         if (player.getRiichi() || player.getDoubleRiichi()) {
             return player.getHands().size() - 1;
         }
-        for (MahjongTile tile : player.bestDiscardSuggestions()) {
-            int index = findDiscardIndex(player, tile);
+        for (RiichiDiscardSuggestion suggestion : player.discardSuggestions()) {
+            int index = findDiscardIndex(player, suggestion.getTile());
             if (index >= 0) {
                 return index;
             }

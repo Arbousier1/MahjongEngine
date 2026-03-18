@@ -932,6 +932,10 @@ public final class MahjongTableSession {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedDiscardTiles(playerId);
     }
 
+    public List<doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedDiscardSuggestions(playerId);
+    }
+
     public doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse gbTingOptions(UUID playerId) {
         if (!(this.roundController instanceof GbTableRoundController gbController) || playerId == null) {
             return new doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse(false, List.of(), "GB round is inactive.");

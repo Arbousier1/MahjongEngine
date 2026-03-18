@@ -4,6 +4,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.render.scene.MeldView;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse;
+import doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion;
 import doublemoon.mahjongcraft.paper.riichi.RiichiPlayerState;
 import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine;
 import doublemoon.mahjongcraft.paper.riichi.RoundResolution;
@@ -358,13 +359,22 @@ public final class RiichiTableRoundController implements TableRoundController {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
-        player.bestDiscardSuggestions().forEach(tile -> {
-            String tileName = tile.name().toLowerCase(Locale.ROOT);
+        this.suggestedDiscardSuggestions(playerId).forEach(suggestion -> {
+            String tileName = suggestion.getTile().name().toLowerCase(Locale.ROOT);
             if (!suggestions.contains(tileName)) {
                 suggestions.add(tileName);
             }
         });
         return List.copyOf(suggestions);
+    }
+
+    @Override
+    public List<RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
+        RiichiPlayerState player = this.seatPlayer(playerId);
+        if (player == null || !this.isCurrentPlayer(playerId)) {
+            return List.of();
+        }
+        return List.copyOf(player.discardSuggestions());
     }
 
     @Override

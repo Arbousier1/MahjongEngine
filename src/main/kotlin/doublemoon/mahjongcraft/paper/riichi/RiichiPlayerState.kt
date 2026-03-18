@@ -16,7 +16,6 @@ import doublemoon.mahjongcraft.paper.riichi.model.toMahjongTileList
 import mahjongutils.hora.HoraOptions
 import mahjongutils.hora.hora
 import mahjongutils.models.Tile
-import mahjongutils.models.TileType
 import mahjongutils.models.Tatsu
 import mahjongutils.models.isYaochu
 import mahjongutils.shanten.ShantenWithGot
@@ -27,6 +26,16 @@ import mahjongutils.shanten.shanten
 import mahjongutils.yaku.Yaku
 import mahjongutils.yaku.Yakus
 import kotlin.math.absoluteValue
+
+data class RiichiDiscardSuggestion(
+    val tile: MahjongTile,
+    val shantenNum: Int,
+    val advanceTiles: List<MahjongTile>,
+    val advanceCount: Int,
+    val goodShapeAdvanceCount: Int,
+    val improvementCount: Int,
+    val goodShapeImprovementCount: Int
+)
 
 open class RiichiPlayerState(
     val displayName: String,
@@ -54,6 +63,10 @@ open class RiichiPlayerState(
     private var cachedMachi: List<MahjongTile> = emptyList()
     private var cachedCurrentShantenVersion: Long = -1
     private var cachedCurrentShantenResult: UnionShantenResult? = null
+    private var cachedDiscardSuggestionsVersion: Long = -1
+    private var cachedDiscardSuggestions: List<RiichiDiscardSuggestion> = emptyList()
+    private var cachedFuroReactionVersion: Long = -1
+    private val cachedFuroReactions: MutableMap<Pair<MahjongTile, Boolean>, FuroReactionAnalysis?> = mutableMapOf()
 
     val riichiStickAmount: Int
         get() = sticks.count { it == ScoringStick.P1000 }
@@ -131,9 +144,11 @@ open class RiichiPlayerState(
         invalidateHandAnalysis()
     }
 
-    fun canPon(tile: TileInstance): Boolean = !(riichi || doubleRiichi) && sameTilesInHands(tile).size >= 2
+    fun canPon(tile: TileInstance): Boolean =
+        !(riichi || doubleRiichi) && (reactionOptionsFor(tile, allowChii = false, canRon = false)?.canPon == true)
 
-    fun canMinkan(tile: TileInstance): Boolean = !(riichi || doubleRiichi) && sameTilesInHands(tile).size == 3
+    fun canMinkan(tile: TileInstance): Boolean =
+        !(riichi || doubleRiichi) && (reactionOptionsFor(tile, allowChii = false, canRon = false)?.canMinkan == true)
 
     val canKakan: Boolean
         get() = tilesCanKakan.isNotEmpty()
@@ -194,7 +209,7 @@ open class RiichiPlayerState(
         }
 
     fun availableChiiPairs(tile: TileInstance): List<Pair<MahjongTile, MahjongTile>> =
-        reactionOptionsFor(tile, allowChii = true, canRon = false)?.chiiPairs ?: emptyList()
+        analyzeFuroReaction(tile, allowChii = true)?.chiChoices?.map { it.first } ?: emptyList()
 
     fun reactionOptionsFor(tile: TileInstance, allowChii: Boolean, canRon: Boolean): ReactionOptions? {
         if (riichi || doubleRiichi) {
@@ -212,8 +227,8 @@ open class RiichiPlayerState(
         }
 
         val analysis = analyzeFuroReaction(tile, allowChii)
-        val canPon = sameTilesInHands(tile).size >= 2 && analysis?.pon != null
-        val canMinkan = sameTilesInHands(tile).size == 3 && analysis?.minkan != null
+        val canPon = analysis?.pon != null
+        val canMinkan = analysis?.minkan != null
         val chiiPairs = analysis?.chiChoices?.map { it.first } ?: emptyList()
         if (!canRon && !canPon && !canMinkan && chiiPairs.isEmpty()) {
             return null
@@ -231,34 +246,6 @@ open class RiichiPlayerState(
             chiiPairs = chiiPairs,
             suggestedResponse = suggestion
         )
-    }
-
-    private fun tilePairsForChii(tile: TileInstance): List<Pair<MahjongTile, MahjongTile>> {
-        val scoringTile = tile.scoringTile
-        if (scoringTile.type == TileType.Z) return emptyList()
-
-        val number = scoringTile.realNum
-        val type = scoringTile.type
-        val pairBases = mutableListOf<Pair<MahjongTile, MahjongTile>>()
-        if (number <= 7) {
-            pairBases += MahjongTile.fromUtilsTile(Tile.get(type, number + 1)) to MahjongTile.fromUtilsTile(Tile.get(type, number + 2))
-        }
-        if (number in 2..8) {
-            pairBases += MahjongTile.fromUtilsTile(Tile.get(type, number - 1)) to MahjongTile.fromUtilsTile(Tile.get(type, number + 1))
-        }
-        if (number >= 3) {
-            pairBases += MahjongTile.fromUtilsTile(Tile.get(type, number - 2)) to MahjongTile.fromUtilsTile(Tile.get(type, number - 1))
-        }
-
-        return buildList {
-            pairBases.distinct().forEach { (firstBase, secondBase) ->
-                val firstTile = findChiiTileVariant(firstBase)
-                val secondTile = findChiiTileVariant(secondBase, exclude = firstTile)
-                if (firstTile != null && secondTile != null) {
-                    add(firstTile to secondTile)
-                }
-            }
-        }.distinct()
     }
 
     private fun findChiiTileVariant(baseTile: MahjongTile, exclude: MahjongTile? = null): MahjongTile? =
@@ -317,19 +304,42 @@ open class RiichiPlayerState(
         ?.distinct()
         ?: emptyList()
 
+    fun discardSuggestions(): List<RiichiDiscardSuggestion> {
+        if (cachedDiscardSuggestionsVersion == analysisStateVersion) {
+            return cachedDiscardSuggestions
+        }
+        val shantenWithGot = currentShantenWithGot()
+        cachedDiscardSuggestions = if (shantenWithGot == null) {
+            emptyList()
+        } else {
+            shantenWithGot.discardToAdvance.entries
+                .sortedWith(
+                    compareBy<Map.Entry<Tile, ShantenWithoutGot>> { it.value.shantenNum }
+                        .thenByDescending { it.value.goodShapeAdvanceNum ?: -1 }
+                        .thenByDescending { it.value.advanceNum }
+                        .thenByDescending { it.value.goodShapeImprovementNum ?: -1 }
+                        .thenByDescending { it.value.improvementNum ?: -1 }
+                        .thenBy { it.key }
+                )
+                .map { (tile, shanten) ->
+                    RiichiDiscardSuggestion(
+                        tile = MahjongTile.fromUtilsTile(tile),
+                        shantenNum = shanten.shantenNum,
+                        advanceTiles = shanten.advance.map(MahjongTile::fromUtilsTile).distinct(),
+                        advanceCount = shanten.advanceNum,
+                        goodShapeAdvanceCount = shanten.goodShapeAdvanceNum ?: 0,
+                        improvementCount = shanten.improvementNum ?: 0,
+                        goodShapeImprovementCount = shanten.goodShapeImprovementNum ?: 0
+                    )
+                }
+                .distinctBy { it.tile }
+        }
+        cachedDiscardSuggestionsVersion = analysisStateVersion
+        return cachedDiscardSuggestions
+    }
+
     fun bestDiscardSuggestions(): List<MahjongTile> {
-        val shantenWithGot = currentShantenWithGot() ?: return emptyList()
-        return shantenWithGot.discardToAdvance.entries
-            .sortedWith(
-                compareBy<Map.Entry<Tile, ShantenWithoutGot>> { it.value.shantenNum }
-                    .thenByDescending { it.value.goodShapeAdvanceNum ?: -1 }
-                    .thenByDescending { it.value.advanceNum }
-                    .thenByDescending { it.value.goodShapeImprovementNum ?: -1 }
-                    .thenByDescending { it.value.improvementNum ?: -1 }
-                    .thenBy { it.key }
-            )
-            .map { MahjongTile.fromUtilsTile(it.key) }
-            .distinct()
+        return discardSuggestions().map { it.tile }
     }
 
     fun calculateMachiAndHan(
@@ -529,6 +539,9 @@ open class RiichiPlayerState(
                 else -> finalDoubleYakumanList += doubleYakuman
             }
         }
+        if (finalNormalYakuList.isEmpty() && finalYakumanList.isEmpty() && finalDoubleYakumanList.isEmpty()) {
+            return YakuSettlement.NO_YAKU
+        }
         repeat(doraCount) {
             finalNormalYakuList += "DORA"
         }
@@ -670,29 +683,45 @@ open class RiichiPlayerState(
         map { it.utilsTile }
 
     private fun analyzeFuroReaction(tile: TileInstance, allowChii: Boolean): FuroReactionAnalysis? {
-        val result = runCatching {
-            furoChanceShanten(
-                tiles = hands.toMahjongTileList().toUtilsTiles(),
-                chanceTile = tile.scoringTile,
-                allowChi = allowChii,
-                bestShantenOnly = false,
-                allowKuikae = true
-            )
-        }.getOrNull() ?: return null
-        val shanten = result.shantenInfo
-        val chiChoices = if (allowChii) {
-            shanten.chi.entries.mapNotNull { entry ->
-                toChiiChoice(entry.key, entry.value)
-            }.distinctBy { it.first }
-        } else {
-            emptyList()
+        if (cachedFuroReactionVersion != analysisStateVersion) {
+            cachedFuroReactions.clear()
+            cachedFuroReactionVersion = analysisStateVersion
         }
-        return FuroReactionAnalysis(
-            pass = shanten.pass?.let(::evaluateAction) ?: ActionEvaluation.worst(),
-            chiChoices = chiChoices,
-            pon = shanten.pon?.let(::evaluateAction),
-            minkan = shanten.minkan?.let(::evaluateAction)
-        )
+        val cacheKey = tile.mahjongTile.baseTile to allowChii
+        return cachedFuroReactions.getOrPut(cacheKey) {
+            val result = runCatching {
+                furoChanceShanten(
+                    tiles = hands.toMahjongTileList().toUtilsTiles(),
+                    chanceTile = tile.scoringTile,
+                    allowChi = allowChii,
+                    bestShantenOnly = false,
+                    allowKuikae = true
+                )
+            }.getOrNull() ?: return@getOrPut null
+            val shanten = result.shantenInfo
+            val chiChoices = if (allowChii) {
+                shanten.chi.entries.mapNotNull { entry ->
+                    toChiiChoice(entry.key, entry.value)
+                }
+                    .distinctBy { it.first }
+                    .sortedWith { left, right ->
+                        val evaluationCompare = ActionEvaluation.comparator.compare(right.second, left.second)
+                        if (evaluationCompare != 0) {
+                            evaluationCompare
+                        } else {
+                            compareValuesBy(left, right, { it.first.first.sortOrder }, { it.first.second.sortOrder })
+                        }
+                    }
+            } else {
+                emptyList()
+            }
+            FuroReactionAnalysis(
+                pass = shanten.pass?.let(::evaluateAction) ?: ActionEvaluation.worst(),
+                chiChoices = chiChoices,
+                pon = shanten.pon?.let(::evaluateAction),
+                minkan = shanten.minkan?.let(::evaluateAction)
+            )
+        }
     }
 
     private fun toChiiChoice(tatsu: Tatsu, shanten: ShantenWithGot): Pair<Pair<MahjongTile, MahjongTile>, ActionEvaluation>? {

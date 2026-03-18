@@ -2,6 +2,7 @@ package doublemoon.mahjongcraft.paper.table.presentation;
 
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -251,18 +252,49 @@ public final class TablePlayerFeedbackCoordinator {
     }
 
     private String discardSuggestionSuffix(Locale locale, UUID playerId) {
-        List<String> suggestions = this.session.suggestedDiscardTiles(playerId);
+        List<doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion> suggestions = this.session.suggestedDiscardSuggestions(playerId);
         if (suggestions.isEmpty()) {
             return "";
         }
-        String labels = suggestions.stream()
-            .limit(3)
-            .map(tileName -> this.session.tileLabelForDisplay(locale, tileName))
-            .reduce((left, right) -> left + "/" + right)
-            .orElse("");
-        return labels.isBlank()
-            ? ""
-            : this.session.plugin().messages().plain(locale, "table.suggested_discards", this.session.plugin().messages().tag("tiles", labels));
+        doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        String labels = this.suggestedDiscardLabels(locale, suggestions);
+        if (labels.isBlank()) {
+            return "";
+        }
+        return this.session.plugin().messages().plain(
+            locale,
+            "table.suggested_discards_detail",
+            this.session.plugin().messages().tag("tiles", labels),
+            this.session.plugin().messages().number(locale, "shanten", best.getShantenNum()),
+            this.session.plugin().messages().number(locale, "advance", best.getAdvanceCount()),
+            this.session.plugin().messages().number(locale, "improvement", best.getImprovementCount())
+        );
+    }
+
+    private String suggestedDiscardLabels(
+        Locale locale,
+        List<doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion> suggestions
+    ) {
+        doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        LinkedHashSet<String> labels = new LinkedHashSet<>();
+        for (doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion suggestion : suggestions) {
+            if (!this.hasSameDiscardShape(best, suggestion) || labels.size() >= 3) {
+                break;
+            }
+            labels.add(this.session.tileLabelForDisplay(locale, suggestion.getTile().name()));
+        }
+        return String.join("/", labels);
+    }
+
+    private boolean hasSameDiscardShape(
+        doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion left,
+        doublemoon.mahjongcraft.paper.riichi.RiichiDiscardSuggestion right
+    ) {
+        return left.getShantenNum() == right.getShantenNum()
+            && left.getAdvanceCount() == right.getAdvanceCount()
+            && left.getGoodShapeAdvanceCount() == right.getGoodShapeAdvanceCount()
+            && left.getImprovementCount() == right.getImprovementCount()
+            && left.getGoodShapeImprovementCount() == right.getGoodShapeImprovementCount();
     }
 
     private Component suggestedActionComponent(Locale locale, ReactionOptions options) {
