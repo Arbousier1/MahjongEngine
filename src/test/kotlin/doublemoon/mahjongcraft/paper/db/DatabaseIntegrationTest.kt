@@ -71,7 +71,7 @@ class DatabaseIntegrationTest {
         `when`(session.id()).thenReturn("TABLE01")
         `when`(session.roundDisplay()).thenReturn("East 1")
         `when`(session.dealerName()).thenReturn("Dealer")
-        `when`(session.remainingWall()).thenReturn(List(42) { DisplayMahjongTile.M1 })
+        `when`(session.remainingWallCount()).thenReturn(42)
         `when`(session.dicePoints()).thenReturn(7)
         `when`(session.doraIndicators()).thenReturn(listOf(DisplayMahjongTile.M1, DisplayMahjongTile.P1))
         `when`(session.uraDoraIndicators()).thenReturn(listOf(DisplayMahjongTile.S1))

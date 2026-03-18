@@ -772,7 +772,7 @@ public final class DisplayEntities {
     private static void applyPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
         boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
-        if (DisplayVisibilityRegistry.matches(entity.getEntityId(), privateViewers)) {
+        if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matches(entity.getEntityId(), privateViewers)) {
             return;
         }
         if (privateViewers == null) {
@@ -819,6 +819,11 @@ public final class DisplayEntities {
         if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.craftEngine() != null) {
             mahjongPlugin.craftEngine().registerCullableEntity(entity);
         }
+    }
+
+    private static boolean requiresVisibilityResync(Plugin plugin) {
+        return plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin
+            && mahjongPlugin.craftEngine() != null;
     }
 
     public static boolean isManagedEntity(Plugin plugin, Entity entity) {

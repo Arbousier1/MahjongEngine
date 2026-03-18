@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 public final class TableRenderSnapshotFactory {
     public MahjongTableSession.RenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
         Location tableCenter = session.center();
+        boolean started = session.isStarted();
         List<UUID> onlineViewerIds = session.viewers().stream()
             .map(Player::getUniqueId)
             .distinct()
@@ -38,7 +39,7 @@ public final class TableRenderSnapshotFactory {
             tableCenter.getX(),
             tableCenter.getY(),
             tableCenter.getZ(),
-            session.isStarted(),
+            started,
             session.isRoundFinished(),
             session.remainingWallCount(),
             session.kanCount(),
@@ -53,7 +54,7 @@ public final class TableRenderSnapshotFactory {
             session.publicCenterText(),
             session.lastPublicDiscardPlayerIdValue(),
             session.lastPublicDiscardTile(),
-            List.copyOf(session.doraIndicators()),
+            started ? List.copyOf(session.doraIndicators()) : List.of(),
             seats
         );
     }

@@ -88,5 +88,41 @@ class TableRenderSnapshotFactoryTest {
         verify(session, never()).onlinePlayer(ArgumentMatchers.any(UUID::class.java))
         verify(session, never()).viewerIdsExcluding(ArgumentMatchers.any(UUID::class.java))
         verify(session, never()).viewerMembershipSignatureFor(ArgumentMatchers.any(UUID::class.java))
+        verify(session, never()).doraIndicators()
+    }
+
+    @Test
+    fun `waiting render snapshot does not request dora indicators`() {
+        val session = mock(MahjongTableSession::class.java)
+        val factory = TableRenderSnapshotFactory()
+
+        `when`(session.center()).thenReturn(Location(null, 0.0, 64.0, 0.0))
+        `when`(session.viewers()).thenReturn(emptyList())
+        `when`(session.isStarted()).thenReturn(false)
+        `when`(session.isRoundFinished()).thenReturn(false)
+        `when`(session.remainingWallCount()).thenReturn(0)
+        `when`(session.kanCount()).thenReturn(0)
+        `when`(session.dicePoints()).thenReturn(0)
+        `when`(session.roundIndex()).thenReturn(0)
+        `when`(session.honbaCount()).thenReturn(0)
+        `when`(session.dealerSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.currentSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.openDoorSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.waitingDisplaySummary()).thenReturn("")
+        `when`(session.ruleDisplaySummary()).thenReturn("")
+        `when`(session.publicCenterText()).thenReturn("")
+        `when`(session.lastPublicDiscardPlayerIdValue()).thenReturn(null)
+        `when`(session.lastPublicDiscardTile()).thenReturn(null)
+        for (wind in SeatWind.values()) {
+            `when`(session.playerAt(wind)).thenReturn(null)
+            `when`(session.publicSeatStatus(wind)).thenReturn("")
+            `when`(session.stickLayoutCount(wind)).thenReturn(0)
+            `when`(session.cornerSticks(wind)).thenReturn(emptyList())
+        }
+
+        val snapshot = factory.create(session, 1L, 0L)
+
+        assertTrue(snapshot.doraIndicators().isEmpty())
+        verify(session, never()).doraIndicators()
     }
 }

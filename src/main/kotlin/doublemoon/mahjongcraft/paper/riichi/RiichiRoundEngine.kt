@@ -103,18 +103,32 @@ class RiichiRoundEngine(
     val doraIndicators: List<TileInstance>
         get() {
             val visibleKanCount = minOf(kanCount, 4)
-            return List(visibleKanCount + 1) {
-                val index = (4 - it) * 2 + visibleKanCount
-                deadWall[index]
+            if (deadWall.isEmpty()) {
+                return emptyList()
+            }
+            return buildList {
+                repeat(visibleKanCount + 1) {
+                    val index = (4 - it) * 2 + visibleKanCount
+                    if (index in deadWall.indices) {
+                        add(deadWall[index])
+                    }
+                }
             }
         }
 
     val uraDoraIndicators: List<TileInstance>
         get() {
             val visibleKanCount = minOf(kanCount, 4)
-            return List(visibleKanCount + 1) {
-                val index = (4 - it) * 2 + 1 + visibleKanCount
-                deadWall[index]
+            if (deadWall.isEmpty()) {
+                return emptyList()
+            }
+            return buildList {
+                repeat(visibleKanCount + 1) {
+                    val index = (4 - it) * 2 + 1 + visibleKanCount
+                    if (index in deadWall.indices) {
+                        add(deadWall[index])
+                    }
+                }
             }
         }
 

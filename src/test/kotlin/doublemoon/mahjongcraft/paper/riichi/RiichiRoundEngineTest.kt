@@ -64,6 +64,22 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `dora indicators stay empty before dead wall is assigned`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("A", "a"),
+                RiichiPlayerState("B", "b"),
+                RiichiPlayerState("C", "c"),
+                RiichiPlayerState("D", "d")
+            ),
+            MahjongRule()
+        )
+
+        assertTrue(engine.doraIndicators.isEmpty())
+        assertTrue(engine.uraDoraIndicators.isEmpty())
+    }
+
+    @Test
     fun `engine preserves input seat order`() {
         val players = listOf(
             RiichiPlayerState("East", "east"),
