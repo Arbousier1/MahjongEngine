@@ -6,6 +6,7 @@ on:
       - main
       - virtual-threads
       - feature/gb-mahjong
+      - feature/folia-compat
   pull_request:
   workflow_dispatch:
 
