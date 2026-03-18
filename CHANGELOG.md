@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.5 - 2026-03-18
+
+Riichi bot stability release.
+
+- Cached riichi hand analysis so repeated `machi` and `tilePairsForRiichi` lookups no longer recompute the same expensive shanten search every time.
+- Reduced duplicate riichi evaluation during bot turns by resolving riichi discard candidates once before attempting the declaration.
+- Tightened riichi declaration validation to reuse cached discard candidates instead of re-running the full winning-hand analysis on the server thread.
+
 ## 0.4.4 - 2026-03-18
 
 CraftEngine furniture fallback release.
