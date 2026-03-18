@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.4 - 2026-03-18
+
+CraftEngine furniture fallback release.
+
+- Fixed table furniture fallback so when a configured `tableFurnitureId` cannot be placed, MahjongPaper cleanly falls back to the built-in table render path and fallback hitbox.
+- Fixed seat furniture fallback so when a configured `seatFurnitureId` cannot be placed, MahjongPaper falls back to the built-in chair render instead of leaving the seat visual missing.
+- Added a clear warning log when a configured CraftEngine furniture id cannot be placed, helping distinguish missing or non-furniture ids such as block/item ids.
+
 ## 0.4.3 - 2026-03-17
 
 Interaction and CraftEngine furniture alignment release.
