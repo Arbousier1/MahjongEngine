@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -66,6 +67,7 @@ public final class CraftEngineService {
     private final Map<Class<?>, Method> hitboxSeatsMethods = new ConcurrentHashMap<>();
     private final Map<Class<?>, Method> seatOccupiedMethods = new ConcurrentHashMap<>();
     private final Map<Integer, TrackedCullableEntity> trackedCullableEntities = new ConcurrentHashMap<>();
+    private final Set<String> warnedUnavailableFurnitureIds = ConcurrentHashMap.newKeySet();
     private volatile boolean itemReflectionUnavailable;
     private volatile boolean furnitureReflectionUnavailable;
     private volatile boolean cullingReflectionUnavailable;
@@ -236,6 +238,7 @@ public final class CraftEngineService {
             Object key = this.craftEngineKey(furnitureItemId, bridge.keyOfMethod());
             Object furniture = bridge.placeMethod().invoke(null, location, key);
             if (furniture == null) {
+                this.warnUnavailableFurnitureId(furnitureItemId);
                 return null;
             }
             Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
@@ -815,6 +818,23 @@ public final class CraftEngineService {
 
     private static boolean isCullableEntity(Entity entity) {
         return entity instanceof Display || entity instanceof Interaction;
+    }
+
+    private void warnUnavailableFurnitureId(String furnitureItemId) {
+        if (furnitureItemId == null || furnitureItemId.isBlank()) {
+            return;
+        }
+        if (!this.warnedUnavailableFurnitureIds.add(furnitureItemId)) {
+            return;
+        }
+        this.plugin.getLogger().warning(
+            "CraftEngine could not place furniture '" + furnitureItemId
+                + "'. Ensure the id exists and is defined as furniture, not only as a block or item."
+        );
+        this.plugin.debug().log(
+            "lifecycle",
+            "CraftEngine returned no furniture instance for id=" + furnitureItemId + ". MahjongPaper will use its fallback render path when available."
+        );
     }
 
     private void exportBundle(Plugin craftEngine) {
