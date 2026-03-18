@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -387,13 +388,18 @@ public final class CraftEngineService {
         }
 
         Object cullingData = this.createCullingData(entity, bridge);
-        TrackedCullableEntity tracked = new TrackedCullableEntity(entity, this.createCullableProxy(entity, bridge, cullingData));
+        int entityId = entity.getEntityId();
+        UUID entityUuid = entity.getUniqueId();
+        TrackedCullableEntity tracked = new TrackedCullableEntity(entity, entityId, entityUuid, this.createCullableProxy(entity, entityId, bridge, cullingData));
         TrackedCullableEntity previous = this.trackedCullableEntities.put(entity.getEntityId(), tracked);
-        if (previous != null && previous.entity().isValid() && previous.entity().getUniqueId().equals(entity.getUniqueId())) {
+        if (previous != null && previous.entityUuid().equals(entityUuid)) {
             return;
         }
         if (previous != null) {
-            this.unregisterCullableEntity(previous.entity());
+            this.trackedCullableEntities.remove(previous.entityId());
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                this.plugin.scheduler().runEntity(player, () -> this.removeTrackedEntity(player, previous.entityId()));
+            }
             this.trackedCullableEntities.put(entity.getEntityId(), tracked);
         }
 
@@ -421,10 +427,8 @@ public final class CraftEngineService {
             return;
         }
         for (TrackedCullableEntity tracked : this.trackedCullableEntities.values()) {
-            if (tracked.entity().isValid()) {
-                this.addTrackedEntity(player, tracked);
-                this.scheduleViewerVisibility(tracked.entity(), player, true);
-            }
+            this.addTrackedEntity(player, tracked);
+            this.scheduleViewerVisibility(tracked.entityId(), tracked.entity(), player, true);
         }
     }
 
@@ -440,25 +444,25 @@ public final class CraftEngineService {
         return this.customItemId(MahjongVariant.RIICHI, tile, faceDown);
     }
 
-    private Object createCullableProxy(Entity entity, ReflectionBridge bridge, Object cullingData) {
-        InvocationHandler handler = (proxy, method, args) -> this.handleCullableInvocation(proxy, entity, bridge, cullingData, method, args);
+    private Object createCullableProxy(Entity entity, int entityId, ReflectionBridge bridge, Object cullingData) {
+        InvocationHandler handler = (proxy, method, args) -> this.handleCullableInvocation(proxy, entity, entityId, bridge, cullingData, method, args);
         return Proxy.newProxyInstance(bridge.classLoader(), new Class<?>[] {bridge.cullableClass()}, handler);
     }
 
-    private Object handleCullableInvocation(Object proxy, Entity entity, ReflectionBridge bridge, Object cullingData, Method method, Object[] args) {
+    private Object handleCullableInvocation(Object proxy, Entity entity, int entityId, ReflectionBridge bridge, Object cullingData, Method method, Object[] args) {
         return switch (method.getName()) {
             case "show" -> {
-                this.scheduleViewerVisibility(entity, this.resolvePlatformPlayer(bridge, args), true);
+                this.scheduleViewerVisibility(entityId, entity, this.resolvePlatformPlayer(bridge, args), true);
                 yield null;
             }
             case "hide" -> {
-                this.scheduleViewerVisibility(entity, this.resolvePlatformPlayer(bridge, args), false);
+                this.scheduleViewerVisibility(entityId, entity, this.resolvePlatformPlayer(bridge, args), false);
                 yield null;
             }
             case "cullingData" -> cullingData;
-            case "hashCode" -> System.identityHashCode(entity);
+            case "hashCode" -> entityId;
             case "equals" -> proxyEquals(proxy, args);
-            case "toString" -> "MahjongPaperCullable[" + entity.getEntityId() + ']';
+            case "toString" -> "MahjongPaperCullable[" + entityId + ']';
             default -> null;
         };
     }
@@ -521,7 +525,7 @@ public final class CraftEngineService {
         }
     }
 
-    private void scheduleViewerVisibility(Entity entity, Player viewer, boolean visible) {
+    private void scheduleViewerVisibility(int entityId, Entity entity, Player viewer, boolean visible) {
         if (viewer == null) {
             return;
         }
@@ -529,10 +533,7 @@ public final class CraftEngineService {
             if (!viewer.isOnline()) {
                 return;
             }
-            if (!entity.isValid()) {
-                return;
-            }
-            if (!DisplayVisibilityRegistry.canView(entity.getEntityId(), viewer.getUniqueId())) {
+            if (!DisplayVisibilityRegistry.canView(entityId, viewer.getUniqueId())) {
                 viewer.hideEntity(this.plugin, entity);
                 return;
             }
@@ -1037,10 +1038,7 @@ public final class CraftEngineService {
         }
     }
 
-    private record TrackedCullableEntity(Entity entity, int entityId, Object cullableProxy) {
-        private TrackedCullableEntity(Entity entity, Object cullableProxy) {
-            this(entity, entity.getEntityId(), cullableProxy);
-        }
+    private record TrackedCullableEntity(Entity entity, int entityId, UUID entityUuid, Object cullableProxy) {
     }
 
     private record ItemBridge(Method keyOfMethod, Method byIdMethod) {
