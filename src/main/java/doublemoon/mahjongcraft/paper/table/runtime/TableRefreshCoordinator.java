@@ -1,16 +1,15 @@
 package doublemoon.mahjongcraft.paper.table.runtime;
 
 import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin;
+import doublemoon.mahjongcraft.paper.runtime.PluginTask;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.scheduler.BukkitTask;
 
 public final class TableRefreshCoordinator {
     private static final int CHUNK_REFRESH_BATCH_SIZE = 1;
@@ -22,8 +21,8 @@ public final class TableRefreshCoordinator {
     private final Set<String> pendingArtifactCleanupTableIds = new HashSet<>();
     private final StartupRefreshQueue startupRefreshQueue = new StartupRefreshQueue();
     private final StartupRefreshQueue chunkRefreshQueue = new StartupRefreshQueue();
-    private BukkitTask startupRefreshTask;
-    private BukkitTask chunkRefreshTask;
+    private PluginTask startupRefreshTask;
+    private PluginTask chunkRefreshTask;
 
     public TableRefreshCoordinator(MahjongPaperPlugin plugin, MahjongTableManager tableManager, TableSeatCoordinator seatCoordinator, int startupRebuildBatchSize) {
         this.plugin = plugin;
@@ -90,7 +89,7 @@ public final class TableRefreshCoordinator {
         if (this.startupRefreshTask != null && !this.startupRefreshTask.isCancelled()) {
             return;
         }
-        this.startupRefreshTask = Bukkit.getScheduler().runTaskTimer(this.plugin, this::processStartupRefreshBatch, 1L, 1L);
+        this.startupRefreshTask = this.plugin.scheduler().runGlobalTimer(this::processStartupRefreshBatch, 1L, 1L);
     }
 
     public void handleChunkLoad(Chunk chunk, Collection<String> candidateTableIds) {
@@ -114,7 +113,7 @@ public final class TableRefreshCoordinator {
         if (this.chunkRefreshTask != null && !this.chunkRefreshTask.isCancelled()) {
             return;
         }
-        this.chunkRefreshTask = Bukkit.getScheduler().runTaskTimer(this.plugin, this::processChunkRefreshBatch, 1L, 1L);
+        this.chunkRefreshTask = this.plugin.scheduler().runGlobalTimer(this::processChunkRefreshBatch, 1L, 1L);
     }
 
     private void processStartupRefreshBatch() {
@@ -129,8 +128,10 @@ public final class TableRefreshCoordinator {
                 attempts++;
                 continue;
             }
-            this.refreshPersistentTableArtifacts(session);
-            session.render();
+            this.plugin.scheduler().runRegion(session.center(), () -> {
+                this.refreshPersistentTableArtifacts(session);
+                session.render();
+            });
             attempts++;
         }
         if (this.startupRefreshQueue.isEmpty() && this.startupRefreshTask != null) {
@@ -151,9 +152,11 @@ public final class TableRefreshCoordinator {
                 attempts++;
                 continue;
             }
-            this.cleanupLoadedTableArtifactsIfNeeded(session);
-            session.render();
-            this.seatCoordinator.startSeatWatchdog(session);
+            this.plugin.scheduler().runRegion(session.center(), () -> {
+                this.cleanupLoadedTableArtifactsIfNeeded(session);
+                session.render();
+                this.seatCoordinator.startSeatWatchdog(session);
+            });
             attempts++;
         }
         if (this.chunkRefreshQueue.isEmpty() && this.chunkRefreshTask != null) {

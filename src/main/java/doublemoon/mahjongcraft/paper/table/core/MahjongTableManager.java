@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -39,7 +40,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
-import org.bukkit.scheduler.BukkitTask;
+import doublemoon.mahjongcraft.paper.runtime.PluginTask;
 
 public final class MahjongTableManager implements Listener {
     private static final long DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS = 40_000_000L;
@@ -50,18 +51,18 @@ public final class MahjongTableManager implements Listener {
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
     private final TableDirectory directory = new TableDirectory();
-    private final Map<UUID, RecentDisplayAction> recentDisplayActions = new HashMap<>();
-    private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new HashMap<>();
+    private final Map<UUID, RecentDisplayAction> recentDisplayActions = new ConcurrentHashMap<>();
+    private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new ConcurrentHashMap<>();
     private final TableSeatCoordinator seatCoordinator;
     private final TableRefreshCoordinator refreshCoordinator;
-    private final BukkitTask tableTickTask;
+    private final PluginTask tableTickTask;
 
     public MahjongTableManager(MahjongPaperPlugin plugin) {
         this.plugin = plugin;
         this.persistentTableStore = new PersistentTableStore(plugin);
         this.seatCoordinator = new TableSeatCoordinator(plugin, this);
         this.refreshCoordinator = new TableRefreshCoordinator(plugin, this, this.seatCoordinator, plugin.settings().tableStartupRebuildBatchSize());
-        this.tableTickTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> this.directory.tables().forEach(MahjongTableSession::tick), 20L, 20L);
+        this.tableTickTask = plugin.scheduler().runGlobalTimer(this::dispatchTableTicks, 20L, 20L);
     }
 
     public MahjongTableSession createTable(Player owner) {
@@ -318,7 +319,7 @@ public final class MahjongTableManager implements Listener {
         }
         this.refreshCoordinator.clearPendingArtifactCleanup(session.id());
         session.shutdown();
-        this.cleanupTableArtifacts(center);
+        this.cleanupTableArtifactsAt(center);
         this.directory.removeTable(session);
         this.persistTables();
         this.plugin.debug().log("table", "Deleted table " + session.id());
@@ -394,7 +395,7 @@ public final class MahjongTableManager implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        Bukkit.getScheduler().runTask(this.plugin, () -> this.plugin.craftEngine().syncTrackedEntitiesFor(event.getPlayer()));
+        this.plugin.scheduler().runEntity(event.getPlayer(), () -> this.plugin.craftEngine().syncTrackedEntitiesFor(event.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -440,7 +441,7 @@ public final class MahjongTableManager implements Listener {
             this.plugin.messages().actionBar(player, "command.leave_blocked_started");
             return;
         }
-        Bukkit.getScheduler().runTask(this.plugin, () -> this.leave(player.getUniqueId()));
+        this.plugin.scheduler().runEntity(player, () -> this.leave(player.getUniqueId()));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -583,7 +584,16 @@ public final class MahjongTableManager implements Listener {
     }
 
     public void cleanupTableArtifactsAt(Location center) {
-        this.cleanupTableArtifacts(center);
+        if (center == null || center.getWorld() == null) {
+            return;
+        }
+        this.plugin.scheduler().runRegion(center, () -> this.cleanupTableArtifacts(center));
+    }
+
+    private void dispatchTableTicks() {
+        for (MahjongTableSession session : new ArrayList<>(this.directory.tables())) {
+            this.plugin.scheduler().runRegion(session.center(), session::tick);
+        }
     }
 
     private record RecentHandTileClick(String tableId, UUID ownerId, int tileIndex, long timestampNanos) {
@@ -674,7 +684,7 @@ public final class MahjongTableManager implements Listener {
                 Location center = session.center();
                 this.directory.removeSpectators(session.spectators());
                 session.shutdown();
-                this.cleanupTableArtifacts(center);
+                this.cleanupTableArtifactsAt(center);
                 this.directory.removeTable(session);
                 this.plugin.debug().log("table", "Removed empty table " + session.id());
             }

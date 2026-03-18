@@ -3,20 +3,20 @@ package doublemoon.mahjongcraft.paper.table.core;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 
 final class TableDirectory {
-    private final Map<String, MahjongTableSession> tables = new LinkedHashMap<>();
-    private final Map<UUID, String> playerTables = new LinkedHashMap<>();
-    private final Map<UUID, String> spectatorTables = new LinkedHashMap<>();
-    private final Map<TableChunkKey, Set<String>> tablesByChunk = new LinkedHashMap<>();
+    private final Map<String, MahjongTableSession> tables = new ConcurrentHashMap<>();
+    private final Map<UUID, String> playerTables = new ConcurrentHashMap<>();
+    private final Map<UUID, String> spectatorTables = new ConcurrentHashMap<>();
+    private final Map<TableChunkKey, Set<String>> tablesByChunk = new ConcurrentHashMap<>();
 
     MahjongTableSession resolveTable(String tableId) {
         if (tableId == null) {
@@ -48,7 +48,7 @@ final class TableDirectory {
     }
 
     Collection<MahjongTableSession> tables() {
-        return this.tables.values();
+        return List.copyOf(this.tables.values());
     }
 
     Collection<String> tableIds() {
@@ -107,7 +107,7 @@ final class TableDirectory {
     }
 
     private void indexTable(MahjongTableSession session) {
-        this.tablesByChunk.computeIfAbsent(TableChunkKey.from(session.center()), ignored -> new HashSet<>()).add(session.id());
+        this.tablesByChunk.computeIfAbsent(TableChunkKey.from(session.center()), ignored -> ConcurrentHashMap.newKeySet()).add(session.id());
     }
 
     private void unindexTable(MahjongTableSession session) {

@@ -696,7 +696,7 @@ public final class DisplayEntities {
     }
 
     private static void applyTileDisplay(Plugin plugin, ItemDisplay display, TileDisplaySpec spec) {
-        applyEntityLocation(display, spec.location(), spec.yaw(), 0.0F);
+        applyEntityLocation(plugin, display, spec.location(), spec.yaw(), 0.0F);
         display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
         display.setInterpolationDuration(spec.smoothMovement() ? 1 : 0);
         display.setInterpolationDelay(0);
@@ -728,7 +728,7 @@ public final class DisplayEntities {
     }
 
     private static void applyLabel(Plugin plugin, TextDisplay display, LabelSpec spec) {
-        applyEntityLocation(display, spec.location(), spec.yaw(), spec.pitch());
+        applyEntityLocation(plugin, display, spec.location(), spec.yaw(), spec.pitch());
         display.text(spec.text());
         display.setSeeThrough(false);
         display.setShadowed(spec.shadowed());
@@ -742,7 +742,7 @@ public final class DisplayEntities {
     }
 
     private static void applyInteraction(Plugin plugin, Interaction interaction, InteractionSpec spec) {
-        applyEntityLocation(interaction, spec.location(), interaction.getYaw(), interaction.getPitch());
+        applyEntityLocation(plugin, interaction, spec.location(), interaction.getYaw(), interaction.getPitch());
         interaction.setResponsive(true);
         interaction.setInteractionWidth(spec.width());
         interaction.setInteractionHeight(spec.height());
@@ -750,12 +750,15 @@ public final class DisplayEntities {
         applyPrivateVisibility(plugin, interaction, spec.privateViewers(), true);
     }
 
-    private static void applyEntityLocation(Entity entity, Location location, float yaw, float pitch) {
+    private static void applyEntityLocation(Plugin plugin, Entity entity, Location location, float yaw, float pitch) {
         Location target = location.clone();
         target.setYaw(yaw);
         target.setPitch(pitch);
-        entity.teleport(target);
-        entity.setRotation(yaw, pitch);
+        if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin) {
+            mahjongPlugin.scheduler().teleport(entity, target);
+            return;
+        }
+        entity.teleportAsync(target);
     }
 
     private static void applyClickAction(int entityId, DisplayClickAction clickAction) {
@@ -785,18 +788,28 @@ public final class DisplayEntities {
 
     private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
-                player.showEntity(plugin, entity);
-            } else {
-                player.hideEntity(plugin, entity);
-            }
+            runForViewer(plugin, player, () -> {
+                if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
+                    player.showEntity(plugin, entity);
+                } else {
+                    player.hideEntity(plugin, entity);
+                }
+            });
         }
     }
 
     private static void syncPublicVisibility(Plugin plugin, Entity entity) {
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
-            player.showEntity(plugin, entity);
+            runForViewer(plugin, player, () -> player.showEntity(plugin, entity));
         }
+    }
+
+    private static void runForViewer(Plugin plugin, org.bukkit.entity.Player player, Runnable runnable) {
+        if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin) {
+            mahjongPlugin.scheduler().runEntity(player, runnable);
+            return;
+        }
+        runnable.run();
     }
 
     private static void registerForCraftEngineCulling(Plugin plugin, org.bukkit.entity.Entity entity) {

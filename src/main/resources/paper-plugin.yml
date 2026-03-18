@@ -3,6 +3,7 @@ main: doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
 loader: doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperLoader
 version: ${version}
 api-version: "1.21.11"
+folia-supported: true
 description: Riichi Mahjong Paper plugin rewrite built around display entities, item_model and CraftEngine.
 authors:
   - openai

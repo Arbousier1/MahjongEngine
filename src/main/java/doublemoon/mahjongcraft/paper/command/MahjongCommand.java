@@ -611,7 +611,7 @@ public final class MahjongCommand implements BasicCommand {
         this.plugin.async().execute("load-rank-" + player.getUniqueId(), () -> {
             try {
                 MahjongSoulRankProfile profile = this.plugin.database().loadRankProfile(player.getUniqueId(), player.getName());
-                Bukkit.getScheduler().runTask(this.plugin, () -> {
+                this.plugin.scheduler().runEntity(player, () -> {
                     if (!player.isOnline()) {
                         return;
                     }
@@ -629,7 +629,7 @@ public final class MahjongCommand implements BasicCommand {
                     );
                 });
             } catch (java.sql.SQLException ex) {
-                Bukkit.getScheduler().runTask(this.plugin, () -> {
+                this.plugin.scheduler().runEntity(player, () -> {
                     if (player.isOnline()) {
                         this.messages.send(player, "command.rank_failed");
                     }

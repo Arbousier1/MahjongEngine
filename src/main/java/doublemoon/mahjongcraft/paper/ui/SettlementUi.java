@@ -38,7 +38,7 @@ public final class SettlementUi {
         if (resolution == null) {
             return;
         }
-        player.openInventory(createInventory(player, session, resolution));
+        session.plugin().scheduler().runEntity(player, () -> player.openInventory(createInventory(player, session, resolution)));
     }
 
     private static Inventory createInventory(Player player, MahjongTableSession session, RoundResolution resolution) {

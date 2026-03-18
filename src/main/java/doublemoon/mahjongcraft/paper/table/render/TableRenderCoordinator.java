@@ -24,7 +24,7 @@ public final class TableRenderCoordinator {
             return;
         }
         this.renderFlushScheduled = true;
-        Bukkit.getScheduler().runTask(this.session.plugin(), this::flushRender);
+        this.session.plugin().scheduler().runRegion(this.session.center(), this::flushRender);
     }
 
     public void clearDisplays() {
@@ -73,7 +73,7 @@ public final class TableRenderCoordinator {
         this.renderPrecomputeRunning = true;
         this.session.plugin().async().execute("render-precompute-" + this.session.id(), () -> {
             MahjongTableSession.RenderPrecomputeResult result = this.session.precomputeRender(snapshot);
-            Bukkit.getScheduler().runTask(this.session.plugin(), () -> this.finishAsyncRenderPrecompute(result));
+            this.session.plugin().scheduler().runRegion(this.session.center(), () -> this.finishAsyncRenderPrecompute(result));
         });
     }
 

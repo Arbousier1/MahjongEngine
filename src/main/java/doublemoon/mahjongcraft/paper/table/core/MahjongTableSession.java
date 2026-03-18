@@ -27,6 +27,7 @@ import doublemoon.mahjongcraft.paper.table.render.TableRenderCoordinator;
 import doublemoon.mahjongcraft.paper.table.render.TableRenderInspectCoordinator;
 import doublemoon.mahjongcraft.paper.table.render.TableRenderSnapshotFactory;
 import doublemoon.mahjongcraft.paper.table.runtime.BotActionScheduler;
+import doublemoon.mahjongcraft.paper.runtime.PluginTask;
 import doublemoon.mahjongcraft.paper.table.runtime.TableLifecycleCoordinator;
 import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.util.ArrayList;
@@ -45,7 +46,6 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 public final class MahjongTableSession {
     private static final long NEXT_ROUND_DELAY_MILLIS = 8000L;
@@ -64,7 +64,7 @@ public final class MahjongTableSession {
     private doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
     private long nextRoundDeadlineMillis;
-    private BukkitTask botTask;
+    private PluginTask botTask;
     private final TableRenderCoordinator renderCoordinator;
     private final TableViewerPresentationCoordinator viewerPresentation;
     private final TableRegionDisplayCoordinator regionDisplayCoordinator;
@@ -935,7 +935,7 @@ public final class MahjongTableSession {
             : null;
     }
 
-    public void setBotTask(BukkitTask botTask) {
+    public void setBotTask(PluginTask botTask) {
         this.botTask = botTask;
     }
 

@@ -13,12 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
+import doublemoon.mahjongcraft.paper.runtime.PluginTask;
 
 public final class TableSeatCoordinator {
     private static final long SEAT_WATCHDOG_PERIOD_TICKS = 2L;
@@ -27,10 +28,10 @@ public final class TableSeatCoordinator {
 
     private final MahjongPaperPlugin plugin;
     private final MahjongTableManager tableManager;
-    private final Map<UUID, SeatWatchdogBinding> seatWatchdogs = new HashMap<>();
-    private final Map<UUID, Long> seatRestoreCooldownUntilMillis = new HashMap<>();
-    private final Set<UUID> seatDismountBypass = new HashSet<>();
-    private BukkitTask seatWatchdogTask;
+    private final Map<UUID, SeatWatchdogBinding> seatWatchdogs = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> seatRestoreCooldownUntilMillis = new ConcurrentHashMap<>();
+    private final Set<UUID> seatDismountBypass = ConcurrentHashMap.newKeySet();
+    private PluginTask seatWatchdogTask;
 
     public TableSeatCoordinator(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
         this.plugin = plugin;
@@ -87,7 +88,7 @@ public final class TableSeatCoordinator {
             return;
         }
         this.seatDismountBypass.add(playerId);
-        player.leaveVehicle();
+        this.plugin.scheduler().runEntity(player, player::leaveVehicle);
     }
 
     public void requestSeatRestore(Player player, MahjongTableSession session, SeatWind wind) {
@@ -97,7 +98,7 @@ public final class TableSeatCoordinator {
         if (!this.tryEnterSeatRestoreCooldown(player.getUniqueId())) {
             return;
         }
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
+        this.plugin.scheduler().runRegion(session.seatAnchorLocation(wind), () -> {
             if (!player.isOnline()) {
                 return;
             }
@@ -138,9 +139,9 @@ public final class TableSeatCoordinator {
         Location exit = seatAnchor.clone().add(offsetX, 1.05D, offsetZ);
         exit.setYaw(session.seatFacingYaw(wind));
         exit.setPitch(0.0F);
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
+        this.plugin.scheduler().runEntity(player, () -> {
             if (player.isOnline() && !player.isInsideVehicle()) {
-                player.teleport(exit);
+                this.plugin.scheduler().teleport(player, exit);
             }
         });
     }
@@ -182,7 +183,7 @@ public final class TableSeatCoordinator {
         if (this.seatWatchdogTask != null && !this.seatWatchdogTask.isCancelled()) {
             return;
         }
-        this.seatWatchdogTask = Bukkit.getScheduler().runTaskTimer(this.plugin, this::runSeatWatchdogs, 1L, SEAT_WATCHDOG_PERIOD_TICKS);
+        this.seatWatchdogTask = this.plugin.scheduler().runGlobalTimer(this::runSeatWatchdogs, 1L, SEAT_WATCHDOG_PERIOD_TICKS);
     }
 
     private void runSeatWatchdogs() {

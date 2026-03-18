@@ -10,6 +10,7 @@ import doublemoon.mahjongcraft.paper.i18n.MessageService;
 import doublemoon.mahjongcraft.paper.render.display.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.display.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.runtime.AsyncService;
+import doublemoon.mahjongcraft.paper.runtime.ServerScheduler;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
 import java.util.Locale;
 import java.util.Objects;
@@ -21,6 +22,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private PluginSettings settings;
     private DebugService debug;
     private AsyncService async;
+    private ServerScheduler scheduler;
     private DatabaseService database;
     private CraftEngineService craftEngine;
     private MahjongTableManager tableManager;
@@ -29,6 +31,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     public void onEnable() {
         LocalizedConfigResource.saveIfMissing(this, Locale.getDefault());
         this.async = new AsyncService(this.getLogger());
+        this.scheduler = new ServerScheduler(this);
         String reloadFailure = this.reloadMahjongConfiguration();
         if (reloadFailure != null) {
             this.getLogger().severe("MahjongPaper failed to load configuration during startup: " + reloadFailure);
@@ -54,7 +57,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         );
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
-        this.getServer().getScheduler().runTask(this, () -> {
+        this.scheduler.runGlobal(() -> {
             this.craftEngine.initializeAfterStartup();
             if (this.tableManager != null) {
                 this.tableManager.refreshPersistentTablesAfterStartup();
@@ -83,6 +86,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this.async.close();
             this.async = null;
         }
+        this.scheduler = null;
         this.craftEngine = null;
         if (this.debug != null) {
             this.debug.log("lifecycle", "Plugin shutdown complete.");
@@ -137,11 +141,11 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.tableManager != null) {
             this.craftEngine.enableFurnitureInteractionBridge(this.tableManager);
             this.craftEngine.initializeAfterStartup();
-            this.getServer().getOnlinePlayers().forEach(this.craftEngine::syncTrackedEntitiesFor);
-            this.tableManager.tables().forEach(table -> {
+            this.getServer().getOnlinePlayers().forEach(player -> this.scheduler.runEntity(player, () -> this.craftEngine.syncTrackedEntitiesFor(player)));
+            this.tableManager.tables().forEach(table -> this.scheduler.runRegion(table.center(), () -> {
                 table.clearDisplays();
                 table.render();
-            });
+            }));
         }
         return null;
     }
@@ -164,6 +168,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public AsyncService async() {
         return this.async;
+    }
+
+    public ServerScheduler scheduler() {
+        return this.scheduler;
     }
 
     public CraftEngineService craftEngine() {

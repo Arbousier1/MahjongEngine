@@ -395,7 +395,7 @@ public final class CraftEngineService {
         }
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            this.addTrackedEntity(player, tracked);
+            this.plugin.scheduler().runEntity(player, () -> this.addTrackedEntity(player, tracked));
         }
     }
 
@@ -409,7 +409,7 @@ public final class CraftEngineService {
             return;
         }
         for (Player player : Bukkit.getOnlinePlayers()) {
-            this.removeTrackedEntity(player, tracked.entityId());
+            this.plugin.scheduler().runEntity(player, () -> this.removeTrackedEntity(player, tracked.entityId()));
         }
     }
 
@@ -522,7 +522,7 @@ public final class CraftEngineService {
         if (viewer == null) {
             return;
         }
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
+        this.plugin.scheduler().runEntity(viewer, () -> {
             if (!viewer.isOnline()) {
                 return;
             }
@@ -640,8 +640,7 @@ public final class CraftEngineService {
             return false;
         }
         Location target = location.clone();
-        entity.teleport(target);
-        entity.setRotation(target.getYaw(), target.getPitch());
+        this.plugin.scheduler().teleport(entity, target);
         this.applyDisplayClickAction(entity, action);
         return true;
     }

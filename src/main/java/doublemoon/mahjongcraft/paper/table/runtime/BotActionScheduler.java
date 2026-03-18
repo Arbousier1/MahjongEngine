@@ -12,8 +12,6 @@ import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.Objects;
 import java.util.UUID;
 import kotlin.Pair;
-import org.bukkit.Bukkit;
-
 public final class BotActionScheduler {
     private BotActionScheduler() {
     }
@@ -30,13 +28,13 @@ public final class BotActionScheduler {
 
         UUID pendingBot = findPendingBotReaction(session, engine);
         if (pendingBot != null) {
-            session.setBotTask(Bukkit.getScheduler().runTaskLater(session.plugin(), () -> handleBotReaction(session, pendingBot), 20L));
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleBotReaction(session, pendingBot), 20L));
             return;
         }
 
         UUID current = UUID.fromString(engine.getCurrentPlayer().getUuid());
         if (session.isBot(current)) {
-            session.setBotTask(Bukkit.getScheduler().runTaskLater(session.plugin(), () -> handleBotTurn(session, current), 20L));
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleBotTurn(session, current), 20L));
         }
     }
 
@@ -48,12 +46,12 @@ public final class BotActionScheduler {
             if (!session.isBot(playerId) || session.availableReactions(playerId) == null) {
                 continue;
             }
-            session.setBotTask(Bukkit.getScheduler().runTaskLater(session.plugin(), () -> handleGbReaction(session, playerId), 20L));
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleGbReaction(session, playerId), 20L));
             return;
         }
         UUID current = session.playerAt(session.currentSeat());
         if (current != null && session.isBot(current)) {
-            session.setBotTask(Bukkit.getScheduler().runTaskLater(session.plugin(), () -> handleGbTurn(session, current), 20L));
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleGbTurn(session, current), 20L));
         }
     }
 

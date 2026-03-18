@@ -57,7 +57,7 @@ public final class TableViewerPresentationCoordinator {
         this.viewerHudState.remove(viewerId);
         Player player = this.session.onlinePlayer(viewerId);
         if (bar != null && player != null) {
-            player.hideBossBar(bar);
+            this.session.plugin().scheduler().runEntity(player, () -> player.hideBossBar(bar));
         }
     }
 
@@ -120,7 +120,7 @@ public final class TableViewerPresentationCoordinator {
     private BossBar createHudBar(UUID viewerId, Player viewer) {
         BossBar bar = BossBar.bossBar(Component.empty(), 1.0F, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
         this.viewerHudBars.put(viewerId, bar);
-        viewer.showBossBar(bar);
+        this.session.plugin().scheduler().runEntity(viewer, () -> viewer.showBossBar(bar));
         return bar;
     }
 
