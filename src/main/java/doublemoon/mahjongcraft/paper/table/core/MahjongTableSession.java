@@ -580,6 +580,10 @@ public final class MahjongTableSession {
         return this.roundController == null ? 0 : this.roundController.honbaCount();
     }
 
+    public SeatWind roundWind() {
+        return this.roundController == null ? SeatWind.EAST : this.roundController.roundWind();
+    }
+
     public SeatWind dealerSeat() {
         return this.roundController == null ? SeatWind.EAST : this.roundController.dealerSeat();
     }

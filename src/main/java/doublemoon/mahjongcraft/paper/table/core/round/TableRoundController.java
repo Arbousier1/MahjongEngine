@@ -60,6 +60,8 @@ public interface TableRoundController {
 
     int honbaCount();
 
+    SeatWind roundWind();
+
     SeatWind dealerSeat();
 
     SeatWind currentSeat();

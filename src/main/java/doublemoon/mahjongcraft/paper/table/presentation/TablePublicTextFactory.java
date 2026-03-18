@@ -167,7 +167,7 @@ public final class TablePublicTextFactory {
     }
 
     private String roundWindText(Locale locale) {
-        return switch (this.session.dealerSeat()) {
+        return switch (this.session.roundWind()) {
             case EAST -> this.session.plugin().messages().plain(locale, "seat.wind.east");
             case SOUTH -> this.session.plugin().messages().plain(locale, "seat.wind.south");
             case WEST -> this.session.plugin().messages().plain(locale, "seat.wind.west");

@@ -16,6 +16,8 @@ class ConfigTemplateParseTest {
             yaml.loadFromString(stream.bufferedReader(Charsets.UTF_8).use { it.readText() })
 
             assertEquals("mahjongpaper:", yaml.getString("integrations.craftengine.items.tileItemIdPrefix"))
+            assertEquals("mahjongpaper:", yaml.getString("integrations.craftengine.items.riichiTileItemIdPrefix"))
+            assertEquals("mahjongpaper:", yaml.getString("integrations.craftengine.items.gbTileItemIdPrefix"))
         }
     }
 }

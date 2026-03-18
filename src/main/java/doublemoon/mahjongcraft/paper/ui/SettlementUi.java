@@ -239,7 +239,7 @@ public final class SettlementUi {
     }
 
     private static ItemStack tileItem(MahjongTableSession session, MahjongTile tile, boolean faceDown, Component name) {
-        ItemStack customItem = session.plugin().craftEngine().resolveTileItem(tile, faceDown);
+        ItemStack customItem = session.plugin().craftEngine().resolveTileItem(session.currentVariant(), tile, faceDown);
         if (customItem != null) {
             ItemMeta customMeta = customItem.getItemMeta();
             customMeta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));

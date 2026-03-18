@@ -7,6 +7,7 @@ import doublemoon.mahjongcraft.paper.render.display.DisplayClickAction;
 import doublemoon.mahjongcraft.paper.render.display.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.display.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
+import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -132,7 +133,7 @@ public final class CraftEngineService {
         return removed;
     }
 
-    public ItemStack resolveTileItem(MahjongTile tile, boolean faceDown) {
+    public ItemStack resolveTileItem(MahjongVariant variant, MahjongTile tile, boolean faceDown) {
         if (!this.preferCustomItems || this.itemReflectionUnavailable) {
             return null;
         }
@@ -143,7 +144,28 @@ public final class CraftEngineService {
             return null;
         }
 
-        String itemId = this.customItemId(tile, faceDown);
+        String itemId = this.customItemId(variant, tile, faceDown);
+        ItemStack resolved = this.buildCustomItem(craftEngine, bridge, itemId);
+        if (resolved != null) {
+            return resolved;
+        }
+        if (!faceDown && tile != MahjongTile.UNKNOWN) {
+            String fallbackItemId = this.customItemId(variant, MahjongTile.UNKNOWN, false);
+            if (!Objects.equals(fallbackItemId, itemId)) {
+                ItemStack fallback = this.buildCustomItem(craftEngine, bridge, fallbackItemId);
+                if (fallback != null) {
+                    return fallback;
+                }
+            }
+        }
+        return null;
+    }
+
+    public ItemStack resolveTileItem(MahjongTile tile, boolean faceDown) {
+        return this.resolveTileItem(MahjongVariant.RIICHI, tile, faceDown);
+    }
+
+    private ItemStack buildCustomItem(Plugin craftEngine, ItemBridge bridge, String itemId) {
         ItemStack cached = this.customItemCache.get(itemId);
         if (cached != null) {
             return cached.clone();
@@ -407,8 +429,12 @@ public final class CraftEngineService {
         this.trackedCullableEntities.clear();
     }
 
+    public String customItemId(MahjongVariant variant, MahjongTile tile, boolean faceDown) {
+        return CraftEngineTileItemResolver.resolve(this.plugin.settings().craftEngineTileItemIdPrefix(variant), tile, faceDown);
+    }
+
     public String customItemId(MahjongTile tile, boolean faceDown) {
-        return CraftEngineTileItemResolver.resolve(this.plugin.settings().craftEngineTileItemIdPrefix(), tile, faceDown);
+        return this.customItemId(MahjongVariant.RIICHI, tile, faceDown);
     }
 
     private Object createCullableProxy(Entity entity, ReflectionBridge bridge, Object cullingData) {

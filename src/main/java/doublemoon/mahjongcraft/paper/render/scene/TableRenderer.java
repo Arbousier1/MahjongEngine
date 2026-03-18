@@ -8,6 +8,7 @@ import doublemoon.mahjongcraft.paper.render.layout.DiscardLayout;
 import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout;
 import doublemoon.mahjongcraft.paper.render.layout.WallLayout;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.List;
@@ -612,6 +613,7 @@ public final class TableRenderer {
             specs.add(DisplayEntities.tileDisplaySpec(
                 center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
                 0.0F,
+                session.currentVariant(),
                 snapshot.lastPublicDiscardTile(),
                 DisplayEntities.TileRenderPose.STANDING,
                 null,
@@ -734,6 +736,7 @@ public final class TableRenderer {
                 session.plugin(),
                 tileLocation,
                 plan.yaw(),
+                session.currentVariant(),
                 seat.hand().get(tileIndex),
                 DisplayEntities.TileRenderPose.STANDING,
                 null,
@@ -776,6 +779,7 @@ public final class TableRenderer {
             session.plugin(),
             tileLocation,
             plan.yaw(),
+            session.currentVariant(),
             seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
             null,
@@ -817,6 +821,7 @@ public final class TableRenderer {
                 session.plugin(),
                 toLocation(session, plan.publicHandPoints().get(i)),
                 plan.yaw(),
+                session.currentVariant(),
                 concealHand ? MahjongTile.UNKNOWN : seat.hand().get(i),
                 DisplayEntities.TileRenderPose.STANDING,
                 null,
@@ -843,6 +848,7 @@ public final class TableRenderer {
             session.plugin(),
             toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
+            session.currentVariant(),
             concealHand ? MahjongTile.UNKNOWN : seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
             null,
@@ -866,6 +872,7 @@ public final class TableRenderer {
         return List.of(DisplayEntities.tileDisplaySpec(
             toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
+            session.currentVariant(),
             concealHand ? MahjongTile.UNKNOWN : seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
             null,
@@ -992,6 +999,7 @@ public final class TableRenderer {
         DisplayEntities.EntitySpec tileSpec = DisplayEntities.tileDisplaySpec(
             tileLocation,
             plan.yaw(),
+            session.currentVariant(),
             seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
             null,
@@ -1260,6 +1268,7 @@ public final class TableRenderer {
             session.plugin(),
             location,
             yaw,
+            session.currentVariant(),
             tile,
             pose,
             null,
@@ -1275,6 +1284,7 @@ public final class TableRenderer {
         return DisplayEntities.tileDisplaySpec(
             toLocation(session, placement.point()),
             placement.yaw(),
+            session.currentVariant(),
             placement.tile(),
             placement.pose(),
             null,
@@ -1291,6 +1301,7 @@ public final class TableRenderer {
             session.plugin(),
             center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
             0.0F,
+            session.currentVariant(),
             tile,
             DisplayEntities.TileRenderPose.STANDING,
             null,

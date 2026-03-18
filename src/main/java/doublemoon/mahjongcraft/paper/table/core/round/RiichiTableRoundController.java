@@ -126,6 +126,16 @@ public final class RiichiTableRoundController implements TableRoundController {
     }
 
     @Override
+    public SeatWind roundWind() {
+        return switch (this.engine.getRound().getWind()) {
+            case EAST -> SeatWind.EAST;
+            case SOUTH -> SeatWind.SOUTH;
+            case WEST -> SeatWind.WEST;
+            case NORTH -> SeatWind.NORTH;
+        };
+    }
+
+    @Override
     public SeatWind dealerSeat() {
         return SeatWind.fromIndex(this.engine.getRound().getRound());
     }
