@@ -118,7 +118,6 @@ integrations:
       # 設為 "" 時改用內建的 block-display 椅子後備方案。
       # 這個家具應在 CraftEngine 中自行定義 hitbox 與 seats。
       seatFurnitureId: mahjongpaper:seat_chair
-      protectedFurnitureIds: []
 
 debug:
   enabled: false

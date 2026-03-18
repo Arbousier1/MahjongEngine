@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ConcurrentHashMap;
@@ -533,46 +532,18 @@ public final class MahjongTableManager implements Listener {
             return false;
         }
         if (this.plugin.craftEngine().isSeatEntity(entity)) {
-            return true;
-        }
-        if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
-            return this.isProtectedFurnitureId(this.plugin.craftEngine().furnitureItemId(entity));
-        }
-        Entity furnitureEntity = this.plugin.craftEngine().furnitureEntityForSeat(entity);
-        if (furnitureEntity == null) {
-            return false;
-        }
-        return this.isProtectedFurnitureId(this.plugin.craftEngine().furnitureItemId(furnitureEntity));
-    }
-
-    private boolean isProtectedFurnitureId(String furnitureId) {
-        if (furnitureId == null || furnitureId.isBlank()) {
-            return false;
-        }
-        if (furnitureId.startsWith("mahjongpaper:")) {
-            return true;
-        }
-        if (Objects.equals(furnitureId, this.plugin.settings().craftEngineTableFurnitureId())
-            || Objects.equals(furnitureId, this.plugin.settings().craftEngineSeatFurnitureId())) {
-            return true;
-        }
-        for (String protectedId : this.plugin.settings().craftEngineProtectedFurnitureIds()) {
-            if (matchesProtectedFurnitureRule(furnitureId, protectedId)) {
+            Entity furnitureEntity = this.plugin.craftEngine().furnitureEntityForSeat(entity);
+            if (furnitureEntity != null && this.plugin.craftEngine().isManagedFurnitureEntity(furnitureEntity)) {
                 return true;
             }
         }
-        return false;
-    }
-
-    private static boolean matchesProtectedFurnitureRule(String furnitureId, String rule) {
-        if (rule == null || rule.isBlank()) {
+        if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
+            if (this.plugin.craftEngine().isManagedFurnitureEntity(entity)) {
+                return true;
+            }
             return false;
         }
-        if (rule.endsWith("*")) {
-            String prefix = rule.substring(0, rule.length() - 1);
-            return !prefix.isEmpty() && furnitureId.startsWith(prefix);
-        }
-        return Objects.equals(furnitureId, rule);
+        return false;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

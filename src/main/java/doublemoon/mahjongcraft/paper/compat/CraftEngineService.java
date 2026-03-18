@@ -46,6 +46,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.util.BoundingBox;
 
 public final class CraftEngineService {
+    private static final String MANAGED_FURNITURE_KEY = "managed_craftengine_furniture";
     private static final String BUNDLE_ROOT = "craftengine/mahjongpaper";
     private static final String BUNDLE_INDEX = BUNDLE_ROOT + "/_bundle_index.txt";
     private static final String CRAFT_ENGINE_PLUGIN_NAME = "CraftEngine";
@@ -211,6 +212,7 @@ public final class CraftEngineService {
     public Entity placeSeatFurniture(Location location, String furnitureItemId, DisplayClickAction action) {
         Entity entity = this.placeFurniture(location, furnitureItemId);
         if (entity != null && action != null) {
+            this.markManagedFurnitureEntity(entity);
             TableDisplayRegistry.register(entity.getEntityId(), action);
         }
         return entity;
@@ -219,6 +221,7 @@ public final class CraftEngineService {
     public Entity placeFurniture(Location location, String furnitureItemId, DisplayClickAction action) {
         Entity entity = this.placeFurniture(location, furnitureItemId);
         if (entity != null) {
+            this.markManagedFurnitureEntity(entity);
             this.applyDisplayClickAction(entity, action);
         }
         return entity;
@@ -243,7 +246,11 @@ public final class CraftEngineService {
                 return null;
             }
             Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
-            return bukkitEntity instanceof Entity entity ? entity : null;
+            if (bukkitEntity instanceof Entity entity) {
+                this.markManagedFurnitureEntity(entity);
+                return entity;
+            }
+            return null;
         } catch (ReflectiveOperationException | RuntimeException exception) {
             this.furnitureReflectionUnavailable = true;
             this.plugin.getLogger().warning(
@@ -648,8 +655,13 @@ public final class CraftEngineService {
         }
         Location target = location.clone();
         this.plugin.scheduler().teleport(entity, target);
+        this.markManagedFurnitureEntity(entity);
         this.applyDisplayClickAction(entity, action);
         return true;
+    }
+
+    public boolean isManagedFurnitureEntity(Entity entity) {
+        return entity != null && entity.getPersistentDataContainer().has(managedFurnitureKey(), PersistentDataType.BYTE);
     }
 
     public String furnitureItemId(Entity entity) {
@@ -802,11 +814,23 @@ public final class CraftEngineService {
         if (entity == null) {
             return;
         }
+        this.markManagedFurnitureEntity(entity);
         if (action == null) {
             TableDisplayRegistry.unregister(entity.getEntityId());
             return;
         }
         TableDisplayRegistry.register(entity.getEntityId(), action);
+    }
+
+    private void markManagedFurnitureEntity(Entity entity) {
+        if (entity == null) {
+            return;
+        }
+        entity.getPersistentDataContainer().set(managedFurnitureKey(), PersistentDataType.BYTE, (byte) 1);
+    }
+
+    private NamespacedKey managedFurnitureKey() {
+        return new NamespacedKey(this.plugin, MANAGED_FURNITURE_KEY);
     }
 
     private static int maxDistance(Entity entity) {
