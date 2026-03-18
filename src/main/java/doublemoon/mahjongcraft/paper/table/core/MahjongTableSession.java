@@ -948,10 +948,7 @@ public final class MahjongTableSession {
 
     public void tick() {
         this.renderCoordinator.restoreDisplaysIfNeeded();
-        if (this.viewerPresentation.hasPresentationState()) {
-            this.viewerPresentation.markDirty();
-            this.viewerPresentation.flushIfNeeded();
-        }
+        this.viewerPresentation.flushIfNeeded();
         if (this.roundController == null || this.roundController.started() || this.roundController.lastResolution() == null) {
             return;
         }

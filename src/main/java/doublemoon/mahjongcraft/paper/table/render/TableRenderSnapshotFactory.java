@@ -3,17 +3,25 @@ package doublemoon.mahjongcraft.paper.table.render;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 public final class TableRenderSnapshotFactory {
     public MahjongTableSession.RenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
         Location tableCenter = session.center();
+        List<UUID> onlineViewerIds = session.viewers().stream()
+            .map(Player::getUniqueId)
+            .distinct()
+            .toList();
+        Set<UUID> onlineViewerIdSet = new HashSet<>(onlineViewerIds);
         EnumMap<SeatWind, MahjongTableSession.SeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {
-            seats.put(wind, this.captureSeatSnapshot(session, wind));
+            seats.put(wind, this.captureSeatSnapshot(session, wind, onlineViewerIds, onlineViewerIdSet));
         }
         return new MahjongTableSession.RenderSnapshot(
             version,
@@ -42,7 +50,12 @@ public final class TableRenderSnapshotFactory {
         );
     }
 
-    private MahjongTableSession.SeatRenderSnapshot captureSeatSnapshot(MahjongTableSession session, SeatWind wind) {
+    private MahjongTableSession.SeatRenderSnapshot captureSeatSnapshot(
+        MahjongTableSession session,
+        SeatWind wind,
+        List<UUID> onlineViewerIds,
+        Set<UUID> onlineViewerIdSet
+    ) {
         UUID playerId = session.playerAt(wind);
         boolean occupied = playerId != null;
         return new MahjongTableSession.SeatRenderSnapshot(
@@ -54,18 +67,34 @@ public final class TableRenderSnapshotFactory {
             occupied && session.isRiichi(playerId),
             occupied && session.isReady(playerId),
             occupied && session.isQueuedToLeave(playerId),
-            occupied && session.onlinePlayer(playerId) != null,
-            occupied ? session.viewerMembershipSignatureFor(playerId) : "",
+            occupied && onlineViewerIdSet.contains(playerId),
+            occupied ? this.viewerMembershipSignature(onlineViewerIds, playerId) : "",
             occupied ? session.selectedHandTileIndex(playerId) : -1,
             occupied ? session.riichiDiscardIndex(playerId) : -1,
             session.stickLayoutCount(wind),
-            occupied ? session.viewerIdsExcluding(playerId) : List.of(),
+            occupied ? this.viewerIdsExcluding(onlineViewerIds, playerId) : List.of(),
             occupied ? session.hand(playerId) : List.of(),
             occupied ? session.discards(playerId) : List.of(),
             occupied ? session.fuuro(playerId) : List.of(),
             occupied ? session.scoringSticks(playerId) : List.of(),
             session.cornerSticks(wind)
         );
+    }
+
+    private String viewerMembershipSignature(List<UUID> onlineViewerIds, UUID excludedPlayerId) {
+        StringBuilder builder = new StringBuilder(onlineViewerIds.size() * 36);
+        for (UUID viewerId : onlineViewerIds) {
+            if (!viewerId.equals(excludedPlayerId)) {
+                builder.append(viewerId);
+            }
+        }
+        return builder.toString();
+    }
+
+    private List<UUID> viewerIdsExcluding(List<UUID> onlineViewerIds, UUID excludedPlayerId) {
+        return onlineViewerIds.stream()
+            .filter(viewerId -> !viewerId.equals(excludedPlayerId))
+            .toList();
     }
 }
 
