@@ -6,10 +6,7 @@ on:
       - main
       - virtual-threads
       - feature/gb-mahjong
-<<<<<<< HEAD
-=======
       - feature/folia-compat
->>>>>>> b4a76cb ([skip ci] Sync CI workflows from feature/folia-compat)
   pull_request:
   workflow_dispatch:
 
@@ -114,17 +111,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/universal extract/windows extract/macos
-<<<<<<< HEAD
-          LINUX_JAR="$(find artifacts/linux -name '*.jar' | head -n 1)"
-          WINDOWS_JAR="$(find artifacts/windows -name '*.jar' | head -n 1)"
-          MACOS_JAR="$(find artifacts/macos -name '*.jar' | head -n 1)"
-          UNIVERSAL_JAR="build/universal/$(basename "$LINUX_JAR" .jar)-universal.jar"
-
-          cp "$LINUX_JAR" "$UNIVERSAL_JAR"
-          (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native/windows-x86_64)
-          (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native/macos-x86_64)
-          jar uf "$UNIVERSAL_JAR" -C extract/windows native/windows-x86_64 -C extract/macos native/macos-x86_64
-=======
           select_main_jar() {
             find "$1" -name '*.jar' \
               ! -name '*-sources.jar' \
@@ -148,7 +134,6 @@ jobs:
           (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native)
           (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native)
           jar uf "$UNIVERSAL_JAR" -C extract/windows native -C extract/macos native
->>>>>>> b4a76cb ([skip ci] Sync CI workflows from feature/folia-compat)
 
       - name: Upload universal jar
         uses: actions/upload-artifact@v4

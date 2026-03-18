@@ -1,15 +1,6 @@
 name: Test
 
 on:
-<<<<<<< HEAD
-  push:
-    branches:
-      - main
-      - virtual-threads
-      - feature/gb-mahjong
-  pull_request:
-=======
->>>>>>> b4a76cb ([skip ci] Sync CI workflows from feature/folia-compat)
   workflow_dispatch:
 
 jobs:
