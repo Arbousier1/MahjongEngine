@@ -26,6 +26,7 @@ public final class TableSeatCoordinator {
     private static final long SEAT_WATCHDOG_PERIOD_TICKS = 2L;
     private static final long SEAT_WATCHDOG_DURATION_TICKS = 40L;
     private static final long SEAT_RESTORE_COOLDOWN_MILLIS = 150L;
+    private static final double SEAT_RESTORE_MAX_DISTANCE_SQUARED = 16.0D;
 
     private final MahjongPaperPlugin plugin;
     private final MahjongTableManager tableManager;
@@ -83,42 +84,31 @@ public final class TableSeatCoordinator {
             return;
         }
         Player player = Bukkit.getPlayer(playerId);
-        if (player == null || !player.isInsideVehicle()) {
+        if (player == null) {
             return;
         }
-        Entity vehicle = player.getVehicle();
-        if (this.seatAction(vehicle) == null) {
-            return;
-        }
-        this.seatDismountBypass.add(playerId);
-        this.plugin.scheduler().runEntity(player, player::leaveVehicle);
+        this.plugin.scheduler().runEntity(player, () -> {
+            if (!player.isOnline() || !player.isInsideVehicle()) {
+                return;
+            }
+            Entity vehicle = player.getVehicle();
+            if (this.seatAction(vehicle) == null) {
+                return;
+            }
+            this.seatDismountBypass.add(playerId);
+            player.leaveVehicle();
+        });
     }
 
     public void requestSeatRestore(Player player, MahjongTableSession session, SeatWind wind) {
         if (player == null || session == null || wind == null || this.plugin.craftEngine() == null) {
             return;
         }
-        if (!this.tryEnterSeatRestoreCooldown(player.getUniqueId())) {
+        UUID playerId = player.getUniqueId();
+        if (!this.tryEnterSeatRestoreCooldown(playerId)) {
             return;
         }
-        this.plugin.scheduler().runRegion(session.seatAnchorLocation(wind), () -> {
-            if (!player.isOnline()) {
-                return;
-            }
-            if (this.plugin.craftEngine() == null) {
-                return;
-            }
-            if (this.tableManager.tableFor(player.getUniqueId()) != session) {
-                return;
-            }
-            if (player.isInsideVehicle()) {
-                return;
-            }
-            Entity furniture = this.findSeatFurniture(session, wind);
-            if (furniture != null) {
-                this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
-            }
-        });
+        this.plugin.scheduler().runEntity(player, () -> this.restoreSeatOnPlayerThread(player, playerId, session, wind));
     }
 
     public void movePlayerToSeatExit(UUID playerId, MahjongTableSession session, SeatWind wind) {
@@ -208,9 +198,7 @@ public final class TableSeatCoordinator {
                 this.seatWatchdogs.remove(playerId);
                 continue;
             }
-            if (!this.isPlayerSeatedAt(player, session, binding.wind())) {
-                this.requestSeatRestore(player, session, binding.wind());
-            }
+            this.plugin.scheduler().runEntity(player, () -> this.inspectSeatWatchdogOnPlayerThread(player, playerId, binding));
         }
         if (this.seatWatchdogs.isEmpty()) {
             this.stopSeatWatchdogTask();
@@ -237,6 +225,29 @@ public final class TableSeatCoordinator {
         return true;
     }
 
+    private void inspectSeatWatchdogOnPlayerThread(Player player, UUID playerId, SeatWatchdogBinding binding) {
+        if (player == null || playerId == null || binding == null) {
+            return;
+        }
+        SeatWatchdogBinding currentBinding = this.seatWatchdogs.get(playerId);
+        if (!binding.equals(currentBinding)) {
+            return;
+        }
+        MahjongTableSession session = this.tableManager.resolveTableById(binding.tableId());
+        long nowTick = this.seatWatchdogClock.get();
+        if (session == null || !session.isStarted() || session.seatOf(playerId) != binding.wind() || binding.expiresAtTick() < nowTick) {
+            this.seatWatchdogs.remove(playerId, binding);
+            return;
+        }
+        if (!player.isOnline()) {
+            this.seatWatchdogs.remove(playerId, binding);
+            return;
+        }
+        if (!this.isPlayerSeatedAt(player, session, binding.wind()) && this.tryEnterSeatRestoreCooldown(playerId)) {
+            this.restoreSeatOnPlayerThread(player, playerId, session, binding.wind());
+        }
+    }
+
     private boolean isPlayerSeatedAt(Player player, MahjongTableSession session, SeatWind wind) {
         if (player == null || session == null || wind == null || !player.isInsideVehicle()) {
             return false;
@@ -245,6 +256,38 @@ public final class TableSeatCoordinator {
         return action != null
             && action.seatWind() == wind
             && session.id().equals(action.tableId());
+    }
+
+    private void restoreSeatOnPlayerThread(Player player, UUID playerId, MahjongTableSession session, SeatWind wind) {
+        if (player == null || playerId == null || session == null || wind == null || this.plugin.craftEngine() == null) {
+            return;
+        }
+        if (!player.isOnline()) {
+            return;
+        }
+        if (this.tableManager.tableFor(playerId) != session || player.isInsideVehicle()) {
+            return;
+        }
+        Location seatAnchor = session.seatAnchorLocation(wind);
+        if (!this.isSeatRestoreInRange(player, seatAnchor)) {
+            return;
+        }
+        Entity furniture = this.findSeatFurniture(session, wind);
+        if (furniture != null) {
+            this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
+        }
+    }
+
+    private boolean isSeatRestoreInRange(Player player, Location seatAnchor) {
+        if (player == null || seatAnchor == null || seatAnchor.getWorld() == null) {
+            return false;
+        }
+        Location playerLocation = player.getLocation();
+        World playerWorld = playerLocation.getWorld();
+        if (playerWorld == null || !playerWorld.equals(seatAnchor.getWorld())) {
+            return false;
+        }
+        return playerLocation.distanceSquared(seatAnchor) <= SEAT_RESTORE_MAX_DISTANCE_SQUARED;
     }
 
     private Entity findSeatFurniture(MahjongTableSession session, SeatWind wind) {

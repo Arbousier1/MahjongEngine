@@ -1,6 +1,7 @@
 package doublemoon.mahjongcraft.paper.table.runtime
 
 import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
+import doublemoon.mahjongcraft.paper.compat.CraftEngineService
 import doublemoon.mahjongcraft.paper.model.SeatWind
 import doublemoon.mahjongcraft.paper.runtime.PluginTask
 import doublemoon.mahjongcraft.paper.runtime.ServerScheduler
@@ -13,6 +14,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.never
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -77,6 +79,59 @@ class TableSeatCoordinatorTest {
             invokeRunSeatWatchdogs(coordinator)
             assertTrue(seatWatchdogs(coordinator).isEmpty())
         }
+    }
+
+    @Test
+    fun `seat watchdog inspects players on entity scheduler instead of global thread`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val tableManager = mock(MahjongTableManager::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val session = mock(MahjongTableSession::class.java)
+        val player = mock(Player::class.java)
+        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000303")
+
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
+        `when`(scheduler.runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))).thenReturn(task)
+        `when`(task.isCancelled()).thenReturn(false)
+        `when`(session.id()).thenReturn("TABLE03")
+        `when`(tableManager.resolveTableById("TABLE03")).thenReturn(session)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.seatOf(playerId)).thenReturn(SeatWind.WEST)
+        `when`(player.isOnline).thenReturn(true)
+
+        Mockito.mockStatic(Bukkit::class.java).use { bukkit ->
+            bukkit.`when`<Player?> { Bukkit.getPlayer(playerId) }.thenReturn(player)
+
+            coordinator.startSeatWatchdog(session, playerId, SeatWind.WEST, 40L)
+            invokeRunSeatWatchdogs(coordinator)
+        }
+
+        verify(scheduler, times(1)).runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))
+    }
+
+    @Test
+    fun `seat restore is scheduled on player entity thread`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val tableManager = mock(MahjongTableManager::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val session = mock(MahjongTableSession::class.java)
+        val player = mock(Player::class.java)
+        val craftEngine = mock(CraftEngineService::class.java)
+        val coordinator = TableSeatCoordinator(plugin, tableManager)
+
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(plugin.craftEngine()).thenReturn(craftEngine)
+        `when`(scheduler.runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))).thenReturn(task)
+        `when`(player.uniqueId).thenReturn(UUID.fromString("00000000-0000-0000-0000-000000000304"))
+
+        coordinator.requestSeatRestore(player, session, SeatWind.NORTH)
+
+        verify(scheduler, times(1)).runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))
+        verify(scheduler, never()).runRegion(Mockito.any(), Mockito.any(Runnable::class.java))
     }
 
     @Suppress("UNCHECKED_CAST")
