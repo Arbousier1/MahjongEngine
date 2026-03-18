@@ -52,6 +52,7 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, List<MahjongTile>> hands = new HashMap<>();
     private final Map<UUID, List<MahjongTile>> discards = new HashMap<>();
     private final Map<UUID, List<MahjongTile>> flowers = new HashMap<>();
+    private final Map<UUID, Boolean> hasDrawnTile = new HashMap<>();
     private final Map<UUID, List<GbMeldState>> melds = new HashMap<>();
     private final Map<UUID, GbTingResponse> tingCache = new HashMap<>();
     private List<MahjongTile> wall = List.of();
@@ -77,6 +78,7 @@ public final class GbTableRoundController implements TableRoundController {
             this.hands.put(playerId, new ArrayList<>());
             this.discards.put(playerId, new ArrayList<>());
             this.flowers.put(playerId, new ArrayList<>());
+            this.hasDrawnTile.put(playerId, false);
             this.melds.put(playerId, new ArrayList<>());
             this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Round has not started yet."));
         }
@@ -119,15 +121,16 @@ public final class GbTableRoundController implements TableRoundController {
             this.hands.get(playerId).clear();
             this.discards.get(playerId).clear();
             this.flowers.get(playerId).clear();
+            this.hasDrawnTile.put(playerId, false);
             this.melds.get(playerId).clear();
         }
 
         for (int draw = 0; draw < 13; draw++) {
             for (SeatWind wind : SeatWind.values()) {
-                this.drawTile(this.playerAt(wind), false);
+                this.drawTile(this.playerAt(wind), false, false, false);
             }
         }
-        this.drawTile(this.currentPlayerId(), false);
+        this.drawTile(this.currentPlayerId(), false, false, true);
         this.refreshAllTing();
     }
 
@@ -137,6 +140,8 @@ public final class GbTableRoundController implements TableRoundController {
             return false;
         }
         MahjongTile discarded = this.hands.get(playerId).remove(tileIndex);
+        this.hasDrawnTile.put(playerId, false);
+        this.sortHand(playerId);
         this.discards.get(playerId).add(discarded);
         this.afterKanTsumoPlayer = null;
         this.pendingReactionWindow = this.buildPendingReactionWindow(playerId, discarded);
@@ -223,6 +228,8 @@ public final class GbTableRoundController implements TableRoundController {
         }
         if (countMatchingTiles(hand, target) >= 4) {
             removeTiles(hand, target, 4);
+            this.hasDrawnTile.put(playerId, false);
+            this.sortHand(playerId);
             this.melds.get(playerId).add(GbMeldState.ankan(target));
             this.kanCount++;
             boolean drew = this.drawReplacementTileOrFinish(playerId);
@@ -584,11 +591,15 @@ public final class GbTableRoundController implements TableRoundController {
 
     private void claimPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         removeTiles(this.hands.get(playerId), claimedTile, 2);
+        this.hasDrawnTile.put(playerId, false);
+        this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.pung(claimedTile, fromSeat));
     }
 
     private void claimOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         removeTiles(this.hands.get(playerId), claimedTile, 3);
+        this.hasDrawnTile.put(playerId, false);
+        this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.openKong(claimedTile, fromSeat));
         this.kanCount++;
     }
@@ -598,6 +609,8 @@ public final class GbTableRoundController implements TableRoundController {
         MahjongTile second = MahjongTile.valueOf(pair.getSecond().name());
         removeTiles(this.hands.get(playerId), first, 1);
         removeTiles(this.hands.get(playerId), second, 1);
+        this.hasDrawnTile.put(playerId, false);
+        this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.chow(claimedTile, first, second, fromSeat));
     }
 
@@ -623,7 +636,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     private GbFanRequest buildFanRequest(UUID playerId, MahjongTile winningTile, String winType, SeatWind discarderSeat, List<String> flags) {
         List<MahjongTile> concealed = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        if ("SELF_DRAW".equals(winType) && !concealed.isEmpty()) {
+        if ("SELF_DRAW".equals(winType) && this.hasDrawnTile(playerId) && !concealed.isEmpty()) {
             concealed.remove(concealed.size() - 1);
         }
         List<String> encodedHand = concealed.stream().map(GbTileEncoding::encode).toList();
@@ -643,7 +656,7 @@ public final class GbTableRoundController implements TableRoundController {
     private GbTingRequest buildTingRequest(UUID playerId) {
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         List<String> encodedHand = hand.stream()
-            .limit(hand.size() > 13 ? hand.size() - 1L : hand.size())
+            .limit(this.hasDrawnTile(playerId) && !hand.isEmpty() ? hand.size() - 1L : hand.size())
             .map(GbTileEncoding::encode)
             .toList();
         return new GbTingRequest(
@@ -659,7 +672,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     private GbWinRequest buildWinRequest(UUID winnerId, UUID discarderId, MahjongTile winningTile, String winType, List<String> flags) {
         List<MahjongTile> concealed = new ArrayList<>(this.hands.getOrDefault(winnerId, List.of()));
-        if ("SELF_DRAW".equals(winType) && !concealed.isEmpty()) {
+        if ("SELF_DRAW".equals(winType) && this.hasDrawnTile(winnerId) && !concealed.isEmpty()) {
             concealed.remove(concealed.size() - 1);
         }
         List<String> encodedHand = concealed.stream().map(GbTileEncoding::encode).toList();
@@ -815,14 +828,14 @@ public final class GbTableRoundController implements TableRoundController {
             this.started = false;
             return;
         }
-        if (!this.drawTile(current, false)) {
+        if (!this.drawTile(current, false, false, true)) {
             this.finishExhaustiveDraw();
         }
         this.refreshAllTing();
     }
 
     private boolean drawReplacementTileOrFinish(UUID playerId) {
-        if (this.drawTile(playerId, true, true)) {
+        if (this.drawTile(playerId, true, true, true)) {
             return true;
         }
         this.finishExhaustiveDraw();
@@ -830,10 +843,14 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private boolean drawTile(UUID playerId, boolean fromBack) {
-        return this.drawTile(playerId, fromBack, false);
+        return this.drawTile(playerId, fromBack, false, true);
     }
 
     private boolean drawTile(UUID playerId, boolean fromBack, boolean markAfterKong) {
+        return this.drawTile(playerId, fromBack, markAfterKong, true);
+    }
+
+    private boolean drawTile(UUID playerId, boolean fromBack, boolean markAfterKong, boolean markAsDrawn) {
         if (playerId == null || this.wall.isEmpty()) {
             return false;
         }
@@ -848,6 +865,8 @@ public final class GbTableRoundController implements TableRoundController {
                 continue;
             }
             this.hands.get(playerId).add(tile);
+            this.hasDrawnTile.put(playerId, markAsDrawn);
+            this.sortHand(playerId);
             this.afterKanTsumoPlayer = markAfterKong ? playerId : null;
             return true;
         }
@@ -906,6 +925,8 @@ public final class GbTableRoundController implements TableRoundController {
             return;
         }
         removeTiles(this.hands.get(playerId), target, 1);
+        this.hasDrawnTile.put(playerId, false);
+        this.sortHand(playerId);
         GbMeldState meld = this.melds.get(playerId).get(meldIndex);
         this.melds.get(playerId).set(meldIndex, meld.toAddedKong(target));
         this.kanCount++;
@@ -959,7 +980,29 @@ public final class GbTableRoundController implements TableRoundController {
 
     private MahjongTile drawnTile(UUID playerId) {
         List<MahjongTile> hand = this.hands.get(playerId);
-        return hand == null || hand.isEmpty() ? null : hand.get(hand.size() - 1);
+        return hand == null || hand.isEmpty() || !this.hasDrawnTile(playerId) ? null : hand.get(hand.size() - 1);
+    }
+
+    private boolean hasDrawnTile(UUID playerId) {
+        return Boolean.TRUE.equals(this.hasDrawnTile.get(playerId));
+    }
+
+    private void sortHand(UUID playerId) {
+        List<MahjongTile> hand = this.hands.get(playerId);
+        if (hand == null || hand.size() < 2) {
+            return;
+        }
+        if (!this.hasDrawnTile(playerId)) {
+            hand.sort((left, right) -> Integer.compare(handTileSort(left), handTileSort(right)));
+            return;
+        }
+        MahjongTile drawn = hand.remove(hand.size() - 1);
+        hand.sort((left, right) -> Integer.compare(handTileSort(left), handTileSort(right)));
+        hand.add(drawn);
+    }
+
+    private static int handTileSort(MahjongTile tile) {
+        return tile.ordinal();
     }
 
     private void consumeClaimedDiscard(UUID discarderId, MahjongTile claimedTile) {

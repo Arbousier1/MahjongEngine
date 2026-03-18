@@ -10,6 +10,7 @@ import doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse
 import doublemoon.mahjongcraft.paper.gb.jni.GbWinRequest
 import doublemoon.mahjongcraft.paper.gb.jni.GbWinResponse
 import doublemoon.mahjongcraft.paper.gb.runtime.GbNativeRulesGateway
+import doublemoon.mahjongcraft.paper.model.MahjongTile
 import doublemoon.mahjongcraft.paper.model.SeatWind
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse
 import doublemoon.mahjongcraft.paper.riichi.ReactionType
@@ -71,6 +72,48 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `drawn tile stays on the right while the rest of gb hand is sorted`() {
+        val controller = controller()
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+
+        forceHand(controller, east, listOf("M9", "P9", "S9", "EAST", "SOUTH", "WEST", "NORTH", "WHITE_DRAGON", "GREEN_DRAGON", "RED_DRAGON", "M1", "P1", "S1", "M2"))
+        forceHand(controller, south, listOf("P3", "M3", "EAST", "S2", "M1", "RED_DRAGON", "P1", "S1", "M2", "P2", "S3", "M4", "P4"))
+        forceWall(controller, listOf("M5"))
+
+        assertTrue(controller.discard(east, 0))
+        if (controller.availableReactions(south) != null) {
+            assertTrue(controller.react(south, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(player(SeatWind.WEST)) != null) {
+            assertTrue(controller.react(player(SeatWind.WEST), ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(player(SeatWind.NORTH)) != null) {
+            assertTrue(controller.react(player(SeatWind.NORTH), ReactionResponse(ReactionType.SKIP, null)))
+        }
+        assertEquals(
+            listOf(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.P1,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.P4,
+                MahjongTile.S1,
+                MahjongTile.S2,
+                MahjongTile.S3,
+                MahjongTile.EAST,
+                MahjongTile.RED_DRAGON,
+                MahjongTile.M5
+            ),
+            controller.hand(south)
+        )
+    }
+
+    @Test
     fun `discard opens ron window and resumes after all skips`() {
         val controller = controller()
         controller.startRound()
@@ -114,6 +157,23 @@ class GbTableRoundControllerTest {
         assertEquals(11, controller.hand(south).size)
         assertEquals(1, controller.fuuro(south).size)
         assertEquals(0, controller.discards(east).size)
+        assertEquals(
+            listOf(
+                MahjongTile.P1,
+                MahjongTile.P2,
+                MahjongTile.S1,
+                MahjongTile.S2,
+                MahjongTile.S3,
+                MahjongTile.S4,
+                MahjongTile.S5,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.S9
+            ),
+            controller.hand(south)
+        )
+        assertFalse(controller.canWinByTsumo(south))
     }
 
     @Test
