@@ -5,7 +5,9 @@ on:
     branches:
       - main
       - virtual-threads
+      - feature/gb-mahjong
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
