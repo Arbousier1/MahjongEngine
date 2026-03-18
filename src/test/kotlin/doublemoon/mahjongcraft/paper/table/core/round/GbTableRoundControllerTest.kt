@@ -10,6 +10,7 @@ import doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse
 import doublemoon.mahjongcraft.paper.gb.jni.GbWinRequest
 import doublemoon.mahjongcraft.paper.gb.jni.GbWinResponse
 import doublemoon.mahjongcraft.paper.gb.runtime.GbNativeRulesGateway
+import doublemoon.mahjongcraft.paper.gb.runtime.GbTileEncoding
 import doublemoon.mahjongcraft.paper.model.MahjongTile
 import doublemoon.mahjongcraft.paper.model.SeatWind
 import doublemoon.mahjongcraft.paper.riichi.ReactionResponse
@@ -274,6 +275,114 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `gb bot discard suggestion prefers discard that keeps eight fan waits`() {
+        val targetHand = encodedTiles("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "RED_DRAGON")
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                if (request.handTiles == targetHand) {
+                    GbTingResponse(true, listOf(GbTingCandidate("W9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                } else {
+                    GbTingResponse(true, emptyList(), null)
+                }
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "EAST", "RED_DRAGON"))
+
+        assertEquals(12, controller.suggestedBotDiscardIndex(east))
+    }
+
+    @Test
+    fun `gb bot reaction prefers pon when it creates eight fan ready shape`() {
+        val targetHand = encodedTiles("P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6")
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                if (request.melds.any { it.type == "PUNG" } && request.handTiles == targetHand) {
+                    GbTingResponse(true, listOf(GbTingCandidate("B9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                } else {
+                    GbTingResponse(true, emptyList(), null)
+                }
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
+        forceHand(controller, south, listOf("M1", "M1", "P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON"))
+
+        assertTrue(controller.discard(east, 0))
+        assertEquals(ReactionType.PON, controller.suggestedBotReaction(south).type)
+    }
+
+    @Test
+    fun `gb bot reaction skips pon when it does not improve to qualified waits`() {
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                GbTingResponse(true, emptyList(), null)
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
+        forceHand(controller, south, listOf("M1", "M1", "P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON"))
+
+        assertTrue(controller.discard(east, 0))
+        assertEquals(ReactionType.SKIP, controller.suggestedBotReaction(south).type)
+    }
+
+    @Test
+    fun `gb bot kan suggestion only keeps kong when it leads to qualified waits`() {
+        val targetHand = encodedTiles("P1", "P2", "P3", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON")
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                if (request.melds.any { it.type == "CONCEALED_KONG" } && request.handTiles == targetHand) {
+                    GbTingResponse(true, listOf(GbTingCandidate("T9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                } else {
+                    GbTingResponse(true, emptyList(), null)
+                }
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "P1", "P2", "P3", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON"))
+
+        assertEquals("m1", controller.suggestedBotKanTile(east))
+    }
+
+    @Test
     fun `gb kan suggestions include concealed and added kong tiles`() {
         val controller = controller()
         controller.startRound()
@@ -461,6 +570,9 @@ class GbTableRoundControllerTest {
         val flowers = flowersField.get(controller) as MutableMap<UUID, MutableList<doublemoon.mahjongcraft.paper.model.MahjongTile>>
         flowers[playerId] = tiles.map(doublemoon.mahjongcraft.paper.model.MahjongTile::valueOf).toMutableList()
     }
+
+    private fun encodedTiles(vararg names: String): List<String> =
+        names.map { GbTileEncoding.encode(MahjongTile.valueOf(it)) }
 
     private class CapturingGateway : GbNativeRulesGateway() {
         var lastFanRequest: GbFanRequest? = null

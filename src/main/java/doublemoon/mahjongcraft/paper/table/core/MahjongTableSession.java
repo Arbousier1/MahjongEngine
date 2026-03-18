@@ -917,6 +917,24 @@ public final class MahjongTableSession {
         return this.roundController instanceof GbTableRoundController gbController && playerId != null && gbController.canWinByTsumo(playerId);
     }
 
+    public int gbSuggestedDiscardIndex(UUID playerId) {
+        return this.roundController instanceof GbTableRoundController gbController && playerId != null
+            ? gbController.suggestedBotDiscardIndex(playerId)
+            : -1;
+    }
+
+    public ReactionResponse gbSuggestedReaction(UUID playerId) {
+        return this.roundController instanceof GbTableRoundController gbController && playerId != null
+            ? gbController.suggestedBotReaction(playerId)
+            : new ReactionResponse(doublemoon.mahjongcraft.paper.riichi.ReactionType.SKIP, null);
+    }
+
+    public String gbSuggestedKanTile(UUID playerId) {
+        return this.roundController instanceof GbTableRoundController gbController && playerId != null
+            ? gbController.suggestedBotKanTile(playerId)
+            : null;
+    }
+
     public void setBotTask(BukkitTask botTask) {
         this.botTask = botTask;
     }

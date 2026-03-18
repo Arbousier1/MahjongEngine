@@ -102,28 +102,10 @@ public final class BotActionScheduler {
 
     private static void handleGbReaction(MahjongTableSession session, UUID playerId) {
         session.setBotTask(null);
-        var options = session.availableReactions(playerId);
-        if (options == null) {
+        if (session.availableReactions(playerId) == null) {
             return;
         }
-        if (options.getCanRon()) {
-            session.react(playerId, new ReactionResponse(ReactionType.RON, null));
-            return;
-        }
-        if (options.getCanMinkan()) {
-            session.react(playerId, new ReactionResponse(ReactionType.MINKAN, null));
-            return;
-        }
-        if (options.getCanPon()) {
-            session.react(playerId, new ReactionResponse(ReactionType.PON, null));
-            return;
-        }
-        if (!options.getChiiPairs().isEmpty()) {
-            Pair<MahjongTile, MahjongTile> pair = options.getChiiPairs().getFirst();
-            session.react(playerId, new ReactionResponse(ReactionType.CHII, pair));
-            return;
-        }
-        session.react(playerId, new ReactionResponse(ReactionType.SKIP, null));
+        session.react(playerId, session.gbSuggestedReaction(playerId));
     }
 
     private static void handleBotTurn(MahjongTableSession session, UUID playerId) {
@@ -180,70 +162,19 @@ public final class BotActionScheduler {
         if (session.gbCanWinByTsumo(playerId) && session.declareTsumo(playerId)) {
             return;
         }
-        if (session.canDeclareKan(playerId)) {
-            for (String suggestion : session.suggestedKanTiles(playerId)) {
-                if (session.declareKan(playerId, suggestion)) {
-                    return;
-                }
-            }
+        String kanTile = session.gbSuggestedKanTile(playerId);
+        if (kanTile != null && session.declareKan(playerId, kanTile)) {
+            return;
         }
         var hand = session.hand(playerId);
         if (hand.isEmpty()) {
             return;
         }
-        session.discard(playerId, chooseGbDiscardIndex(hand));
-    }
-
-    private static int chooseGbDiscardIndex(java.util.List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand) {
-        int bestIndex = hand.size() - 1;
-        int bestScore = Integer.MIN_VALUE;
-        for (int i = 0; i < hand.size(); i++) {
-            int score = gbDiscardScore(hand, hand.get(i));
-            if (score > bestScore) {
-                bestScore = score;
-                bestIndex = i;
-            }
+        int discardIndex = session.gbSuggestedDiscardIndex(playerId);
+        if (discardIndex < 0 || discardIndex >= hand.size()) {
+            discardIndex = hand.size() - 1;
         }
-        return bestIndex;
-    }
-
-    private static int gbDiscardScore(java.util.List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand, doublemoon.mahjongcraft.paper.model.MahjongTile tile) {
-        int duplicates = 0;
-        boolean hasPrev = false;
-        boolean hasNext = false;
-        boolean hasPrevPrev = false;
-        boolean hasNextNext = false;
-        for (doublemoon.mahjongcraft.paper.model.MahjongTile candidate : hand) {
-            if (candidate == tile) {
-                duplicates++;
-                continue;
-            }
-            if (isHonor(tile) || isHonor(candidate) || candidate.name().charAt(0) != tile.name().charAt(0)) {
-                continue;
-            }
-            int delta = tileNumber(candidate) - tileNumber(tile);
-            if (delta == -2) hasPrevPrev = true;
-            if (delta == -1) hasPrev = true;
-            if (delta == 1) hasNext = true;
-            if (delta == 2) hasNextNext = true;
-        }
-        int score = 0;
-        if (isHonor(tile) || tileNumber(tile) == 1 || tileNumber(tile) == 9) score += 3;
-        if (duplicates >= 2) score -= 4;
-        if (hasPrev) score -= 2;
-        if (hasNext) score -= 2;
-        if (hasPrevPrev) score -= 1;
-        if (hasNextNext) score -= 1;
-        return score;
-    }
-
-    private static boolean isHonor(doublemoon.mahjongcraft.paper.model.MahjongTile tile) {
-        return tile.ordinal() >= doublemoon.mahjongcraft.paper.model.MahjongTile.EAST.ordinal()
-            && tile.ordinal() <= doublemoon.mahjongcraft.paper.model.MahjongTile.RED_DRAGON.ordinal();
-    }
-
-    private static int tileNumber(doublemoon.mahjongcraft.paper.model.MahjongTile tile) {
-        return isHonor(tile) ? 0 : Integer.parseInt(tile.name().substring(1, 2));
+        session.discard(playerId, discardIndex);
     }
 
     private static int findDiscardIndex(RiichiPlayerState player, MahjongTile tile) {
