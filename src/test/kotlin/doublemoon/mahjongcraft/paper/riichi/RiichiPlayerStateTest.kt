@@ -99,6 +99,31 @@ class RiichiPlayerStateTest {
     }
 
     @Test
+    fun `riichi ankan requires the freshly drawn tile to complete the quad`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.riichi = true
+        player.hands += tiles(
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.P4,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.S4,
+            MahjongTile.WHITE_DRAGON
+        )
+        player.lastDrawnTile = TileInstance(mahjongTile = MahjongTile.WHITE_DRAGON)
+
+        assertTrue(player.tilesCanAnkan.isEmpty())
+    }
+
+    @Test
     fun `drawing winning tile refreshes riichi availability`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)

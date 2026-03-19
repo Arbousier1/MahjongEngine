@@ -127,8 +127,11 @@ public final class TableViewerSnapshotFactory {
             locale,
             "hud.round",
             this.session.plugin().messages().tag("round", summary.round()),
+            this.session.plugin().messages().tag("dealer", summary.dealer()),
             this.session.plugin().messages().tag("turn", summary.turn()),
             this.session.plugin().messages().number(locale, "wall", summary.wall()),
+            this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
+            this.session.plugin().messages().tag("dora", summary.doraSummary()),
             this.session.plugin().messages().tag("role", summary.roleLabel())
         );
         stateSignature = fingerprintBuilder(192)
@@ -140,8 +143,11 @@ public final class TableViewerSnapshotFactory {
             .field(true)
             .field(lastResolution)
             .field(summary.round())
+            .field(summary.dealer())
             .field(summary.turn())
             .field(summary.wall())
+            .field(summary.riichiPool())
+            .field(summary.doraSummary())
             .field(summary.roleLabel())
             .field(this.session.lastPublicDiscardPlayerId())
             .field(this.session.lastPublicDiscardTile())
@@ -180,8 +186,11 @@ public final class TableViewerSnapshotFactory {
             "overlay.active",
             this.session.plugin().messages().tag("role", summary.roleLabel()),
             this.session.plugin().messages().tag("round", summary.round()),
+            this.session.plugin().messages().tag("dealer", summary.dealer()),
             this.session.plugin().messages().tag("turn", summary.turn()),
             this.session.plugin().messages().number(locale, "wall", summary.wall()),
+            this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
+            this.session.plugin().messages().tag("dora", summary.doraSummary()),
             this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
             this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
         );
@@ -198,7 +207,10 @@ public final class TableViewerSnapshotFactory {
                 ruleSummary,
                 "",
                 "",
+                "",
                 0,
+                0,
+                "",
                 this.viewerRoleLabel(locale, viewerId),
                 "",
                 "",
@@ -209,24 +221,30 @@ public final class TableViewerSnapshotFactory {
         }
 
         String round = this.session.roundDisplay(locale);
+        String dealer = this.session.dealerName(locale);
         String turn = this.session.currentTurnDisplayName();
         int wall = this.session.remainingWallCount();
+        int riichiPool = this.session.riichiPoolCount();
+        String doraSummary = this.doraSummary(locale);
         String roleLabel = this.viewerRoleLabel(locale, viewerId);
         String lastDiscardSummary = this.lastDiscardSummary(locale);
         ReactionOptions options = this.session.availableReactions(viewerId);
         String reactionOptionsFingerprint = Objects.toString(options, "");
-        String viewerPrompt = this.viewerPrompt(locale, viewerId, options, turn, spectator);
         String resolutionTitle = this.session.lastResolution() == null
             ? ""
             : this.resolutionLabel(locale, this.session.lastResolution().getTitle());
+        String viewerPrompt = this.viewerPrompt(locale, viewerId, options, turn, spectator, riichiPool, doraSummary, resolutionTitle);
         String commandStateSummary = this.buildCommandStateSummary(locale, round, turn, wall, options, resolutionTitle);
         return new ViewerSummarySnapshot(
             spectator,
             waitingSummary,
             ruleSummary,
             round,
+            dealer,
             turn,
             wall,
+            riichiPool,
+            doraSummary,
             roleLabel,
             lastDiscardSummary,
             viewerPrompt,
@@ -280,7 +298,40 @@ public final class TableViewerSnapshotFactory {
         return this.session.plugin().messages().plain(locale, this.session.isSpectator(viewerId) ? "hud.role_spectator" : "hud.role_player");
     }
 
-    private String viewerPrompt(Locale locale, UUID viewerId, ReactionOptions options, String currentTurnName, boolean spectator) {
+    private String doraSummary(Locale locale) {
+        String labels = this.session.doraIndicators().stream()
+            .map(tile -> this.doraIndicatorSummary(locale, tile))
+            .collect(java.util.stream.Collectors.joining("/"));
+        if (labels.isBlank()) {
+            labels = "-";
+        }
+        return this.session.plugin().messages().plain(
+            locale,
+            "ui.dora",
+            this.session.plugin().messages().tag("value", labels)
+        );
+    }
+
+    private String doraIndicatorSummary(Locale locale, doublemoon.mahjongcraft.paper.model.MahjongTile indicator) {
+        doublemoon.mahjongcraft.paper.model.MahjongTile dora = DoraIndicatorMapper.doraFromIndicator(indicator);
+        return this.session.plugin().messages().plain(
+            locale,
+            "hud.dora_entry",
+            this.session.plugin().messages().tag("indicator", this.tileLabel(locale, indicator.name())),
+            this.session.plugin().messages().tag("dora", this.tileLabel(locale, dora.name()))
+        );
+    }
+
+    private String viewerPrompt(
+        Locale locale,
+        UUID viewerId,
+        ReactionOptions options,
+        String currentTurnName,
+        boolean spectator,
+        int riichiPool,
+        String doraSummary,
+        String resolutionTitle
+    ) {
         if (options != null) {
             return this.reactionSummary(locale, options);
         }
@@ -292,6 +343,9 @@ public final class TableViewerSnapshotFactory {
         }
         if (spectator) {
             return this.session.plugin().messages().plain(locale, "overlay.spectating_turn") + " " + currentTurnName;
+        }
+        if (!resolutionTitle.isBlank()) {
+            return this.session.plugin().messages().plain(locale, "state.label.resolution") + " " + resolutionTitle;
         }
         return "";
     }
@@ -312,8 +366,10 @@ public final class TableViewerSnapshotFactory {
             .field(summary.waitingSummary())
             .field(summary.ruleSummary())
             .field(summary.round())
+            .field(summary.dealer())
             .field(summary.turn())
             .field(summary.wall())
+            .field(summary.riichiPool())
             .field(summary.roleLabel())
             .field(summary.lastDiscardSummary())
             .field(summary.viewerPrompt())
@@ -501,8 +557,11 @@ public final class TableViewerSnapshotFactory {
         String waitingSummary,
         String ruleSummary,
         String round,
+        String dealer,
         String turn,
         int wall,
+        int riichiPool,
+        String doraSummary,
         String roleLabel,
         String lastDiscardSummary,
         String viewerPrompt,

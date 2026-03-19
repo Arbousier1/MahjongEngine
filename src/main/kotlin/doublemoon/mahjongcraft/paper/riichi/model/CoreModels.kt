@@ -431,7 +431,22 @@ data class PersonalSituation(
     val jikaze: Wind
 )
 
-data class YakuSettlement(
+enum class SettlementPaymentType {
+    RON,
+    TSUMO,
+    PAO,
+    HONBA,
+    RIICHI_POOL
+}
+
+data class SettlementPayment @JvmOverloads constructor(
+    val payerUuid: String,
+    val amount: Int,
+    val type: SettlementPaymentType,
+    val note: String = ""
+)
+
+data class YakuSettlement @JvmOverloads constructor(
     val displayName: String,
     val uuid: String,
     val yakuList: List<String>,
@@ -447,7 +462,8 @@ data class YakuSettlement(
     val uraDoraIndicators: List<MahjongTile>,
     val fu: Int,
     val han: Int,
-    val score: Int
+    val score: Int,
+    val paymentBreakdown: List<SettlementPayment> = emptyList()
 ) {
     companion object {
         val NO_YAKU = YakuSettlement(

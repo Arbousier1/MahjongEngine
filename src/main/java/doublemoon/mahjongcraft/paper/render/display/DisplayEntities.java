@@ -1002,8 +1002,8 @@ public final class DisplayEntities {
 
     private static void runForViewer(Plugin plugin, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
         if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            mahjongPlugin.scheduler().runEntity(entity, () -> {
-                if (!player.isOnline() || !plugin.getServer().isOwnedByCurrentRegion(player)) {
+            mahjongPlugin.scheduler().runEntity(player, () -> {
+                if (!player.isOnline()) {
                     return;
                 }
                 runnable.run();

@@ -69,15 +69,15 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (this.craftEngine != null) {
+            this.craftEngine.disableFurnitureInteractionBridge();
+            this.craftEngine.clearTrackedCullables();
+        }
         if (this.tableManager != null) {
             this.tableManager.shutdown();
         }
         TableDisplayRegistry.clear();
         DisplayVisibilityRegistry.clear();
-        if (this.craftEngine != null) {
-            this.craftEngine.disableFurnitureInteractionBridge();
-            this.craftEngine.clearTrackedCullables();
-        }
         if (this.database != null) {
             this.database.close();
             this.database = null;

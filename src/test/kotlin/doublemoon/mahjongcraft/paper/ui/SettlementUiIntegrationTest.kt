@@ -9,6 +9,8 @@ import doublemoon.mahjongcraft.paper.riichi.model.ExhaustiveDraw
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongTile
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement
+import doublemoon.mahjongcraft.paper.riichi.model.SettlementPayment
+import doublemoon.mahjongcraft.paper.riichi.model.SettlementPaymentType
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
@@ -27,6 +29,24 @@ class SettlementUiIntegrationTest {
         val session = mockSession()
         val resolution = RoundResolution(
             title = "Ron",
+            yakuSettlements = listOf(
+                YakuSettlement(
+                    displayName = "Alice",
+                    uuid = UUID.randomUUID().toString(),
+                    yakuList = listOf("reach"),
+                    yakumanList = emptyList(),
+                    doubleYakumanList = emptyList(),
+                    riichi = true,
+                    winningTile = MahjongTile.M1,
+                    hands = listOf(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3),
+                    fuuroList = emptyList(),
+                    doraIndicators = emptyList(),
+                    uraDoraIndicators = emptyList(),
+                    fu = 30,
+                    han = 1,
+                    score = 1000
+                )
+            ),
             scoreSettlement = ScoreSettlement(
                 "Ron",
                 listOf(
@@ -48,6 +68,8 @@ class SettlementUiIntegrationTest {
     @Test
     fun `settlement lore includes score hand meld yaku and dora details`() {
         val session = mockSession()
+        val ronPayer = UUID.randomUUID().toString()
+        val paoPayer = UUID.randomUUID().toString()
         val settlement = YakuSettlement(
             displayName = "Alice",
             uuid = UUID.randomUUID().toString(),
@@ -63,6 +85,11 @@ class SettlementUiIntegrationTest {
             fu = 40,
             han = 3,
             score = 7700,
+            paymentBreakdown = listOf(
+                SettlementPayment(ronPayer, 3900, SettlementPaymentType.RON),
+                SettlementPayment(paoPayer, 3900, SettlementPaymentType.PAO, "DAISANGEN"),
+                SettlementPayment("", 1000, SettlementPaymentType.RIICHI_POOL)
+            ),
             redFiveCount = 1,
             nagashiMangan = true
         )
@@ -75,6 +102,7 @@ class SettlementUiIntegrationTest {
         assertTrue(rendered.any { it.contains("1m") || it.contains("M1") || it.contains("m1") })
         assertTrue(rendered.any { it.contains("1p") || it.contains("P1") || it.contains("p1") })
         assertTrue(rendered.any { it.contains("Riichi") || it.contains("reach", ignoreCase = true) })
+        assertTrue(rendered.any { it.contains("3,900") || it.contains("3900") })
     }
 
     private fun mockSession(): MahjongTableSession {

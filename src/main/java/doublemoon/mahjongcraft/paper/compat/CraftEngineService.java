@@ -275,39 +275,78 @@ public final class CraftEngineService {
         }
         try {
             ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<? extends Event> eventClass = Class.forName(
+            Class<? extends Event> interactEventClass = Class.forName(
                 "net.momirealms.craftengine.bukkit.api.event.FurnitureInteractEvent",
                 true,
                 classLoader
             ).asSubclass(Event.class);
-            Method playerMethod = eventClass.getMethod("player");
-            Method furnitureMethod = eventClass.getMethod("furniture");
+            Class<? extends Event> breakEventClass = Class.forName(
+                "net.momirealms.craftengine.bukkit.api.event.FurnitureBreakEvent",
+                true,
+                classLoader
+            ).asSubclass(Event.class);
+            Class<? extends Event> hitEventClass = Class.forName(
+                "net.momirealms.craftengine.bukkit.api.event.FurnitureHitEvent",
+                true,
+                classLoader
+            ).asSubclass(Event.class);
+            Method playerMethod = interactEventClass.getMethod("player");
+            Method furnitureMethod = interactEventClass.getMethod("furniture");
             Method entityIdMethod = furnitureMethod.getReturnType().getMethod("entityId");
+            Method bukkitEntityMethod = furnitureMethod.getReturnType().getMethod("bukkitEntity");
+            Method breakFurnitureMethod = breakEventClass.getMethod("furniture");
+            Method hitFurnitureMethod = hitEventClass.getMethod("furniture");
             Listener listener = new Listener() {
             };
-            EventExecutor executor = (ignored, event) -> this.handleFurnitureInteractEvent(
+            EventExecutor interactExecutor = (ignored, event) -> this.handleFurnitureInteractEvent(
                 event,
                 tableManager,
                 playerMethod,
                 furnitureMethod,
                 entityIdMethod
             );
+            EventExecutor breakProtectionExecutor = (ignored, event) -> this.handleProtectedFurnitureEvent(
+                event,
+                breakFurnitureMethod,
+                bukkitEntityMethod
+            );
+            EventExecutor hitProtectionExecutor = (ignored, event) -> this.handleProtectedFurnitureEvent(
+                event,
+                hitFurnitureMethod,
+                bukkitEntityMethod
+            );
             this.plugin.getServer().getPluginManager().registerEvent(
-                eventClass,
+                interactEventClass,
                 listener,
                 EventPriority.NORMAL,
-                executor,
+                interactExecutor,
+                this.plugin,
+                true
+            );
+            this.plugin.getServer().getPluginManager().registerEvent(
+                breakEventClass,
+                listener,
+                EventPriority.HIGHEST,
+                breakProtectionExecutor,
+                this.plugin,
+                true
+            );
+            this.plugin.getServer().getPluginManager().registerEvent(
+                hitEventClass,
+                listener,
+                EventPriority.HIGHEST,
+                hitProtectionExecutor,
                 this.plugin,
                 true
             );
             this.furnitureInteractListener = listener;
         } catch (ReflectiveOperationException exception) {
             this.plugin.getLogger().warning(
-                "CraftEngine was detected, but MahjongPaper could not register the furniture interaction bridge. Tile clicking will not use CraftEngine."
+                "CraftEngine was detected, but MahjongPaper could not register the furniture bridge. CraftEngine interactions or protection may be unavailable."
             );
             this.plugin.debug().log(
                 "lifecycle",
-                "CraftEngine interaction bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+                "CraftEngine furniture bridge registration failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
             );
         }
     }
@@ -350,6 +389,28 @@ public final class CraftEngineService {
         }
     }
 
+    private void handleProtectedFurnitureEvent(
+        Event event,
+        Method furnitureMethod,
+        Method bukkitEntityMethod
+    ) throws EventException {
+        try {
+            Object furniture = furnitureMethod.invoke(event);
+            if (furniture == null) {
+                return;
+            }
+            Object bukkitEntity = bukkitEntityMethod.invoke(furniture);
+            if (!(bukkitEntity instanceof Entity entity)) {
+                return;
+            }
+            if (this.isManagedFurnitureEntity(entity) && event instanceof Cancellable cancellable) {
+                cancellable.setCancelled(true);
+            }
+        } catch (ReflectiveOperationException exception) {
+            throw new EventException(exception);
+        }
+    }
+
     public boolean removeFurniture(Entity entity) {
         if (entity == null || this.furnitureReflectionUnavailable) {
             return false;
@@ -385,7 +446,7 @@ public final class CraftEngineService {
     }
 
     public void registerCullableEntity(Entity entity) {
-        if (entity == null || !isCullableEntity(entity)) {
+        if (entity == null || !isCullableEntity(entity) || !this.plugin.isEnabled()) {
             return;
         }
 
@@ -424,13 +485,16 @@ public final class CraftEngineService {
         if (tracked == null) {
             return;
         }
+        if (!this.plugin.isEnabled()) {
+            return;
+        }
         for (Player player : Bukkit.getOnlinePlayers()) {
             this.plugin.scheduler().runEntity(player, () -> this.removeTrackedEntity(player, tracked.entityId()));
         }
     }
 
     public void syncTrackedEntitiesFor(Player player) {
-        if (player == null || !player.isOnline()) {
+        if (player == null || !player.isOnline() || !this.plugin.isEnabled()) {
             return;
         }
         for (TrackedCullableEntity tracked : this.trackedCullableEntities.values()) {
@@ -533,13 +597,10 @@ public final class CraftEngineService {
     }
 
     private void scheduleViewerVisibility(int entityId, Entity entity, Player viewer, boolean visible) {
-        if (entity == null || viewer == null) {
+        if (entity == null || viewer == null || !this.plugin.isEnabled()) {
             return;
         }
-        this.plugin.scheduler().runEntity(entity, () -> {
-            if (!this.plugin.getServer().isOwnedByCurrentRegion(viewer)) {
-                return;
-            }
+        this.plugin.scheduler().runEntity(viewer, () -> {
             if (!viewer.isOnline()) {
                 return;
             }

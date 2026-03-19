@@ -173,23 +173,28 @@ public final class TablePlayerFeedbackCoordinator {
         if (this.session.isStarted() && this.session.currentSeat() == this.session.seatOf(playerId)) {
             List<String> actions = new ArrayList<>(4);
             if (this.session.canDeclareRiichi(playerId)) {
-                actions.add("/mahjong riichi <index>");
+                actions.add(this.session.plugin().messages().plain(locale, "table.action.riichi"));
             }
             if (this.session.canDeclareKan(playerId)) {
-                actions.add("/mahjong kan <tile>");
+                actions.add(this.session.plugin().messages().plain(locale, "table.action.kan"));
             }
             if (this.session.canDeclareKyuushu(playerId)) {
-                actions.add("/mahjong kyuushu");
+                actions.add(this.session.plugin().messages().plain(locale, "table.action.kyuushu"));
             }
             if (this.session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
                 doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
                 if (this.session.gbCanWinByTsumo(playerId)) {
-                    actions.add("/mahjong tsumo");
+                    actions.add(this.session.plugin().messages().plain(locale, "table.action.tsumo"));
                 }
-                String suffix = ting.getValid()
-                    ? " | " + this.session.plugin().messages().plain(locale, "table.gb_ting_prompt", this.session.plugin().messages().number(locale, "count", ting.getWaits().size()))
+                String suggestion = ting.getValid()
+                    ? this.session.plugin().messages().plain(locale, "table.gb_ting_prompt", this.session.plugin().messages().number(locale, "count", ting.getWaits().size()))
                     : "";
-                Component actionBar = this.session.plugin().messages().render(locale, "table.turn_prompt", this.session.plugin().messages().tag("suffix", suffix));
+                Component actionBar = this.session.plugin().messages().render(
+                    locale,
+                    "table.turn_prompt",
+                    this.session.plugin().messages().tag("actions", String.join(" / ", actions)),
+                    this.session.plugin().messages().tag("suggestion", suggestion.isBlank() ? "" : " | " + suggestion)
+                );
                 String signature = fingerprintBuilder(192)
                     .field("turn-gb")
                     .field(playerId)
@@ -200,16 +205,13 @@ public final class TablePlayerFeedbackCoordinator {
                     .toString();
                 return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
             }
-            actions.add("/mahjong tsumo");
-            String suffix = actions.isEmpty() ? "" : " | " + String.join(" ", actions);
+            actions.add(0, this.session.plugin().messages().plain(locale, "table.action.tsumo"));
             String discardSuggestion = this.discardSuggestionSuffix(locale, playerId);
-            if (!discardSuggestion.isBlank()) {
-                suffix += " | " + discardSuggestion;
-            }
             Component actionBar = this.session.plugin().messages().render(
                 locale,
                 "table.turn_prompt",
-                this.session.plugin().messages().tag("suffix", suffix)
+                this.session.plugin().messages().tag("actions", String.join(" / ", actions)),
+                this.session.plugin().messages().tag("suggestion", discardSuggestion.isBlank() ? "" : " | " + discardSuggestion)
             );
             String signature = fingerprintBuilder(192)
                 .field("turn")
@@ -218,7 +220,8 @@ public final class TablePlayerFeedbackCoordinator {
                 .field(this.session.canDeclareRiichi(playerId))
                 .field(this.session.canDeclareKan(playerId))
                 .field(this.session.canDeclareKyuushu(playerId))
-                .field(suffix)
+                .field(actions)
+                .field(discardSuggestion)
                 .toString();
             return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
         }

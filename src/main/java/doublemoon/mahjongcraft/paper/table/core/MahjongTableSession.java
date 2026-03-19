@@ -746,6 +746,13 @@ public final class MahjongTableSession {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.scoringSticks(playerId);
     }
 
+    public int riichiPoolCount() {
+        if (this.engine() == null) {
+            return 0;
+        }
+        return this.engine().getSeats().stream().mapToInt(RiichiPlayerState::getRiichiStickAmount).sum();
+    }
+
     public List<ScoringStick> cornerSticks(SeatWind wind) {
         List<ScoringStick> sticks = new ArrayList<>();
         if (this.dealerSeat() == wind) {
@@ -1168,15 +1175,7 @@ public final class MahjongTableSession {
             return List.copyOf(ranked);
         }
         RiichiRoundEngine engine = this.engine();
-        List<RiichiPlayerState> seatOrder = engine.getSeats();
-        List<RiichiPlayerState> ranked = new ArrayList<>(seatOrder);
-        ranked.sort((left, right) -> {
-            int scoreCompare = Integer.compare(right.getPoints(), left.getPoints());
-            if (scoreCompare != 0) {
-                return scoreCompare;
-            }
-            return Integer.compare(seatOrder.indexOf(left), seatOrder.indexOf(right));
-        });
+        List<RiichiPlayerState> ranked = new ArrayList<>(engine.placementOrder());
 
         List<FinalStanding> standings = new ArrayList<>(ranked.size());
         for (int i = 0; i < ranked.size(); i++) {

@@ -181,6 +181,11 @@ open class RiichiPlayerState(
             if (!riichi && !doubleRiichi) {
                 return candidates
             }
+            val drawnTile = lastDrawnTile?.mahjongTile ?: return emptySet()
+            candidates.removeIf { candidate -> !candidate.mahjongTile.sameKind(drawnTile) }
+            if (candidates.isEmpty()) {
+                return emptySet()
+            }
 
             val machiBefore = machi
             for (candidate in candidates.toList()) {
@@ -695,7 +700,7 @@ open class RiichiPlayerState(
                     chanceTile = tile.scoringTile,
                     allowChi = allowChii,
                     bestShantenOnly = false,
-                    allowKuikae = true
+                    allowKuikae = false
                 )
             }.getOrNull() ?: return@getOrPut null
             val shanten = result.shantenInfo

@@ -78,6 +78,19 @@ public final class SettlementUi {
         List<Component> lore = new ArrayList<>();
         lore.add(messages.render(locale, "ui.summary.round", messages.tag("value", session.roundDisplay(locale))));
         lore.add(messages.render(locale, "ui.summary.dealer", messages.tag("value", session.dealerName(locale))));
+        lore.add(messages.render(locale, "ui.summary.honba", messages.number(locale, "value", session.honbaCount())));
+        lore.add(messages.render(locale, "ui.summary.riichi_pool", messages.number(locale, "value", session.riichiPoolCount())));
+        if (!resolution.getYakuSettlements().isEmpty()) {
+            List<String> winners = resolution.getYakuSettlements().stream()
+                .map(YakuSettlement::getDisplayName)
+                .distinct()
+                .toList();
+            lore.add(messages.render(
+                locale,
+                winners.size() > 1 ? "ui.summary.winners" : "ui.summary.winner",
+                messages.tag("value", String.join(", ", winners))
+            ));
+        }
         if (resolution.getDraw() != null) {
             lore.add(messages.render(locale, "ui.summary.draw_type", messages.tag("value", drawLabel(session, locale, resolution.getDraw().name()))));
         }
@@ -131,7 +144,10 @@ public final class SettlementUi {
                     lore.add(messages.render(locale, "ui.score.majsoul", messages.tag("value", formatGameScore(locale, standing.gameScore()))));
                 }
             }
-            inventory.setItem(slots[i], namedItem(Material.NAME_TAG, Component.text(playerName(session, item.getScoreItem().getStringUUID())), lore));
+            Material material = item.getScoreItem().getScoreChange() > 0
+                ? Material.EMERALD
+                : item.getScoreItem().getScoreChange() < 0 ? Material.REDSTONE : Material.NAME_TAG;
+            inventory.setItem(slots[i], namedItem(material, Component.text(SettlementPaymentFormatter.displayName(session, item.getScoreItem().getStringUUID())), lore));
         }
     }
 
@@ -199,6 +215,7 @@ public final class SettlementUi {
         if (!settlement.getUraDoraIndicators().isEmpty()) {
             lore.add(messages.render(locale, "ui.uradora", messages.tag("value", joinTiles(session, locale, settlement.getUraDoraIndicators()))));
         }
+        SettlementPaymentFormatter.appendBreakdown(lore, locale, session, settlement);
         return lore;
     }
 
@@ -219,6 +236,7 @@ public final class SettlementUi {
         } else {
             settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fan))));
         }
+        SettlementPaymentFormatter.appendBreakdown(lore, locale, session, settlement);
         return lore;
     }
 
@@ -228,14 +246,6 @@ public final class SettlementUi {
             names.add(tileLabel(session, locale, tile.toString()));
         }
         return String.join(" ", names);
-    }
-
-    private static String playerName(MahjongTableSession session, String stringUuid) {
-        try {
-            return session.displayName(UUID.fromString(stringUuid));
-        } catch (IllegalArgumentException ex) {
-            return stringUuid;
-        }
     }
 
     private static ItemStack tileItem(MahjongTableSession session, MahjongTile tile, boolean faceDown, Component name) {

@@ -11,9 +11,12 @@ import doublemoon.mahjongcraft.paper.riichi.model.PersonalSituation
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
+import doublemoon.mahjongcraft.paper.riichi.model.SettlementPayment
+import doublemoon.mahjongcraft.paper.riichi.model.SettlementPaymentType
 import doublemoon.mahjongcraft.paper.riichi.model.TileInstance
 import doublemoon.mahjongcraft.paper.riichi.model.Wind
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
+import doublemoon.mahjongcraft.paper.riichi.scoring.RiichiPaoRules
 import mahjongutils.models.isYaochu
 import kotlin.random.Random
 
@@ -79,6 +82,9 @@ class RiichiRoundEngine(
         private set
     private var currentDrawIsRinshan: Boolean = false
     private var pendingAbortiveDraw: ExhaustiveDraw? = null
+    private var revealedKanDoraCount: Int = 0
+    private var pendingOpenKanDoraCount: Int = 0
+    private val paoLiabilityByWinner: MutableMap<String, MutableMap<String, String>> = linkedMapOf()
 
     val currentPlayer: RiichiPlayerState
         get() = seats[currentPlayerIndex]
@@ -103,7 +109,7 @@ class RiichiRoundEngine(
 
     val doraIndicators: List<TileInstance>
         get() {
-            val visibleKanCount = minOf(kanCount, 4)
+            val visibleKanCount = minOf(revealedKanDoraCount, 4)
             if (deadWall.isEmpty()) {
                 return emptyList()
             }
@@ -119,7 +125,7 @@ class RiichiRoundEngine(
 
     val uraDoraIndicators: List<TileInstance>
         get() {
-            val visibleKanCount = minOf(kanCount, 4)
+            val visibleKanCount = minOf(revealedKanDoraCount, 4)
             if (deadWall.isEmpty()) {
                 return emptyList()
             }
@@ -184,6 +190,7 @@ class RiichiRoundEngine(
         val discarded = player.discardTile(selectedTile) ?: return false
         currentDrawIsRinshan = false
         discards += discarded
+        revealPendingOpenKanDoraIfNeeded()
         pendingReaction = computePendingReaction(player, discarded)
         if (pendingReaction == null) {
             advanceAfterDiscard()
@@ -237,6 +244,7 @@ class RiichiRoundEngine(
                 pendingAbortiveDraw = null
                 return true
             }
+            registerClosedKan()
             drawRinshanAndContinue(player)
             return true
         }
@@ -249,6 +257,7 @@ class RiichiRoundEngine(
                 pendingAbortiveDraw = null
                 return true
             }
+            registerOpenKan()
             drawRinshanAndContinue(player)
             return true
         }
@@ -283,6 +292,14 @@ class RiichiRoundEngine(
 
     fun seatPlayer(uuid: String): RiichiPlayerState? = seats.find { it.uuid == uuid }
 
+    fun placementOrder(): List<RiichiPlayerState> {
+        val seatOrder = seatOrderFromDealer()
+        return seats.sortedWith(
+            compareByDescending<RiichiPlayerState> { it.points }
+                .thenBy { seatOrder.indexOf(it) }
+        )
+    }
+
     fun nagashiManganCandidates(): List<RiichiPlayerState> =
         seats.filter { player ->
             player.discardedTiles.isNotEmpty() &&
@@ -297,6 +314,9 @@ class RiichiRoundEngine(
         kanCount = 0
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
+        revealedKanDoraCount = 0
+        pendingOpenKanDoraCount = 0
+        paoLiabilityByWinner.clear()
         seats.forEach {
             it.resetRoundState()
         }
@@ -348,7 +368,6 @@ class RiichiRoundEngine(
         val lastWallTile = wall.removeLast()
         deadWall.add(0, lastWallTile)
         deadWall.remove(tile)
-        kanCount++
         player.drawTile(tile)
         return tile
     }
@@ -450,11 +469,14 @@ class RiichiRoundEngine(
             val target = claimTarget(winner, discarder)
             if (response.type == ReactionType.PON) {
                 winner.pon(pending.tile, target, discarder)
+                RiichiPaoRules.registerLiability(paoLiabilityByWinner, winner, discarder, pending.tile)
                 currentDrawIsRinshan = false
                 pendingAbortiveDraw = null
             } else {
                 winner.minkan(pending.tile, target, discarder)
+                RiichiPaoRules.registerLiability(paoLiabilityByWinner, winner, discarder, pending.tile)
                 currentPlayerIndex = seats.indexOf(winner)
+                registerOpenKan()
                 drawRinshanAndContinue(winner)
             }
             currentPlayerIndex = seats.indexOf(winner)
@@ -498,6 +520,31 @@ class RiichiRoundEngine(
         currentPlayer.hands.sortBy { it.mahjongTile.sortOrder }
     }
 
+    private fun registerClosedKan() {
+        kanCount++
+        if (revealedKanDoraCount < 4) {
+            revealedKanDoraCount++
+        }
+    }
+
+    private fun registerOpenKan() {
+        kanCount++
+        if (revealedKanDoraCount + pendingOpenKanDoraCount < 4) {
+            pendingOpenKanDoraCount++
+        }
+    }
+
+    private fun revealPendingOpenKanDoraIfNeeded() {
+        if (pendingOpenKanDoraCount <= 0) {
+            return
+        }
+        val revealCount = minOf(4 - revealedKanDoraCount, pendingOpenKanDoraCount)
+        if (revealCount > 0) {
+            revealedKanDoraCount += revealCount
+        }
+        pendingOpenKanDoraCount = 0
+    }
+
     private fun resolveRon(winners: List<RiichiPlayerState>, target: RiichiPlayerState, tile: TileInstance, isChankan: Boolean = false) {
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
@@ -507,10 +554,8 @@ class RiichiRoundEngine(
         val atamahanePlayer = seatOrderFromTarget.firstOrNull { it in winners }
         val allRiichiStickQuantity = seats.sumOf { it.riichiStickAmount }
         val honbaScore = round.honba * 300
-        val extraScore = allRiichiStickQuantity * ScoringStick.P1000.point + honbaScore
-        var totalScore = 0
+        val riichiPoolScore = allRiichiStickQuantity * ScoringStick.P1000.point
         winners.forEach {
-            val isDealer = it == dealer
             val settlement = it.calcYakuSettlementForWin(
                 winningTile = tile.mahjongTile,
                 isWinningTileInHands = false,
@@ -520,18 +565,57 @@ class RiichiRoundEngine(
                 doraIndicators = doraIndicators.map { indicator -> indicator.mahjongTile },
                 uraDoraIndicators = uraDoraIndicators.map { indicator -> indicator.mahjongTile }
             )
-            yakuSettlements += settlement
+            val liabilityEntries = RiichiPaoRules.liabilityEntries(paoLiabilityByWinner, it, settlement, ::seatPlayer)
             val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
             val basicScore = settlement.score
-            val score = basicScore - riichiStickPoints + if (it == atamahanePlayer) extraScore else 0
+            val payments = mutableListOf<SettlementPayment>()
+            val paoBreakdown = RiichiPaoRules.ronBreakdown(liabilityEntries, it == dealer, basicScore, target, seatOrderFromDealer())
+            val targetBasePayment = paoBreakdown.targetBase + if (target == paoBreakdown.honbaPayer) honbaScore else 0
+            if (targetBasePayment > 0) {
+                payments += SettlementPayment(target.uuid, targetBasePayment, SettlementPaymentType.RON)
+            }
+            paoBreakdown.liabilityPayments.forEach { (liablePlayer, amount) ->
+                val totalPayment = amount + if (liablePlayer == paoBreakdown.honbaPayer) honbaScore else 0
+                if (totalPayment > 0) {
+                    payments += SettlementPayment(liablePlayer.uuid, totalPayment, SettlementPaymentType.PAO, paoBreakdown.liabilityNotes[liablePlayer.uuid].orEmpty())
+                }
+            }
+            if (it == atamahanePlayer && riichiPoolScore > 0) {
+                payments += SettlementPayment("", riichiPoolScore, SettlementPaymentType.RIICHI_POOL)
+            }
+            val score = basicScore - riichiStickPoints + honbaScore + if (it == atamahanePlayer) riichiPoolScore else 0
             scoreList += ScoreItem(it.displayName, it.uuid, it.points, score)
             it.points += score
-            totalScore += basicScore
+            yakuSettlements += settlement.copy(paymentBreakdown = payments)
         }
         val targetRiichiStick = if (target.riichi || target.doubleRiichi) ScoringStick.P1000.point else 0
-        scoreList += ScoreItem(target.displayName, target.uuid, target.points, -(totalScore + targetRiichiStick))
-        target.points -= (totalScore + targetRiichiStick)
+        val targetPaoShare = yakuSettlements.sumOf { settlement ->
+            settlement.paymentBreakdown
+                .filter { payment -> payment.payerUuid == target.uuid && payment.type != SettlementPaymentType.RIICHI_POOL }
+                .sumOf(SettlementPayment::amount)
+        }
+        scoreList += ScoreItem(target.displayName, target.uuid, target.points, -(targetPaoShare + targetRiichiStick))
+        target.points -= (targetPaoShare + targetRiichiStick)
+        val liabilityTotals = linkedMapOf<String, Int>()
+        yakuSettlements.forEach { settlement ->
+            settlement.paymentBreakdown
+                .filter { payment ->
+                    payment.payerUuid.isNotBlank()
+                        && payment.payerUuid != target.uuid
+                        && payment.type == SettlementPaymentType.PAO
+                }
+                .forEach { payment -> liabilityTotals.merge(payment.payerUuid, payment.amount, Int::plus) }
+        }
+        liabilityTotals.forEach { (liableUuid, amount) ->
+            val liablePlayer = seatPlayer(liableUuid) ?: return@forEach
+            val liableRiichiStick = if (liablePlayer.riichi || liablePlayer.doubleRiichi) ScoringStick.P1000.point else 0
+            scoreList += ScoreItem(liablePlayer.displayName, liablePlayer.uuid, liablePlayer.points, -(amount + liableRiichiStick))
+            liablePlayer.points -= (amount + liableRiichiStick)
+        }
         seats.filter { it !in winners && it != target }.forEach {
+            if (it.uuid in liabilityTotals.keys) {
+                return@forEach
+            }
             val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
             scoreList += ScoreItem(it.displayName, it.uuid, it.points, -riichiStickPoints)
             it.points -= riichiStickPoints
@@ -548,7 +632,7 @@ class RiichiRoundEngine(
         val allRiichiStickQuantity = seats.sumOf { it.riichiStickAmount }
         val honbaScore = round.honba * 300
         val playerRiichiStickPoints = if (player.riichi || player.doubleRiichi) ScoringStick.P1000.point else 0
-        val extraScore = allRiichiStickQuantity * ScoringStick.P1000.point + honbaScore
+        val riichiPoolScore = allRiichiStickQuantity * ScoringStick.P1000.point
         val tsumoPlayerIsDealer = player == dealer
         val settlement = player.calcYakuSettlementForWin(
             winningTile = tile.mahjongTile,
@@ -559,28 +643,34 @@ class RiichiRoundEngine(
             doraIndicators = doraIndicators.map { it.mahjongTile },
             uraDoraIndicators = uraDoraIndicators.map { it.mahjongTile }
         )
-        yakuSettlements += settlement
+        val liabilityEntries = RiichiPaoRules.liabilityEntries(paoLiabilityByWinner, player, settlement, ::seatPlayer)
         val basicScore = settlement.score
-        val score = basicScore - playerRiichiStickPoints + extraScore
+        val paoBreakdown = RiichiPaoRules.tsumoBreakdown(
+            winner = player,
+            liabilityEntries = liabilityEntries,
+            winnerIsDealer = tsumoPlayerIsDealer,
+            basicScore = basicScore,
+            others = seats.filter { it != player },
+            dealer = dealer
+        )
+        val payments = paoBreakdown.payments.toMutableList()
+        val honbaPayer = RiichiPaoRules.honbaPayer(liabilityEntries, seatOrderFromDealer())
+        if (honbaPayer != null && honbaScore > 0) {
+            payments += SettlementPayment(honbaPayer.uuid, honbaScore, SettlementPaymentType.HONBA)
+        }
+        if (riichiPoolScore > 0) {
+            payments += SettlementPayment("", riichiPoolScore, SettlementPaymentType.RIICHI_POOL)
+        }
+        val score = basicScore - playerRiichiStickPoints + honbaScore + riichiPoolScore
         scoreList += ScoreItem(player.displayName, player.uuid, player.points, score)
         player.points += score
+        yakuSettlements += settlement.copy(paymentBreakdown = payments)
         seats.filter { it != player }.forEach {
             val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
-            if (tsumoPlayerIsDealer) {
-                val averageScore = (basicScore + honbaScore) / 3
-                val itsScore = averageScore + riichiStickPoints
-                scoreList += ScoreItem(it.displayName, it.uuid, it.points, -itsScore)
-                it.points -= itsScore
-            } else {
-                val isDealer = it == dealer
-                val itsScore = if (isDealer) {
-                    basicScore / 2 + honbaScore / 3 + riichiStickPoints
-                } else {
-                    basicScore / 4 + honbaScore / 3 + riichiStickPoints
-                }
-                scoreList += ScoreItem(it.displayName, it.uuid, it.points, -itsScore)
-                it.points -= itsScore
-            }
+            val basePayment = paoBreakdown.paymentTotals[it.uuid] ?: 0
+            val totalPayment = basePayment + if (it == honbaPayer) honbaScore else 0 + riichiStickPoints
+            scoreList += ScoreItem(it.displayName, it.uuid, it.points, -totalPayment)
+            it.points -= totalPayment
         }
         lastResolution = RoundResolution("Tsumo", yakuSettlements, ScoreSettlement("Tsumo", scoreList))
         finishRound(player == dealer, true)
@@ -722,6 +812,11 @@ class RiichiRoundEngine(
         if (clearRiichiSticks) {
             seats.forEach { it.sticks.removeIf { stick -> stick == ScoringStick.P1000 } }
         }
+        if (seats.any { it.points < 0 }) {
+            gameFinished = true
+            awardRemainingRiichiDepositsToFirstPlace()
+            return
+        }
 
         if (!round.isAllLast(rule)) {
             if (dealerRemaining) {
@@ -732,9 +827,16 @@ class RiichiRoundEngine(
             return
         }
 
-        if (seats.none { it.points >= rule.minPointsToWin }) {
-            if (dealerRemaining) {
+        val firstPlace = placementOrder().first()
+        if (dealerRemaining) {
+            if (firstPlace == dealer && dealer.points >= rule.minPointsToWin) {
+                gameFinished = true
+            } else {
                 round.honba++
+            }
+        } else {
+            if (firstPlace.points >= rule.minPointsToWin) {
+                gameFinished = true
             } else {
                 val finalRound = rule.length.finalRound
                 if (round.wind == finalRound.first && round.round == finalRound.second) {
@@ -743,8 +845,17 @@ class RiichiRoundEngine(
                     round.nextRound()
                 }
             }
-        } else {
-            gameFinished = true
         }
+        if (gameFinished) {
+            awardRemainingRiichiDepositsToFirstPlace()
+        }
+    }
+
+    private fun awardRemainingRiichiDepositsToFirstPlace() {
+        val riichiPoints = seats.sumOf { it.riichiStickAmount } * ScoringStick.P1000.point
+        if (riichiPoints > 0) {
+            placementOrder().first().points += riichiPoints
+        }
+        seats.forEach { it.sticks.removeIf { stick -> stick == ScoringStick.P1000 } }
     }
 }
