@@ -600,7 +600,7 @@ public final class CraftEngineService {
         if (entity == null || viewer == null || !this.plugin.isEnabled()) {
             return;
         }
-        this.plugin.scheduler().runEntity(viewer, () -> {
+        this.plugin.scheduler().runEntity(entity, () -> {
             if (!viewer.isOnline()) {
                 return;
             }
