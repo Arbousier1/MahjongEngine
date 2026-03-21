@@ -331,6 +331,43 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `ankan is rejected when no rinshan draw is available`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.currentPlayer
+        east.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.WHITE_DRAGON
+        )
+        engine.wall.clear()
+
+        assertFalse(engine.tryAnkanOrKakan(east.uuid, MahjongTile.EAST))
+        assertEquals(4, east.hands.count { it.mahjongTile == MahjongTile.EAST })
+        assertTrue(engine.pendingReaction == null)
+    }
+
+    @Test
     fun `pao ron splits yakuman payment between discarder and liable player`() {
         val engine = RiichiRoundEngine(
             listOf(

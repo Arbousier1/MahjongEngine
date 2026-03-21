@@ -193,6 +193,7 @@ public final class MahjongCommand implements BasicCommand {
                 MahjongTableManager.LeaveResult result = this.tableManager.leave(player.getUniqueId());
                 switch (result.status()) {
                     case LEFT -> this.messages.send(player, "command.left_table");
+                    case DEFERRED -> this.messages.send(player, "command.leave_deferred");
                     case UNSPECTATED -> this.messages.send(player, "command.unspectated");
                     case NOT_IN_TABLE -> this.messages.send(player, "command.not_in_table");
                     case BLOCKED -> this.messages.send(player, "command.leave_blocked_started");

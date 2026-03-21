@@ -18,6 +18,28 @@ import kotlin.test.assertTrue
 
 class RiichiPlayerStateTest {
     @Test
+    fun `invalid hand size does not throw during shanten checks`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M6,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3
+        )
+
+        assertFalse(player.isTenpai)
+        assertTrue(player.discardSuggestions().isEmpty())
+    }
+
+    @Test
     fun `tile pairs for riichi cache invalidates when hand changes`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.drawTile(TileInstance(mahjongTile = MahjongTile.M1))
