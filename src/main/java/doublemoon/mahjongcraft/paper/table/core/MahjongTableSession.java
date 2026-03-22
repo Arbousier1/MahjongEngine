@@ -808,6 +808,10 @@ public final class MahjongTableSession {
         return playerId != null && this.roundController != null && this.roundController.canDeclareKyuushu(playerId);
     }
 
+    public boolean canDeclareTsumo(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareTsumo(playerId);
+    }
+
     public List<Integer> suggestedRiichiIndices(UUID playerId) {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedRiichiIndices(playerId);
     }

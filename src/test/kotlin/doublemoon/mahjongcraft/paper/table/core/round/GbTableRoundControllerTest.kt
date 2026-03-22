@@ -171,6 +171,7 @@ class GbTableRoundControllerTest {
         assertEquals(SeatWind.SOUTH, controller.currentSeat())
         assertEquals(11, controller.hand(south).size)
         assertEquals(1, controller.fuuro(south).size)
+        assertEquals(0, controller.fuuro(south).single().claimTileIndex())
         assertEquals(0, controller.discards(east).size)
         assertEquals(
             listOf(
@@ -574,15 +575,25 @@ class GbTableRoundControllerTest {
         forceFlowers(controller, playerId, emptyList())
     }
 
-    private fun addPung(controller: GbTableRoundController, playerId: UUID, tile: String) {
+    private fun addPung(controller: GbTableRoundController, playerId: UUID, tile: String, selfSeat: SeatWind = SeatWind.EAST) {
         val meldsField = GbTableRoundController::class.java.getDeclaredField("melds")
         meldsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
         val melds = meldsField.get(controller) as MutableMap<UUID, MutableList<Any>>
         val meldClass = Class.forName("doublemoon.mahjongcraft.paper.table.core.round.GbTableRoundController\$GbMeldState")
-        val pungMethod = meldClass.getDeclaredMethod("pung", doublemoon.mahjongcraft.paper.model.MahjongTile::class.java, SeatWind::class.java)
+        val pungMethod = meldClass.getDeclaredMethod(
+            "pung",
+            doublemoon.mahjongcraft.paper.model.MahjongTile::class.java,
+            SeatWind::class.java,
+            SeatWind::class.java
+        )
         pungMethod.isAccessible = true
-        val pung = pungMethod.invoke(null, doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile), SeatWind.SOUTH)
+        val pung = pungMethod.invoke(
+            null,
+            doublemoon.mahjongcraft.paper.model.MahjongTile.valueOf(tile),
+            SeatWind.SOUTH,
+            selfSeat
+        )
         melds.getValue(playerId).add(pung)
     }
 

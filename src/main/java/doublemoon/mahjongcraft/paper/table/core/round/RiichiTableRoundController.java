@@ -208,9 +208,9 @@ public final class RiichiTableRoundController implements TableRoundController {
             doublemoon.mahjongcraft.paper.riichi.model.TileInstance claimTile = fuuro.getClaimTile();
             orderedInstances.remove(claimTile);
             int claimTileIndex = switch (fuuro.getClaimTarget().name()) {
-                case "RIGHT" -> 0;
+                case "LEFT" -> 0;
                 case "ACROSS" -> 1;
-                case "LEFT" -> orderedInstances.size();
+                case "RIGHT" -> orderedInstances.size();
                 default -> -1;
             };
             if (claimTileIndex >= 0) {
@@ -324,6 +324,11 @@ public final class RiichiTableRoundController implements TableRoundController {
     @Override
     public boolean canDeclareKyuushu(UUID playerId) {
         return playerId != null && this.engine.canKyuushuKyuuhai(playerId.toString());
+    }
+
+    @Override
+    public boolean canDeclareTsumo(UUID playerId) {
+        return playerId != null && this.engine.canDeclareTsumo(playerId.toString());
     }
 
     @Override

@@ -36,6 +36,7 @@ public final class TableRenderLayout {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
+    private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
     private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
@@ -297,14 +298,16 @@ public final class TableRenderLayout {
                     meld.tiles().get(i),
                     meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP
                 ));
-                lastClaimBase = claimTile ? basePoint : null;
+                if (claimTile) {
+                    lastClaimBase = basePoint;
+                }
                 lastTileWasHorizontal = claimTile;
                 placedTileCount++;
             }
 
             if (meld.hasAddedKanTile() && lastClaimBase != null) {
                 placements.add(new TilePlacement(
-                    add(lastClaimBase, kakanOffset(seat.wind())).add(0.0D, FLAT_TILE_Y, 0.0D),
+                    lastClaimBase.add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
                     yaw + meld.claimYawOffset(),
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
@@ -603,16 +606,6 @@ public final class TableRenderLayout {
 
     private static Offset halfHorizontalTileOffset(SeatWind wind) {
         return multiply(horizontalTileOffset(wind), 0.5D);
-    }
-
-    private static Offset kakanOffset(SeatWind wind) {
-        double amount = TILE_WIDTH + TILE_PADDING;
-        return switch (wind) {
-            case EAST -> new Offset(-amount, 0.0D);
-            case SOUTH -> new Offset(0.0D, -amount);
-            case WEST -> new Offset(amount, 0.0D);
-            case NORTH -> new Offset(0.0D, amount);
-        };
     }
 
     private static Offset horizontalTileGravityOffset(SeatWind wind) {

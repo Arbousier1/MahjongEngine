@@ -187,7 +187,7 @@ public final class TablePlayerFeedbackCoordinator {
             }
             if (this.session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
                 doublemoon.mahjongcraft.paper.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
-                if (this.session.gbCanWinByTsumo(playerId)) {
+                if (this.session.canDeclareTsumo(playerId)) {
                     actions.add(this.session.plugin().messages().plain(locale, "table.action.tsumo"));
                 }
                 String suggestion = ting.getValid()
@@ -205,7 +205,7 @@ public final class TablePlayerFeedbackCoordinator {
                     .field(this.session.remainingWallCount())
                     .field(ting.getValid())
                     .field(ting.getWaits().size())
-                    .field(this.session.gbCanWinByTsumo(playerId))
+                    .field(this.session.canDeclareTsumo(playerId))
                     .field(this.session.canDeclareConcealedKan(playerId))
                     .field(this.session.canDeclareAddedKan(playerId))
                     .field(this.session.suggestedConcealedKanTiles(playerId))
@@ -215,7 +215,9 @@ public final class TablePlayerFeedbackCoordinator {
                     .toString();
                 return new PlayerFeedbackSnapshot(playerId, signature, actionBar, this.turnPrompt(locale, playerId));
             }
-            actions.add(0, this.session.plugin().messages().plain(locale, "table.action.tsumo"));
+            if (this.session.canDeclareTsumo(playerId)) {
+                actions.add(0, this.session.plugin().messages().plain(locale, "table.action.tsumo"));
+            }
             String discardSuggestion = this.discardSuggestionSuffix(locale, playerId);
             Component actionBar = this.session.plugin().messages().render(
                 locale,
@@ -270,15 +272,7 @@ public final class TablePlayerFeedbackCoordinator {
 
     private Component turnPrompt(Locale locale, UUID playerId) {
         List<Component> buttons = new ArrayList<>();
-        if (this.session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
-            if (this.session.gbCanWinByTsumo(playerId)) {
-                buttons.add(this.actionButton(
-                    this.session.plugin().messages().plain(locale, "table.action.tsumo"),
-                    "/mahjong tsumo",
-                    NamedTextColor.GOLD
-                ));
-            }
-        } else {
+        if (this.session.canDeclareTsumo(playerId)) {
             buttons.add(this.actionButton(
                 this.session.plugin().messages().plain(locale, "table.action.tsumo"),
                 "/mahjong tsumo",

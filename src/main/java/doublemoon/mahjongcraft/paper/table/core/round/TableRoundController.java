@@ -136,6 +136,10 @@ public interface TableRoundController {
         return false;
     }
 
+    default boolean canDeclareTsumo(UUID playerId) {
+        return false;
+    }
+
     default List<Integer> suggestedRiichiIndices(UUID playerId) {
         return List.of();
     }

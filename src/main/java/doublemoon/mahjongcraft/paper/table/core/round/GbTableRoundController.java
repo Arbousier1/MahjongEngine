@@ -706,18 +706,23 @@ public final class GbTableRoundController implements TableRoundController {
         return false;
     }
 
+    @Override
+    public boolean canDeclareTsumo(UUID playerId) {
+        return playerId != null && !this.hasPendingReaction() && this.canWinByTsumo(playerId);
+    }
+
     private void claimPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         GbRoundSupport.removeTiles(this.hands.get(playerId), claimedTile, 2);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
-        this.melds.get(playerId).add(GbMeldState.pung(claimedTile, fromSeat));
+        this.melds.get(playerId).add(GbMeldState.pung(claimedTile, fromSeat, this.seatOf(playerId)));
     }
 
     private void claimOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         GbRoundSupport.removeTiles(this.hands.get(playerId), claimedTile, 3);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
-        this.melds.get(playerId).add(GbMeldState.openKong(claimedTile, fromSeat));
+        this.melds.get(playerId).add(GbMeldState.openKong(claimedTile, fromSeat, this.seatOf(playerId)));
         this.kanCount++;
     }
 
@@ -1172,7 +1177,7 @@ public final class GbTableRoundController implements TableRoundController {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
         GbRoundSupport.removeTiles(hand, claimedTile, 2);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        meldStates.add(GbMeldState.pung(claimedTile, fromSeat));
+        meldStates.add(GbMeldState.pung(claimedTile, fromSeat, this.seatOf(playerId)));
         return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.PON, null));
     }
 
@@ -1180,7 +1185,7 @@ public final class GbTableRoundController implements TableRoundController {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
         GbRoundSupport.removeTiles(hand, claimedTile, 3);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        meldStates.add(GbMeldState.openKong(claimedTile, fromSeat));
+        meldStates.add(GbMeldState.openKong(claimedTile, fromSeat, this.seatOf(playerId)));
         long readyScore = botReadyScore(this.evaluateTing(playerId, hand, meldStates));
         return new GbBotReactionChoice(new ReactionResponse(ReactionType.MINKAN, null), readyScore, 0);
     }
@@ -1422,14 +1427,16 @@ public final class GbTableRoundController implements TableRoundController {
             return new GbMeldState(GbMeldType.CHOW, List.copyOf(ordered), claim, claim, fromSeat, true, claimIndex, 90, null);
         }
 
-        private static GbMeldState pung(MahjongTile claim, SeatWind fromSeat) {
+        private static GbMeldState pung(MahjongTile claim, SeatWind fromSeat, SeatWind selfSeat) {
             List<MahjongTile> ordered = List.of(claim, claim, claim);
-            return new GbMeldState(GbMeldType.PUNG, ordered, claim, claim, fromSeat, true, 1, claimYaw(fromSeat), null);
+            int claimIndex = claimTileIndex(fromSeat, selfSeat);
+            return new GbMeldState(GbMeldType.PUNG, ordered, claim, claim, fromSeat, true, claimIndex, claimYaw(claimIndex), null);
         }
 
-        private static GbMeldState openKong(MahjongTile claim, SeatWind fromSeat) {
+        private static GbMeldState openKong(MahjongTile claim, SeatWind fromSeat, SeatWind selfSeat) {
             List<MahjongTile> ordered = List.of(claim, claim, claim, claim);
-            return new GbMeldState(GbMeldType.OPEN_KONG, ordered, claim, claim, fromSeat, true, 1, claimYaw(fromSeat), null);
+            int claimIndex = claimTileIndex(fromSeat, selfSeat);
+            return new GbMeldState(GbMeldType.OPEN_KONG, ordered, claim, claim, fromSeat, true, claimIndex, claimYaw(claimIndex), null);
         }
 
         private static GbMeldState ankan(MahjongTile tile) {
@@ -1453,11 +1460,21 @@ public final class GbTableRoundController implements TableRoundController {
             };
         }
 
-        private static int claimYaw(SeatWind fromSeat) {
-            return switch (fromSeat) {
-                case EAST, SOUTH -> 90;
-                case WEST, NORTH -> -90;
+        private static int claimTileIndex(SeatWind fromSeat, SeatWind selfSeat) {
+            if (fromSeat == null || selfSeat == null) {
+                return 1;
+            }
+            int diff = Math.floorMod(selfSeat.index() - fromSeat.index(), SeatWind.values().length);
+            return switch (diff) {
+                case 1 -> 0; // Left source -> left slot
+                case 2 -> 1; // Across source -> middle slot
+                case 3 -> 2; // Right source -> right slot
+                default -> 1;
             };
+        }
+
+        private static int claimYaw(int claimTileIndex) {
+            return claimTileIndex == 0 ? -90 : 90;
         }
 
         private static int tileSort(MahjongTile tile) {

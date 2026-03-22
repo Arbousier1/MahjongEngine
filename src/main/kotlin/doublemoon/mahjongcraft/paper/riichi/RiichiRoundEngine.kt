@@ -213,22 +213,26 @@ class RiichiRoundEngine(
     }
 
     fun tryTsumo(playerUuid: String): Boolean {
+        if (!canDeclareTsumo(playerUuid)) {
+            return false
+        }
+        val player = currentPlayer
+        val winningTileInstance = player.lastDrawnTile ?: return false
+        resolveTsumo(player, winningTileInstance, isRinshanKaihoh = currentDrawIsRinshan)
+        return true
+    }
+
+    fun canDeclareTsumo(playerUuid: String): Boolean {
         if (!started || pendingReaction != null || currentPlayer.uuid != playerUuid) return false
         val player = currentPlayer
         val winningTileInstance = player.lastDrawnTile ?: return false
-        val winningTile = winningTileInstance.mahjongTile
-        if (!player.canWin(
-                winningTile,
-                true,
-                rule = rule,
-                generalSituation = generalSituation,
-                personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = currentDrawIsRinshan)
-            )
-        ) {
-            return false
-        }
-        resolveTsumo(player, winningTileInstance, isRinshanKaihoh = currentDrawIsRinshan)
-        return true
+        return player.canWin(
+            winningTileInstance.mahjongTile,
+            true,
+            rule = rule,
+            generalSituation = generalSituation,
+            personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = currentDrawIsRinshan)
+        )
     }
 
     fun tryAnkanOrKakan(playerUuid: String, tile: MahjongTile): Boolean {

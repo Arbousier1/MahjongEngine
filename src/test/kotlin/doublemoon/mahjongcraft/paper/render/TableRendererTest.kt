@@ -6,6 +6,7 @@ import doublemoon.mahjongcraft.paper.render.display.DisplayEntities
 import doublemoon.mahjongcraft.paper.render.layout.DiscardLayout
 import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout
 import doublemoon.mahjongcraft.paper.render.layout.WallLayout
+import doublemoon.mahjongcraft.paper.render.scene.MeldView
 import doublemoon.mahjongcraft.paper.render.scene.TableRenderer
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
@@ -172,6 +173,70 @@ class TableRendererTest {
         assertEquals(listOf(seat.playerId()), spec.hiddenViewers())
     }
 
+    @Test
+    fun `kakan tile is stacked above claimed tile`() {
+        val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
+        seats[SeatWind.EAST] = seatSnapshot(
+            wind = SeatWind.EAST,
+            playerId = eastId,
+            melds = listOf(
+                MeldView(
+                    listOf(MahjongTile.M5, MahjongTile.M5, MahjongTile.M5),
+                    listOf(false, false, false),
+                    1,
+                    90,
+                    MahjongTile.M5
+                )
+            )
+        )
+        seats[SeatWind.SOUTH] = seatSnapshot(SeatWind.SOUTH, UUID.fromString("00000000-0000-0000-0000-000000000002"))
+        seats[SeatWind.WEST] = seatSnapshot(SeatWind.WEST, UUID.fromString("00000000-0000-0000-0000-000000000003"))
+        seats[SeatWind.NORTH] = seatSnapshot(SeatWind.NORTH, UUID.fromString("00000000-0000-0000-0000-000000000004"))
+        val snapshot = TableRenderSnapshot(
+            1L,
+            0L,
+            "world",
+            0.0,
+            64.0,
+            0.0,
+            true,
+            false,
+            70,
+            0,
+            6,
+            0,
+            1,
+            SeatWind.EAST,
+            SeatWind.SOUTH,
+            SeatWind.EAST,
+            "waiting",
+            "rules",
+            "center",
+            null,
+            null,
+            listOf(MahjongTile.M1, MahjongTile.P1),
+            seats
+        )
+
+        val meldPlacements = TableRenderLayout.precompute(snapshot).seat(SeatWind.EAST).meldPlacements()
+        assertEquals(4, meldPlacements.size)
+        val claimTile = meldPlacements[1]
+        val addedKanTile = meldPlacements[3]
+        assertEquals(MahjongTile.M5, addedKanTile.tile())
+        assertTrue(addedKanTile.point().y() > claimTile.point().y())
+    }
+
+    @Test
+    fun `claim tile index maps to left middle right slots visually`() {
+        val left = horizontalTileRankForClaimIndex(SeatWind.EAST, 0)
+        val middle = horizontalTileRankForClaimIndex(SeatWind.EAST, 1)
+        val right = horizontalTileRankForClaimIndex(SeatWind.EAST, 2)
+        assertEquals(0, left)
+        assertEquals(1, middle)
+        assertEquals(2, right)
+    }
+
     private fun startedSnapshot(): TableRenderSnapshot {
         val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
@@ -222,6 +287,7 @@ class TableRendererTest {
         discards: List<MahjongTile> = emptyList(),
         riichi: Boolean = false,
         riichiDiscardIndex: Int = -1,
+        melds: List<MeldView> = emptyList(),
         scoringSticks: List<ScoringStick> = emptyList(),
         cornerSticks: List<ScoringStick> = emptyList()
     ) = TableSeatRenderSnapshot(
@@ -241,7 +307,7 @@ class TableRendererTest {
         emptyList(),
         hand,
         discards,
-        emptyList(),
+        melds,
         scoringSticks,
         cornerSticks
     )
@@ -258,5 +324,73 @@ class TableRendererTest {
             && left.tile() == right.tile()
             && left.pose() == right.pose()
     }
+
+    private fun horizontalTileRankForClaimIndex(wind: SeatWind, claimIndex: Int): Int {
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000101")
+        val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
+        seats[wind] = seatSnapshot(
+            wind = wind,
+            playerId = playerId,
+            melds = listOf(
+                MeldView(
+                    listOf(MahjongTile.M5, MahjongTile.M5, MahjongTile.M5),
+                    listOf(false, false, false),
+                    claimIndex,
+                    90,
+                    null
+                )
+            )
+        )
+        for (other in SeatWind.values()) {
+            if (other != wind) {
+                seats[other] = seatSnapshot(other, UUID.randomUUID())
+            }
+        }
+        val snapshot = TableRenderSnapshot(
+            1L,
+            0L,
+            "world",
+            0.0,
+            64.0,
+            0.0,
+            true,
+            false,
+            70,
+            0,
+            6,
+            0,
+            1,
+            SeatWind.EAST,
+            SeatWind.SOUTH,
+            SeatWind.EAST,
+            "waiting",
+            "rules",
+            "center",
+            null,
+            null,
+            listOf(MahjongTile.M1),
+            seats
+        )
+        val placements = TableRenderLayout.precompute(snapshot).seat(wind).meldPlacements().take(3)
+        val horizontal = placements.first { it.yaw() != seatYawFor(wind) }
+        val ordered = placements.sortedBy { leftToRightScalar(it.point(), wind) }
+        return ordered.indexOf(horizontal)
+    }
+
+    private fun leftToRightScalar(point: TableRenderLayout.Point, wind: SeatWind): Double =
+        when (wind) {
+            SeatWind.EAST -> point.z()
+            SeatWind.SOUTH -> point.x()
+            SeatWind.WEST -> -point.z()
+            SeatWind.NORTH -> -point.x()
+        }
+
+    private fun seatYawFor(wind: SeatWind): Float =
+        when (wind) {
+            SeatWind.EAST -> -90.0f
+            SeatWind.SOUTH -> 0.0f
+            SeatWind.WEST -> 90.0f
+            SeatWind.NORTH -> -180.0f
+        }
 }
 

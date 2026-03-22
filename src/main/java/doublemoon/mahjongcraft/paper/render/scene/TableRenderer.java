@@ -62,7 +62,7 @@ public final class TableRenderer {
     private static final double SEAT_BACKREST_OFFSET = 0.26D;
     private static final double SEAT_CARPET_INSET = 0.08D;
     private static final double SEAT_CARPET_THICKNESS = 0.04D;
-    private static final double CENTER_LABEL_Y_OFFSET = 0.3D + FLOATING_TEXT_Y_OFFSET - 0.5D;
+    private static final double CENTER_LABEL_Y_OFFSET = 0.55D + FLOATING_TEXT_Y_OFFSET - 0.5D;
     private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
     private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
     private static final Color CENTER_LAST_DISCARD_TILE_GLOW = Color.fromRGB(255, 220, 96);
@@ -73,6 +73,7 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
+    private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
     private static final float HAND_INTERACTION_WIDTH = 0.1F;
     private static final float HAND_INTERACTION_HEIGHT = 0.18F;
     private static final float SEAT_INTERACTION_WIDTH = 0.8F;
@@ -957,7 +958,9 @@ public final class TableRenderer {
                     meld.tiles().get(i),
                     meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP
                 ));
-                lastClaimBase = isClaimTile ? baseLocation.clone() : null;
+                if (isClaimTile) {
+                    lastClaimBase = baseLocation.clone();
+                }
                 lastTileWasHorizontal = isClaimTile;
                 placedTileCount++;
             }
@@ -965,7 +968,7 @@ public final class TableRenderer {
             if (meld.hasAddedKanTile() && lastClaimBase != null) {
                 spawned.add(spawnPublicTile(
                     session,
-                    add(lastClaimBase, kakanOffset(wind)).add(0.0D, FLAT_TILE_Y, 0.0D),
+                    lastClaimBase.clone().add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
                     yaw + meld.claimYawOffset(),
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
@@ -1604,16 +1607,6 @@ public final class TableRenderer {
 
     private static Offset halfHorizontalTileOffset(SeatWind wind) {
         return multiply(horizontalTileOffset(wind), 0.5D);
-    }
-
-    private static Offset kakanOffset(SeatWind wind) {
-        double amount = TILE_WIDTH + TILE_PADDING;
-        return switch (wind) {
-            case EAST -> new Offset(-amount, 0.0D);
-            case SOUTH -> new Offset(0.0D, -amount);
-            case WEST -> new Offset(amount, 0.0D);
-            case NORTH -> new Offset(0.0D, amount);
-        };
     }
 
     private static Offset horizontalTileGravityOffset(SeatWind wind) {
