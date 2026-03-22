@@ -80,6 +80,7 @@ public final class MahjongTableSession {
     private final SessionViewerIndex viewerIndex;
     private final SessionRoundLifecycle roundLifecycle;
     private final SessionRuleCoordinator ruleCoordinator;
+    private final SessionRoundActionCoordinator roundActionCoordinator;
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
@@ -134,6 +135,7 @@ public final class MahjongTableSession {
         this.viewerIndex = new SessionViewerIndex(this);
         this.roundLifecycle = new SessionRoundLifecycle();
         this.ruleCoordinator = new SessionRuleCoordinator(this);
+        this.roundActionCoordinator = new SessionRoundActionCoordinator(this);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -363,80 +365,27 @@ public final class MahjongTableSession {
     }
 
     public boolean discard(UUID playerId, int tileIndex) {
-        if (this.roundController == null) {
-            return false;
-        }
-        doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
-        boolean result = this.roundController.discard(playerId, tileIndex);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-            this.rememberPublicDiscard(playerId, discardedTile);
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.discard(playerId, tileIndex);
     }
 
     public boolean declareRiichi(UUID playerId, int tileIndex) {
-        if (this.roundController == null) {
-            return false;
-        }
-        doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile = this.handTileAt(playerId, tileIndex);
-        boolean result = this.roundController.declareRiichi(playerId, tileIndex);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-            this.rememberPublicDiscard(playerId, discardedTile);
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.declareRiichi(playerId, tileIndex);
     }
 
     public boolean declareTsumo(UUID playerId) {
-        if (this.roundController == null) {
-            return false;
-        }
-        boolean result = this.roundController.declareTsumo(playerId);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.declareTsumo(playerId);
     }
 
     public boolean declareKyuushuKyuuhai(UUID playerId) {
-        if (this.roundController == null) {
-            return false;
-        }
-        boolean result = this.roundController.declareKyuushuKyuuhai(playerId);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.declareKyuushuKyuuhai(playerId);
     }
 
     public boolean react(UUID playerId, ReactionResponse response) {
-        if (this.roundController == null) {
-            return false;
-        }
-        boolean result = this.roundController.react(playerId, response);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-            this.stateSoundCoordinator.playReactionSound(response);
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.react(playerId, response);
     }
 
     public boolean declareKan(UUID playerId, String tileName) {
-        if (this.roundController == null) {
-            return false;
-        }
-        boolean result = this.roundController.declareKan(playerId, tileName);
-        if (result) {
-            this.selectedHandTileIndices.clear();
-        }
-        this.render();
-        return result;
+        return this.roundActionCoordinator.declareKan(playerId, tileName);
     }
 
     public void render() {
@@ -1049,6 +998,10 @@ public final class MahjongTableSession {
         return hand.get(tileIndex);
     }
 
+    doublemoon.mahjongcraft.paper.model.MahjongTile handTileAtInternal(UUID playerId, int tileIndex) {
+        return this.handTileAt(playerId, tileIndex);
+    }
+
     private void rememberPublicDiscard(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
         if (discardedTile == null) {
             return;
@@ -1057,9 +1010,21 @@ public final class MahjongTableSession {
         this.lastPublicDiscardTile = discardedTile;
     }
 
+    void rememberPublicDiscardInternal(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
+        this.rememberPublicDiscard(playerId, discardedTile);
+    }
+
     private void clearLastPublicDiscard() {
         this.lastPublicDiscardPlayerId = null;
         this.lastPublicDiscardTile = null;
+    }
+
+    void clearSelectedHandTilesInternal() {
+        this.selectedHandTileIndices.clear();
+    }
+
+    void playReactionSoundInternal(ReactionResponse response) {
+        this.stateSoundCoordinator.playReactionSound(response);
     }
 
     private void persistRoomMetadataIfNeeded() {
@@ -1082,6 +1047,10 @@ public final class MahjongTableSession {
 
     void setConfiguredVariantInternal(MahjongVariant configuredVariant) {
         this.configuredVariant = configuredVariant == null ? MahjongVariant.RIICHI : configuredVariant;
+    }
+
+    TableRoundController roundControllerInternal() {
+        return this.roundController;
     }
 
     private MahjongRule copyRule() {
