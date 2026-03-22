@@ -1000,7 +1000,6 @@ public final class MahjongTableSession {
 
     void resetRoundPresentationForStartInternal() {
         this.playerFeedbackCoordinator.resetForRoundStart();
-        this.regionDisplayCoordinator.invalidateFingerprints();
         this.stateSoundCoordinator.resetForRoundStart();
     }
 
