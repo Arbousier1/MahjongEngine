@@ -188,7 +188,9 @@ public final class MahjongTableManager implements Listener {
                 : new LeaveResult(LeaveStatus.UNSPECTATED, spectatorSession);
         }
         if (session.isStarted()) {
-            return new LeaveResult(LeaveStatus.BLOCKED, session);
+            return session.queueLeaveAfterRound(playerId)
+                ? new LeaveResult(LeaveStatus.DEFERRED, session)
+                : new LeaveResult(LeaveStatus.BLOCKED, session);
         }
         SeatWind seatWind = session.seatOf(playerId);
         this.seatCoordinator.ejectSeatOccupant(playerId);
@@ -446,10 +448,11 @@ public final class MahjongTableManager implements Listener {
         }
         MahjongTableSession session = this.resolveTable(action.tableId());
         if (session != null && session.isStarted()) {
+            LeaveResult result = this.leave(player.getUniqueId());
             event.setCancelled(true);
             this.seatCoordinator.startSeatWatchdog(session, player.getUniqueId(), action.seatWind());
             this.seatCoordinator.requestSeatRestore(player, session, action.seatWind());
-            this.plugin.messages().actionBar(player, "command.leave_blocked_started");
+            this.plugin.messages().actionBar(player, result.status() == LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
             return;
         }
         this.plugin.scheduler().runEntity(player, () -> this.leave(player.getUniqueId()));
@@ -468,9 +471,10 @@ public final class MahjongTableManager implements Listener {
         if (this.seatCoordinator.seatAction(player.getVehicle()) == null) {
             return;
         }
+        LeaveResult result = this.leave(player.getUniqueId());
         event.setCancelled(true);
         this.seatCoordinator.startSeatWatchdog(session, player.getUniqueId(), session.seatOf(player.getUniqueId()));
-        this.plugin.messages().actionBar(player, "command.leave_blocked_started");
+        this.plugin.messages().actionBar(player, result.status() == LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -707,13 +711,16 @@ public final class MahjongTableManager implements Listener {
         this.directory.registerTable(session);
     }
 
-    public void finalizeDeferredLeaves(MahjongTableSession session, Collection<UUID> playerIds) {
-        if (session == null || playerIds == null || playerIds.isEmpty()) {
+    public void finalizeDeferredLeaves(MahjongTableSession session, Map<UUID, SeatWind> playerSeats) {
+        if (session == null || playerSeats == null || playerSeats.isEmpty()) {
             return;
         }
-        for (UUID playerId : playerIds) {
+        for (Map.Entry<UUID, SeatWind> entry : playerSeats.entrySet()) {
+            UUID playerId = entry.getKey();
+            SeatWind wind = entry.getValue();
             this.seatCoordinator.ejectSeatOccupant(playerId);
             this.directory.removePlayer(playerId);
+            this.seatCoordinator.movePlayerToSeatExit(playerId, session, wind);
             this.plugin.debug().log("table", "Player " + playerId + " left table " + session.id() + " after round end");
         }
         this.handleSeatMembershipChanged(session, true);
@@ -784,6 +791,7 @@ public final class MahjongTableManager implements Listener {
 
     public enum LeaveStatus {
         LEFT,
+        DEFERRED,
         UNSPECTATED,
         NOT_IN_TABLE,
         BLOCKED

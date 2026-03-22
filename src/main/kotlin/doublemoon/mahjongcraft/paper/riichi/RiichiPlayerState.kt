@@ -26,6 +26,8 @@ import mahjongutils.shanten.shanten
 import mahjongutils.yaku.Yaku
 import mahjongutils.yaku.Yakus
 import kotlin.math.absoluteValue
+import java.util.logging.Level
+import java.util.logging.Logger
 
 data class RiichiDiscardSuggestion(
     val tile: MahjongTile,
@@ -42,6 +44,10 @@ open class RiichiPlayerState(
     val uuid: String,
     val isRealPlayer: Boolean = true
 ) {
+    companion object {
+        private val LOGGER: Logger = Logger.getLogger(RiichiPlayerState::class.java.name)
+    }
+
     val hands: MutableList<TileInstance> = mutableListOf()
     var lastDrawnTile: TileInstance? = null
     var autoArrangeHands: Boolean = true
@@ -645,34 +651,43 @@ open class RiichiPlayerState(
         analysisStateVersion++
     }
 
-    private fun currentShantenResult(): UnionShantenResult {
-        if (cachedCurrentShantenVersion != analysisStateVersion || cachedCurrentShantenResult == null) {
+    private fun currentShantenResult(): UnionShantenResult? {
+        if (cachedCurrentShantenVersion != analysisStateVersion) {
             cachedCurrentShantenResult = analyzeShanten()
             cachedCurrentShantenVersion = analysisStateVersion
         }
-        return cachedCurrentShantenResult!!
+        return cachedCurrentShantenResult
     }
 
     private fun currentShantenWithGot(): ShantenWithGot? =
-        currentShantenResult().shantenInfo as? ShantenWithGot
+        currentShantenResult()?.shantenInfo as? ShantenWithGot
 
     private fun currentShantenWithoutGot(): ShantenWithoutGot? =
-        currentShantenResult().shantenInfo as? ShantenWithoutGot
+        currentShantenResult()?.shantenInfo as? ShantenWithoutGot
 
     private fun analyzeShanten(
         hands: List<MahjongTile> = this.hands.toMahjongTileList(),
         fuuroList: List<Fuuro> = this.fuuroList,
         bestShantenOnly: Boolean = true
-    ): UnionShantenResult = shanten(
-        tiles = hands.toUtilsTiles(),
-        furo = fuuroList.map { it.utilsFuro },
-        bestShantenOnly = bestShantenOnly
-    )
+    ): UnionShantenResult? = runCatching {
+        shanten(
+            tiles = hands.toUtilsTiles(),
+            furo = fuuroList.map { it.utilsFuro },
+            bestShantenOnly = bestShantenOnly
+        )
+    }.onFailure { error ->
+        val level = if (error is IllegalArgumentException) Level.FINE else Level.WARNING
+        LOGGER.log(
+            level,
+            "Shanten analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=$bestShantenOnly)",
+            error
+        )
+    }.getOrNull()
 
     private fun shantenWithoutGot(
         hands: List<MahjongTile>,
         fuuroList: List<Fuuro>
-    ): ShantenWithoutGot? = analyzeShanten(hands, fuuroList).shantenInfo as? ShantenWithoutGot
+    ): ShantenWithoutGot? = analyzeShanten(hands, fuuroList)?.shantenInfo as? ShantenWithoutGot
 
     private fun discardTileInstance(tile: TileInstance) {
         hands -= tile

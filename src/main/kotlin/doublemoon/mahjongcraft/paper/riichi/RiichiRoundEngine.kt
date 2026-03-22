@@ -237,6 +237,7 @@ class RiichiRoundEngine(
         val player = currentPlayer
         val ankanTile = player.tilesCanAnkan.find { it.mahjongTile == tile }
         if (ankanTile != null) {
+            if (!canDrawRinshanTile()) return false
             player.ankan(ankanTile)
             currentDrawIsRinshan = false
             pendingReaction = computeChankanReaction(player, ankanTile, allowOnlyKokushi = true)
@@ -250,6 +251,7 @@ class RiichiRoundEngine(
         }
         val kakanTile = player.hands.find { it.mahjongTile == tile && player.canKakan }
         if (kakanTile != null) {
+            if (!canDrawRinshanTile()) return false
             player.kakan(kakanTile)
             currentDrawIsRinshan = false
             pendingReaction = computeChankanReaction(player, kakanTile, allowOnlyKokushi = false)
@@ -380,6 +382,9 @@ class RiichiRoundEngine(
         currentDrawIsRinshan = true
         pendingAbortiveDraw = if (isSuukaikanAbort()) ExhaustiveDraw.SUUKAIKAN else null
     }
+
+    private fun canDrawRinshanTile(): Boolean =
+        deadWall.size >= 2 && wall.isNotEmpty()
 
     private fun computePendingReaction(discarder: RiichiPlayerState, tile: TileInstance): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()

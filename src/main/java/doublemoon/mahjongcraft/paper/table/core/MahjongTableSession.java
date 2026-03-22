@@ -35,6 +35,7 @@ import doublemoon.mahjongcraft.paper.ui.SettlementUi;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1593,16 +1594,17 @@ public final class MahjongTableSession {
         if (!this.participants.hasQueuedLeaves() || this.isStarted()) {
             return;
         }
-        List<UUID> removed = new ArrayList<>();
+        Map<UUID, SeatWind> removed = new LinkedHashMap<>();
         for (UUID playerId : this.participants.queuedLeavePlayers()) {
+            SeatWind wind = this.seatOf(playerId);
             if (this.removePlayer(playerId)) {
-                removed.add(playerId);
+                removed.put(playerId, wind);
             }
         }
         if (removed.isEmpty()) {
             return;
         }
-        this.participants.removeQueuedLeaves(removed);
+        this.participants.removeQueuedLeaves(new ArrayList<>(removed.keySet()));
         if (this.plugin.tableManager() != null) {
             this.plugin.tableManager().finalizeDeferredLeaves(this, removed);
         }
