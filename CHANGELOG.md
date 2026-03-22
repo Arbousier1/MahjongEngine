@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 - 2026-03-22
+
+Turn-transition and meld-visual consistency release.
+
+- Fixed a round-transition bug where replacing a seated player between hands could leave stale previous-hand seat ids in the active round controller, causing wrong discard ownership and blocked turns.
+- Updated round startup to recreate the controller whenever live seat assignments no longer match controller seats.
+- Fixed added-kong (`kakan`) table rendering so the fourth tile is stacked on top of the called horizontal tile and no longer disappears due to claim-anchor reset.
+- Aligned `pon`/`open-kong` source-position mapping with left/middle/right display rules across both Riichi and GB controllers.
+- Tightened tsumo-action prompts so actionable UI only shows tsumo when declaration is actually legal.
+- Added regression tests for seat-change controller rebuilds, claim-source slot mapping, and kakan stacking behavior.
+
 ## 0.5.2 - 2026-03-18
 
 Folia dice animation hotfix release.
