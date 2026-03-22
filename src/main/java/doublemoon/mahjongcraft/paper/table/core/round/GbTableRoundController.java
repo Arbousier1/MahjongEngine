@@ -375,11 +375,15 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private MeldView toMeldView(GbMeldState meld) {
-        List<Boolean> faceDownFlags = new ArrayList<>(meld.tiles().size());
-        for (int i = 0; i < meld.tiles().size(); i++) {
-            faceDownFlags.add(meld.type() == GbMeldType.CONCEALED_KONG && (i == 0 || i == meld.tiles().size() - 1));
+        List<MahjongTile> visibleTiles = meld.tiles();
+        if (meld.type() == GbMeldType.ADDED_KONG && meld.addedKanTile() != null && visibleTiles.size() > 3) {
+            visibleTiles = List.copyOf(visibleTiles.subList(0, visibleTiles.size() - 1));
         }
-        return new MeldView(List.copyOf(meld.tiles()), List.copyOf(faceDownFlags), meld.claimTileIndex(), meld.claimYawOffset(), meld.addedKanTile());
+        List<Boolean> faceDownFlags = new ArrayList<>(visibleTiles.size());
+        for (int i = 0; i < visibleTiles.size(); i++) {
+            faceDownFlags.add(meld.type() == GbMeldType.CONCEALED_KONG && (i == 0 || i == visibleTiles.size() - 1));
+        }
+        return new MeldView(List.copyOf(visibleTiles), List.copyOf(faceDownFlags), meld.claimTileIndex(), meld.claimYawOffset(), meld.addedKanTile());
     }
 
     private List<MeldView> flowerDisplayViews(UUID playerId) {

@@ -74,8 +74,8 @@ public final class TableRenderer {
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
     private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
-    private static final float HAND_INTERACTION_WIDTH = 0.1F;
-    private static final float HAND_INTERACTION_HEIGHT = 0.18F;
+    private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
+    private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_INTERACTION_WIDTH = 0.8F;
     private static final float SEAT_INTERACTION_HEIGHT = 0.8F;
     private static final int WALL_TILES_PER_SIDE = 34;

@@ -517,6 +517,32 @@ class GbTableRoundControllerTest {
         assertEquals("RON", controller.lastResolution()?.title)
     }
 
+    @Test
+    fun `added kong displays as three base tiles plus one stacked tile`() {
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                GbTingResponse(true, emptyList(), null)
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        addPung(controller, east, "P3")
+        forceHand(controller, east, listOf("P3", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "S1", "S2", "S3", "S4"))
+
+        assertTrue(controller.declareKan(east, "p3"))
+        val meld = controller.fuuro(east).single()
+        assertEquals(3, meld.tiles().size)
+        assertEquals(MahjongTile.P3, meld.addedKanTile())
+    }
+
     private fun controller(
         gateway: GbNativeRulesGateway = defaultGateway(),
         dicePoints: Int? = null,

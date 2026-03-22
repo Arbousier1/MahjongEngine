@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1 - 2026-03-22
+
+Hotfix and maintenance release.
+
+- Fixed GB added-kong visual output so the meld renders as three base tiles with one stacked tile, matching expected table notation instead of showing an extra base tile.
+- Tightened hand interaction hitbox dimensions to align with tile geometry for more precise click targeting.
+- Added Dependabot configuration for weekly Gradle and GitHub Actions dependency update PRs.
+- Added regression coverage for GB added-kong visual data shape.
+
 ## 0.6.0 - 2026-03-22
 
 Turn-transition and meld-visual consistency release.
