@@ -200,7 +200,8 @@ public final class RiichiTableRoundController implements TableRoundController {
         player.getFuuroList().forEach(fuuro -> {
             List<doublemoon.mahjongcraft.paper.riichi.model.TileInstance> orderedInstances = new ArrayList<>(fuuro.getTileInstances());
             doublemoon.mahjongcraft.paper.riichi.model.TileInstance addedKanTile = null;
-            if ("KAKAN".equals(fuuro.getType().name()) && !orderedInstances.isEmpty()) {
+            if ("KAKAN".equals(fuuro.getType().name()) && orderedInstances.size() > 3) {
+                // KAKAN should render as 3 base tiles + 1 stacked tile; strip one tile into addedKanTile.
                 addedKanTile = orderedInstances.remove(orderedInstances.size() - 1);
             } else if (!"KAKAN".equals(fuuro.getType().name())) {
                 orderedInstances.sort((left, right) -> Integer.compare(right.getMahjongTile().getSortOrder(), left.getMahjongTile().getSortOrder()));

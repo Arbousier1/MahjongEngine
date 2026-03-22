@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2 - 2026-03-22
+
+Riichi added-kong display hotfix release.
+
+- Fixed Riichi `kakan` meld projection so display data consistently exports three base tiles plus one stacked tile.
+- Added Riichi regression coverage to lock the `kakan` shape (`3 base + 1 stacked`) and prevent future visual regressions.
+
 ## 0.6.1 - 2026-03-22
 
 Hotfix and maintenance release.

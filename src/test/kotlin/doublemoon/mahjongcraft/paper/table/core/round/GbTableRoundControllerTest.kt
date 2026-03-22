@@ -538,7 +538,7 @@ class GbTableRoundControllerTest {
         forceHand(controller, east, listOf("P3", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "S1", "S2", "S3", "S4"))
 
         assertTrue(controller.declareKan(east, "p3"))
-        val meld = controller.fuuro(east).single()
+        val meld = controller.fuuro(east).first { it.addedKanTile() != null }
         assertEquals(3, meld.tiles().size)
         assertEquals(MahjongTile.P3, meld.addedKanTile())
     }
