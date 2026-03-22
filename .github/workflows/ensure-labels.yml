@@ -1,0 +1,48 @@
+name: Ensure Labels
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ensure-labels.yml"
+      - ".github/dependabot.yml"
+
+permissions:
+  issues: write
+
+jobs:
+  ensure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure required labels exist
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: "dependencies", color: "0366d6", description: "Dependency updates" },
+              { name: "gradle", color: "0e8a16", description: "Gradle build and dependency updates" },
+              { name: "github-actions", color: "5319e7", description: "GitHub Actions workflow updates" }
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name
+                });
+                core.info(`Label exists: ${label.name}`);
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+                core.info(`Created label: ${label.name}`);
+              }
+            }
