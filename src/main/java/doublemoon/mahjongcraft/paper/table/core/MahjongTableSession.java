@@ -236,7 +236,7 @@ public final class MahjongTableSession {
     }
 
     public boolean removePlayer(UUID playerId) {
-        if (this.roundStartInProgress || (this.roundController != null && this.roundController.started())) {
+        if (this.roundStartInProgress || (this.roundController != null && this.roundController.started() && !this.roundController.gameFinished())) {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
@@ -467,7 +467,7 @@ public final class MahjongTableSession {
     }
 
     public UUID playerAt(SeatWind wind) {
-        if (this.roundController != null && this.roundController.started()) {
+        if (this.roundController != null && this.roundController.started() && !this.roundController.gameFinished()) {
             UUID startedSeat = this.roundController.playerAt(wind);
             if (startedSeat != null) {
                 return startedSeat;
@@ -796,6 +796,14 @@ public final class MahjongTableSession {
         return playerId != null && this.roundController != null && this.roundController.canDeclareKan(playerId);
     }
 
+    public boolean canDeclareConcealedKan(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareConcealedKan(playerId);
+    }
+
+    public boolean canDeclareAddedKan(UUID playerId) {
+        return playerId != null && this.roundController != null && this.roundController.canDeclareAddedKan(playerId);
+    }
+
     public boolean canDeclareKyuushu(UUID playerId) {
         return playerId != null && this.roundController != null && this.roundController.canDeclareKyuushu(playerId);
     }
@@ -806,6 +814,14 @@ public final class MahjongTableSession {
 
     public List<String> suggestedKanTiles(UUID playerId) {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedKanTiles(playerId);
+    }
+
+    public List<String> suggestedConcealedKanTiles(UUID playerId) {
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedConcealedKanTiles(playerId);
+    }
+
+    public List<String> suggestedAddedKanTiles(UUID playerId) {
+        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedAddedKanTiles(playerId);
     }
 
     public List<String> suggestedDiscardTiles(UUID playerId) {

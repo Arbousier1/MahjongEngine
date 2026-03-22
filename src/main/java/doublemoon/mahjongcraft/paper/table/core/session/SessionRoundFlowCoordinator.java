@@ -60,7 +60,13 @@ final class SessionRoundFlowCoordinator {
         this.session.restoreDisplaysIfNeededInternal();
         this.session.flushViewerPresentationIfNeededInternal();
         TableRoundController controller = this.session.roundControllerInternal();
-        if (this.session.isRoundStartInProgress() || controller == null || controller.started() || controller.lastResolution() == null) {
+        if (this.session.isRoundStartInProgress() || controller == null) {
+            return;
+        }
+        if (controller.started() && !controller.gameFinished()) {
+            return;
+        }
+        if (controller.lastResolution() == null && !controller.gameFinished()) {
             return;
         }
         this.processDeferredLeaves();

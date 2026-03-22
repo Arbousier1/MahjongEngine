@@ -5,6 +5,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
 final class GbRoundSupport {
@@ -31,6 +32,52 @@ final class GbRoundSupport {
             winds.add(SeatWind.fromIndex(Math.floorMod(start.index() + offset, SeatWind.values().length)));
         }
         return List.copyOf(winds);
+    }
+
+    static String normalizeTileToken(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String upper = trimmed.toUpperCase(Locale.ROOT).replace('-', '_');
+        try {
+            MahjongTile.valueOf(upper);
+            return upper;
+        } catch (IllegalArgumentException ignored) {
+            // Continue to shorthand parsing below.
+        }
+
+        String compact = trimmed.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
+        if (compact.length() < 2 || compact.length() > 3) {
+            return upper;
+        }
+        char first = compact.charAt(0);
+        char second = compact.charAt(1);
+        Character suit = null;
+        Character number = null;
+        if (isSuit(first) && Character.isDigit(second)) {
+            suit = first;
+            number = second;
+        } else if (Character.isDigit(first) && isSuit(second)) {
+            number = first;
+            suit = second;
+        }
+        if (suit == null || number == null) {
+            return upper;
+        }
+        boolean red = compact.endsWith("r");
+        int numeric = number == '0' ? 5 : Character.digit(number, 10);
+        if (numeric < 1 || numeric > 9) {
+            return upper;
+        }
+        return ("" + Character.toUpperCase(suit) + numeric) + (red || number == '0' ? "_RED" : "");
+    }
+
+    private static boolean isSuit(char value) {
+        return value == 'm' || value == 'p' || value == 's';
     }
 
     static boolean containsTile(List<MahjongTile> hand, MahjongTile target) {

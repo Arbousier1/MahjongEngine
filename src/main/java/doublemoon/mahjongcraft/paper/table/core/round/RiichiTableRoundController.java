@@ -84,7 +84,7 @@ public final class RiichiTableRoundController implements TableRoundController {
         }
         try {
             doublemoon.mahjongcraft.paper.riichi.model.MahjongTile tile =
-                doublemoon.mahjongcraft.paper.riichi.model.MahjongTile.valueOf(tileName.toUpperCase(Locale.ROOT));
+                doublemoon.mahjongcraft.paper.riichi.model.MahjongTile.valueOf(GbRoundSupport.normalizeTileToken(tileName));
             return this.engine.tryAnkanOrKakan(playerId.toString(), tile);
         } catch (IllegalArgumentException ex) {
             return false;
@@ -306,8 +306,19 @@ public final class RiichiTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareKan(UUID playerId) {
+        return this.canDeclareConcealedKan(playerId) || this.canDeclareAddedKan(playerId);
+    }
+
+    @Override
+    public boolean canDeclareConcealedKan(UUID playerId) {
         RiichiPlayerState player = this.seatPlayer(playerId);
-        return player != null && this.isCurrentPlayer(playerId) && (player.getCanAnkan() || player.getCanKakan());
+        return player != null && this.isCurrentPlayer(playerId) && player.getCanAnkan();
+    }
+
+    @Override
+    public boolean canDeclareAddedKan(UUID playerId) {
+        RiichiPlayerState player = this.seatPlayer(playerId);
+        return player != null && this.isCurrentPlayer(playerId) && player.getCanKakan();
     }
 
     @Override
@@ -339,16 +350,36 @@ public final class RiichiTableRoundController implements TableRoundController {
             return List.of();
         }
         java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
-        player.getTilesCanAnkan().forEach(tile -> suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT)));
-        if (player.getCanKakan()) {
-            player.getHands().forEach(tile -> {
-                boolean matchesMeld = player.getFuuroList().stream()
-                    .anyMatch(fuuro -> fuuro.getTileInstances().stream().anyMatch(existing -> existing.getMahjongTile() == tile.getMahjongTile()));
-                if (matchesMeld) {
-                    suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT));
-                }
-            });
+        suggestions.addAll(this.suggestedConcealedKanTiles(playerId));
+        suggestions.addAll(this.suggestedAddedKanTiles(playerId));
+        return List.copyOf(suggestions);
+    }
+
+    @Override
+    public List<String> suggestedConcealedKanTiles(UUID playerId) {
+        RiichiPlayerState player = this.seatPlayer(playerId);
+        if (player == null) {
+            return List.of();
         }
+        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
+        player.getTilesCanAnkan().forEach(tile -> suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT)));
+        return List.copyOf(suggestions);
+    }
+
+    @Override
+    public List<String> suggestedAddedKanTiles(UUID playerId) {
+        RiichiPlayerState player = this.seatPlayer(playerId);
+        if (player == null || !player.getCanKakan()) {
+            return List.of();
+        }
+        java.util.Set<String> suggestions = new java.util.LinkedHashSet<>();
+        player.getHands().forEach(tile -> {
+            boolean matchesMeld = player.getFuuroList().stream()
+                .anyMatch(fuuro -> fuuro.getTileInstances().stream().anyMatch(existing -> existing.getMahjongTile() == tile.getMahjongTile()));
+            if (matchesMeld) {
+                suggestions.add(tile.getMahjongTile().name().toLowerCase(Locale.ROOT));
+            }
+        });
         return List.copyOf(suggestions);
     }
 
@@ -376,7 +407,6 @@ public final class RiichiTableRoundController implements TableRoundController {
         }
         return List.copyOf(player.discardSuggestions());
     }
-
     @Override
     public RiichiRoundEngine asRiichiEngine() {
         return this.engine;

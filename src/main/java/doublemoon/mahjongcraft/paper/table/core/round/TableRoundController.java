@@ -124,6 +124,14 @@ public interface TableRoundController {
         return false;
     }
 
+    default boolean canDeclareConcealedKan(UUID playerId) {
+        return false;
+    }
+
+    default boolean canDeclareAddedKan(UUID playerId) {
+        return false;
+    }
+
     default boolean canDeclareKyuushu(UUID playerId) {
         return false;
     }
@@ -133,6 +141,14 @@ public interface TableRoundController {
     }
 
     default List<String> suggestedKanTiles(UUID playerId) {
+        return List.of();
+    }
+
+    default List<String> suggestedConcealedKanTiles(UUID playerId) {
+        return List.of();
+    }
+
+    default List<String> suggestedAddedKanTiles(UUID playerId) {
         return List.of();
     }
 

@@ -242,7 +242,7 @@ public final class GbTableRoundController implements TableRoundController {
         }
         MahjongTile target;
         try {
-            target = MahjongTile.valueOf(tileName.toUpperCase(Locale.ROOT));
+            target = MahjongTile.valueOf(GbRoundSupport.normalizeTileToken(tileName));
         } catch (IllegalArgumentException ex) {
             return false;
         }
@@ -458,6 +458,11 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareKan(UUID playerId) {
+        return this.canDeclareConcealedKan(playerId) || this.canDeclareAddedKan(playerId);
+    }
+
+    @Override
+    public boolean canDeclareConcealedKan(UUID playerId) {
         if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
             return false;
         }
@@ -467,6 +472,15 @@ public final class GbTableRoundController implements TableRoundController {
                 return true;
             }
         }
+        return false;
+    }
+
+    @Override
+    public boolean canDeclareAddedKan(UUID playerId) {
+        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+            return false;
+        }
+        List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         for (GbMeldState meld : this.melds.getOrDefault(playerId, List.of())) {
             if (meld.type() == GbMeldType.PUNG && GbRoundSupport.countMatchingTiles(hand, meld.baseTile()) >= 1) {
                 return true;
@@ -481,6 +495,21 @@ public final class GbTableRoundController implements TableRoundController {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
+        suggestions.addAll(this.suggestedConcealedKanTiles(playerId));
+        for (String tileName : this.suggestedAddedKanTiles(playerId)) {
+            if (!suggestions.contains(tileName)) {
+                suggestions.add(tileName);
+            }
+        }
+        return List.copyOf(suggestions);
+    }
+
+    @Override
+    public List<String> suggestedConcealedKanTiles(UUID playerId) {
+        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+            return List.of();
+        }
+        List<String> suggestions = new ArrayList<>();
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         for (MahjongTile tile : hand) {
             String lowered = tile.name().toLowerCase(Locale.ROOT);
@@ -488,6 +517,16 @@ public final class GbTableRoundController implements TableRoundController {
                 suggestions.add(lowered);
             }
         }
+        return List.copyOf(suggestions);
+    }
+
+    @Override
+    public List<String> suggestedAddedKanTiles(UUID playerId) {
+        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+            return List.of();
+        }
+        List<String> suggestions = new ArrayList<>();
+        List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         for (GbMeldState meld : this.melds.getOrDefault(playerId, List.of())) {
             if (meld.type() == GbMeldType.PUNG && GbRoundSupport.countMatchingTiles(hand, meld.baseTile()) >= 1) {
                 String lowered = meld.baseTile().name().toLowerCase(Locale.ROOT);

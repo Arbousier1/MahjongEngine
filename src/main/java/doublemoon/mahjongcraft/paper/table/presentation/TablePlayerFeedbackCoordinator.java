@@ -176,8 +176,11 @@ public final class TablePlayerFeedbackCoordinator {
             if (this.session.canDeclareRiichi(playerId)) {
                 actions.add(this.session.plugin().messages().plain(locale, "table.action.riichi"));
             }
-            if (this.session.canDeclareKan(playerId)) {
-                actions.add(this.session.plugin().messages().plain(locale, "table.action.kan"));
+            if (this.session.canDeclareConcealedKan(playerId)) {
+                actions.add(this.session.plugin().messages().plain(locale, "table.action.ankan"));
+            }
+            if (this.session.canDeclareAddedKan(playerId)) {
+                actions.add(this.session.plugin().messages().plain(locale, "table.action.kakan"));
             }
             if (this.session.canDeclareKyuushu(playerId)) {
                 actions.add(this.session.plugin().messages().plain(locale, "table.action.kyuushu"));
@@ -203,8 +206,14 @@ public final class TablePlayerFeedbackCoordinator {
                     .field(ting.getValid())
                     .field(ting.getWaits().size())
                     .field(this.session.gbCanWinByTsumo(playerId))
+                    .field(this.session.canDeclareConcealedKan(playerId))
+                    .field(this.session.canDeclareAddedKan(playerId))
+                    .field(this.session.suggestedConcealedKanTiles(playerId))
+                    .field(this.session.suggestedAddedKanTiles(playerId))
+                    .field(this.session.canDeclareRiichi(playerId))
+                    .field(this.session.suggestedRiichiIndices(playerId))
                     .toString();
-                return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
+                return new PlayerFeedbackSnapshot(playerId, signature, actionBar, this.turnPrompt(locale, playerId));
             }
             actions.add(0, this.session.plugin().messages().plain(locale, "table.action.tsumo"));
             String discardSuggestion = this.discardSuggestionSuffix(locale, playerId);
@@ -219,12 +228,16 @@ public final class TablePlayerFeedbackCoordinator {
                 .field(playerId)
                 .field(this.session.remainingWallCount())
                 .field(this.session.canDeclareRiichi(playerId))
-                .field(this.session.canDeclareKan(playerId))
+                .field(this.session.canDeclareConcealedKan(playerId))
+                .field(this.session.canDeclareAddedKan(playerId))
                 .field(this.session.canDeclareKyuushu(playerId))
                 .field(actions)
                 .field(discardSuggestion)
+                .field(this.session.suggestedConcealedKanTiles(playerId))
+                .field(this.session.suggestedAddedKanTiles(playerId))
+                .field(this.session.suggestedRiichiIndices(playerId))
                 .toString();
-            return new PlayerFeedbackSnapshot(playerId, signature, actionBar, null);
+            return new PlayerFeedbackSnapshot(playerId, signature, actionBar, this.turnPrompt(locale, playerId));
         }
         return new PlayerFeedbackSnapshot(playerId, "", null, null);
     }
@@ -253,6 +266,68 @@ public final class TablePlayerFeedbackCoordinator {
         message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.skip"), "/mahjong skip", NamedTextColor.GRAY));
         Component suggestedAction = this.suggestedActionComponent(locale, options);
         return suggestedAction == null ? message : message.append(Component.space()).append(suggestedAction);
+    }
+
+    private Component turnPrompt(Locale locale, UUID playerId) {
+        List<Component> buttons = new ArrayList<>();
+        if (this.session.currentVariant() == doublemoon.mahjongcraft.paper.table.core.MahjongVariant.GB) {
+            if (this.session.gbCanWinByTsumo(playerId)) {
+                buttons.add(this.actionButton(
+                    this.session.plugin().messages().plain(locale, "table.action.tsumo"),
+                    "/mahjong tsumo",
+                    NamedTextColor.GOLD
+                ));
+            }
+        } else {
+            buttons.add(this.actionButton(
+                this.session.plugin().messages().plain(locale, "table.action.tsumo"),
+                "/mahjong tsumo",
+                NamedTextColor.GOLD
+            ));
+        }
+        if (this.session.canDeclareConcealedKan(playerId)) {
+            for (String tileName : this.session.suggestedConcealedKanTiles(playerId)) {
+                String label = this.session.plugin().messages().plain(locale, "table.action.ankan") + " "
+                    + this.session.tileLabelForDisplay(locale, tileName);
+                buttons.add(this.actionButton(label, "/mahjong kan " + tileName, NamedTextColor.DARK_AQUA));
+            }
+        }
+        if (this.session.canDeclareAddedKan(playerId)) {
+            for (String tileName : this.session.suggestedAddedKanTiles(playerId)) {
+                String label = this.session.plugin().messages().plain(locale, "table.action.kakan") + " "
+                    + this.session.tileLabelForDisplay(locale, tileName);
+                buttons.add(this.actionButton(label, "/mahjong kan " + tileName, NamedTextColor.BLUE));
+            }
+        }
+        if (this.session.canDeclareRiichi(playerId)) {
+            List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand = this.session.hand(playerId);
+            for (Integer index : this.session.suggestedRiichiIndices(playerId)) {
+                if (index == null || index < 0 || index >= hand.size()) {
+                    continue;
+                }
+                String tileLabel = this.session.tileLabelForDisplay(locale, hand.get(index).name());
+                String label = this.session.plugin().messages().plain(locale, "table.action.riichi") + " " + tileLabel;
+                buttons.add(this.actionButton(label, "/mahjong riichi " + index, NamedTextColor.LIGHT_PURPLE));
+            }
+        }
+        if (this.session.canDeclareKyuushu(playerId)) {
+            buttons.add(this.actionButton(
+                this.session.plugin().messages().plain(locale, "table.action.kyuushu"),
+                "/mahjong kyuushu",
+                NamedTextColor.RED
+            ));
+        }
+        if (buttons.isEmpty()) {
+            return null;
+        }
+        Component message = this.session.plugin().messages().render(locale, "table.reactions_prefix");
+        for (int i = 0; i < buttons.size(); i++) {
+            message = message.append(buttons.get(i));
+            if (i + 1 < buttons.size()) {
+                message = message.append(Component.space());
+            }
+        }
+        return message;
     }
 
     private String discardSuggestionSuffix(Locale locale, UUID playerId) {
