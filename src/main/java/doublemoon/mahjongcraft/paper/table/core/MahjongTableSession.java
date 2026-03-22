@@ -672,12 +672,7 @@ public final class MahjongTableSession {
     }
 
     public int stickLayoutCount(SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        int total = playerId == null ? 0 : this.scoringSticks(playerId).size();
-        if (this.dealerSeat() == wind) {
-            total += this.honbaCount();
-        }
-        return total;
+        return this.cornerSticks(wind).size();
     }
 
     public Player onlinePlayer(UUID playerId) {
