@@ -55,6 +55,7 @@ public final class MahjongTableSession {
     private final String id;
     private final Location center;
     private final boolean persistentRoom;
+    private final boolean botMatchRoom;
     private final TableParticipantRegistry participants = new TableParticipantRegistry();
     private final TableRenderer renderer = new TableRenderer();
     private final TableRenderSnapshotFactory renderSnapshotFactory = new TableRenderSnapshotFactory();
@@ -100,12 +101,25 @@ public final class MahjongTableSession {
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongVariant configuredVariant, MahjongRule configuredRule, boolean persistentRoom) {
+        this(plugin, id, center, configuredVariant, configuredRule, persistentRoom, false);
+    }
+
+    public MahjongTableSession(
+        MahjongPaperPlugin plugin,
+        String id,
+        Location center,
+        MahjongVariant configuredVariant,
+        MahjongRule configuredRule,
+        boolean persistentRoom,
+        boolean botMatchRoom
+    ) {
         this.plugin = plugin;
         this.id = id;
         this.center = normalizedTableCenter(center);
         this.configuredVariant = configuredVariant == null ? MahjongVariant.RIICHI : configuredVariant;
         this.configuredRule = copyRule(configuredRule);
         this.persistentRoom = persistentRoom;
+        this.botMatchRoom = botMatchRoom;
         this.renderCoordinator = new TableRenderCoordinator(this);
         this.viewerPresentation = new TableViewerPresentationCoordinator(this);
         this.regionDisplayCoordinator = new TableRegionDisplayCoordinator(this, this.regionFingerprintService);
@@ -131,6 +145,10 @@ public final class MahjongTableSession {
 
     public boolean isPersistentRoom() {
         return this.persistentRoom;
+    }
+
+    public boolean isBotMatchRoom() {
+        return this.botMatchRoom;
     }
 
     public Location center() {
@@ -974,6 +992,7 @@ public final class MahjongTableSession {
             return;
         }
         this.processDeferredLeaves();
+        this.handleBotMatchAutoNextRound();
     }
 
     private MahjongRule currentRule() {
@@ -1201,6 +1220,10 @@ public final class MahjongTableSession {
 
     private void scheduleNextRoundCountdown() {
         this.roundLifecycle.scheduleNextRoundCountdown();
+    }
+
+    private boolean hasNextRoundCountdown() {
+        return this.roundLifecycle.hasNextRoundCountdown();
     }
 
     private void cancelNextRoundCountdown() {
@@ -1501,6 +1524,29 @@ public final class MahjongTableSession {
         if (this.plugin.tableManager() != null) {
             this.plugin.tableManager().finalizeDeferredLeaves(this, removed);
         }
+    }
+
+    private void handleBotMatchAutoNextRound() {
+        if (!this.botMatchRoom || !this.hasOnlyBotsSeated()) {
+            this.cancelNextRoundCountdown();
+            return;
+        }
+        if (!this.hasNextRoundCountdown()) {
+            this.scheduleNextRoundCountdown();
+            this.render();
+            return;
+        }
+        if (this.nextRoundSecondsRemaining() > 0L) {
+            return;
+        }
+        if (this.maybeStartRoundIfReady()) {
+            return;
+        }
+        this.cancelNextRoundCountdown();
+    }
+
+    private boolean hasOnlyBotsSeated() {
+        return this.size() == 4 && this.botCount() == 4;
     }
 
     private static Location normalizedTableCenter(Location source) {

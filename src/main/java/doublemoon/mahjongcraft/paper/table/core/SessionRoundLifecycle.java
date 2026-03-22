@@ -12,6 +12,10 @@ final class SessionRoundLifecycle {
         this.nextRoundDeadlineMillis = 0L;
     }
 
+    boolean hasNextRoundCountdown() {
+        return this.nextRoundDeadlineMillis > 0L;
+    }
+
     long nextRoundSecondsRemaining() {
         if (this.nextRoundDeadlineMillis <= 0L) {
             return 0L;

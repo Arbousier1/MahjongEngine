@@ -85,7 +85,16 @@ public final class MahjongTableManager implements Listener {
         }
 
         String id = this.nextId();
-        MahjongTableSession session = new MahjongTableSession(this.plugin, id, owner.getLocation().toCenterLocation(), owner, false);
+        MahjongTableSession session = new MahjongTableSession(
+            this.plugin,
+            id,
+            owner.getLocation().toCenterLocation(),
+            MahjongVariant.RIICHI,
+            SessionRulePresetResolver.majsoulRule(doublemoon.mahjongcraft.paper.riichi.model.MahjongRule.GameLength.TWO_WIND),
+            true,
+            true
+        );
+        session.addPlayer(owner);
         if (preset != null && !preset.isBlank()) {
             if (!session.applyRulePreset(preset) || session.currentVariant() != MahjongVariant.RIICHI) {
                 return null;
@@ -105,6 +114,7 @@ public final class MahjongTableManager implements Listener {
         session.addSpectator(owner);
         this.directory.assignSpectator(owner.getUniqueId(), id);
         session.startRound();
+        this.persistTables();
         this.plugin.debug().log("table", "Created 4-bot match " + id + " for spectator " + owner.getName());
         return session;
     }
@@ -284,7 +294,7 @@ public final class MahjongTableManager implements Listener {
                 this.plugin.getLogger().warning("Persistent table id " + id + " already exists in memory, deleting it before startup rebuild.");
                 this.deleteTable(id);
             }
-            this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.variant(), loadedTable.rule());
+            this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.variant(), loadedTable.rule(), loadedTable.botMatch());
             this.refreshCoordinator.enqueueStartupRefresh(id);
             this.plugin.debug().log("table", "Queued persistent table " + id + " for startup rebuild");
         }
@@ -679,7 +689,9 @@ public final class MahjongTableManager implements Listener {
         if (currentView != null && currentView != session) {
             return false;
         }
-        return session.playerAt(wind) == null;
+        UUID seatedPlayer = session.playerAt(wind);
+        return seatedPlayer == null
+            || (!session.isStarted() && !session.isRoundStartInProgress() && session.isBot(seatedPlayer));
     }
 
     public void startSeatWatchdog(MahjongTableSession session, long durationTicks) {
@@ -706,11 +718,19 @@ public final class MahjongTableManager implements Listener {
         String tableId,
         Location center,
         MahjongVariant variant,
-        doublemoon.mahjongcraft.paper.riichi.model.MahjongRule rule
+        doublemoon.mahjongcraft.paper.riichi.model.MahjongRule rule,
+        boolean botMatchRoom
     ) {
         String normalizedId = tableId.toUpperCase(Locale.ROOT);
-        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, variant, rule, true);
+        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, variant, rule, true, botMatchRoom);
         this.registerTable(session);
+        if (botMatchRoom) {
+            while (session.size() < 4) {
+                if (!session.addBot()) {
+                    break;
+                }
+            }
+        }
         this.refreshCoordinator.markPendingArtifactCleanup(normalizedId);
         return session;
     }

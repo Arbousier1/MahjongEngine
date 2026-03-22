@@ -66,7 +66,8 @@ final class PersistentTableStore {
                 table.getString("id", key).toUpperCase(),
                 center,
                 this.loadVariant(table.getString("variant", "RIICHI")),
-                this.loadRule(table.getConfigurationSection("rule"))
+                this.loadRule(table.getConfigurationSection("rule")),
+                table.getBoolean("botMatch", false)
             ));
         }
         return List.copyOf(loaded);
@@ -127,7 +128,8 @@ final class PersistentTableStore {
                 center.getY(),
                 center.getZ(),
                 session.configuredVariant(),
-                session.configuredRuleSnapshot()
+                session.configuredRuleSnapshot(),
+                session.isBotMatchRoom()
             ));
         }
         return List.copyOf(snapshots);
@@ -144,6 +146,7 @@ final class PersistentTableStore {
             table.set("y", snapshot.y());
             table.set("z", snapshot.z());
             table.set("variant", snapshot.variant().name());
+            table.set("botMatch", snapshot.botMatch());
             this.saveRule(table.createSection("rule"), snapshot.rule());
         }
         this.file.getParentFile().mkdirs();
@@ -209,7 +212,7 @@ final class PersistentTableStore {
         section.set("localYaku", rule.getLocalYaku());
     }
 
-    record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule) {
+    record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
     }
 
     private record TableSnapshot(
@@ -219,7 +222,8 @@ final class PersistentTableStore {
         double y,
         double z,
         MahjongVariant variant,
-        MahjongRule rule
+        MahjongRule rule,
+        boolean botMatch
     ) {
     }
 }
