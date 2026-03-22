@@ -573,7 +573,7 @@ val generateMessageIndex = tasks.register("generateMessageIndex") {
 }
 
 val verifyMahjongTileResources = tasks.register("verifyMahjongTileResources") {
-    val enumSource = layout.projectDirectory.file("src/main/java/doublemoon/mahjongcraft/paper/model/MahjongTile.java").asFile
+    val enumSource = layout.projectDirectory.file("src/main/java/top/ellan/mahjong/model/MahjongTile.java").asFile
     val itemsDir = layout.projectDirectory.dir("resourcepack/assets/mahjongcraft/items/mahjong_tile").asFile
     val modelsDir = layout.projectDirectory.dir("resourcepack/assets/mahjongcraft/models/item/mahjong_tile").asFile
     val texturesDir = layout.projectDirectory.dir("resourcepack/assets/mahjongcraft/textures/item/mahjong_tile").asFile
@@ -589,7 +589,7 @@ val verifyMahjongTileResources = tasks.register("verifyMahjongTileResources") {
 }
 
 val generateCraftEngineBundle = tasks.register("generateCraftEngineBundle") {
-    val enumSource = layout.projectDirectory.file("src/main/java/doublemoon/mahjongcraft/paper/model/MahjongTile.java").asFile
+    val enumSource = layout.projectDirectory.file("src/main/java/top/ellan/mahjong/model/MahjongTile.java").asFile
     val resourcepackDir = layout.projectDirectory.dir("resourcepack").asFile
     val attributionFile = layout.projectDirectory.file("resourcepack/ATTRIBUTION.md").asFile
     val outputDir = generatedResourcesDir.get().asFile
