@@ -271,10 +271,44 @@ public final class TableSeatCoordinator {
         if (!this.isSeatRestoreInRange(player, seatAnchor)) {
             return;
         }
-        Entity furniture = this.findSeatFurniture(session, wind);
-        if (furniture != null) {
-            this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
+        this.restoreSeatViaAnchorRegion(player, playerId, session, wind, seatAnchor);
+    }
+
+    private void restoreSeatViaAnchorRegion(Player player, UUID playerId, MahjongTableSession session, SeatWind wind, Location seatAnchor) {
+        if (player == null || playerId == null || session == null || wind == null || seatAnchor == null) {
+            return;
         }
+        Location anchor = seatAnchor.clone();
+        this.plugin.scheduler().runRegion(anchor, () -> {
+            Entity furniture = this.findSeatFurnitureAtAnchor(session, wind, anchor);
+            if (furniture == null) {
+                return;
+            }
+            this.plugin.scheduler().runEntity(player, () -> this.mountPlayerIfStillEligible(player, playerId, session, wind, anchor, furniture));
+        });
+    }
+
+    private void mountPlayerIfStillEligible(
+        Player player,
+        UUID playerId,
+        MahjongTableSession session,
+        SeatWind wind,
+        Location anchor,
+        Entity furniture
+    ) {
+        if (player == null || playerId == null || session == null || wind == null || anchor == null || furniture == null || this.plugin.craftEngine() == null) {
+            return;
+        }
+        if (!player.isOnline() || player.isInsideVehicle()) {
+            return;
+        }
+        if (this.tableManager.tableFor(playerId) != session || session.seatOf(playerId) != wind) {
+            return;
+        }
+        if (!this.isSeatRestoreInRange(player, anchor)) {
+            return;
+        }
+        this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
     }
 
     private boolean isSeatRestoreInRange(Player player, Location seatAnchor) {
@@ -289,11 +323,10 @@ public final class TableSeatCoordinator {
         return playerLocation.distanceSquared(seatAnchor) <= SEAT_RESTORE_MAX_DISTANCE_SQUARED;
     }
 
-    private Entity findSeatFurniture(MahjongTableSession session, SeatWind wind) {
-        if (session == null || wind == null || this.plugin.craftEngine() == null) {
+    private Entity findSeatFurnitureAtAnchor(MahjongTableSession session, SeatWind wind, Location anchor) {
+        if (session == null || wind == null || anchor == null || this.plugin.craftEngine() == null) {
             return null;
         }
-        Location anchor = session.seatAnchorLocation(wind);
         World world = anchor.getWorld();
         if (world == null) {
             return null;

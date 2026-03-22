@@ -79,6 +79,7 @@ public final class MahjongTableSession {
     private final SessionMessaging sessionMessaging;
     private final SessionViewerIndex viewerIndex;
     private final SessionRoundLifecycle roundLifecycle;
+    private final SessionRuleCoordinator ruleCoordinator;
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
@@ -132,6 +133,7 @@ public final class MahjongTableSession {
         this.sessionMessaging = new SessionMessaging(this);
         this.viewerIndex = new SessionViewerIndex(this);
         this.roundLifecycle = new SessionRoundLifecycle();
+        this.ruleCoordinator = new SessionRuleCoordinator(this);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -673,59 +675,15 @@ public final class MahjongTableSession {
     }
 
     public boolean setRuleOption(String key, String rawValue) {
-        if (this.isStarted()) {
-            return false;
-        }
-        try {
-            switch (key.toLowerCase(Locale.ROOT)) {
-                case "preset", "mode" -> {
-                    if (!this.applyRulePreset(rawValue)) {
-                        return false;
-                    }
-                }
-                case "variant", "ruleset" -> {
-                    MahjongVariant variant = MahjongVariant.valueOf(rawValue.toUpperCase(Locale.ROOT));
-                    this.configuredVariant = variant;
-                    this.configuredRule = SessionRulePresetResolver.defaultRuleFor(variant);
-                }
-                case "length" -> this.configuredRule.setLength(MahjongRule.GameLength.valueOf(rawValue.toUpperCase(Locale.ROOT)));
-                case "thinkingtime", "thinking" -> this.configuredRule.setThinkingTime(MahjongRule.ThinkingTime.valueOf(rawValue.toUpperCase(Locale.ROOT)));
-                case "minimumhan", "minhan" -> this.configuredRule.setMinimumHan(MahjongRule.MinimumHan.valueOf(rawValue.toUpperCase(Locale.ROOT)));
-                case "spectate" -> this.configuredRule.setSpectate(Boolean.parseBoolean(rawValue));
-                case "redfive" -> this.configuredRule.setRedFive(MahjongRule.RedFive.valueOf(rawValue.toUpperCase(Locale.ROOT)));
-                case "opentanyao" -> this.configuredRule.setOpenTanyao(Boolean.parseBoolean(rawValue));
-                case "localyaku" -> this.configuredRule.setLocalYaku(Boolean.parseBoolean(rawValue));
-                case "startingpoints", "startpoints" -> this.configuredRule.setStartingPoints(Integer.parseInt(rawValue));
-                case "minpointstowin", "goal" -> this.configuredRule.setMinPointsToWin(Integer.parseInt(rawValue));
-                default -> {
-                    return false;
-                }
-            }
-            this.render();
-            this.persistRoomMetadataIfNeeded();
-            return true;
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
+        return this.ruleCoordinator.setRuleOption(key, rawValue);
     }
 
     public List<String> ruleKeys() {
-        return List.of("preset", "mode", "variant", "ruleset", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
+        return this.ruleCoordinator.ruleKeys();
     }
 
     public List<String> ruleValues(String key) {
-        return switch (key.toLowerCase(Locale.ROOT)) {
-            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN", "GB");
-            case "variant", "ruleset" -> List.of("RIICHI", "GB");
-            case "length" -> List.of("ONE_GAME", "EAST", "SOUTH", "TWO_WIND");
-            case "thinkingtime", "thinking" -> List.of("VERY_SHORT", "SHORT", "NORMAL", "LONG", "VERY_LONG");
-            case "minimumhan", "minhan" -> List.of("ONE", "TWO", "FOUR", "YAKUMAN");
-            case "redfive" -> List.of("NONE", "THREE", "FOUR");
-            case "spectate", "opentanyao", "localyaku" -> List.of("true", "false");
-            case "startingpoints", "startpoints" -> List.of("25000", "30000", "35000");
-            case "minpointstowin", "goal" -> List.of("30000", "35000", "40000");
-            default -> List.of();
-        };
+        return this.ruleCoordinator.ruleValues(key);
     }
 
     public List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand(UUID playerId) {
@@ -1025,14 +983,7 @@ public final class MahjongTableSession {
     }
 
     public boolean applyRulePreset(String rawValue) {
-        SessionRulePresetResolver.Preset preset = SessionRulePresetResolver.resolve(rawValue);
-        if (preset == null) {
-            return false;
-        }
-        this.configuredVariant = preset.variant();
-        this.configuredRule = preset.rule();
-        this.persistRoomMetadataIfNeeded();
-        return true;
+        return this.ruleCoordinator.applyRulePreset(rawValue);
     }
 
     public boolean clickHandTile(UUID playerId, int tileIndex, boolean cancelSelection) {
@@ -1115,6 +1066,22 @@ public final class MahjongTableSession {
         if (this.persistentRoom && this.plugin.tableManager() != null) {
             this.plugin.tableManager().persistTables();
         }
+    }
+
+    void persistRoomMetadataIfNeededInternal() {
+        this.persistRoomMetadataIfNeeded();
+    }
+
+    MahjongRule configuredRuleInternal() {
+        return this.configuredRule;
+    }
+
+    void setConfiguredRuleInternal(MahjongRule configuredRule) {
+        this.configuredRule = copyRule(configuredRule);
+    }
+
+    void setConfiguredVariantInternal(MahjongVariant configuredVariant) {
+        this.configuredVariant = configuredVariant == null ? MahjongVariant.RIICHI : configuredVariant;
     }
 
     private MahjongRule copyRule() {
