@@ -261,7 +261,7 @@ public final class TableDiceAnimationCoordinator {
             this.session.plugin().craftEngine().unregisterCullableEntity(entity);
         }
         if (!entity.isDead()) {
-            entity.remove();
+            this.session.plugin().scheduler().removeEntity(entity);
         }
     }
 

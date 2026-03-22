@@ -19,12 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -132,26 +135,44 @@ public final class CraftEngineService {
             return 0;
         }
 
-        int removed = 0;
+        AtomicInteger removed = new AtomicInteger();
+        int scheduledRegions = 0;
         for (World world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                String furnitureId = entity.getPersistentDataContainer().get(furnitureKey, PersistentDataType.STRING);
-                if (furnitureId == null || !furnitureId.startsWith(MAHJONGPAPER_FURNITURE_PREFIX)) {
-                    continue;
-                }
-                boolean removedByCraftEngine = this.removeFurniture(entity);
-                if (!removedByCraftEngine && entity.isValid()) {
-                    entity.remove();
-                }
-                removed++;
+            for (Chunk chunk : world.getLoadedChunks()) {
+                int chunkX = chunk.getX();
+                int chunkZ = chunk.getZ();
+                Location chunkCenter = new Location(world, (chunkX << 4) + 8.0D, world.getMinHeight(), (chunkZ << 4) + 8.0D);
+                scheduledRegions++;
+                this.plugin.scheduler().runRegion(chunkCenter, () -> {
+                    if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                        return;
+                    }
+                    for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
+                        String furnitureId = entity.getPersistentDataContainer().get(furnitureKey, PersistentDataType.STRING);
+                        if (furnitureId == null || !furnitureId.startsWith(MAHJONGPAPER_FURNITURE_PREFIX)) {
+                            continue;
+                        }
+                        boolean removedByCraftEngine = this.removeFurniture(entity);
+                        if (!removedByCraftEngine && entity.isValid()) {
+                            this.plugin.scheduler().removeEntity(entity);
+                        }
+                        removed.incrementAndGet();
+                    }
+                });
             }
         }
 
-        if (removed > 0) {
-            this.plugin.getLogger().info("Removed " + removed + " leftover MahjongPaper CraftEngine furniture entities from previous sessions.");
-            this.plugin.debug().log("lifecycle", "Startup cleanup removed " + removed + " lingering mahjongpaper furniture entities.");
+        if (scheduledRegions == 0) {
+            return 0;
         }
-        return removed;
+        this.plugin.scheduler().runGlobalDelayed(() -> {
+            int removedCount = removed.get();
+            if (removedCount > 0) {
+                this.plugin.getLogger().info("Removed " + removedCount + " leftover MahjongPaper CraftEngine furniture entities from previous sessions.");
+                this.plugin.debug().log("lifecycle", "Startup cleanup removed " + removedCount + " lingering mahjongpaper furniture entities.");
+            }
+        }, 40L);
+        return 0;
     }
 
     public ItemStack resolveTileItem(MahjongVariant variant, MahjongTile tile, boolean faceDown) {
@@ -482,13 +503,13 @@ public final class CraftEngineService {
         }
         if (previous != null) {
             this.trackedCullableEntities.remove(previous.entityId());
-            for (Player player : Bukkit.getOnlinePlayers()) {
+            for (Player player : this.onlinePlayersSnapshot()) {
                 this.plugin.scheduler().runEntity(player, () -> this.removeTrackedEntity(player, previous.entityId()));
             }
             this.trackedCullableEntities.put(entity.getEntityId(), tracked);
         }
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : this.onlinePlayersSnapshot()) {
             this.plugin.scheduler().runEntity(player, () -> this.addTrackedEntity(player, tracked));
         }
     }
@@ -505,7 +526,7 @@ public final class CraftEngineService {
         if (!this.plugin.isEnabled()) {
             return;
         }
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : this.onlinePlayersSnapshot()) {
             this.plugin.scheduler().runEntity(player, () -> this.removeTrackedEntity(player, tracked.entityId()));
         }
     }
@@ -617,8 +638,11 @@ public final class CraftEngineService {
         if (entity == null || viewer == null || !this.plugin.isEnabled()) {
             return;
         }
-        this.plugin.scheduler().runEntity(entity, () -> {
+        this.plugin.scheduler().runEntity(viewer, () -> {
             if (!viewer.isOnline()) {
+                return;
+            }
+            if (!entity.isValid() || entity.isDead()) {
                 return;
             }
             if (!DisplayVisibilityRegistry.canView(entityId, viewer.getUniqueId())) {
@@ -631,6 +655,10 @@ public final class CraftEngineService {
                 viewer.hideEntity(this.plugin, entity);
             }
         });
+    }
+
+    private List<Player> onlinePlayersSnapshot() {
+        return List.copyOf(Bukkit.getOnlinePlayers());
     }
 
     private Player resolvePlatformPlayer(ReflectionBridge bridge, Object[] args) {

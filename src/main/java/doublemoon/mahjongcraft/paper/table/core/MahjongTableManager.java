@@ -624,7 +624,7 @@ public final class MahjongTableManager implements Listener {
                 continue;
             }
             if (!removedByCraftEngine && entity.isValid()) {
-                entity.remove();
+                this.plugin.scheduler().removeEntity(entity);
             }
             removed++;
         }

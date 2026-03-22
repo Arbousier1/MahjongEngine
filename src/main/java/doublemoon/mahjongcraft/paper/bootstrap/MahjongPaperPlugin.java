@@ -46,7 +46,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
         this.tableManager = new MahjongTableManager(this);
         this.craftEngine.enableFurnitureInteractionBridge(this.tableManager);
-        this.craftEngine.cleanupMahjongFurniture();
+        this.scheduler.runGlobal(this.craftEngine::cleanupMahjongFurniture);
         this.tableManager.loadPersistentTables();
 
         MahjongCommand mahjongCommand = new MahjongCommand(this, this.tableManager);

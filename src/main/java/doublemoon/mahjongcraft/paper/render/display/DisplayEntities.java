@@ -969,7 +969,7 @@ public final class DisplayEntities {
     }
 
     private static void syncExcludedVisibility(Plugin plugin, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
-        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
             runForViewer(plugin, entity, player, () -> {
                 if (hiddenViewers.contains(player.getUniqueId())) {
                     player.hideEntity(plugin, entity);
@@ -983,7 +983,7 @@ public final class DisplayEntities {
     }
 
     private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {
-        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
             runForViewer(plugin, entity, player, () -> {
                 if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
                     player.showEntity(plugin, entity);
@@ -995,14 +995,18 @@ public final class DisplayEntities {
     }
 
     private static void syncPublicVisibility(Plugin plugin, Entity entity) {
-        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
             runForViewer(plugin, entity, player, () -> player.showEntity(plugin, entity));
         }
     }
 
+    private static List<org.bukkit.entity.Player> onlinePlayersSnapshot() {
+        return List.copyOf(Bukkit.getOnlinePlayers());
+    }
+
     private static void runForViewer(Plugin plugin, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
         if (plugin instanceof doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            mahjongPlugin.scheduler().runEntity(entity, () -> {
+            mahjongPlugin.scheduler().runEntity(player, () -> {
                 if (!player.isOnline()) {
                     return;
                 }

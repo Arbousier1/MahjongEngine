@@ -90,6 +90,17 @@ public final class ServerScheduler {
         return entity.teleportAsync(location);
     }
 
+    public PluginTask removeEntity(Entity entity) {
+        if (entity == null) {
+            return NO_OP_TASK;
+        }
+        return this.runEntity(entity, () -> {
+            if (!entity.isDead() && entity.isValid()) {
+                entity.remove();
+            }
+        });
+    }
+
     private static PluginTask wrap(ScheduledTask task) {
         return task == null ? NO_OP_TASK : new ScheduledTaskHandle(task);
     }

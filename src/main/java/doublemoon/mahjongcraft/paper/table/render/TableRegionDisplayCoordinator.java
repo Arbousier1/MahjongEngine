@@ -257,7 +257,7 @@ public final class TableRegionDisplayCoordinator {
             boolean removedByCraftEngine = this.session.plugin().craftEngine() != null
                 && this.session.plugin().craftEngine().removeFurniture(entity);
             if (!removedByCraftEngine && !entity.isDead()) {
-                entity.remove();
+                this.session.plugin().scheduler().removeEntity(entity);
             }
         }
         this.regionFingerprints.remove(regionKey);
