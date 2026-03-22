@@ -57,38 +57,19 @@ public final class TableViewerSnapshotFactory {
         boolean spectator = summary.spectator();
         long nextRoundSeconds = this.session.nextRoundSecondsRemainingValue();
         Object lastResolution = this.session.lastResolution();
-        Component title;
-        String stateSignature;
 
         if (!this.session.hasRoundController()) {
-            title = this.session.plugin().messages().render(
-                locale,
-                "hud.waiting",
-                this.session.plugin().messages().tag("table_id", this.session.id()),
-                this.session.plugin().messages().tag("summary", summary.waitingSummary())
-            );
-            stateSignature = fingerprintBuilder(192)
-                .field(locale.toLanguageTag())
-                .field(progress)
-                .field(color)
-                .field(nextRoundSeconds)
-                .field(spectator)
-                .field(false)
-                .field(lastResolution)
-                .field(summary.waitingSummary())
-                .field(summary.ruleSummary())
-                .toString();
-            return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+            return this.buildWaitingHudSnapshot(locale, progress, color, spectator, nextRoundSeconds, lastResolution, summary);
         }
 
         if (this.session.isRoundFinished() && this.session.lastResolution() != null) {
-            title = this.session.plugin().messages().render(
+            Component title = this.session.plugin().messages().render(
                 locale,
                 "hud.finished",
                 this.session.plugin().messages().tag("round", summary.round()),
                 this.session.plugin().messages().tag("title", summary.resolutionTitle())
             );
-            stateSignature = fingerprintBuilder(192)
+            String stateSignature = fingerprintBuilder(192)
                 .field(locale.toLanguageTag())
                 .field(progress)
                 .field(color)
@@ -103,27 +84,10 @@ public final class TableViewerSnapshotFactory {
         }
 
         if (!this.session.isStarted()) {
-            title = this.session.plugin().messages().render(
-                locale,
-                "hud.waiting",
-                this.session.plugin().messages().tag("table_id", this.session.id()),
-                this.session.plugin().messages().tag("summary", summary.waitingSummary())
-            );
-            stateSignature = fingerprintBuilder(192)
-                .field(locale.toLanguageTag())
-                .field(progress)
-                .field(color)
-                .field(nextRoundSeconds)
-                .field(spectator)
-                .field(false)
-                .field(lastResolution)
-                .field(summary.waitingSummary())
-                .field(summary.ruleSummary())
-                .toString();
-            return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+            return this.buildWaitingHudSnapshot(locale, progress, color, spectator, nextRoundSeconds, lastResolution, summary);
         }
 
-        title = this.session.plugin().messages().render(
+        Component title = this.session.plugin().messages().render(
             locale,
             "hud.round",
             this.session.plugin().messages().tag("round", summary.round()),
@@ -134,7 +98,7 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("dora", summary.doraSummary()),
             this.session.plugin().messages().tag("role", summary.roleLabel())
         );
-        stateSignature = fingerprintBuilder(192)
+        String stateSignature = fingerprintBuilder(192)
             .field(locale.toLanguageTag())
             .field(progress)
             .field(color)
@@ -156,14 +120,38 @@ public final class TableViewerSnapshotFactory {
         return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
     }
 
+    private MahjongTableSession.ViewerHudSnapshot buildWaitingHudSnapshot(
+        Locale locale,
+        float progress,
+        BossBar.Color color,
+        boolean spectator,
+        long nextRoundSeconds,
+        Object lastResolution,
+        ViewerSummarySnapshot summary
+    ) {
+        Component title = this.session.plugin().messages().render(
+            locale,
+            "hud.waiting",
+            this.session.plugin().messages().tag("table_id", this.session.id()),
+            this.session.plugin().messages().tag("summary", summary.waitingSummary())
+        );
+        String stateSignature = fingerprintBuilder(192)
+            .field(locale.toLanguageTag())
+            .field(progress)
+            .field(color)
+            .field(nextRoundSeconds)
+            .field(spectator)
+            .field(false)
+            .field(lastResolution)
+            .field(summary.waitingSummary())
+            .field(summary.ruleSummary())
+            .toString();
+        return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+    }
+
     private Component viewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
         if (!this.session.hasRoundController()) {
-            return this.session.plugin().messages().render(
-                locale,
-                "overlay.waiting",
-                this.session.plugin().messages().tag("table_id", this.session.id()),
-                this.session.plugin().messages().tag("summary", summary.waitingSummary())
-            );
+            return this.waitingOverlay(locale, summary);
         }
         if (!this.session.isStarted()) {
             if (this.session.isRoundFinished() && this.session.lastResolution() != null) {
@@ -174,12 +162,7 @@ public final class TableViewerSnapshotFactory {
                     this.session.plugin().messages().tag("title", summary.resolutionTitle())
                 );
             }
-            return this.session.plugin().messages().render(
-                locale,
-                "overlay.waiting",
-                this.session.plugin().messages().tag("table_id", this.session.id()),
-                this.session.plugin().messages().tag("summary", summary.waitingSummary())
-            );
+            return this.waitingOverlay(locale, summary);
         }
         return this.session.plugin().messages().render(
             locale,
@@ -193,6 +176,15 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("dora", summary.doraSummary()),
             this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
             this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
+        );
+    }
+
+    private Component waitingOverlay(Locale locale, ViewerSummarySnapshot summary) {
+        return this.session.plugin().messages().render(
+            locale,
+            "overlay.waiting",
+            this.session.plugin().messages().tag("table_id", this.session.id()),
+            this.session.plugin().messages().tag("summary", summary.waitingSummary())
         );
     }
 

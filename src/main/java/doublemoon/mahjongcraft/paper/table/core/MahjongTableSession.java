@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -1219,76 +1220,40 @@ public final class MahjongTableSession {
     }
 
     private void appendOnlineViewers(List<Player> target) {
-        this.appendOnlineSeatViewers(target);
-        this.appendOnlineSpectators(target);
+        this.forEachOnlineViewer(null, true, true, (viewerId, player) -> target.add(player));
     }
 
     private void appendOnlineViewerIds(List<UUID> target, UUID excludedPlayerId) {
-        this.appendOnlineSeatViewerIds(target, excludedPlayerId);
-        this.appendOnlineSpectatorIds(target, excludedPlayerId);
+        this.forEachOnlineViewer(excludedPlayerId, true, true, (viewerId, player) -> target.add(viewerId));
     }
 
     private void appendOnlineViewerIds(StringBuilder target, UUID excludedPlayerId) {
-        this.appendOnlineSeatViewerIds(target, excludedPlayerId);
-        this.appendOnlineSpectatorIds(target, excludedPlayerId);
+        this.forEachOnlineViewer(excludedPlayerId, true, true, (viewerId, player) -> target.append(viewerId).append(';'));
     }
 
-    private void appendOnlineSeatViewers(List<Player> target) {
-        for (UUID playerId : this.participants.seatIds()) {
-            if (playerId == null) {
-                continue;
+    private void forEachOnlineViewer(UUID excludedPlayerId, boolean includeSeats, boolean includeSpectators, BiConsumer<UUID, Player> consumer) {
+        if (consumer == null) {
+            return;
+        }
+        if (includeSeats) {
+            for (UUID playerId : this.participants.seatIds()) {
+                this.acceptOnlineViewer(playerId, excludedPlayerId, consumer);
             }
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                target.add(player);
+        }
+        if (includeSpectators) {
+            for (UUID spectatorId : this.participants.spectatorIds()) {
+                this.acceptOnlineViewer(spectatorId, excludedPlayerId, consumer);
             }
         }
     }
 
-    private void appendOnlineSpectators(List<Player> target) {
-        for (UUID spectatorId : this.participants.spectatorIds()) {
-            Player player = Bukkit.getPlayer(spectatorId);
-            if (player != null) {
-                target.add(player);
-            }
+    private void acceptOnlineViewer(UUID viewerId, UUID excludedPlayerId, BiConsumer<UUID, Player> consumer) {
+        if (viewerId == null || viewerId.equals(excludedPlayerId)) {
+            return;
         }
-    }
-
-    private void appendOnlineSeatViewerIds(List<UUID> target, UUID excludedPlayerId) {
-        for (UUID playerId : this.participants.seatIds()) {
-            if (playerId == null) {
-                continue;
-            }
-            if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
-                target.add(playerId);
-            }
-        }
-    }
-
-    private void appendOnlineSpectatorIds(List<UUID> target, UUID excludedPlayerId) {
-        for (UUID spectatorId : this.participants.spectatorIds()) {
-            if (!spectatorId.equals(excludedPlayerId) && Bukkit.getPlayer(spectatorId) != null) {
-                target.add(spectatorId);
-            }
-        }
-    }
-
-    private void appendOnlineSeatViewerIds(StringBuilder target, UUID excludedPlayerId) {
-        for (UUID playerId : this.participants.seatIds()) {
-            if (playerId == null) {
-                continue;
-            }
-            if (!playerId.equals(excludedPlayerId) && Bukkit.getPlayer(playerId) != null) {
-                target.append(playerId).append(';');
-            }
-        }
-    }
-
-    private void appendOnlineSpectatorIds(StringBuilder target, UUID excludedPlayerId) {
-        for (UUID spectatorId : this.participants.spectatorIds()) {
-            if (!spectatorId.equals(excludedPlayerId) && Bukkit.getPlayer(spectatorId) != null) {
-                target.append(spectatorId).append(';');
-            }
+        Player player = Bukkit.getPlayer(viewerId);
+        if (player != null) {
+            consumer.accept(viewerId, player);
         }
     }
 
