@@ -21,6 +21,18 @@ final class GbRoundSupport {
         };
     }
 
+    static boolean canChii(SeatWind candidate, SeatWind discarder) {
+        return candidate == SeatWind.fromIndex(Math.floorMod(discarder.index() + 1, SeatWind.values().length));
+    }
+
+    static List<SeatWind> orderedAfter(SeatWind start) {
+        List<SeatWind> winds = new ArrayList<>(SeatWind.values().length - 1);
+        for (int offset = 1; offset < SeatWind.values().length; offset++) {
+            winds.add(SeatWind.fromIndex(Math.floorMod(start.index() + offset, SeatWind.values().length)));
+        }
+        return List.copyOf(winds);
+    }
+
     static boolean containsTile(List<MahjongTile> hand, MahjongTile target) {
         return countMatchingTiles(hand, target) > 0;
     }

@@ -30,7 +30,6 @@ import doublemoon.mahjongcraft.paper.riichi.model.Wind;
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement;
 import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -39,7 +38,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import kotlin.Pair;
@@ -618,7 +616,7 @@ public final class GbTableRoundController implements TableRoundController {
             boolean canPon = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 2;
             boolean canMinkan = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 3;
             List<Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>> chiiPairs =
-                this.canChii(wind, discarderSeat) ? this.availableChiiPairs(playerId, discardedTile) : List.of();
+                GbRoundSupport.canChii(wind, discarderSeat) ? this.availableChiiPairs(playerId, discardedTile) : List.of();
             if (canRon || canPon || canMinkan || !chiiPairs.isEmpty()) {
                 options.put(playerId, new ReactionOptions(canRon, canPon, canMinkan, chiiPairs));
             }
@@ -644,7 +642,7 @@ public final class GbTableRoundController implements TableRoundController {
         UUID discarderId = pending.discarderId();
         SeatWind discarderSeat = this.seatOf(discarderId);
         List<ResolvedGbWin> wins = new ArrayList<>();
-        for (SeatWind wind : orderedAfter(discarderSeat)) {
+        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = this.playerAt(wind);
             if (playerId == null) {
                 continue;
@@ -668,7 +666,7 @@ public final class GbTableRoundController implements TableRoundController {
             this.finishAddedKong(discarderId, pending.tile(), pending.upgradeMeldIndex());
             return true;
         }
-        for (SeatWind wind : orderedAfter(discarderSeat)) {
+        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = this.playerAt(wind);
             if (playerId == null) {
                 continue;
@@ -695,7 +693,7 @@ public final class GbTableRoundController implements TableRoundController {
                 return true;
             }
         }
-        for (SeatWind wind : orderedAfter(discarderSeat)) {
+        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = this.playerAt(wind);
             if (playerId == null) {
                 continue;
@@ -1042,7 +1040,7 @@ public final class GbTableRoundController implements TableRoundController {
         LinkedHashMap<UUID, ReactionOptions> options = new LinkedHashMap<>();
         SeatWind discarderSeat = this.seatOf(discarderId);
         List<String> flags = this.discardWinFlags(claimedTile, true);
-        for (SeatWind wind : orderedAfter(discarderSeat)) {
+        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = this.playerAt(wind);
             if (playerId == null || playerId.equals(discarderId)) {
                 continue;
@@ -1358,18 +1356,6 @@ public final class GbTableRoundController implements TableRoundController {
             case WEST -> SeatWind.WEST;
             case NORTH -> SeatWind.NORTH;
         };
-    }
-
-    private boolean canChii(SeatWind candidate, SeatWind discarder) {
-        return candidate == SeatWind.fromIndex(Math.floorMod(discarder.index() + 1, SeatWind.values().length));
-    }
-
-    private static List<SeatWind> orderedAfter(SeatWind start) {
-        List<SeatWind> winds = new ArrayList<>(SeatWind.values().length - 1);
-        for (int offset = 1; offset < SeatWind.values().length; offset++) {
-            winds.add(SeatWind.fromIndex(Math.floorMod(start.index() + offset, SeatWind.values().length)));
-        }
-        return List.copyOf(winds);
     }
 
     private SeatWind seatOf(UUID playerId) {

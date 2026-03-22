@@ -82,16 +82,16 @@ public final class MahjongTableSession {
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
-        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
+        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
         this.addPlayer(owner);
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
-        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
+        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
     }
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner, boolean persistentRoom) {
-        this(plugin, id, center, MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
+        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
         this.addPlayer(owner);
     }
 
@@ -652,9 +652,7 @@ public final class MahjongTableSession {
                 case "variant", "ruleset" -> {
                     MahjongVariant variant = MahjongVariant.valueOf(rawValue.toUpperCase(Locale.ROOT));
                     this.configuredVariant = variant;
-                    this.configuredRule = variant == MahjongVariant.GB
-                        ? gbRule()
-                        : majsoulRule(MahjongRule.GameLength.TWO_WIND);
+                    this.configuredRule = SessionRulePresetResolver.defaultRuleFor(variant);
                 }
                 case "length" -> this.configuredRule.setLength(MahjongRule.GameLength.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "thinkingtime", "thinking" -> this.configuredRule.setThinkingTime(MahjongRule.ThinkingTime.valueOf(rawValue.toUpperCase(Locale.ROOT)));
@@ -992,23 +990,12 @@ public final class MahjongTableSession {
     }
 
     public boolean applyRulePreset(String rawValue) {
-        switch (rawValue.toUpperCase(Locale.ROOT)) {
-            case "MAJSOUL_TONPUU", "TONPUU", "TONPUSEN", "EAST" -> {
-                this.configuredVariant = MahjongVariant.RIICHI;
-                this.configuredRule = majsoulRule(MahjongRule.GameLength.EAST);
-            }
-            case "MAJSOUL_HANCHAN", "HANCHAN", "TWO_WIND", "SOUTH" -> {
-                this.configuredVariant = MahjongVariant.RIICHI;
-                this.configuredRule = majsoulRule(MahjongRule.GameLength.TWO_WIND);
-            }
-            case "GB", "GUOBIAO", "ZHONGGUO", "CHINESE_OFFICIAL" -> {
-                this.configuredVariant = MahjongVariant.GB;
-                this.configuredRule = gbRule();
-            }
-            default -> {
-                return false;
-            }
+        SessionRulePresetResolver.Preset preset = SessionRulePresetResolver.resolve(rawValue);
+        if (preset == null) {
+            return false;
         }
+        this.configuredVariant = preset.variant();
+        this.configuredRule = preset.rule();
         this.persistRoomMetadataIfNeeded();
         return true;
     }
@@ -1497,34 +1484,6 @@ public final class MahjongTableSession {
         if (this.plugin.tableManager() != null) {
             this.plugin.tableManager().finalizeDeferredLeaves(this, removed);
         }
-    }
-
-    private static MahjongRule majsoulRule(MahjongRule.GameLength length) {
-        return new MahjongRule(
-            length,
-            MahjongRule.ThinkingTime.NORMAL,
-            25000,
-            30000,
-            MahjongRule.MinimumHan.ONE,
-            true,
-            MahjongRule.RedFive.THREE,
-            true,
-            false
-        );
-    }
-
-    private static MahjongRule gbRule() {
-        return new MahjongRule(
-            MahjongRule.GameLength.TWO_WIND,
-            MahjongRule.ThinkingTime.NORMAL,
-            25000,
-            30000,
-            MahjongRule.MinimumHan.ONE,
-            true,
-            MahjongRule.RedFive.NONE,
-            false,
-            false
-        );
     }
 
     private static Location normalizedTableCenter(Location source) {
