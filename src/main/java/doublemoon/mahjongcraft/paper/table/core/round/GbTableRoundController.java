@@ -73,7 +73,7 @@ public final class GbTableRoundController implements TableRoundController {
     private UUID afterKanTsumoPlayer;
 
     public GbTableRoundController(MahjongRule rule, EnumMap<SeatWind, UUID> seats, Map<UUID, String> displayNames, GbNativeRulesGateway nativeGateway) {
-        this(rule, seats, displayNames, nativeGateway, GbTableRoundController::rollDicePoints, GbTableRoundController::buildWall);
+        this(rule, seats, displayNames, nativeGateway, GbRoundSupport::rollDicePoints, GbRoundSupport::buildWall);
     }
 
     public GbTableRoundController(
@@ -130,9 +130,9 @@ public final class GbTableRoundController implements TableRoundController {
         OpeningDiceRoll diceRoll = this.pendingDiceRoll;
         this.pendingDiceRoll = null;
         this.dicePoints = diceRoll == null
-            ? this.requireValidDicePoints(this.dicePointsSupplier.getAsInt())
+            ? GbRoundSupport.requireValidDicePoints(this.dicePointsSupplier.getAsInt())
             : diceRoll.total();
-        this.wall = reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.round.getRound());
+        this.wall = GbRoundSupport.reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.round.getRound());
         this.pendingReactionWindow = null;
         this.lastResolution = null;
         this.started = true;
@@ -252,8 +252,8 @@ public final class GbTableRoundController implements TableRoundController {
         if (hand == null) {
             return false;
         }
-        if (countMatchingTiles(hand, target) >= 4) {
-            removeTiles(hand, target, 4);
+        if (GbRoundSupport.countMatchingTiles(hand, target) >= 4) {
+            GbRoundSupport.removeTiles(hand, target, 4);
             this.hasDrawnTile.put(playerId, false);
             this.sortHand(playerId);
             this.melds.get(playerId).add(GbMeldState.ankan(target));
@@ -264,7 +264,9 @@ public final class GbTableRoundController implements TableRoundController {
         }
         for (int i = 0; i < this.melds.get(playerId).size(); i++) {
             GbMeldState meld = this.melds.get(playerId).get(i);
-            if (meld.type() == GbMeldType.PUNG && sameKind(meld.baseTile(), target) && countMatchingTiles(hand, target) >= 1) {
+            if (meld.type() == GbMeldType.PUNG
+                && GbRoundSupport.sameKind(meld.baseTile(), target)
+                && GbRoundSupport.countMatchingTiles(hand, target) >= 1) {
                 PendingReactionWindow robbingKongWindow = this.buildRobbingKongWindow(playerId, target, i);
                 if (robbingKongWindow != null) {
                     this.pendingReactionWindow = robbingKongWindow;
@@ -463,12 +465,12 @@ public final class GbTableRoundController implements TableRoundController {
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         for (MahjongTile tile : hand) {
-            if (countMatchingTiles(hand, tile) >= 4) {
+            if (GbRoundSupport.countMatchingTiles(hand, tile) >= 4) {
                 return true;
             }
         }
         for (GbMeldState meld : this.melds.getOrDefault(playerId, List.of())) {
-            if (meld.type() == GbMeldType.PUNG && countMatchingTiles(hand, meld.baseTile()) >= 1) {
+            if (meld.type() == GbMeldType.PUNG && GbRoundSupport.countMatchingTiles(hand, meld.baseTile()) >= 1) {
                 return true;
             }
         }
@@ -484,12 +486,12 @@ public final class GbTableRoundController implements TableRoundController {
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         for (MahjongTile tile : hand) {
             String lowered = tile.name().toLowerCase(Locale.ROOT);
-            if (countMatchingTiles(hand, tile) >= 4 && !suggestions.contains(lowered)) {
+            if (GbRoundSupport.countMatchingTiles(hand, tile) >= 4 && !suggestions.contains(lowered)) {
                 suggestions.add(lowered);
             }
         }
         for (GbMeldState meld : this.melds.getOrDefault(playerId, List.of())) {
-            if (meld.type() == GbMeldType.PUNG && countMatchingTiles(hand, meld.baseTile()) >= 1) {
+            if (meld.type() == GbMeldType.PUNG && GbRoundSupport.countMatchingTiles(hand, meld.baseTile()) >= 1) {
                 String lowered = meld.baseTile().name().toLowerCase(Locale.ROOT);
                 if (!suggestions.contains(lowered)) {
                     suggestions.add(lowered);
@@ -613,8 +615,8 @@ public final class GbTableRoundController implements TableRoundController {
                 continue;
             }
             boolean canRon = this.canRon(playerId, discarderSeat, discardedTile);
-            boolean canPon = countMatchingTiles(this.hands.get(playerId), discardedTile) >= 2;
-            boolean canMinkan = countMatchingTiles(this.hands.get(playerId), discardedTile) >= 3;
+            boolean canPon = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 2;
+            boolean canMinkan = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 3;
             List<Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>> chiiPairs =
                 this.canChii(wind, discarderSeat) ? this.availableChiiPairs(playerId, discardedTile) : List.of();
             if (canRon || canPon || canMinkan || !chiiPairs.isEmpty()) {
@@ -714,14 +716,14 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private void claimPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
-        removeTiles(this.hands.get(playerId), claimedTile, 2);
+        GbRoundSupport.removeTiles(this.hands.get(playerId), claimedTile, 2);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.pung(claimedTile, fromSeat));
     }
 
     private void claimOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
-        removeTiles(this.hands.get(playerId), claimedTile, 3);
+        GbRoundSupport.removeTiles(this.hands.get(playerId), claimedTile, 3);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.openKong(claimedTile, fromSeat));
@@ -731,8 +733,8 @@ public final class GbTableRoundController implements TableRoundController {
     private void claimChow(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat, Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile> pair) {
         MahjongTile first = MahjongTile.valueOf(pair.getFirst().name());
         MahjongTile second = MahjongTile.valueOf(pair.getSecond().name());
-        removeTiles(this.hands.get(playerId), first, 1);
-        removeTiles(this.hands.get(playerId), second, 1);
+        GbRoundSupport.removeTiles(this.hands.get(playerId), first, 1);
+        GbRoundSupport.removeTiles(this.hands.get(playerId), second, 1);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
         this.melds.get(playerId).add(GbMeldState.chow(claimedTile, first, second, fromSeat));
@@ -843,7 +845,7 @@ public final class GbTableRoundController implements TableRoundController {
                 meld.nativeType(),
                 tiles,
                 meld.claimedTile() == null ? null : GbTileEncoding.encode(meld.claimedTile()),
-                meld.fromSeat() == null ? null : relationLabel(this.seatOf(playerId), meld.fromSeat()),
+                meld.fromSeat() == null ? null : GbRoundSupport.relationLabel(this.seatOf(playerId), meld.fromSeat()),
                 meld.open()
             ));
         }
@@ -871,8 +873,8 @@ public final class GbTableRoundController implements TableRoundController {
                 false,
                 0,
                 false,
-                toRiichiTile(winner.winningTile()),
-                this.toRiichiTiles(this.hands.getOrDefault(winnerId, List.of())),
+                GbRoundSupport.toRiichiTile(winner.winningTile()),
+                GbRoundSupport.toRiichiTiles(this.hands.getOrDefault(winnerId, List.of())),
                 this.toSettlementMelds(winnerId),
                 List.of(),
                 List.of(),
@@ -921,7 +923,7 @@ public final class GbTableRoundController implements TableRoundController {
     private List<Pair<Boolean, List<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>>> toSettlementMelds(UUID playerId) {
         List<Pair<Boolean, List<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>>> result = new ArrayList<>();
         for (GbMeldState meld : this.melds.getOrDefault(playerId, List.of())) {
-            result.add(new Pair<>(meld.open(), this.toRiichiTiles(meld.tiles())));
+            result.add(new Pair<>(meld.open(), GbRoundSupport.toRiichiTiles(meld.tiles())));
         }
         return List.copyOf(result);
     }
@@ -935,24 +937,24 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private List<Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>> availableChiiPairs(UUID playerId, MahjongTile claimedTile) {
-        if (isHonor(claimedTile) || claimedTile == null || claimedTile.isFlower()) {
+        if (GbRoundSupport.isHonor(claimedTile) || claimedTile == null || claimedTile.isFlower()) {
             return List.of();
         }
         List<Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>> pairs = new ArrayList<>();
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
-        int number = tileNumber(claimedTile);
-        MahjongTile prev2 = offsetTile(claimedTile, -2);
-        MahjongTile prev1 = offsetTile(claimedTile, -1);
-        MahjongTile next1 = offsetTile(claimedTile, 1);
-        MahjongTile next2 = offsetTile(claimedTile, 2);
-        if (number >= 3 && containsTile(hand, prev2) && containsTile(hand, prev1)) {
-            pairs.add(new Pair<>(toRiichiTile(prev2), toRiichiTile(prev1)));
+        int number = GbRoundSupport.tileNumber(claimedTile);
+        MahjongTile prev2 = GbRoundSupport.offsetTile(claimedTile, -2);
+        MahjongTile prev1 = GbRoundSupport.offsetTile(claimedTile, -1);
+        MahjongTile next1 = GbRoundSupport.offsetTile(claimedTile, 1);
+        MahjongTile next2 = GbRoundSupport.offsetTile(claimedTile, 2);
+        if (number >= 3 && GbRoundSupport.containsTile(hand, prev2) && GbRoundSupport.containsTile(hand, prev1)) {
+            pairs.add(new Pair<>(GbRoundSupport.toRiichiTile(prev2), GbRoundSupport.toRiichiTile(prev1)));
         }
-        if (number >= 2 && number <= 8 && containsTile(hand, prev1) && containsTile(hand, next1)) {
-            pairs.add(new Pair<>(toRiichiTile(prev1), toRiichiTile(next1)));
+        if (number >= 2 && number <= 8 && GbRoundSupport.containsTile(hand, prev1) && GbRoundSupport.containsTile(hand, next1)) {
+            pairs.add(new Pair<>(GbRoundSupport.toRiichiTile(prev1), GbRoundSupport.toRiichiTile(next1)));
         }
-        if (number <= 7 && containsTile(hand, next1) && containsTile(hand, next2)) {
-            pairs.add(new Pair<>(toRiichiTile(next1), toRiichiTile(next2)));
+        if (number <= 7 && GbRoundSupport.containsTile(hand, next1) && GbRoundSupport.containsTile(hand, next2)) {
+            pairs.add(new Pair<>(GbRoundSupport.toRiichiTile(next1), GbRoundSupport.toRiichiTile(next2)));
         }
         return List.copyOf(pairs);
     }
@@ -1060,7 +1062,7 @@ public final class GbTableRoundController implements TableRoundController {
         if (meldIndex == null) {
             return;
         }
-        removeTiles(this.hands.get(playerId), target, 1);
+        GbRoundSupport.removeTiles(this.hands.get(playerId), target, 1);
         this.hasDrawnTile.put(playerId, false);
         this.sortHand(playerId);
         GbMeldState meld = this.melds.get(playerId).get(meldIndex);
@@ -1101,14 +1103,14 @@ public final class GbTableRoundController implements TableRoundController {
     private int visibleTileCount(MahjongTile target) {
         int count = 0;
         for (List<MahjongTile> playerDiscards : this.discards.values()) {
-            count += countMatchingTiles(playerDiscards, target);
+            count += GbRoundSupport.countMatchingTiles(playerDiscards, target);
         }
         for (List<GbMeldState> playerMelds : this.melds.values()) {
             for (GbMeldState meld : playerMelds) {
                 if (!meld.open()) {
                     continue;
                 }
-                count += countMatchingTiles(meld.tiles(), target);
+                count += GbRoundSupport.countMatchingTiles(meld.tiles(), target);
             }
         }
         return count;
@@ -1147,7 +1149,7 @@ public final class GbTableRoundController implements TableRoundController {
             return;
         }
         for (int i = river.size() - 1; i >= 0; i--) {
-            if (sameKind(river.get(i), claimedTile)) {
+            if (GbRoundSupport.sameKind(river.get(i), claimedTile)) {
                 river.remove(i);
                 return;
             }
@@ -1177,7 +1179,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     private GbBotReactionChoice evaluateBotPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        removeTiles(hand, claimedTile, 2);
+        GbRoundSupport.removeTiles(hand, claimedTile, 2);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.pung(claimedTile, fromSeat));
         return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.PON, null));
@@ -1185,7 +1187,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     private GbBotReactionChoice evaluateBotOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        removeTiles(hand, claimedTile, 3);
+        GbRoundSupport.removeTiles(hand, claimedTile, 3);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.openKong(claimedTile, fromSeat));
         long readyScore = botReadyScore(this.evaluateTing(playerId, hand, meldStates));
@@ -1201,8 +1203,8 @@ public final class GbTableRoundController implements TableRoundController {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
         MahjongTile first = MahjongTile.valueOf(pair.getFirst().name());
         MahjongTile second = MahjongTile.valueOf(pair.getSecond().name());
-        removeTiles(hand, first, 1);
-        removeTiles(hand, second, 1);
+        GbRoundSupport.removeTiles(hand, first, 1);
+        GbRoundSupport.removeTiles(hand, second, 1);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.chow(claimedTile, first, second, fromSeat));
         return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.CHII, pair));
@@ -1248,15 +1250,17 @@ public final class GbTableRoundController implements TableRoundController {
     private GbBotState simulateBotKan(UUID playerId, MahjongTile target) {
         List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        if (countMatchingTiles(hand, target) >= 4) {
-            removeTiles(hand, target, 4);
+        if (GbRoundSupport.countMatchingTiles(hand, target) >= 4) {
+            GbRoundSupport.removeTiles(hand, target, 4);
             meldStates.add(GbMeldState.ankan(target));
             return new GbBotState(List.copyOf(hand), List.copyOf(meldStates));
         }
         for (int i = 0; i < meldStates.size(); i++) {
             GbMeldState meld = meldStates.get(i);
-            if (meld.type() == GbMeldType.PUNG && sameKind(meld.baseTile(), target) && countMatchingTiles(hand, target) >= 1) {
-                removeTiles(hand, target, 1);
+            if (meld.type() == GbMeldType.PUNG
+                && GbRoundSupport.sameKind(meld.baseTile(), target)
+                && GbRoundSupport.countMatchingTiles(hand, target) >= 1) {
+                GbRoundSupport.removeTiles(hand, target, 1);
                 meldStates.set(i, meld.toAddedKong(target));
                 return new GbBotState(List.copyOf(hand), List.copyOf(meldStates));
             }
@@ -1308,10 +1312,10 @@ public final class GbTableRoundController implements TableRoundController {
                 duplicates++;
                 continue;
             }
-            if (isHonor(candidate) || isHonor(tile) || candidate.name().charAt(0) != tile.name().charAt(0)) {
+            if (GbRoundSupport.isHonor(candidate) || GbRoundSupport.isHonor(tile) || candidate.name().charAt(0) != tile.name().charAt(0)) {
                 continue;
             }
-            int delta = tileNumber(candidate) - tileNumber(tile);
+            int delta = GbRoundSupport.tileNumber(candidate) - GbRoundSupport.tileNumber(tile);
             if (delta == -2) {
                 hasPrevPrev = true;
             }
@@ -1326,7 +1330,7 @@ public final class GbTableRoundController implements TableRoundController {
             }
         }
         int score = 0;
-        if (isHonor(tile) || tileNumber(tile) == 1 || tileNumber(tile) == 9) {
+        if (GbRoundSupport.isHonor(tile) || GbRoundSupport.tileNumber(tile) == 1 || GbRoundSupport.tileNumber(tile) == 9) {
             score += 3;
         }
         if (duplicates >= 2) {
@@ -1379,129 +1383,6 @@ public final class GbTableRoundController implements TableRoundController {
 
     private UUID currentPlayerId() {
         return this.playerAt(SeatWind.fromIndex(this.currentPlayerIndex));
-    }
-
-    private static String relationLabel(SeatWind claimant, SeatWind source) {
-        int diff = Math.floorMod(source.index() - claimant.index(), SeatWind.values().length);
-        return switch (diff) {
-            case 1 -> "LEFT";
-            case 2 -> "ACROSS";
-            case 3 -> "RIGHT";
-            default -> "SELF";
-        };
-    }
-
-    private static boolean containsTile(List<MahjongTile> hand, MahjongTile target) {
-        return countMatchingTiles(hand, target) > 0;
-    }
-
-    private static int countMatchingTiles(List<MahjongTile> hand, MahjongTile target) {
-        if (hand == null || target == null) {
-            return 0;
-        }
-        int count = 0;
-        for (MahjongTile tile : hand) {
-            if (sameKind(tile, target)) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private static void removeTiles(List<MahjongTile> hand, MahjongTile target, int amount) {
-        int remaining = amount;
-        for (int i = hand.size() - 1; i >= 0 && remaining > 0; i--) {
-            if (sameKind(hand.get(i), target)) {
-                hand.remove(i);
-                remaining--;
-            }
-        }
-    }
-
-    private static boolean sameKind(MahjongTile left, MahjongTile right) {
-        if (left == null || right == null) {
-            return false;
-        }
-        MahjongTile leftBase = left.isRedFive() ? MahjongTile.valueOf(left.name().replace("_RED", "")) : left;
-        MahjongTile rightBase = right.isRedFive() ? MahjongTile.valueOf(right.name().replace("_RED", "")) : right;
-        return leftBase == rightBase;
-    }
-
-    private static boolean isHonor(MahjongTile tile) {
-        return tile.ordinal() >= MahjongTile.EAST.ordinal() && tile.ordinal() <= MahjongTile.RED_DRAGON.ordinal();
-    }
-
-    private static int tileNumber(MahjongTile tile) {
-        if (tile == null || tile.isFlower() || isHonor(tile)) {
-            return 0;
-        }
-        return Integer.parseInt(tile.name().substring(1, 2));
-    }
-
-    private static MahjongTile offsetTile(MahjongTile tile, int delta) {
-        if (tile == null || isHonor(tile) || tile.isFlower()) {
-            return MahjongTile.UNKNOWN;
-        }
-        char suit = tile.name().charAt(0);
-        int number = tileNumber(tile) + delta;
-        if (number < 1 || number > 9) {
-            return MahjongTile.UNKNOWN;
-        }
-        return MahjongTile.valueOf("" + suit + number);
-    }
-
-    private static doublemoon.mahjongcraft.paper.riichi.model.MahjongTile toRiichiTile(MahjongTile tile) {
-        return doublemoon.mahjongcraft.paper.riichi.model.MahjongTile.valueOf(tile.name());
-    }
-
-    private List<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile> toRiichiTiles(List<MahjongTile> tiles) {
-        List<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile> converted = new ArrayList<>(tiles.size());
-        for (MahjongTile tile : tiles) {
-            converted.add(toRiichiTile(tile));
-        }
-        return List.copyOf(converted);
-    }
-
-    private int requireValidDicePoints(int value) {
-        if (value < 2 || value > 12) {
-            throw new IllegalStateException("Dice points must be between 2 and 12 but was " + value);
-        }
-        return value;
-    }
-
-    private static int rollDicePoints() {
-        return ThreadLocalRandom.current().nextInt(1, 7) + ThreadLocalRandom.current().nextInt(1, 7);
-    }
-
-    private static List<MahjongTile> buildWall() {
-        List<MahjongTile> wall = new ArrayList<>(144);
-        for (MahjongTile tile : MahjongTile.values()) {
-            if (tile == MahjongTile.UNKNOWN || tile.isRedFive()) {
-                continue;
-            }
-            int copies = tile.isFlower() ? 1 : 4;
-            for (int i = 0; i < copies; i++) {
-                wall.add(tile);
-            }
-        }
-        Collections.shuffle(wall);
-        return List.copyOf(wall);
-    }
-
-    private static List<MahjongTile> reorderWallForDice(List<MahjongTile> wall, int dicePoints, int roundIndex) {
-        if (wall == null || wall.isEmpty()) {
-            return List.of();
-        }
-        int seatCount = SeatWind.values().length;
-        int wallTilesPerSide = wall.size() / seatCount;
-        int directionIndex = seatCount - (((dicePoints % seatCount) - 1 + roundIndex) % seatCount);
-        int startingStackIndex = 2 * dicePoints;
-        List<MahjongTile> reordered = new ArrayList<>(wall.size());
-        for (int i = 0; i < wall.size(); i++) {
-            int tileIndex = Math.floorMod(directionIndex * wallTilesPerSide + startingStackIndex + i, wall.size());
-            reordered.add(wall.get(tileIndex));
-        }
-        return List.copyOf(reordered);
     }
 
     private record GbBotState(List<MahjongTile> hand, List<GbMeldState> melds) {

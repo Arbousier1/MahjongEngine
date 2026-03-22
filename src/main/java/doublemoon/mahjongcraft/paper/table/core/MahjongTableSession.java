@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BiConsumer;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -52,8 +51,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class MahjongTableSession {
-    private static final long NEXT_ROUND_DELAY_MILLIS = 8000L;
-
     private final MahjongPaperPlugin plugin;
     private final String id;
     private final Location center;
@@ -68,7 +65,6 @@ public final class MahjongTableSession {
     private boolean roundStartInProgress;
     private doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
-    private long nextRoundDeadlineMillis;
     private PluginTask botTask;
     private final TableRenderCoordinator renderCoordinator;
     private final TableViewerPresentationCoordinator viewerPresentation;
@@ -80,6 +76,9 @@ public final class MahjongTableSession {
     private final TablePlayerFeedbackCoordinator playerFeedbackCoordinator;
     private final TableStateSoundCoordinator stateSoundCoordinator;
     private final TablePublicTextFactory publicTextFactory;
+    private final SessionMessaging sessionMessaging;
+    private final SessionViewerIndex viewerIndex;
+    private final SessionRoundLifecycle roundLifecycle;
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
@@ -117,6 +116,9 @@ public final class MahjongTableSession {
         this.playerFeedbackCoordinator = new TablePlayerFeedbackCoordinator(this);
         this.stateSoundCoordinator = new TableStateSoundCoordinator(this);
         this.publicTextFactory = new TablePublicTextFactory(this);
+        this.sessionMessaging = new SessionMessaging(this);
+        this.viewerIndex = new SessionViewerIndex(this);
+        this.roundLifecycle = new SessionRoundLifecycle();
     }
 
     public MahjongPaperPlugin plugin() {
@@ -783,15 +785,11 @@ public final class MahjongTableSession {
     }
 
     public List<Player> viewers() {
-        List<Player> viewers = new ArrayList<>(this.participants.size() + this.participants.spectatorCount());
-        this.appendOnlineViewers(viewers);
-        return viewers;
+        return this.viewerIndex.viewers();
     }
 
     public List<UUID> viewerIdsExcluding(UUID excludedPlayerId) {
-        List<UUID> viewerIds = new ArrayList<>(this.participants.size() + this.participants.spectatorCount());
-        this.appendOnlineViewerIds(viewerIds, excludedPlayerId);
-        return List.copyOf(viewerIds);
+        return this.viewerIndex.viewerIdsExcluding(excludedPlayerId);
     }
 
     public String roundDisplay() {
@@ -843,38 +841,7 @@ public final class MahjongTableSession {
     }
 
     private Component spectatorSeatOverlay(Locale locale, SeatWind wind) {
-        UUID playerId = this.playerAt(wind);
-        if (playerId == null) {
-            return this.plugin.messages().render(
-                locale,
-                "overlay.seat_empty",
-                this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale))
-            );
-        }
-
-        return this.plugin.messages().render(
-            locale,
-            "overlay.seat",
-            this.plugin.messages().tag("seat", this.seatDisplayName(wind, locale)),
-            this.plugin.messages().tag("name", this.displayName(playerId, locale)),
-            this.plugin.messages().number(locale, "points", this.points(playerId)),
-            this.plugin.messages().number(locale, "hand", this.hand(playerId).size()),
-            this.plugin.messages().number(locale, "river", this.discards(playerId).size()),
-            this.plugin.messages().number(locale, "melds", this.fuuro(playerId).size()),
-            this.plugin.messages().tag("status", this.spectatorSeatStatus(locale, wind, playerId))
-        );
-    }
-
-    private String spectatorSeatStatus(Locale locale, SeatWind wind, UUID playerId) {
-        String status = "";
-        if (this.currentSeat() == wind && this.isStarted()) {
-            status = this.plugin.messages().plain(locale, "overlay.status_turn");
-        }
-        if (this.currentVariant() != MahjongVariant.RIICHI || !this.isRiichi(playerId)) {
-            return status;
-        }
-        String riichi = this.plugin.messages().plain(locale, "overlay.status_riichi");
-        return status.isBlank() ? riichi : status + " / " + riichi;
+        return this.sessionMessaging.spectatorSeatOverlay(locale, wind);
     }
 
     public boolean isStarted() {
@@ -1214,47 +1181,7 @@ public final class MahjongTableSession {
     }
 
     public String viewerMembershipSignatureFor(UUID excludedPlayerId) {
-        StringBuilder builder = new StringBuilder(96);
-        this.appendOnlineViewerIds(builder, excludedPlayerId);
-        return builder.toString();
-    }
-
-    private void appendOnlineViewers(List<Player> target) {
-        this.forEachOnlineViewer(null, true, true, (viewerId, player) -> target.add(player));
-    }
-
-    private void appendOnlineViewerIds(List<UUID> target, UUID excludedPlayerId) {
-        this.forEachOnlineViewer(excludedPlayerId, true, true, (viewerId, player) -> target.add(viewerId));
-    }
-
-    private void appendOnlineViewerIds(StringBuilder target, UUID excludedPlayerId) {
-        this.forEachOnlineViewer(excludedPlayerId, true, true, (viewerId, player) -> target.append(viewerId).append(';'));
-    }
-
-    private void forEachOnlineViewer(UUID excludedPlayerId, boolean includeSeats, boolean includeSpectators, BiConsumer<UUID, Player> consumer) {
-        if (consumer == null) {
-            return;
-        }
-        if (includeSeats) {
-            for (UUID playerId : this.participants.seatIds()) {
-                this.acceptOnlineViewer(playerId, excludedPlayerId, consumer);
-            }
-        }
-        if (includeSpectators) {
-            for (UUID spectatorId : this.participants.spectatorIds()) {
-                this.acceptOnlineViewer(spectatorId, excludedPlayerId, consumer);
-            }
-        }
-    }
-
-    private void acceptOnlineViewer(UUID viewerId, UUID excludedPlayerId, BiConsumer<UUID, Player> consumer) {
-        if (viewerId == null || viewerId.equals(excludedPlayerId)) {
-            return;
-        }
-        Player player = Bukkit.getPlayer(viewerId);
-        if (player != null) {
-            consumer.accept(viewerId, player);
-        }
+        return this.viewerIndex.viewerMembershipSignatureFor(excludedPlayerId);
     }
 
     public String riichiFingerprintValue() {
@@ -1269,18 +1196,15 @@ public final class MahjongTableSession {
     }
 
     private void scheduleNextRoundCountdown() {
-        this.nextRoundDeadlineMillis = System.currentTimeMillis() + NEXT_ROUND_DELAY_MILLIS;
+        this.roundLifecycle.scheduleNextRoundCountdown();
     }
 
     private void cancelNextRoundCountdown() {
-        this.nextRoundDeadlineMillis = 0L;
+        this.roundLifecycle.cancelNextRoundCountdown();
     }
 
     private long nextRoundSecondsRemaining() {
-        if (this.nextRoundDeadlineMillis <= 0L) {
-            return 0L;
-        }
-        return Math.max(0L, (long) Math.ceil((this.nextRoundDeadlineMillis - System.currentTimeMillis()) / 1000.0D));
+        return this.roundLifecycle.nextRoundSecondsRemaining();
     }
 
     public long nextRoundSecondsRemainingValue() {
