@@ -20,7 +20,7 @@ val mariadbVersion = "3.5.7"
 val h2Version = "2.4.240"
 val hikariVersion = "7.0.2"
 val adventureVersion = "4.26.1"
-val junitVersion = "5.12.2"
+val junitVersion = "6.0.3"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
 val generatedNativeResourcesDir = layout.buildDirectory.dir("generated/resources/native")
 
