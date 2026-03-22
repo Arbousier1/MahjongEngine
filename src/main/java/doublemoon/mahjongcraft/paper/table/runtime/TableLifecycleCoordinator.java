@@ -11,7 +11,7 @@ public final class TableLifecycleCoordinator {
 
     public void shutdown() {
         this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdownForLifecycle();
+        this.session.cancelNextRoundCountdown();
         this.session.shutdownRenderFlow();
         this.session.clearRenderDisplays();
         this.session.clearFeedbackTracking();
@@ -25,7 +25,7 @@ public final class TableLifecycleCoordinator {
 
     public void forceEndMatch() {
         this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdownForLifecycle();
+        this.session.cancelNextRoundCountdown();
         this.session.shutdownRenderFlow();
         this.session.clearFeedbackTracking();
         this.session.clearRoundTrackingState();
@@ -33,13 +33,13 @@ public final class TableLifecycleCoordinator {
         this.session.resetViewerPresentationForLifecycleChange();
         this.session.clearLeaveQueueForLifecycle();
         this.session.clearEngineForLifecycle();
-        this.session.resetReadyStateForNextRoundForLifecycle();
+        this.session.resetReadyStateForNextRound();
         this.session.render();
     }
 
     public void resetForServerStartup() {
         this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdownForLifecycle();
+        this.session.cancelNextRoundCountdown();
         this.session.shutdownRenderFlow();
         this.session.clearRenderDisplays();
         this.session.clearFeedbackTracking();

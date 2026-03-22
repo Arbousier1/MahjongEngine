@@ -62,7 +62,7 @@ public final class TablePlayerFeedbackCoordinator {
         this.lastSettlementFingerprint = "";
         this.lastPersistedSettlementFingerprint = "";
         this.lastPersistedRankFingerprint = "";
-        this.session.cancelNextRoundCountdownForFeedback();
+        this.session.cancelNextRoundCountdown();
     }
 
     private void persistSettlementIfNeeded(String settlementFingerprint) {
@@ -98,11 +98,11 @@ public final class TablePlayerFeedbackCoordinator {
         if (settlementFingerprint.isBlank() || !settlementChanged) {
             return;
         }
-        this.session.resetReadyStateForNextRoundForFeedback();
+        this.session.resetReadyStateForNextRound();
         this.session.render();
         this.openSettlementForPlayers();
-        this.session.cancelNextRoundCountdownForFeedback();
-        this.session.promptPlayersToReadyForFeedback();
+        this.session.cancelNextRoundCountdown();
+        this.session.promptPlayersToReady();
     }
 
     private void openSettlementForPlayers() {

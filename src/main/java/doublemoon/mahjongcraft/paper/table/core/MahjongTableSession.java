@@ -42,6 +42,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -84,26 +86,16 @@ public final class MahjongTableSession {
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
     private MahjongVariant configuredVariant;
 
-    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
-        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), true);
-        this.addPlayer(owner);
-    }
-
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
-        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
-    }
-
-    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner, boolean persistentRoom) {
-        this(plugin, id, center, MahjongVariant.RIICHI, SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND), persistentRoom);
-        this.addPlayer(owner);
-    }
-
-    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongRule configuredRule, boolean persistentRoom) {
-        this(plugin, id, center, MahjongVariant.RIICHI, configuredRule, persistentRoom);
-    }
-
-    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, MahjongVariant configuredVariant, MahjongRule configuredRule, boolean persistentRoom) {
-        this(plugin, id, center, configuredVariant, configuredRule, persistentRoom, false);
+        this(
+            plugin,
+            id,
+            center,
+            MahjongVariant.RIICHI,
+            SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND),
+            persistentRoom,
+            false
+        );
     }
 
     public MahjongTableSession(
@@ -390,8 +382,8 @@ public final class MahjongTableSession {
         this.lifecycleCoordinator.resetForServerStartup();
     }
 
-    public void cancelNextRoundCountdownForLifecycle() {
-        this.cancelNextRoundCountdown();
+    public void cancelNextRoundCountdown() {
+        this.roundLifecycle.cancelNextRoundCountdown();
     }
 
     public void shutdownRenderFlow() {
@@ -413,7 +405,7 @@ public final class MahjongTableSession {
     public void clearRoundTrackingState() {
         this.roundStartInProgress = false;
         this.diceAnimationCoordinator.clear();
-        this.clearLastPublicDiscard();
+        this.clearLastPublicDiscardInternal();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
     }
@@ -446,24 +438,25 @@ public final class MahjongTableSession {
         this.roundController = null;
     }
 
-    public void cancelNextRoundCountdownForFeedback() {
-        this.cancelNextRoundCountdown();
-    }
-
     public void resetBotCounterForLifecycle() {
         this.participants.resetBotCounter();
     }
 
-    public void resetReadyStateForNextRoundForLifecycle() {
-        this.resetReadyStateForNextRound();
+    public void resetReadyStateForNextRound() {
+        this.participants.readyBotsOnly();
     }
 
-    public void resetReadyStateForNextRoundForFeedback() {
-        this.resetReadyStateForNextRound();
-    }
-
-    public void promptPlayersToReadyForFeedback() {
-        this.promptPlayersToReady();
+    public void promptPlayersToReady() {
+        for (UUID playerId : this.participants.seatIds()) {
+            if (playerId == null || this.isBot(playerId) || this.isQueuedToLeave(playerId)) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) {
+                continue;
+            }
+            this.plugin.messages().send(player, "command.ready_prompt");
+        }
     }
 
     public SeatWind currentSeat() {
@@ -533,34 +526,34 @@ public final class MahjongTableSession {
     }
 
     public int dicePoints() {
-        return this.roundController == null ? 0 : this.roundController.dicePoints();
+        return this.intFromRoundController(TableRoundController::dicePoints);
     }
 
     public int kanCount() {
-        return this.roundController == null ? 0 : this.roundController.kanCount();
+        return this.intFromRoundController(TableRoundController::kanCount);
     }
 
     public int roundIndex() {
-        return this.roundController == null ? 0 : this.roundController.roundIndex();
+        return this.intFromRoundController(TableRoundController::roundIndex);
     }
 
     public SeatWind openDoorSeat() {
-        if (this.roundController == null) {
-            return SeatWind.EAST;
-        }
-        return SeatWind.fromIndex(Math.floorMod(this.dicePoints() - 1 + this.roundIndex(), SeatWind.values().length));
+        return this.fromRoundController(
+            controller -> SeatWind.fromIndex(Math.floorMod(controller.dicePoints() - 1 + controller.roundIndex(), SeatWind.values().length)),
+            SeatWind.EAST
+        );
     }
 
     public int honbaCount() {
-        return this.roundController == null ? 0 : this.roundController.honbaCount();
+        return this.intFromRoundController(TableRoundController::honbaCount);
     }
 
     public SeatWind roundWind() {
-        return this.roundController == null ? SeatWind.EAST : this.roundController.roundWind();
+        return this.fromRoundController(TableRoundController::roundWind, SeatWind.EAST);
     }
 
     public SeatWind dealerSeat() {
-        return this.roundController == null ? SeatWind.EAST : this.roundController.dealerSeat();
+        return this.fromRoundController(TableRoundController::dealerSeat, SeatWind.EAST);
     }
 
     public String waitingSummary() {
@@ -871,6 +864,14 @@ public final class MahjongTableSession {
         return this.roundController == null ? this.configuredRule : this.roundController.rule();
     }
 
+    private int intFromRoundController(ToIntFunction<TableRoundController> extractor) {
+        return this.roundController == null ? 0 : extractor.applyAsInt(this.roundController);
+    }
+
+    private <T> T fromRoundController(Function<TableRoundController, T> extractor, T fallback) {
+        return this.roundController == null ? fallback : extractor.apply(this.roundController);
+    }
+
     private TableRoundController createRoundController() {
         EnumMap<SeatWind, UUID> seats = new EnumMap<>(SeatWind.class);
         Map<UUID, String> displayNames = new HashMap<>();
@@ -909,7 +910,7 @@ public final class MahjongTableSession {
         return this.handSelectionCoordinator.selectedHandTileIndex(playerId);
     }
 
-    private void refreshSelectedHandTileView(UUID playerId) {
+    void refreshSelectedHandTileViewInternal(UUID playerId) {
         SeatWind wind = this.seatOf(playerId);
         if (wind == null) {
             return;
@@ -934,11 +935,7 @@ public final class MahjongTableSession {
             && this.roundController.canSelectHandTile(playerId, tileIndex);
     }
 
-    void refreshSelectedHandTileViewInternal(UUID playerId) {
-        this.refreshSelectedHandTileView(playerId);
-    }
-
-    private doublemoon.mahjongcraft.paper.model.MahjongTile handTileAt(UUID playerId, int tileIndex) {
+    doublemoon.mahjongcraft.paper.model.MahjongTile handTileAtInternal(UUID playerId, int tileIndex) {
         List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand = this.hand(playerId);
         if (tileIndex < 0 || tileIndex >= hand.size()) {
             return null;
@@ -946,11 +943,7 @@ public final class MahjongTableSession {
         return hand.get(tileIndex);
     }
 
-    doublemoon.mahjongcraft.paper.model.MahjongTile handTileAtInternal(UUID playerId, int tileIndex) {
-        return this.handTileAt(playerId, tileIndex);
-    }
-
-    private void rememberPublicDiscard(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
+    void rememberPublicDiscardInternal(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
         if (discardedTile == null) {
             return;
         }
@@ -958,11 +951,7 @@ public final class MahjongTableSession {
         this.lastPublicDiscardTile = discardedTile;
     }
 
-    void rememberPublicDiscardInternal(UUID playerId, doublemoon.mahjongcraft.paper.model.MahjongTile discardedTile) {
-        this.rememberPublicDiscard(playerId, discardedTile);
-    }
-
-    private void clearLastPublicDiscard() {
+    void clearLastPublicDiscardInternal() {
         this.lastPublicDiscardPlayerId = null;
         this.lastPublicDiscardTile = null;
     }
@@ -975,14 +964,10 @@ public final class MahjongTableSession {
         this.stateSoundCoordinator.playReactionSound(response);
     }
 
-    private void persistRoomMetadataIfNeeded() {
+    void persistRoomMetadataIfNeededInternal() {
         if (this.persistentRoom && this.plugin.tableManager() != null) {
             this.plugin.tableManager().persistTables();
         }
-    }
-
-    void persistRoomMetadataIfNeededInternal() {
-        this.persistRoomMetadataIfNeeded();
     }
 
     MahjongRule configuredRuleInternal() {
@@ -1009,10 +994,6 @@ public final class MahjongTableSession {
         return this.createRoundController();
     }
 
-    void clearLastPublicDiscardInternal() {
-        this.clearLastPublicDiscard();
-    }
-
     void setRoundStartInProgressInternal(boolean roundStartInProgress) {
         this.roundStartInProgress = roundStartInProgress;
     }
@@ -1032,7 +1013,16 @@ public final class MahjongTableSession {
     }
 
     void completeRoundStartInternal() {
-        this.completeRoundStart();
+        if (this.roundController == null) {
+            this.roundStartInProgress = false;
+            return;
+        }
+        this.roundController.startRound();
+        this.roundStartInProgress = false;
+        this.render();
+        if (this.plugin.tableManager() != null) {
+            this.plugin.tableManager().startSeatWatchdog(this, 60L);
+        }
     }
 
     void playRoundStartSoundInternal() {
@@ -1159,59 +1149,30 @@ public final class MahjongTableSession {
         return builder.toString();
     }
 
-    private void scheduleNextRoundCountdown() {
+    void scheduleNextRoundCountdownInternal() {
         this.roundLifecycle.scheduleNextRoundCountdown();
     }
 
-    void scheduleNextRoundCountdownInternal() {
-        this.scheduleNextRoundCountdown();
-    }
-
-    private boolean hasNextRoundCountdown() {
-        return this.roundLifecycle.hasNextRoundCountdown();
-    }
-
     boolean hasNextRoundCountdownInternal() {
-        return this.hasNextRoundCountdown();
-    }
-
-    private void cancelNextRoundCountdown() {
-        this.roundLifecycle.cancelNextRoundCountdown();
+        return this.roundLifecycle.hasNextRoundCountdown();
     }
 
     void cancelNextRoundCountdownInternal() {
         this.cancelNextRoundCountdown();
     }
 
-    private long nextRoundSecondsRemaining() {
+    long nextRoundSecondsRemainingInternal() {
         return this.roundLifecycle.nextRoundSecondsRemaining();
     }
 
-    long nextRoundSecondsRemainingInternal() {
-        return this.nextRoundSecondsRemaining();
-    }
-
     public long nextRoundSecondsRemainingValue() {
-        return this.nextRoundSecondsRemaining();
+        return this.roundLifecycle.nextRoundSecondsRemaining();
     }
 
     public void prepareRenderRequest() {
         this.cancelBotTask();
         this.handSelectionCoordinator.pruneSelectedHandTiles();
         this.viewerPresentation.markDirty();
-    }
-
-    private void completeRoundStart() {
-        if (this.roundController == null) {
-            this.roundStartInProgress = false;
-            return;
-        }
-        this.roundController.startRound();
-        this.roundStartInProgress = false;
-        this.render();
-        if (this.plugin.tableManager() != null) {
-            this.plugin.tableManager().startSeatWatchdog(this, 60L);
-        }
     }
 
     public void completeRenderFlush() {
@@ -1344,23 +1305,6 @@ public final class MahjongTableSession {
     public String tileLabelForDisplay(Locale locale, String tileName) {
         String key = "tile." + tileName.toLowerCase(Locale.ROOT);
         return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : tileName.toLowerCase(Locale.ROOT);
-    }
-
-    private void resetReadyStateForNextRound() {
-        this.participants.readyBotsOnly();
-    }
-
-    private void promptPlayersToReady() {
-        for (UUID playerId : this.participants.seatIds()) {
-            if (playerId == null || this.isBot(playerId) || this.isQueuedToLeave(playerId)) {
-                continue;
-            }
-            Player player = Bukkit.getPlayer(playerId);
-            if (player == null) {
-                continue;
-            }
-            this.plugin.messages().send(player, "command.ready_prompt");
-        }
     }
 
     private static Location normalizedTableCenter(Location source) {
