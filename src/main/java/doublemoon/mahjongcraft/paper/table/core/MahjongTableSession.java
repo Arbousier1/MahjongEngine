@@ -81,6 +81,7 @@ public final class MahjongTableSession {
     private final SessionRuleCoordinator ruleCoordinator;
     private final SessionRoundActionCoordinator roundActionCoordinator;
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
+    private final SessionRoundFlowCoordinator roundFlowCoordinator;
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
@@ -137,6 +138,7 @@ public final class MahjongTableSession {
         this.ruleCoordinator = new SessionRuleCoordinator(this);
         this.roundActionCoordinator = new SessionRoundActionCoordinator(this);
         this.handSelectionCoordinator = new SessionHandSelectionCoordinator(this);
+        this.roundFlowCoordinator = new SessionRoundFlowCoordinator(this);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -206,7 +208,7 @@ public final class MahjongTableSession {
             return false;
         }
         this.render();
-        this.maybeStartRoundIfReady();
+        this.roundFlowCoordinator.maybeStartRoundIfReady();
         return true;
     }
 
@@ -314,7 +316,7 @@ public final class MahjongTableSession {
 
         boolean nowReady = this.participants.toggleReady(playerId);
 
-        if (nowReady && this.maybeStartRoundIfReady()) {
+        if (nowReady && this.roundFlowCoordinator.maybeStartRoundIfReady()) {
             return ReadyResult.STARTED;
         }
 
@@ -331,38 +333,7 @@ public final class MahjongTableSession {
     }
 
     public void startRound() {
-        if (this.roundStartInProgress) {
-            return;
-        }
-        if (this.size() != 4) {
-            throw new IllegalStateException("A table needs exactly 4 players");
-        }
-
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null || !this.isReady(playerId)) {
-                throw new IllegalStateException("All seated players must be ready");
-            }
-        }
-
-        this.cancelNextRoundCountdown();
-        if (this.roundController == null || this.roundController.gameFinished() || this.roundController.variant() != this.currentVariant()) {
-            this.roundController = this.createRoundController();
-        }
-
-        this.handSelectionCoordinator.clearAll();
-        this.clearLastPublicDiscard();
-        this.playerFeedbackCoordinator.resetForRoundStart();
-        this.regionDisplayCoordinator.invalidateFingerprints();
-        this.stateSoundCoordinator.resetForRoundStart();
-        this.roundStartInProgress = true;
-        OpeningDiceRoll diceRoll = OpeningDiceRoll.random();
-        this.roundController.setPendingDiceRoll(diceRoll);
-        if (!this.diceAnimationCoordinator.shouldAnimate()) {
-            this.completeRoundStart();
-            return;
-        }
-        this.diceAnimationCoordinator.start(diceRoll, this::completeRoundStart);
+        this.roundFlowCoordinator.startRound();
     }
 
     public boolean discard(UUID playerId, int tileIndex) {
@@ -893,13 +864,7 @@ public final class MahjongTableSession {
     }
 
     public void tick() {
-        this.renderCoordinator.restoreDisplaysIfNeeded();
-        this.viewerPresentation.flushIfNeeded();
-        if (this.roundStartInProgress || this.roundController == null || this.roundController.started() || this.roundController.lastResolution() == null) {
-            return;
-        }
-        this.processDeferredLeaves();
-        this.handleBotMatchAutoNextRound();
+        this.roundFlowCoordinator.tick();
     }
 
     private MahjongRule currentRule() {
@@ -1036,6 +1001,64 @@ public final class MahjongTableSession {
         return this.roundController;
     }
 
+    void setRoundControllerInternal(TableRoundController roundController) {
+        this.roundController = roundController;
+    }
+
+    TableRoundController createRoundControllerInternal() {
+        return this.createRoundController();
+    }
+
+    void clearLastPublicDiscardInternal() {
+        this.clearLastPublicDiscard();
+    }
+
+    void setRoundStartInProgressInternal(boolean roundStartInProgress) {
+        this.roundStartInProgress = roundStartInProgress;
+    }
+
+    void resetRoundPresentationForStartInternal() {
+        this.playerFeedbackCoordinator.resetForRoundStart();
+        this.regionDisplayCoordinator.invalidateFingerprints();
+        this.stateSoundCoordinator.resetForRoundStart();
+    }
+
+    boolean shouldAnimateOpeningDiceInternal() {
+        return this.diceAnimationCoordinator.shouldAnimate();
+    }
+
+    void startOpeningDiceAnimationInternal(OpeningDiceRoll diceRoll, Runnable completion) {
+        this.diceAnimationCoordinator.start(diceRoll, completion);
+    }
+
+    void completeRoundStartInternal() {
+        this.completeRoundStart();
+    }
+
+    void playRoundStartSoundInternal() {
+        this.stateSoundCoordinator.playRoundStartSound();
+    }
+
+    void restoreDisplaysIfNeededInternal() {
+        this.renderCoordinator.restoreDisplaysIfNeeded();
+    }
+
+    void flushViewerPresentationIfNeededInternal() {
+        this.viewerPresentation.flushIfNeeded();
+    }
+
+    boolean hasQueuedLeavesInternal() {
+        return this.participants.hasQueuedLeaves();
+    }
+
+    Set<UUID> queuedLeavePlayersInternal() {
+        return this.participants.queuedLeavePlayers();
+    }
+
+    void removeQueuedLeavesInternal(List<UUID> removedPlayerIds) {
+        this.participants.removeQueuedLeaves(removedPlayerIds);
+    }
+
     private MahjongRule copyRule() {
         return copyRule(this.configuredRule);
     }
@@ -1140,16 +1163,32 @@ public final class MahjongTableSession {
         this.roundLifecycle.scheduleNextRoundCountdown();
     }
 
+    void scheduleNextRoundCountdownInternal() {
+        this.scheduleNextRoundCountdown();
+    }
+
     private boolean hasNextRoundCountdown() {
         return this.roundLifecycle.hasNextRoundCountdown();
+    }
+
+    boolean hasNextRoundCountdownInternal() {
+        return this.hasNextRoundCountdown();
     }
 
     private void cancelNextRoundCountdown() {
         this.roundLifecycle.cancelNextRoundCountdown();
     }
 
+    void cancelNextRoundCountdownInternal() {
+        this.cancelNextRoundCountdown();
+    }
+
     private long nextRoundSecondsRemaining() {
         return this.roundLifecycle.nextRoundSecondsRemaining();
+    }
+
+    long nextRoundSecondsRemainingInternal() {
+        return this.nextRoundSecondsRemaining();
     }
 
     public long nextRoundSecondsRemainingValue() {
@@ -1322,64 +1361,6 @@ public final class MahjongTableSession {
             }
             this.plugin.messages().send(player, "command.ready_prompt");
         }
-    }
-
-    private boolean maybeStartRoundIfReady() {
-        if (this.isStarted() || this.roundStartInProgress || this.size() != 4) {
-            return false;
-        }
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null || !this.isReady(playerId)) {
-                return false;
-            }
-        }
-        this.startRound();
-        this.stateSoundCoordinator.playRoundStartSound();
-        return true;
-    }
-
-    private void processDeferredLeaves() {
-        if (!this.participants.hasQueuedLeaves() || this.isStarted()) {
-            return;
-        }
-        Map<UUID, SeatWind> removed = new LinkedHashMap<>();
-        for (UUID playerId : this.participants.queuedLeavePlayers()) {
-            SeatWind wind = this.seatOf(playerId);
-            if (this.removePlayer(playerId)) {
-                removed.put(playerId, wind);
-            }
-        }
-        if (removed.isEmpty()) {
-            return;
-        }
-        this.participants.removeQueuedLeaves(new ArrayList<>(removed.keySet()));
-        if (this.plugin.tableManager() != null) {
-            this.plugin.tableManager().finalizeDeferredLeaves(this, removed);
-        }
-    }
-
-    private void handleBotMatchAutoNextRound() {
-        if (!this.botMatchRoom || !this.hasOnlyBotsSeated()) {
-            this.cancelNextRoundCountdown();
-            return;
-        }
-        if (!this.hasNextRoundCountdown()) {
-            this.scheduleNextRoundCountdown();
-            this.render();
-            return;
-        }
-        if (this.nextRoundSecondsRemaining() > 0L) {
-            return;
-        }
-        if (this.maybeStartRoundIfReady()) {
-            return;
-        }
-        this.cancelNextRoundCountdown();
-    }
-
-    private boolean hasOnlyBotsSeated() {
-        return this.size() == 4 && this.botCount() == 4;
     }
 
     private static Location normalizedTableCenter(Location source) {
