@@ -23,11 +23,8 @@ final class SessionRoundFlowCoordinator {
         if (this.session.size() != 4) {
             throw new IllegalStateException("A table needs exactly 4 players");
         }
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.session.playerAt(wind);
-            if (playerId == null || !this.session.isReady(playerId)) {
-                throw new IllegalStateException("All seated players must be ready");
-            }
+        if (!this.allSeatsReady()) {
+            throw new IllegalStateException("All seated players must be ready");
         }
 
         this.session.cancelNextRoundCountdownInternal();
@@ -51,14 +48,8 @@ final class SessionRoundFlowCoordinator {
     }
 
     boolean maybeStartRoundIfReady() {
-        if (this.session.isStarted() || this.session.isRoundStartInProgress() || this.session.size() != 4) {
+        if (this.session.isStarted() || this.session.isRoundStartInProgress() || this.session.size() != 4 || !this.allSeatsReady()) {
             return false;
-        }
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.session.playerAt(wind);
-            if (playerId == null || !this.session.isReady(playerId)) {
-                return false;
-            }
         }
         this.startRound();
         this.session.playRoundStartSoundInternal();
@@ -113,5 +104,15 @@ final class SessionRoundFlowCoordinator {
             return;
         }
         this.session.cancelNextRoundCountdownInternal();
+    }
+
+    private boolean allSeatsReady() {
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = this.session.playerAt(wind);
+            if (playerId == null || !this.session.isReady(playerId)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

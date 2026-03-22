@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import org.bukkit.entity.Player;
 
 final class SessionViewerIndex {
@@ -14,15 +15,11 @@ final class SessionViewerIndex {
     }
 
     List<Player> viewers() {
-        List<Player> viewers = new ArrayList<>(this.session.size() + this.session.spectatorCount());
-        this.forEachOnlineViewer(null, (viewerId, player) -> viewers.add(player));
-        return viewers;
+        return this.collectOnlineViewers(null, (viewerId, player) -> player);
     }
 
     List<UUID> viewerIdsExcluding(UUID excludedPlayerId) {
-        List<UUID> viewerIds = new ArrayList<>(this.session.size() + this.session.spectatorCount());
-        this.forEachOnlineViewer(excludedPlayerId, (viewerId, player) -> viewerIds.add(viewerId));
-        return List.copyOf(viewerIds);
+        return List.copyOf(this.collectOnlineViewers(excludedPlayerId, (viewerId, player) -> viewerId));
     }
 
     String viewerMembershipSignatureFor(UUID excludedPlayerId) {
@@ -48,5 +45,11 @@ final class SessionViewerIndex {
         if (player != null) {
             consumer.accept(viewerId, player);
         }
+    }
+
+    private <T> List<T> collectOnlineViewers(UUID excludedPlayerId, BiFunction<UUID, Player, T> mapper) {
+        List<T> values = new ArrayList<>(this.session.size() + this.session.spectatorCount());
+        this.forEachOnlineViewer(excludedPlayerId, (viewerId, player) -> values.add(mapper.apply(viewerId, player)));
+        return values;
     }
 }

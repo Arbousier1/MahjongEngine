@@ -4,6 +4,7 @@ import doublemoon.mahjongcraft.paper.model.SeatWind;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,23 +16,24 @@ final class TableParticipantRegistry {
     private final List<UUID> seats = new ArrayList<>(Collections.nCopies(4, null));
     private final Set<UUID> spectators = new LinkedHashSet<>();
     private final Map<UUID, String> botNames = new LinkedHashMap<>();
+    private final Map<UUID, SeatWind> seatByPlayer = new HashMap<>(4);
     private final Set<UUID> readyPlayers = new LinkedHashSet<>();
     private final Set<UUID> leaveAfterRoundPlayers = new LinkedHashSet<>();
+    private int occupiedSeatCount;
     private int nextBotNumber = 1;
 
     boolean addPlayer(UUID playerId, SeatWind wind) {
-        if (playerId == null || wind == null || this.seats.contains(playerId) || this.seats.get(wind.index()) != null || this.size() >= 4) {
+        if (playerId == null || wind == null || this.seatByPlayer.containsKey(playerId) || this.seats.get(wind.index()) != null || this.occupiedSeatCount >= 4) {
             return false;
         }
         this.spectators.remove(playerId);
-        this.seats.set(wind.index(), playerId);
-        this.leaveAfterRoundPlayers.remove(playerId);
-        this.readyPlayers.remove(playerId);
+        this.occupySeat(playerId, wind);
+        this.clearPlayerStates(playerId);
         return true;
     }
 
     boolean addSpectator(UUID playerId, boolean spectateAllowed) {
-        if (!spectateAllowed || playerId == null || this.seats.contains(playerId) || this.spectators.contains(playerId)) {
+        if (!spectateAllowed || playerId == null || this.seatByPlayer.containsKey(playerId) || this.spectators.contains(playerId)) {
             return false;
         }
         this.spectators.add(playerId);
@@ -47,7 +49,7 @@ final class TableParticipantRegistry {
         do {
             botId = UUID.nameUUIDFromBytes((tableId + "-bot-" + this.nextBotNumber).getBytes(StandardCharsets.UTF_8));
             this.nextBotNumber++;
-        } while (this.seats.contains(botId));
+        } while (this.seatByPlayer.containsKey(botId));
         return botId;
     }
 
@@ -56,7 +58,7 @@ final class TableParticipantRegistry {
         if (botId == null || emptySeat == null) {
             return false;
         }
-        this.seats.set(emptySeat.index(), botId);
+        this.occupySeat(botId, emptySeat);
         this.botNames.put(botId, "Bot-" + this.botNames.size());
         this.readyPlayers.add(botId);
         this.leaveAfterRoundPlayers.remove(botId);
@@ -72,12 +74,11 @@ final class TableParticipantRegistry {
             return false;
         }
         this.botNames.remove(seated);
-        this.readyPlayers.remove(seated);
-        this.leaveAfterRoundPlayers.remove(seated);
+        this.clearPlayerStates(seated);
         this.spectators.remove(playerId);
-        this.seats.set(wind.index(), playerId);
-        this.readyPlayers.remove(playerId);
-        this.leaveAfterRoundPlayers.remove(playerId);
+        this.vacateSeat(wind);
+        this.occupySeat(playerId, wind);
+        this.clearPlayerStates(playerId);
         return true;
     }
 
@@ -85,10 +86,9 @@ final class TableParticipantRegistry {
         for (int i = this.seats.size() - 1; i >= 0; i--) {
             UUID playerId = this.seats.get(i);
             if (playerId != null && this.botNames.containsKey(playerId)) {
-                this.seats.set(i, null);
+                this.vacateSeat(SeatWind.fromIndex(i));
                 this.botNames.remove(playerId);
-                this.readyPlayers.remove(playerId);
-                this.leaveAfterRoundPlayers.remove(playerId);
+                this.clearPlayerStates(playerId);
                 return playerId;
             }
         }
@@ -97,32 +97,25 @@ final class TableParticipantRegistry {
 
     boolean removePlayer(UUID playerId) {
         this.botNames.remove(playerId);
-        this.readyPlayers.remove(playerId);
-        this.leaveAfterRoundPlayers.remove(playerId);
-        int seatIndex = this.seats.indexOf(playerId);
-        if (seatIndex < 0) {
+        this.clearPlayerStates(playerId);
+        SeatWind wind = this.seatByPlayer.get(playerId);
+        if (wind == null) {
             return false;
         }
-        this.seats.set(seatIndex, null);
+        this.vacateSeat(wind);
         return true;
     }
 
     boolean contains(UUID playerId) {
-        return this.seats.contains(playerId);
+        return this.seatByPlayer.containsKey(playerId);
     }
 
     boolean isEmpty() {
-        return this.size() == 0;
+        return this.occupiedSeatCount == 0;
     }
 
     int size() {
-        int occupied = 0;
-        for (UUID playerId : this.seats) {
-            if (playerId != null) {
-                occupied++;
-            }
-        }
-        return occupied;
+        return this.occupiedSeatCount;
     }
 
     int botCount() {
@@ -156,8 +149,9 @@ final class TableParticipantRegistry {
 
     int readyCount() {
         int ready = 0;
-        for (UUID playerId : this.seats) {
-            if (playerId != null && this.isReady(playerId)) {
+        for (Map.Entry<UUID, SeatWind> entry : this.seatByPlayer.entrySet()) {
+            UUID playerId = entry.getKey();
+            if (this.isReady(playerId)) {
                 ready++;
             }
         }
@@ -223,7 +217,8 @@ final class TableParticipantRegistry {
     }
 
     int seatIndexOf(UUID playerId) {
-        return this.seats.indexOf(playerId);
+        SeatWind wind = this.seatByPlayer.get(playerId);
+        return wind == null ? -1 : wind.index();
     }
 
     void clearReadyPlayers() {
@@ -253,9 +248,31 @@ final class TableParticipantRegistry {
 
     void clearSeats() {
         Collections.fill(this.seats, null);
+        this.seatByPlayer.clear();
+        this.occupiedSeatCount = 0;
     }
 
     void resetBotCounter() {
         this.nextBotNumber = 1;
+    }
+
+    private void occupySeat(UUID playerId, SeatWind wind) {
+        this.seats.set(wind.index(), playerId);
+        this.seatByPlayer.put(playerId, wind);
+        this.occupiedSeatCount++;
+    }
+
+    private void vacateSeat(SeatWind wind) {
+        UUID previous = this.seats.get(wind.index());
+        if (previous != null) {
+            this.seatByPlayer.remove(previous);
+            this.occupiedSeatCount--;
+        }
+        this.seats.set(wind.index(), null);
+    }
+
+    private void clearPlayerStates(UUID playerId) {
+        this.readyPlayers.remove(playerId);
+        this.leaveAfterRoundPlayers.remove(playerId);
     }
 }
