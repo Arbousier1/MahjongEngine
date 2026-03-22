@@ -10,7 +10,7 @@ plugins {
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
-group = "doublemoon.mahjongcraft"
+group = "top.ellan"
 version = "0.6.2"
 
 val kotlinRuntimeVersion = "2.3.20"

@@ -1,0 +1,739 @@
+package top.ellan.mahjong.render.layout;
+
+import top.ellan.mahjong.model.MahjongTile;
+import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.display.DisplayEntities;
+import top.ellan.mahjong.render.scene.MeldView;
+import top.ellan.mahjong.riichi.model.ScoringStick;
+import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableRenderSnapshot;
+import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+
+public final class TableRenderLayout {
+    private static final double ONE_SIXTEENTH = 1.0D / 16.0D;
+    private static final double TILE_WIDTH = 0.1125D;
+    private static final double TILE_HEIGHT = 0.15D;
+    private static final double TILE_DEPTH = 0.075D;
+    private static final double TILE_PADDING = 0.0025D;
+    private static final double STICK_WIDTH = 0.4D;
+    private static final double STICK_HEIGHT = 0.0125D;
+    private static final double STICK_DEPTH = 0.0625D;
+    private static final double STICK_Y_OFFSET = 0.515625D;
+    private static final int STICKS_PER_STACK = 5;
+    private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
+    private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
+    private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
+    private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
+    private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
+    private static final double WALL_DIRECTION_OFFSET = 1.0D;
+    private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;
+    private static final double HALF_TABLE_LENGTH_NO_BORDER = 0.5D + 15.0D / 16.0D;
+    private static final double DEAD_WALL_GAP = TILE_PADDING * 20.0D;
+    private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
+    private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
+    private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
+    private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
+    private static final double SELECTED_HAND_TILE_Y_OFFSET = 0.06D;
+    private static final int WALL_TILES_PER_SIDE = 34;
+    private static final int TOTAL_WALL_TILES = 136;
+    private static final int DEAD_WALL_SIZE = 14;
+    private static final int LIVE_WALL_SIZE = TOTAL_WALL_TILES - DEAD_WALL_SIZE;
+    private static final int DISCARDS_PER_ROW = 6;
+
+    private TableRenderLayout() {
+    }
+
+    public static LayoutPlan precompute(TableRenderSnapshot snapshot) {
+        Point displayCenter = new Point(snapshot.centerX(), snapshot.centerY() + DISPLAY_CENTER_Y_OFFSET, snapshot.centerZ());
+        TableBounds bounds = tableBoundsFromTiles(displayCenter);
+        Point tableCenter = new Point(bounds.centerX(), displayCenter.y(), bounds.centerZ());
+        Point tableVisualAnchor = new Point(tableCenter.x(), tableCenter.y() + TABLE_VISUAL_Y_OFFSET, tableCenter.z());
+        double borderSpanX = bounds.width() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS;
+        double borderSpanZ = bounds.depth() + TABLE_TOP_SIZE_EXPANSION + TABLE_BORDER_THICKNESS;
+
+        EnumMap<SeatWind, SeatLayoutPlan> seats = new EnumMap<>(SeatWind.class);
+        for (SeatWind wind : SeatWind.values()) {
+            TableSeatRenderSnapshot seat = snapshot.seat(wind);
+            seats.put(wind, precomputeSeat(displayCenter, snapshot, seat));
+        }
+
+        return new LayoutPlan(
+            displayCenter,
+            tableCenter,
+            tableVisualAnchor,
+            borderSpanX,
+            borderSpanZ,
+            seats,
+            precomputeWall(displayCenter, snapshot),
+            precomputeDora(displayCenter, snapshot)
+        );
+    }
+
+    private static SeatLayoutPlan precomputeSeat(
+        Point displayCenter,
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat
+    ) {
+        SeatWind wind = seat.wind();
+        Point handBase = handDirectionBase(displayCenter, wind);
+        Point statusLabelLocation = handBase.add(0.0D, 0.45D + FLOATING_TEXT_Y_OFFSET, 0.0D);
+        Point playerNameLocation = handBase.add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D);
+        Point interactionLocation = handBase.add(0.0D, 0.18D + FLOATING_TEXT_Y_OFFSET, 0.0D);
+        float yaw = seatYaw(wind);
+        if (seat.playerId() == null) {
+            return new SeatLayoutPlan(
+                wind,
+                handBase,
+                statusLabelLocation,
+                playerNameLocation,
+                interactionLocation,
+                yaw,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+            );
+        }
+
+        List<Point> publicHandPoints = new ArrayList<>(seat.hand().size());
+        List<Point> privateHandPoints = new ArrayList<>(seat.hand().size());
+        for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
+            publicHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, false));
+            privateHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, tileIndex == seat.selectedHandTileIndex()));
+        }
+
+        return new SeatLayoutPlan(
+            wind,
+            handBase,
+            statusLabelLocation,
+            playerNameLocation,
+            interactionLocation,
+            yaw,
+            List.copyOf(publicHandPoints),
+            List.copyOf(privateHandPoints),
+            precomputeDiscards(displayCenter, seat, snapshot.openDoorSeat()),
+            precomputeMelds(displayCenter, seat),
+            precomputeSticks(displayCenter, seat)
+        );
+    }
+
+    private static List<TilePlacement> precomputeWall(Point displayCenter, TableRenderSnapshot snapshot) {
+        if (!snapshot.started()) {
+            return List.of();
+        }
+        int liveWallCount = snapshot.remainingWallCount();
+        int kanCount = snapshot.kanCount();
+        int frontDrawCount = Math.max(0, LIVE_WALL_SIZE - liveWallCount - kanCount);
+        boolean[] doraSlots = new boolean[DEAD_WALL_SIZE];
+        for (int i = 0; i < snapshot.doraIndicators().size(); i++) {
+            int deadWallIndex = doraIndicatorDeadWallIndex(kanCount, i);
+            if (deadWallIndex >= 0 && deadWallIndex < doraSlots.length) {
+                doraSlots[deadWallIndex] = true;
+            }
+        }
+
+        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(displayCenter, snapshot);
+        List<TilePlacement> placements = new ArrayList<>(TOTAL_WALL_TILES);
+        for (int i = 0; i < TOTAL_WALL_TILES; i++) {
+            placements.add(null);
+        }
+        int breakTileIndex = wallBreakTileIndex(snapshot);
+        for (int i = 0; i < liveWallCount; i++) {
+            int wallSlot = Math.floorMod(breakTileIndex + frontDrawCount + i, TOTAL_WALL_TILES);
+            SeatWind wind = WallLayout.wallSeat(wallSlot);
+            Point point = wallSlotPoint(displayCenter, wallSlot);
+            if (kanCount % 2 == 1 && i == liveWallCount - 1) {
+                point = point.add(0.0D, -TILE_DEPTH, 0.0D);
+            }
+            placements.set(wallSlot, new TilePlacement(point, seatYaw(wind), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
+        }
+
+        for (int i = 0; i < DEAD_WALL_SIZE; i++) {
+            if (doraSlots[i]) {
+                continue;
+            }
+            DeadWallPlacement placement = deadWallPlacements.get(i);
+            placements.set(placement.wallSlot(), new TilePlacement(placement.point(), placement.yaw(), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
+        }
+        return Collections.unmodifiableList(new ArrayList<>(placements));
+    }
+
+    private static List<TilePlacement> precomputeDora(Point displayCenter, TableRenderSnapshot snapshot) {
+        if (!snapshot.started()) {
+            return List.of();
+        }
+        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(displayCenter, snapshot);
+        List<TilePlacement> placements = new ArrayList<>(snapshot.doraIndicators().size());
+        for (int i = 0; i < snapshot.doraIndicators().size(); i++) {
+            DeadWallPlacement placement = deadWallPlacements.get(doraIndicatorDeadWallIndex(snapshot.kanCount(), i));
+            placements.add(new TilePlacement(placement.point(), placement.yaw(), snapshot.doraIndicators().get(i), DisplayEntities.TileRenderPose.FLAT_FACE_UP));
+        }
+        return List.copyOf(placements);
+    }
+
+    private static List<StickPlacement> precomputeSticks(Point displayCenter, TableSeatRenderSnapshot seat) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+        List<StickPlacement> placements = new ArrayList<>(seat.cornerSticks().size() + (seat.riichi() ? 1 : 0));
+        for (int i = 0; i < seat.cornerSticks().size(); i++) {
+            placements.add(new StickPlacement(cornerStickCenter(displayCenter, seat.wind(), i), cornerStickLongOnX(seat.wind()), seat.cornerSticks().get(i)));
+        }
+        if (seat.riichi()) {
+            placements.add(new StickPlacement(riichiStickCenter(displayCenter, seat.wind()), riichiStickLongOnX(seat.wind()), ScoringStick.P1000));
+        }
+        return List.copyOf(placements);
+    }
+
+    private static List<TilePlacement> precomputeDiscards(
+        Point displayCenter,
+        TableSeatRenderSnapshot seat,
+        SeatWind openDoorSeat
+    ) {
+        if (seat.playerId() == null) {
+            return List.of();
+        }
+        List<TilePlacement> placements = new ArrayList<>(seat.discards().size());
+        Point start = discardStart(displayCenter, seat.wind());
+        Point cursor = start;
+        boolean openDoorSeatMatches = openDoorSeat == seat.wind();
+
+        for (int discardIndex = 0; discardIndex < seat.discards().size(); discardIndex++) {
+            int lineCount = discardIndex / DISCARDS_PER_ROW;
+            int column = discardIndex % DISCARDS_PER_ROW;
+            boolean firstTileInRow = column == 0;
+            boolean riichiTile = discardIndex == seat.riichiDiscardIndex();
+            boolean previousWasRiichi = discardIndex > 0 && discardIndex - 1 == seat.riichiDiscardIndex();
+
+            if (lineCount > 0 && firstTileInRow && !(openDoorSeatMatches && discardIndex >= DISCARDS_PER_ROW * 3)) {
+                cursor = start;
+                for (int i = 0; i < lineCount; i++) {
+                    cursor = add(cursor, lineOffset(seat.wind()));
+                }
+            }
+
+            if (firstTileInRow) {
+                if (riichiTile) {
+                    cursor = add(cursor, riichiTileOffset(seat.wind()));
+                    cursor = add(cursor, negate(tileOffset(seat.wind())));
+                }
+            } else {
+                cursor = riichiTile || previousWasRiichi
+                    ? add(cursor, riichiTileOffset(seat.wind()))
+                    : add(cursor, tileOffset(seat.wind()));
+                cursor = add(cursor, smallGapOffset(seat.wind()));
+            }
+
+            placements.add(new TilePlacement(
+                cursor.add(0.0D, FLAT_TILE_Y, 0.0D),
+                DiscardLayout.discardYaw(seat.wind(), riichiTile),
+                seat.discards().get(discardIndex),
+                DisplayEntities.TileRenderPose.FLAT_FACE_UP
+            ));
+        }
+        return List.copyOf(placements);
+    }
+
+    private static List<TilePlacement> precomputeMelds(Point displayCenter, TableSeatRenderSnapshot seat) {
+        if (seat.playerId() == null || seat.melds().isEmpty()) {
+            return List.of();
+        }
+
+        float yaw = seatYaw(seat.wind());
+        List<TilePlacement> placements = new ArrayList<>();
+        Point cursor = meldStart(displayCenter, seat.wind());
+        int stickCount = seat.stickLayoutCount();
+        if (stickCount > 0) {
+            cursor = add(cursor, cornerStickMeldOffset(seat.wind(), Math.min(stickCount, STICKS_PER_STACK)));
+        }
+        Point lastClaimBase = null;
+        boolean lastTileWasHorizontal = false;
+        int placedTileCount = 0;
+
+        for (MeldView meld : seat.melds()) {
+            boolean concealedKan = meld.tiles().size() == 4 && meld.faceDownAt(0) && meld.faceDownAt(meld.tiles().size() - 1);
+            if (concealedKan) {
+                for (int i = 0; i < meld.tiles().size(); i++) {
+                    if (placedTileCount == 0) {
+                        cursor = add(cursor, halfVerticalTileOffset(seat.wind()));
+                    } else if (lastTileWasHorizontal) {
+                        cursor = add(cursor, add(halfHorizontalTileOffset(seat.wind()), halfVerticalTileOffset(seat.wind())));
+                    } else {
+                        cursor = add(cursor, verticalTileOffset(seat.wind()));
+                    }
+                    placements.add(new TilePlacement(
+                        cursor.add(0.0D, FLAT_TILE_Y, 0.0D),
+                        yaw,
+                        meld.tiles().get(i),
+                        meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP
+                    ));
+                    placedTileCount++;
+                }
+                lastClaimBase = null;
+                lastTileWasHorizontal = false;
+                continue;
+            }
+
+            for (int i = 0; i < meld.tiles().size(); i++) {
+                boolean claimTile = meld.hasClaimTile() && i == meld.claimTileIndex();
+                if (placedTileCount == 0) {
+                    cursor = add(cursor, claimTile ? halfHorizontalTileOffset(seat.wind()) : halfVerticalTileOffset(seat.wind()));
+                } else if (claimTile || lastTileWasHorizontal) {
+                    cursor = claimTile && lastTileWasHorizontal
+                        ? add(cursor, horizontalTileOffset(seat.wind()))
+                        : add(cursor, add(halfHorizontalTileOffset(seat.wind()), halfVerticalTileOffset(seat.wind())));
+                } else {
+                    cursor = add(cursor, verticalTileOffset(seat.wind()));
+                }
+
+                Point basePoint = claimTile ? add(cursor, horizontalTileGravityOffset(seat.wind())) : cursor;
+                placements.add(new TilePlacement(
+                    basePoint.add(0.0D, FLAT_TILE_Y, 0.0D),
+                    claimTile ? yaw + meld.claimYawOffset() : yaw,
+                    meld.tiles().get(i),
+                    meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP
+                ));
+                if (claimTile) {
+                    lastClaimBase = basePoint;
+                }
+                lastTileWasHorizontal = claimTile;
+                placedTileCount++;
+            }
+
+            if (meld.hasAddedKanTile() && lastClaimBase != null) {
+                placements.add(new TilePlacement(
+                    lastClaimBase.add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    yaw + meld.claimYawOffset(),
+                    meld.addedKanTile(),
+                    DisplayEntities.TileRenderPose.FLAT_FACE_UP
+                ));
+                lastClaimBase = null;
+                lastTileWasHorizontal = false;
+            }
+        }
+        return List.copyOf(placements);
+    }
+
+    private static Point handTilePoint(
+        Point displayCenter,
+        TableSeatRenderSnapshot seat,
+        SeatWind wind,
+        int tileIndex,
+        boolean selected
+    ) {
+        Point handBase = handDirectionBase(displayCenter, wind);
+        int handSize = seat.hand().size();
+        int meldCount = seat.melds().size();
+        double fuuroOffset = meldCount < 3 ? 0.0D : (meldCount - 2.0D) * TILE_WIDTH;
+        int stickCount = seat.stickLayoutCount();
+        double sticksOffset = stickCount < 3 ? 0.0D : (stickCount - 2.0D) * STICK_DEPTH;
+        double startingPos = (handSize * TILE_WIDTH + Math.max(0, handSize - 1) * TILE_PADDING) / 2.0D + fuuroOffset + sticksOffset;
+        double drawGap = tileIndex == handSize - 1 && handSize % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
+        double stackOffset = tileIndex * (TILE_WIDTH + TILE_PADDING) + drawGap;
+        double tileYOffset = selected ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
+        return switch (wind) {
+            case EAST -> handBase.add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
+            case SOUTH -> handBase.add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
+            case WEST -> handBase.add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
+            case NORTH -> handBase.add(startingPos - stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
+        };
+    }
+
+    private static int wallBreakTileIndex(TableRenderSnapshot snapshot) {
+        int seatCount = SeatWind.values().length;
+        int dicePoints = snapshot.dicePoints();
+        int directionIndex = 4 - (((dicePoints % seatCount) - 1 + snapshot.roundIndex()) % seatCount);
+        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + dicePoints * 2, TOTAL_WALL_TILES);
+    }
+
+    private static int doraIndicatorDeadWallIndex(int kanCount, int indicatorIndex) {
+        return (4 - indicatorIndex) * 2 + kanCount;
+    }
+
+    private static TableBounds tableBoundsFromTiles(Point center) {
+        Point eastMeldStart = meldStart(center, SeatWind.EAST);
+        Point southMeldStart = meldStart(center, SeatWind.SOUTH);
+        Point westMeldStart = meldStart(center, SeatWind.WEST);
+        Point northMeldStart = meldStart(center, SeatWind.NORTH);
+        double halfTileHeight = TILE_HEIGHT / 2.0D;
+        double minX = northMeldStart.x();
+        double maxX = southMeldStart.x();
+        double minZ = eastMeldStart.z();
+        double maxZ = westMeldStart.z();
+        double centerX = (westMeldStart.x() - halfTileHeight + maxX) / 2.0D;
+        double centerZ = (northMeldStart.z() - halfTileHeight + maxZ) / 2.0D;
+        return new TableBounds(centerX, centerZ, minX, maxX, minZ, maxZ);
+    }
+
+    private static Point wallSlotPoint(Point center, int wallSlot) {
+        SeatWind wind = WallLayout.wallSeat(wallSlot);
+        int stackIndex = WallLayout.wallColumn(wallSlot);
+        double stackWidth = stackIndex * WALL_TILE_STEP;
+        double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
+        double yOffset = FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(wallSlot));
+        return switch (wind) {
+            case EAST -> center.add(WALL_DIRECTION_OFFSET, yOffset, -startingPos + stackWidth);
+            case SOUTH -> center.add(startingPos - stackWidth, yOffset, WALL_DIRECTION_OFFSET);
+            case WEST -> center.add(-WALL_DIRECTION_OFFSET, yOffset, startingPos - stackWidth);
+            case NORTH -> center.add(-startingPos + stackWidth, yOffset, -WALL_DIRECTION_OFFSET);
+        };
+    }
+
+    private static double wallLayerYOffset(int layer) {
+        return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
+    }
+
+    private static List<DeadWallPlacement> deadWallPlacements(Point center, TableRenderSnapshot snapshot) {
+        int breakTileIndex = wallBreakTileIndex(snapshot);
+        List<DeadWallPlacementMutable> placements = new ArrayList<>(DEAD_WALL_SIZE);
+        for (int i = 0; i < DEAD_WALL_SIZE; i++) {
+            int wallSlot = Math.floorMod(breakTileIndex - DEAD_WALL_SIZE + i, TOTAL_WALL_TILES);
+            SeatWind face = WallLayout.wallSeat(wallSlot);
+            placements.add(new DeadWallPlacementMutable(
+                wallSlot,
+                face,
+                seatYaw(face),
+                add(wallSlotPoint(center, wallSlot), deadWallGapOffset(face))
+            ));
+        }
+
+        SeatWind direction = placements.getLast().face();
+        List<DeadWallPlacementMutable> reversed = placements.reversed();
+        for (int index = 0; index < reversed.size(); index++) {
+            DeadWallPlacementMutable placement = reversed.get(index);
+            if (placement.face() == direction) {
+                continue;
+            }
+
+            placement.setYaw(seatYaw(direction));
+            if (index % 2 == 0) {
+                Offset shift = deadWallCornerShift(direction);
+                for (DeadWallPlacementMutable other : reversed) {
+                    other.shift(shift.x(), shift.z());
+                }
+            }
+
+            Point base = reversed.getFirst().point();
+            double positionY = reversed.get(index % 2 == 0 ? 0 : 1).point().y();
+            double offset = WALL_TILE_STEP * (index / 2);
+            placement.setPoint(switch (direction) {
+                case EAST -> new Point(base.x(), positionY, base.z() - offset);
+                case SOUTH -> new Point(base.x() + offset, positionY, base.z());
+                case WEST -> new Point(base.x(), positionY, base.z() + offset);
+                case NORTH -> new Point(base.x() - offset, positionY, base.z());
+            });
+        }
+
+        List<DeadWallPlacement> result = new ArrayList<>(placements.size());
+        for (DeadWallPlacementMutable placement : placements) {
+            result.add(new DeadWallPlacement(placement.wallSlot(), placement.point(), placement.yaw()));
+        }
+        return result;
+    }
+
+    private static float seatYaw(SeatWind wind) {
+        return DiscardLayout.seatYaw(wind);
+    }
+
+    private static Point handDirectionBase(Point center, SeatWind wind) {
+        return switch (wind) {
+            case EAST -> center.add(HAND_DIRECTION_OFFSET, 0.0D, 0.0D);
+            case SOUTH -> center.add(0.0D, 0.0D, HAND_DIRECTION_OFFSET);
+            case WEST -> center.add(-HAND_DIRECTION_OFFSET, 0.0D, 0.0D);
+            case NORTH -> center.add(0.0D, 0.0D, -HAND_DIRECTION_OFFSET);
+        };
+    }
+
+    private static Point discardStart(Point center, SeatWind wind) {
+        double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
+        double paddingFromCenter = halfWidthOfSixTiles + TILE_HEIGHT / 2.0D + TILE_HEIGHT / 4.0D;
+        double basicOffset = halfWidthOfSixTiles - TILE_WIDTH / 2.0D;
+        return switch (wind) {
+            case EAST -> center.add(paddingFromCenter, 0.0D, basicOffset);
+            case SOUTH -> center.add(-basicOffset, 0.0D, paddingFromCenter);
+            case WEST -> center.add(-paddingFromCenter, 0.0D, -basicOffset);
+            case NORTH -> center.add(basicOffset, 0.0D, -paddingFromCenter);
+        };
+    }
+
+    private static Point meldStart(Point center, SeatWind wind) {
+        double halfHeight = TILE_HEIGHT / 2.0D;
+        return switch (wind) {
+            case EAST -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfHeight, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER);
+            case SOUTH -> center.add(HALF_TABLE_LENGTH_NO_BORDER, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfHeight);
+            case WEST -> center.add(-HALF_TABLE_LENGTH_NO_BORDER + halfHeight, 0.0D, HALF_TABLE_LENGTH_NO_BORDER);
+            case NORTH -> center.add(-HALF_TABLE_LENGTH_NO_BORDER, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfHeight);
+        };
+    }
+
+    private static Point riichiStickCenter(Point center, SeatWind wind) {
+        double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
+        double paddingFromCenter = halfWidthOfSixTiles - STICK_DEPTH / 2.0D;
+        return switch (wind) {
+            case EAST -> center.add(paddingFromCenter, STICK_Y_OFFSET, 0.0D);
+            case SOUTH -> center.add(0.0D, STICK_Y_OFFSET, paddingFromCenter);
+            case WEST -> center.add(-paddingFromCenter, STICK_Y_OFFSET, 0.0D);
+            case NORTH -> center.add(0.0D, STICK_Y_OFFSET, -paddingFromCenter);
+        };
+    }
+
+    private static boolean riichiStickLongOnX(SeatWind wind) {
+        return wind == SeatWind.SOUTH || wind == SeatWind.NORTH;
+    }
+
+    private static Point cornerStickCenter(Point center, SeatWind wind, int index) {
+        int stackIndex = index / STICKS_PER_STACK;
+        int stickIndex = index % STICKS_PER_STACK;
+        double halfWidthOfStick = STICK_WIDTH / 2.0D;
+        double halfDepthOfStick = STICK_DEPTH / 2.0D;
+        Point start = switch (wind) {
+            case EAST -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick);
+            case SOUTH -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick);
+            case WEST -> center.add(-HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick);
+            case NORTH -> center.add(-HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick);
+        };
+        return add(start, multiply(cornerStickOffset(wind), stickIndex)).add(0.0D, STICK_Y_OFFSET + stackIndex * (STICK_HEIGHT + TILE_PADDING), 0.0D);
+    }
+
+    private static boolean cornerStickLongOnX(SeatWind wind) {
+        return wind == SeatWind.EAST || wind == SeatWind.WEST;
+    }
+
+    private static Offset cornerStickOffset(SeatWind wind) {
+        double amount = STICK_DEPTH + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset cornerStickMeldOffset(SeatWind wind, int firstStackCount) {
+        double amount = firstStackCount * STICK_DEPTH + Math.max(0, firstStackCount - 1) * TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset deadWallGapOffset(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, DEAD_WALL_GAP);
+            case SOUTH -> new Offset(-DEAD_WALL_GAP, 0.0D);
+            case WEST -> new Offset(0.0D, -DEAD_WALL_GAP);
+            case NORTH -> new Offset(DEAD_WALL_GAP, 0.0D);
+        };
+    }
+
+    private static Offset deadWallCornerShift(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, TILE_WIDTH);
+            case SOUTH -> new Offset(-TILE_WIDTH, 0.0D);
+            case WEST -> new Offset(0.0D, -TILE_WIDTH);
+            case NORTH -> new Offset(TILE_WIDTH, 0.0D);
+        };
+    }
+
+    private static Offset tileOffset(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, -TILE_WIDTH);
+            case SOUTH -> new Offset(TILE_WIDTH, 0.0D);
+            case WEST -> new Offset(0.0D, TILE_WIDTH);
+            case NORTH -> new Offset(-TILE_WIDTH, 0.0D);
+        };
+    }
+
+    private static Offset riichiTileOffset(SeatWind wind) {
+        double amount = (TILE_HEIGHT + TILE_WIDTH) / 2.0D;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, -amount);
+            case SOUTH -> new Offset(amount, 0.0D);
+            case WEST -> new Offset(0.0D, amount);
+            case NORTH -> new Offset(-amount, 0.0D);
+        };
+    }
+
+    private static Offset lineOffset(SeatWind wind) {
+        double amount = TILE_HEIGHT + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(amount, 0.0D);
+            case SOUTH -> new Offset(0.0D, amount);
+            case WEST -> new Offset(-amount, 0.0D);
+            case NORTH -> new Offset(0.0D, -amount);
+        };
+    }
+
+    private static Offset smallGapOffset(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, -TILE_PADDING);
+            case SOUTH -> new Offset(TILE_PADDING, 0.0D);
+            case WEST -> new Offset(0.0D, TILE_PADDING);
+            case NORTH -> new Offset(-TILE_PADDING, 0.0D);
+        };
+    }
+
+    private static Offset verticalTileOffset(SeatWind wind) {
+        double amount = TILE_WIDTH + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset halfVerticalTileOffset(SeatWind wind) {
+        return multiply(verticalTileOffset(wind), 0.5D);
+    }
+
+    private static Offset horizontalTileOffset(SeatWind wind) {
+        double amount = TILE_HEIGHT + TILE_PADDING;
+        return switch (wind) {
+            case EAST -> new Offset(0.0D, amount);
+            case SOUTH -> new Offset(-amount, 0.0D);
+            case WEST -> new Offset(0.0D, -amount);
+            case NORTH -> new Offset(amount, 0.0D);
+        };
+    }
+
+    private static Offset halfHorizontalTileOffset(SeatWind wind) {
+        return multiply(horizontalTileOffset(wind), 0.5D);
+    }
+
+    private static Offset horizontalTileGravityOffset(SeatWind wind) {
+        double amount = (TILE_HEIGHT - TILE_WIDTH) / 2.0D;
+        return switch (wind) {
+            case EAST -> new Offset(amount, 0.0D);
+            case SOUTH -> new Offset(0.0D, amount);
+            case WEST -> new Offset(-amount, 0.0D);
+            case NORTH -> new Offset(0.0D, -amount);
+        };
+    }
+
+    private static Point add(Point point, Offset offset) {
+        return point.add(offset.x(), 0.0D, offset.z());
+    }
+
+    private static Offset add(Offset first, Offset second) {
+        return new Offset(first.x() + second.x(), first.z() + second.z());
+    }
+
+    private static Offset multiply(Offset offset, double factor) {
+        return new Offset(offset.x() * factor, offset.z() * factor);
+    }
+
+    private static Offset negate(Offset offset) {
+        return multiply(offset, -1.0D);
+    }
+
+    public record LayoutPlan(
+        Point displayCenter,
+        Point tableCenter,
+        Point tableVisualAnchor,
+        double borderSpanX,
+        double borderSpanZ,
+        EnumMap<SeatWind, SeatLayoutPlan> seats,
+        List<TilePlacement> wallTiles,
+        List<TilePlacement> doraTiles
+    ) {
+        public SeatLayoutPlan seat(SeatWind wind) {
+            return this.seats.get(wind);
+        }
+    }
+
+    public record SeatLayoutPlan(
+        SeatWind wind,
+        Point handBase,
+        Point statusLabelLocation,
+        Point playerNameLocation,
+        Point interactionLocation,
+        float yaw,
+        List<Point> publicHandPoints,
+        List<Point> privateHandPoints,
+        List<TilePlacement> discardPlacements,
+        List<TilePlacement> meldPlacements,
+        List<StickPlacement> stickPlacements
+    ) {
+    }
+
+    public record Point(double x, double y, double z) {
+        Point add(double deltaX, double deltaY, double deltaZ) {
+            return new Point(this.x + deltaX, this.y + deltaY, this.z + deltaZ);
+        }
+    }
+
+    public record TilePlacement(Point point, float yaw, MahjongTile tile, DisplayEntities.TileRenderPose pose) {
+    }
+
+    public record StickPlacement(Point center, boolean longOnX, ScoringStick stick) {
+    }
+
+    private record Offset(double x, double z) {
+    }
+
+    private record TableBounds(double centerX, double centerZ, double minX, double maxX, double minZ, double maxZ) {
+        double width() {
+            return this.maxX - this.minX;
+        }
+
+        double depth() {
+            return this.maxZ - this.minZ;
+        }
+    }
+
+    private static final class DeadWallPlacementMutable {
+        private final int wallSlot;
+        private final SeatWind face;
+        private float yaw;
+        private Point point;
+
+        private DeadWallPlacementMutable(int wallSlot, SeatWind face, float yaw, Point point) {
+            this.wallSlot = wallSlot;
+            this.face = face;
+            this.yaw = yaw;
+            this.point = point;
+        }
+
+        private int wallSlot() {
+            return this.wallSlot;
+        }
+
+        private SeatWind face() {
+            return this.face;
+        }
+
+        private float yaw() {
+            return this.yaw;
+        }
+
+        private void setYaw(float yaw) {
+            this.yaw = yaw;
+        }
+
+        private Point point() {
+            return this.point;
+        }
+
+        private void setPoint(Point point) {
+            this.point = point;
+        }
+
+        private void shift(double deltaX, double deltaZ) {
+            this.point = this.point.add(deltaX, 0.0D, deltaZ);
+        }
+    }
+
+    private record DeadWallPlacement(int wallSlot, Point point, float yaw) {
+    }
+}
+
+
+

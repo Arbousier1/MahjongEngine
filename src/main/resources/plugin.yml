@@ -1,9 +1,10 @@
 name: MahjongPaper
-main: doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
+main: top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 version: ${version}
 api-version: "1.21.11"
 folia-supported: true
 author: openai and ellan
+website: top.ellan
 description: Riichi Mahjong Paper plugin rewrite built around display entities, item_model and CraftEngine.
 depend:
   - CraftEngine
@@ -17,3 +18,4 @@ permissions:
     default: true
   mahjongpaper.admin:
     default: op
+
