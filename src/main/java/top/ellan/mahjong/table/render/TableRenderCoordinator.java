@@ -92,8 +92,11 @@ public final class TableRenderCoordinator {
             return;
         }
 
-        this.session.applyRenderPrecompute(result);
+        boolean deferred = this.session.applyRenderPrecompute(result);
         this.nextDisplayRestoreCheckTick = Bukkit.getCurrentTick() + DISPLAY_RESTORE_CHECK_INTERVAL_TICKS;
+        if (deferred) {
+            this.session.plugin().scheduler().runRegionDelayed(this.session.center(), this::render, 1L);
+        }
         this.startNextPendingRenderIfNeeded(result.snapshot().version());
     }
 

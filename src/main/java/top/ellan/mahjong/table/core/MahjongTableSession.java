@@ -361,9 +361,10 @@ public final class MahjongTableSession {
         this.diceAnimationCoordinator.clear();
     }
 
-    public void applyRenderPrecompute(TableRenderPrecomputeResult result) {
-        this.regionDisplayCoordinator.applyRenderPrecompute(result);
+    public boolean applyRenderPrecompute(TableRenderPrecomputeResult result) {
+        boolean deferred = this.regionDisplayCoordinator.applyRenderPrecompute(result);
         this.viewerPresentation.flushIfNeeded();
+        return deferred;
     }
 
     public void inspectRender(Player viewer) {

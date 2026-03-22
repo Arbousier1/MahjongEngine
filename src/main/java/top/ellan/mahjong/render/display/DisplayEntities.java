@@ -34,6 +34,7 @@ public final class DisplayEntities {
     private static final float TILE_SCALE = 1.0F;
     private static final float LABEL_VIEW_RANGE = 48.0F;
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Plugin, NamespacedKey> MANAGED_ENTITY_KEYS = new ConcurrentHashMap<>();
 
     private DisplayEntities() {
     }
@@ -42,10 +43,14 @@ public final class DisplayEntities {
         if (specs == null || specs.isEmpty()) {
             return List.of();
         }
-        return specs.stream()
-            .map(spec -> spec.spawn(plugin))
-            .filter(java.util.Objects::nonNull)
-            .toList();
+        List<Entity> spawned = new java.util.ArrayList<>(specs.size());
+        for (EntitySpec spec : specs) {
+            Entity entity = spec.spawn(plugin);
+            if (entity != null) {
+                spawned.add(entity);
+            }
+        }
+        return List.copyOf(spawned);
     }
 
     public static boolean reconcile(Plugin plugin, List<Entity> entities, List<EntitySpec> specs) {
@@ -1040,7 +1045,7 @@ public final class DisplayEntities {
     }
 
     private static NamespacedKey managedEntityKey(Plugin plugin) {
-        return new NamespacedKey(plugin, MANAGED_ENTITY_KEY);
+        return MANAGED_ENTITY_KEYS.computeIfAbsent(plugin, key -> new NamespacedKey(key, MANAGED_ENTITY_KEY));
     }
 
     private static ItemStack tileItem(Plugin plugin, MahjongVariant variant, MahjongTile tile, boolean faceDown) {
