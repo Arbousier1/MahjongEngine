@@ -66,7 +66,7 @@ public final class GbTableRoundController implements TableRoundController {
     private int currentPlayerIndex;
     private int kanCount;
     private RoundResolution lastResolution;
-    private PendingReactionWindow pendingReactionWindow;
+    private GbReactionResolver.PendingReactionWindow pendingReactionWindow;
     private OpeningDiceRoll pendingDiceRoll;
     private UUID afterKanTsumoPlayer;
 
@@ -191,7 +191,7 @@ public final class GbTableRoundController implements TableRoundController {
         if (!response.getValid() || response.getTotalFan() < MIN_GB_FAN) {
             return false;
         }
-        this.finishWins(List.of(new ResolvedGbWin(playerId, null, winningTile, response)));
+        this.finishWins(List.of(new GbReactionResolver.ResolvedGbWin(playerId, null, winningTile, response)));
         return true;
     }
 
@@ -265,7 +265,7 @@ public final class GbTableRoundController implements TableRoundController {
             if (meld.type() == GbMeldType.PUNG
                 && GbRoundSupport.sameKind(meld.baseTile(), target)
                 && GbRoundSupport.countMatchingTiles(hand, target) >= 1) {
-                PendingReactionWindow robbingKongWindow = this.buildRobbingKongWindow(playerId, target, i);
+                GbReactionResolver.PendingReactionWindow robbingKongWindow = this.buildRobbingKongWindow(playerId, target, i);
                 if (robbingKongWindow != null) {
                     this.pendingReactionWindow = robbingKongWindow;
                     this.refreshAllTing();
@@ -601,116 +601,70 @@ public final class GbTableRoundController implements TableRoundController {
         return response.getValid() && response.getTotalFan() >= MIN_GB_FAN;
     }
 
-    private PendingReactionWindow buildPendingReactionWindow(UUID discarderId, MahjongTile discardedTile) {
-        if (discarderId == null || discardedTile == null) {
-            return null;
-        }
-        LinkedHashMap<UUID, ReactionOptions> options = new LinkedHashMap<>();
+    private GbReactionResolver.PendingReactionWindow buildPendingReactionWindow(UUID discarderId, MahjongTile discardedTile) {
         SeatWind discarderSeat = this.seatOf(discarderId);
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null || playerId.equals(discarderId)) {
-                continue;
-            }
-            boolean canRon = this.canRon(playerId, discarderSeat, discardedTile);
-            boolean canPon = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 2;
-            boolean canMinkan = GbRoundSupport.countMatchingTiles(this.hands.get(playerId), discardedTile) >= 3;
-            List<Pair<doublemoon.mahjongcraft.paper.riichi.model.MahjongTile, doublemoon.mahjongcraft.paper.riichi.model.MahjongTile>> chiiPairs =
-                GbRoundSupport.canChii(wind, discarderSeat) ? this.availableChiiPairs(playerId, discardedTile) : List.of();
-            if (canRon || canPon || canMinkan || !chiiPairs.isEmpty()) {
-                options.put(playerId, new ReactionOptions(canRon, canPon, canMinkan, chiiPairs));
-            }
-        }
-        return options.isEmpty()
-            ? null
-            : new PendingReactionWindow(
-                discarderId,
-                discardedTile,
-                options,
-                new HashMap<>(),
-                this.discardWinFlags(discardedTile, false),
-                false,
-                null
-            );
+        return GbReactionResolver.buildPendingReactionWindow(
+            discarderId,
+            discardedTile,
+            discarderSeat,
+            this.seats,
+            this.hands,
+            this::canRon,
+            this::availableChiiPairs,
+            this.discardWinFlags(discardedTile, false)
+        );
     }
 
     private boolean resolvePendingReactions() {
-        PendingReactionWindow pending = this.pendingReactionWindow;
+        GbReactionResolver.PendingReactionWindow pending = this.pendingReactionWindow;
         if (pending == null) {
             return false;
         }
-        UUID discarderId = pending.discarderId();
-        SeatWind discarderSeat = this.seatOf(discarderId);
-        List<ResolvedGbWin> wins = new ArrayList<>();
-        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null) {
-                continue;
-            }
-            ReactionResponse response = pending.responses().get(playerId);
-            if (response != null && response.getType() == ReactionType.RON) {
+        SeatWind discarderSeat = this.seatOf(pending.discarderId());
+        GbReactionResolver.Resolution resolution = GbReactionResolver.resolvePendingReactions(
+            pending,
+            discarderSeat,
+            this::playerAt,
+            (playerId, discarderId, tile, flags) -> {
                 GbWinResponse win = this.nativeGateway.evaluateWin(
-                    this.buildWinRequest(playerId, discarderId, pending.tile(), "DISCARD", pending.flags())
+                    this.buildWinRequest(playerId, discarderId, tile, "DISCARD", flags)
                 );
-                if (win.getValid() && win.getTotalFan() >= MIN_GB_FAN) {
-                    wins.add(new ResolvedGbWin(playerId, discarderId, pending.tile(), win));
-                }
+                return win.getValid() && win.getTotalFan() >= MIN_GB_FAN
+                    ? new GbReactionResolver.ResolvedGbWin(playerId, discarderId, tile, win)
+                    : null;
             }
-        }
-        if (!wins.isEmpty()) {
-            this.finishWins(List.copyOf(wins));
+        );
+        if (!resolution.wins().isEmpty()) {
+            this.finishWins(resolution.wins());
             return true;
         }
-        if (pending.robbingKong()) {
+        if (resolution.finishAddedKong()) {
             this.pendingReactionWindow = null;
-            this.finishAddedKong(discarderId, pending.tile(), pending.upgradeMeldIndex());
+            this.finishAddedKong(pending.discarderId(), pending.tile(), pending.upgradeMeldIndex());
             return true;
         }
-        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null) {
-                continue;
+        GbReactionResolver.Claim claim = resolution.claim();
+        if (claim != null) {
+            this.consumeClaimedDiscard(pending.discarderId(), pending.tile());
+            this.pendingReactionWindow = null;
+            this.currentPlayerIndex = this.seatOf(claim.playerId()).index();
+            if (claim.response().getType() == ReactionType.MINKAN) {
+                this.claimOpenKong(claim.playerId(), pending.tile(), discarderSeat);
+                this.drawReplacementTileOrFinish(claim.playerId());
+            } else if (claim.response().getType() == ReactionType.PON) {
+                this.claimPung(claim.playerId(), pending.tile(), discarderSeat);
+            } else if (claim.response().getType() == ReactionType.CHII) {
+                this.claimChow(claim.playerId(), pending.tile(), discarderSeat, claim.response().getChiiPair());
             }
-            ReactionResponse response = pending.responses().get(playerId);
-            if (response == null) {
-                continue;
-            }
-            if (response.getType() == ReactionType.MINKAN) {
-                this.consumeClaimedDiscard(discarderId, pending.tile());
-                this.claimOpenKong(playerId, pending.tile(), discarderSeat);
-                this.pendingReactionWindow = null;
-                this.currentPlayerIndex = wind.index();
-                this.drawReplacementTileOrFinish(playerId);
-                this.refreshAllTing();
-                return true;
-            }
-            if (response.getType() == ReactionType.PON) {
-                this.consumeClaimedDiscard(discarderId, pending.tile());
-                this.claimPung(playerId, pending.tile(), discarderSeat);
-                this.pendingReactionWindow = null;
-                this.currentPlayerIndex = wind.index();
-                this.refreshAllTing();
-                return true;
-            }
+            this.refreshAllTing();
+            return true;
         }
-        for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null) {
-                continue;
-            }
-            ReactionResponse response = pending.responses().get(playerId);
-            if (response != null && response.getType() == ReactionType.CHII) {
-                this.consumeClaimedDiscard(discarderId, pending.tile());
-                this.claimChow(playerId, pending.tile(), discarderSeat, response.getChiiPair());
-                this.pendingReactionWindow = null;
-                this.currentPlayerIndex = wind.index();
-                this.refreshAllTing();
-                return true;
-            }
+        if (resolution.advanceAfterDiscard()) {
+            this.pendingReactionWindow = null;
+            this.advanceAfterDiscard();
+            return true;
         }
-        this.pendingReactionWindow = null;
-        this.advanceAfterDiscard();
-        return true;
+        return false;
     }
 
     private void claimPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
@@ -850,16 +804,16 @@ public final class GbTableRoundController implements TableRoundController {
         return List.copyOf(inputs);
     }
 
-    private void finishWins(List<ResolvedGbWin> winners) {
+    private void finishWins(List<GbReactionResolver.ResolvedGbWin> winners) {
         if (winners.isEmpty()) {
             return;
         }
         Map<UUID, Integer> originalPoints = new HashMap<>(this.points);
-        for (ResolvedGbWin winner : winners) {
+        for (GbReactionResolver.ResolvedGbWin winner : winners) {
             this.applyScoreDeltas(winner.response().getScoreDeltas());
         }
         List<YakuSettlement> settlements = new ArrayList<>(winners.size());
-        for (ResolvedGbWin winner : winners) {
+        for (GbReactionResolver.ResolvedGbWin winner : winners) {
             UUID winnerId = winner.winnerId();
             int winnerDelta = this.points.getOrDefault(winnerId, originalPoints.getOrDefault(winnerId, 0)) - originalPoints.getOrDefault(winnerId, 0);
             settlements.add(new YakuSettlement(
@@ -1036,7 +990,7 @@ public final class GbTableRoundController implements TableRoundController {
         this.gameFinished = false;
     }
 
-    private PendingReactionWindow buildRobbingKongWindow(UUID discarderId, MahjongTile claimedTile, int upgradeMeldIndex) {
+    private GbReactionResolver.PendingReactionWindow buildRobbingKongWindow(UUID discarderId, MahjongTile claimedTile, int upgradeMeldIndex) {
         LinkedHashMap<UUID, ReactionOptions> options = new LinkedHashMap<>();
         SeatWind discarderSeat = this.seatOf(discarderId);
         List<String> flags = this.discardWinFlags(claimedTile, true);
@@ -1053,7 +1007,7 @@ public final class GbTableRoundController implements TableRoundController {
         }
         return options.isEmpty()
             ? null
-            : new PendingReactionWindow(discarderId, claimedTile, options, new HashMap<>(), flags, true, upgradeMeldIndex);
+            : new GbReactionResolver.PendingReactionWindow(discarderId, claimedTile, options, new HashMap<>(), flags, true, upgradeMeldIndex);
     }
 
     private void finishAddedKong(UUID playerId, MahjongTile target, Integer meldIndex) {
@@ -1401,25 +1355,6 @@ public final class GbTableRoundController implements TableRoundController {
         public int compareTo(GbBotKanChoice other) {
             return Long.compare(this.readyScore, other.readyScore);
         }
-    }
-
-    private record PendingReactionWindow(
-        UUID discarderId,
-        MahjongTile tile,
-        Map<UUID, ReactionOptions> options,
-        Map<UUID, ReactionResponse> responses,
-        List<String> flags,
-        boolean robbingKong,
-        Integer upgradeMeldIndex
-    ) {
-    }
-
-    private record ResolvedGbWin(
-        UUID winnerId,
-        UUID discarderId,
-        MahjongTile winningTile,
-        GbWinResponse response
-    ) {
     }
 
     private enum GbMeldType {
