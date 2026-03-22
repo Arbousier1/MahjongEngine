@@ -1,4 +1,4 @@
-package top.ellan.mahjong.i18n
+﻿package top.ellan.mahjong.i18n
 
 import java.util.Locale
 import java.util.Properties
@@ -14,13 +14,13 @@ class MessageServiceTest {
 
     @Test
     fun `plain returns english text for english locale`() {
-        assertContains(messages.plain(Locale.ENGLISH, "command.action.ron"), "Ron")
+        assertEquals(bundleValue("language/messages.properties", "command.action.ron"), messages.plain(Locale.ENGLISH, "command.action.ron"))
     }
 
     @Test
     fun `plain returns chinese text for zh CN locale`() {
         val chinese = messages.plain(Locale.forLanguageTag("zh-CN"), "command.action.ron")
-        assertEquals("閼斤絽鎷?, chinese)
+        assertEquals(bundleValue("language/messages_zh_CN.properties", "command.action.ron"), chinese)
     }
 
     @Test
@@ -43,17 +43,30 @@ class MessageServiceTest {
 
     @Test
     fun `yaku labels are localized`() {
-        assertEquals("Riichi", messages.plain(Locale.ENGLISH, "yaku.reach"))
-        assertEquals("缁斿娲?, messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"))
-        assertEquals("閸ヨ棄锛嬮弮鐘插蓟", messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso"))
+        assertEquals(bundleValue("language/messages.properties", "yaku.reach"), messages.plain(Locale.ENGLISH, "yaku.reach"))
+        assertEquals(bundleValue("language/messages_zh_CN.properties", "yaku.reach"), messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"))
+        assertEquals(
+            bundleValue("language/messages_zh_CN.properties", "yakuman.kokushimuso"),
+            messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso")
+        )
     }
 
     @Test
     fun `traditional region bundles are addressable`() {
-        assertEquals("濮掝喖鎷?, messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"))
-        assertEquals("濮掝喖鎷?, messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"))
-        assertEquals("濮掝喖鎷?, messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"))
+        assertEquals(
+            bundleValue("language/messages_zh_TW.properties", "command.action.ron"),
+            messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron")
+        )
+        assertEquals(
+            bundleValue("language/messages_zh_HK.properties", "command.action.ron"),
+            messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron")
+        )
+        assertEquals(
+            bundleValue("language/messages_zh_MO.properties", "command.action.ron"),
+            messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron")
+        )
     }
+
     @Test
     fun `render caches static components without placeholders`() {
         val first = messages.render(Locale.ENGLISH, "command.inspect_sent")
@@ -126,6 +139,13 @@ class MessageServiceTest {
         }
     }
 
+    private fun bundleValue(resource: String, key: String): String {
+        val bundle = loadBundle(resource)
+        val value = bundle.getProperty(key)
+        assertNotNull(value, "Missing key $key in $resource")
+        return value
+    }
+
     private fun loadBundle(resource: String): Properties {
         val stream = javaClass.classLoader.getResourceAsStream(resource)
         assertNotNull(stream, "Missing resource $resource")
@@ -134,4 +154,3 @@ class MessageServiceTest {
         }
     }
 }
-

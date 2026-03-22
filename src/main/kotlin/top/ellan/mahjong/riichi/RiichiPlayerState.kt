@@ -46,6 +46,17 @@ open class RiichiPlayerState(
 ) {
     companion object {
         private val LOGGER: Logger = Logger.getLogger(RiichiPlayerState::class.java.name)
+        internal var shantenCalculator: (
+            tiles: List<Tile>,
+            furo: List<mahjongutils.models.Furo>,
+            bestShantenOnly: Boolean
+        ) -> UnionShantenResult = { tiles, furo, bestOnly ->
+            shanten(
+                tiles = tiles,
+                furo = furo,
+                bestShantenOnly = bestOnly
+            )
+        }
     }
 
     val hands: MutableList<TileInstance> = mutableListOf()
@@ -669,20 +680,45 @@ open class RiichiPlayerState(
         hands: List<MahjongTile> = this.hands.toMahjongTileList(),
         fuuroList: List<Fuuro> = this.fuuroList,
         bestShantenOnly: Boolean = true
-    ): UnionShantenResult? = runCatching {
-        shanten(
-            tiles = hands.toUtilsTiles(),
-            furo = fuuroList.map { it.utilsFuro },
-            bestShantenOnly = bestShantenOnly
-        )
-    }.onFailure { error ->
-        val level = if (error is IllegalArgumentException) Level.FINE else Level.WARNING
+    ): UnionShantenResult? {
+        val tiles = hands.toUtilsTiles()
+        val furo = fuuroList.map { it.utilsFuro }
+        val primary = runCatching {
+            shantenCalculator(tiles, furo, bestShantenOnly)
+        }
+        if (primary.isSuccess) {
+            return primary.getOrNull()
+        }
+        val primaryError = primary.exceptionOrNull() ?: return null
+        if (bestShantenOnly && primaryError is NoSuchElementException) {
+            val fallback = runCatching {
+                shantenCalculator(tiles, furo, false)
+            }
+            if (fallback.isSuccess) {
+                LOGGER.log(
+                    Level.FINE,
+                    "Shanten best-only analysis failed; fallback succeeded (hands=${hands.size}, fuuro=${fuuroList.size})",
+                    primaryError
+                )
+                return fallback.getOrNull()
+            }
+            val fallbackError = fallback.exceptionOrNull() ?: return null
+            val fallbackLevel = if (fallbackError is IllegalArgumentException) Level.FINE else Level.WARNING
+            LOGGER.log(
+                fallbackLevel,
+                "Shanten analysis fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                fallbackError
+            )
+            return null
+        }
+        val level = if (primaryError is IllegalArgumentException) Level.FINE else Level.WARNING
         LOGGER.log(
             level,
             "Shanten analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=$bestShantenOnly)",
-            error
+            primaryError
         )
-    }.getOrNull()
+        return null
+    }
 
     private fun shantenWithoutGot(
         hands: List<MahjongTile>,

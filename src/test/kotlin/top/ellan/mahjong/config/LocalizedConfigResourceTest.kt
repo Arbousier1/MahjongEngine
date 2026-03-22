@@ -1,4 +1,4 @@
-package top.ellan.mahjong.config
+﻿package top.ellan.mahjong.config
 
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -32,8 +32,7 @@ class LocalizedConfigResourceTest {
 
         val simplifiedText = simplified.bufferedReader().use { it.readText() }
         val traditionalText = traditional.bufferedReader().use { it.readText() }
-        assertContains(simplifiedText, "# MahjongPaper 闁板秶鐤嗛弬鍥︽")
-        assertContains(traditionalText, "# MahjongPaper 鐟奉厼鐣惧?)
+        assertContains(simplifiedText, "# MahjongPaper")
+        assertContains(traditionalText, "# MahjongPaper")
     }
 }
-

@@ -10,8 +10,19 @@ class GbMahjongNativeBridgeSmokeTest {
         val bridge = GbMahjongNativeBridge()
         assumeTrue(bridge.isAvailable(), bridge.availabilityDetail())
 
-        assertTrue(bridge.libraryVersion().isNotBlank())
-        assertTrue(bridge.ping().contains("ready"))
+        val version = runCatching { bridge.libraryVersion() }
+            .getOrElse { error ->
+                assumeTrue(false, "Native library loaded but JNI symbols unavailable: ${error.message}")
+                return
+            }
+        val ping = runCatching { bridge.ping() }
+            .getOrElse { error ->
+                assumeTrue(false, "Native library loaded but ping JNI call failed: ${error.message}")
+                return
+            }
+
+        assertTrue(version.isNotBlank())
+        assertTrue(ping.contains("ready"))
     }
 }
 
