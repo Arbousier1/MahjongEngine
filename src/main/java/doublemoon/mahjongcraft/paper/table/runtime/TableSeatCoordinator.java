@@ -9,7 +9,6 @@ import doublemoon.mahjongcraft.paper.table.core.MahjongTableManager;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -185,17 +184,17 @@ public final class TableSeatCoordinator {
             return;
         }
         long nowTick = this.seatWatchdogClock.updateAndGet(current -> current + SEAT_WATCHDOG_PERIOD_TICKS);
-        for (Map.Entry<UUID, SeatWatchdogBinding> entry : List.copyOf(this.seatWatchdogs.entrySet())) {
+        for (Map.Entry<UUID, SeatWatchdogBinding> entry : this.seatWatchdogs.entrySet()) {
             UUID playerId = entry.getKey();
             SeatWatchdogBinding binding = entry.getValue();
             MahjongTableSession session = this.tableManager.resolveTableById(binding.tableId());
             if (session == null || !session.isStarted() || session.seatOf(playerId) != binding.wind() || binding.expiresAtTick() < nowTick) {
-                this.seatWatchdogs.remove(playerId);
+                this.seatWatchdogs.remove(playerId, binding);
                 continue;
             }
             Player player = Bukkit.getPlayer(playerId);
             if (player == null || !player.isOnline()) {
-                this.seatWatchdogs.remove(playerId);
+                this.seatWatchdogs.remove(playerId, binding);
                 continue;
             }
             this.plugin.scheduler().runEntity(player, () -> this.inspectSeatWatchdogOnPlayerThread(player, playerId, binding));

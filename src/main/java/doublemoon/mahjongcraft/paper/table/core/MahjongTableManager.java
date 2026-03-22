@@ -641,7 +641,7 @@ public final class MahjongTableManager implements Listener {
     }
 
     private void dispatchTableTicks() {
-        for (MahjongTableSession session : new ArrayList<>(this.directory.tables())) {
+        for (MahjongTableSession session : this.directory.tables()) {
             this.plugin.scheduler().runRegion(session.center(), session::tick);
         }
     }
