@@ -1006,6 +1006,18 @@ public final class MahjongTableSession {
         return this.roundController;
     }
 
+    boolean seatAssignmentsMatchControllerInternal(TableRoundController controller) {
+        if (controller == null) {
+            return false;
+        }
+        for (SeatWind wind : SeatWind.values()) {
+            if (!Objects.equals(this.participants.playerAt(wind), controller.playerAt(wind))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void setRoundControllerInternal(TableRoundController roundController) {
         this.roundController = roundController;
     }

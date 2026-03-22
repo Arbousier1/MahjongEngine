@@ -29,7 +29,10 @@ final class SessionRoundFlowCoordinator {
 
         this.session.cancelNextRoundCountdownInternal();
         TableRoundController controller = this.session.roundControllerInternal();
-        if (controller == null || controller.gameFinished() || controller.variant() != this.session.currentVariant()) {
+        if (controller == null
+            || controller.gameFinished()
+            || controller.variant() != this.session.currentVariant()
+            || !this.session.seatAssignmentsMatchControllerInternal(controller)) {
             controller = this.session.createRoundControllerInternal();
             this.session.setRoundControllerInternal(controller);
         }
