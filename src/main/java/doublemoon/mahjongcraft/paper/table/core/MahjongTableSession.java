@@ -188,6 +188,23 @@ public final class MahjongTableSession {
         return true;
     }
 
+    public boolean replaceBotWithPlayer(Player player, SeatWind wind) {
+        if (player == null || wind == null || this.isStarted() || this.roundStartInProgress) {
+            return false;
+        }
+        UUID botId = this.playerAt(wind);
+        if (botId == null || !this.isBot(botId)) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        if (!this.participants.replaceBotWithPlayer(playerId, wind)) {
+            return false;
+        }
+        this.playerFeedbackCoordinator.clearPlayerState(botId);
+        this.selectedHandTileIndices.remove(botId);
+        return true;
+    }
+
     public boolean removeBot() {
         if (this.isStarted() || this.roundStartInProgress) {
             return false;

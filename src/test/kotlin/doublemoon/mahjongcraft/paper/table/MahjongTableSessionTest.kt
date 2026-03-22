@@ -97,6 +97,25 @@ class MahjongTableSessionTest {
         assertFalse(session.gbTingOptions(UUID.fromString("00000000-0000-0000-0000-000000000005")).valid)
     }
 
+    @Test
+    fun `player can replace bot on a specific seat before round start`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val session = MahjongTableSession(plugin, "TABLE06", Location(null, 0.0, 64.0, 0.0), false)
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000061")
+        val player = mockPlayer(playerId)
+
+        assertTrue(addBotParticipant(session, "TABLE06"))
+        val botId = session.playerAt(SeatWind.EAST)
+        assertTrue(botId != null && session.isBot(botId))
+
+        assertTrue(session.replaceBotWithPlayer(player, SeatWind.EAST))
+        assertEquals(playerId, session.playerAt(SeatWind.EAST))
+        assertFalse(session.isBot(playerId))
+        assertFalse(session.contains(botId))
+        assertEquals(0, session.botCount())
+        assertFalse(session.isReady(playerId))
+    }
+
     private fun attachEngine(session: MahjongTableSession, started: Boolean, seatIds: List<UUID>) {
         val engine = mock(RiichiRoundEngine::class.java)
         `when`(engine.started).thenReturn(started)
@@ -117,6 +136,18 @@ class MahjongTableSessionTest {
         val removePlayer = participants.javaClass.getDeclaredMethod("removePlayer", UUID::class.java)
         removePlayer.isAccessible = true
         removePlayer.invoke(participants, playerId)
+    }
+
+    private fun addBotParticipant(session: MahjongTableSession, tableId: String): Boolean {
+        val participantsField = MahjongTableSession::class.java.getDeclaredField("participants")
+        participantsField.isAccessible = true
+        val participants = participantsField.get(session)
+        val createNextBotId = participants.javaClass.getDeclaredMethod("createNextBotId", String::class.java)
+        createNextBotId.isAccessible = true
+        val addBot = participants.javaClass.getDeclaredMethod("addBot", UUID::class.java)
+        addBot.isAccessible = true
+        val botId = createNextBotId.invoke(participants, tableId) as UUID
+        return addBot.invoke(participants, botId) as Boolean
     }
 
     private fun mockPlayer(playerId: UUID): Player {

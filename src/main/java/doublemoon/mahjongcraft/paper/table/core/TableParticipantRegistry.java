@@ -63,6 +63,24 @@ final class TableParticipantRegistry {
         return true;
     }
 
+    boolean replaceBotWithPlayer(UUID playerId, SeatWind wind) {
+        if (playerId == null || wind == null || this.seats.contains(playerId)) {
+            return false;
+        }
+        UUID seated = this.seats.get(wind.index());
+        if (seated == null || !this.botNames.containsKey(seated)) {
+            return false;
+        }
+        this.botNames.remove(seated);
+        this.readyPlayers.remove(seated);
+        this.leaveAfterRoundPlayers.remove(seated);
+        this.spectators.remove(playerId);
+        this.seats.set(wind.index(), playerId);
+        this.readyPlayers.remove(playerId);
+        this.leaveAfterRoundPlayers.remove(playerId);
+        return true;
+    }
+
     UUID removeLastBot() {
         for (int i = this.seats.size() - 1; i >= 0; i--) {
             UUID playerId = this.seats.get(i);

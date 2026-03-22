@@ -146,14 +146,22 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
 
+        boolean replacedBotSeat = false;
         if (!session.addPlayer(player, wind)) {
-            return null;
+            if (!session.replaceBotWithPlayer(player, wind)) {
+                return null;
+            }
+            replacedBotSeat = true;
         }
         this.refreshCoordinator.cleanupLoadedTableArtifactsIfNeeded(session);
         this.directory.removeSpectator(playerId);
         session.removeSpectator(playerId);
         this.directory.assignPlayer(playerId, session.id());
-        this.plugin.debug().log("table", player.getName() + " joined table " + session.id() + " at " + wind.name());
+        if (replacedBotSeat) {
+            this.plugin.debug().log("table", player.getName() + " replaced bot at " + wind.name() + " on table " + session.id());
+        } else {
+            this.plugin.debug().log("table", player.getName() + " joined table " + session.id() + " at " + wind.name());
+        }
         session.render();
         this.syncCraftEngineTrackedEntities(player);
         this.sendReadyPrompt(player);
