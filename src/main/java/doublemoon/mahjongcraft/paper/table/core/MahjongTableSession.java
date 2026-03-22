@@ -59,7 +59,6 @@ public final class MahjongTableSession {
     private final TableRenderer renderer = new TableRenderer();
     private final TableRenderSnapshotFactory renderSnapshotFactory = new TableRenderSnapshotFactory();
     private final TableRegionFingerprintService regionFingerprintService = new TableRegionFingerprintService();
-    private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
     private MahjongRule configuredRule;
     private TableRoundController roundController;
     private boolean roundStartInProgress;
@@ -81,6 +80,7 @@ public final class MahjongTableSession {
     private final SessionRoundLifecycle roundLifecycle;
     private final SessionRuleCoordinator ruleCoordinator;
     private final SessionRoundActionCoordinator roundActionCoordinator;
+    private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, Player owner) {
@@ -136,6 +136,7 @@ public final class MahjongTableSession {
         this.roundLifecycle = new SessionRoundLifecycle();
         this.ruleCoordinator = new SessionRuleCoordinator(this);
         this.roundActionCoordinator = new SessionRoundActionCoordinator(this);
+        this.handSelectionCoordinator = new SessionHandSelectionCoordinator(this);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -222,7 +223,7 @@ public final class MahjongTableSession {
             return false;
         }
         this.playerFeedbackCoordinator.clearPlayerState(botId);
-        this.selectedHandTileIndices.remove(botId);
+        this.handSelectionCoordinator.clearPlayer(botId);
         return true;
     }
 
@@ -235,7 +236,7 @@ public final class MahjongTableSession {
             return false;
         }
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
-        this.selectedHandTileIndices.remove(playerId);
+        this.handSelectionCoordinator.clearPlayer(playerId);
         this.render();
         return true;
     }
@@ -246,7 +247,7 @@ public final class MahjongTableSession {
         }
         this.viewerPresentation.hideHud(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
-        this.selectedHandTileIndices.remove(playerId);
+        this.handSelectionCoordinator.clearPlayer(playerId);
         return this.participants.removePlayer(playerId);
     }
 
@@ -349,7 +350,7 @@ public final class MahjongTableSession {
             this.roundController = this.createRoundController();
         }
 
-        this.selectedHandTileIndices.clear();
+        this.handSelectionCoordinator.clearAll();
         this.clearLastPublicDiscard();
         this.playerFeedbackCoordinator.resetForRoundStart();
         this.regionDisplayCoordinator.invalidateFingerprints();
@@ -435,7 +436,7 @@ public final class MahjongTableSession {
     }
 
     public void clearFeedbackTracking() {
-        this.selectedHandTileIndices.clear();
+        this.handSelectionCoordinator.clearAll();
     }
 
     public void clearRoundTrackingState() {
@@ -936,40 +937,11 @@ public final class MahjongTableSession {
     }
 
     public boolean clickHandTile(UUID playerId, int tileIndex, boolean cancelSelection) {
-        if (!this.canSelectHandTile(playerId, tileIndex)) {
-            return false;
-        }
-        Integer selectedIndex = this.selectedHandTileIndices.get(playerId);
-        if (selectedIndex != null && selectedIndex == tileIndex) {
-            if (cancelSelection) {
-                this.selectedHandTileIndices.remove(playerId);
-                this.refreshSelectedHandTileView(playerId);
-                return true;
-            }
-            return this.discard(playerId, tileIndex);
-        }
-        this.selectedHandTileIndices.put(playerId, tileIndex);
-        this.refreshSelectedHandTileView(playerId);
-        return true;
+        return this.handSelectionCoordinator.clickHandTile(playerId, tileIndex, cancelSelection);
     }
 
     public int selectedHandTileIndex(UUID playerId) {
-        return this.selectedHandTileIndices.getOrDefault(playerId, -1);
-    }
-
-    private void pruneSelectedHandTiles() {
-        this.selectedHandTileIndices.entrySet().removeIf(entry -> !this.isValidSelectedHandTile(entry.getKey(), entry.getValue()));
-    }
-
-    private boolean isValidSelectedHandTile(UUID playerId, int tileIndex) {
-        return this.canSelectHandTile(playerId, tileIndex);
-    }
-
-    private boolean canSelectHandTile(UUID playerId, int tileIndex) {
-        return this.contains(playerId)
-            && tileIndex >= 0
-            && this.roundController != null
-            && this.roundController.canSelectHandTile(playerId, tileIndex);
+        return this.handSelectionCoordinator.selectedHandTileIndex(playerId);
     }
 
     private void refreshSelectedHandTileView(UUID playerId) {
@@ -988,6 +960,17 @@ public final class MahjongTableSession {
             return;
         }
         this.regionDisplayCoordinator.refreshPrivateHandRegions(seat, seatPlan);
+    }
+
+    boolean canSelectHandTileInternal(UUID playerId, int tileIndex) {
+        return this.contains(playerId)
+            && tileIndex >= 0
+            && this.roundController != null
+            && this.roundController.canSelectHandTile(playerId, tileIndex);
+    }
+
+    void refreshSelectedHandTileViewInternal(UUID playerId) {
+        this.refreshSelectedHandTileView(playerId);
     }
 
     private doublemoon.mahjongcraft.paper.model.MahjongTile handTileAt(UUID playerId, int tileIndex) {
@@ -1020,7 +1003,7 @@ public final class MahjongTableSession {
     }
 
     void clearSelectedHandTilesInternal() {
-        this.selectedHandTileIndices.clear();
+        this.handSelectionCoordinator.clearAll();
     }
 
     void playReactionSoundInternal(ReactionResponse response) {
@@ -1175,7 +1158,7 @@ public final class MahjongTableSession {
 
     public void prepareRenderRequest() {
         this.cancelBotTask();
-        this.pruneSelectedHandTiles();
+        this.handSelectionCoordinator.pruneSelectedHandTiles();
         this.viewerPresentation.markDirty();
     }
 
