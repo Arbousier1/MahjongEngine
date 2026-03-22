@@ -26,6 +26,8 @@ import mahjongutils.shanten.shanten
 import mahjongutils.yaku.Yaku
 import mahjongutils.yaku.Yakus
 import kotlin.math.absoluteValue
+import java.util.logging.Level
+import java.util.logging.Logger
 
 data class RiichiDiscardSuggestion(
     val tile: MahjongTile,
@@ -42,6 +44,10 @@ open class RiichiPlayerState(
     val uuid: String,
     val isRealPlayer: Boolean = true
 ) {
+    companion object {
+        private val LOGGER: Logger = Logger.getLogger(RiichiPlayerState::class.java.name)
+    }
+
     val hands: MutableList<TileInstance> = mutableListOf()
     var lastDrawnTile: TileInstance? = null
     var autoArrangeHands: Boolean = true
@@ -646,7 +652,7 @@ open class RiichiPlayerState(
     }
 
     private fun currentShantenResult(): UnionShantenResult? {
-        if (cachedCurrentShantenVersion != analysisStateVersion || cachedCurrentShantenResult == null) {
+        if (cachedCurrentShantenVersion != analysisStateVersion) {
             cachedCurrentShantenResult = analyzeShanten()
             cachedCurrentShantenVersion = analysisStateVersion
         }
@@ -668,6 +674,13 @@ open class RiichiPlayerState(
             tiles = hands.toUtilsTiles(),
             furo = fuuroList.map { it.utilsFuro },
             bestShantenOnly = bestShantenOnly
+        )
+    }.onFailure { error ->
+        val level = if (error is IllegalArgumentException) Level.FINE else Level.WARNING
+        LOGGER.log(
+            level,
+            "Shanten analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=$bestShantenOnly)",
+            error
         )
     }.getOrNull()
 
