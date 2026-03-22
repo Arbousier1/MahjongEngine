@@ -1,25 +1,25 @@
-﻿import org.gradle.api.GradleException
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
 plugins {
     java
     jacoco
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.serialization") version "2.2.0"
+    kotlin("jvm") version "2.3.20"
+    kotlin("plugin.serialization") version "2.3.20"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
 group = "doublemoon.mahjongcraft"
 version = "0.6.1"
 
-val kotlinRuntimeVersion = "2.2.0"
-val kotlinSerializationVersion = "1.9.0"
+val kotlinRuntimeVersion = "2.3.20"
+val kotlinSerializationVersion = "1.10.0"
 val mahjongUtilsVersion = "0.7.7"
-val mariadbVersion = "3.5.3"
-val h2Version = "2.3.232"
+val mariadbVersion = "3.5.7"
+val h2Version = "2.4.240"
 val hikariVersion = "6.3.0"
-val adventureVersion = "4.17.0"
+val adventureVersion = "4.26.1"
 val junitVersion = "5.12.2"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
 val generatedNativeResourcesDir = layout.buildDirectory.dir("generated/resources/native")
@@ -690,7 +690,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinSerializationVersion")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
-    testImplementation("org.mockito:mockito-core:5.15.2")
+    testImplementation("org.mockito:mockito-core:5.23.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("net.kyori:adventure-api:$adventureVersion")
     testImplementation("net.kyori:adventure-text-minimessage:$adventureVersion")
