@@ -3,6 +3,8 @@ package doublemoon.mahjongcraft.paper.table.presentation
 import doublemoon.mahjongcraft.paper.bootstrap.MahjongPaperPlugin
 import doublemoon.mahjongcraft.paper.i18n.MessageService
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.TableViewerHudSnapshot
+import doublemoon.mahjongcraft.paper.table.core.TableViewerOverlaySnapshot
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
@@ -27,7 +29,7 @@ class TableViewerPresentationCoordinatorTest {
         val viewer = mock(Player::class.java)
         `when`(viewer.uniqueId).thenReturn(viewerId)
 
-        val snapshot = MahjongTableSession.ViewerOverlaySnapshot(
+        val snapshot = TableViewerOverlaySnapshot(
             viewerId,
             "viewer-overlay:$viewerId",
             false,
@@ -64,7 +66,7 @@ class TableViewerPresentationCoordinatorTest {
         val viewer = mock(Player::class.java)
         `when`(viewer.uniqueId).thenReturn(viewerId)
 
-        val hudSnapshot = MahjongTableSession.ViewerHudSnapshot(
+        val hudSnapshot = TableViewerHudSnapshot(
             Component.text("hud"),
             0.75F,
             BossBar.Color.BLUE,
@@ -105,3 +107,4 @@ class TableViewerPresentationCoordinatorTest {
         return field.get(target)
     }
 }
+

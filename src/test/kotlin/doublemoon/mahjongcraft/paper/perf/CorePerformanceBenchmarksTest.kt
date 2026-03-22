@@ -11,6 +11,8 @@ import doublemoon.mahjongcraft.paper.riichi.RiichiRoundEngine
 import doublemoon.mahjongcraft.paper.riichi.model.MahjongRule
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot
 import doublemoon.mahjongcraft.paper.table.core.round.GbTableRoundController
 import doublemoon.mahjongcraft.paper.table.render.TableRenderSnapshotFactory
 import doublemoon.mahjongcraft.paper.table.render.TableRegionFingerprintService
@@ -222,8 +224,8 @@ class CorePerformanceBenchmarksTest {
         return controller
     }
 
-    private fun startedSnapshot(): MahjongTableSession.RenderSnapshot {
-        val seats = EnumMap<SeatWind, MahjongTableSession.SeatRenderSnapshot>(SeatWind::class.java)
+    private fun startedSnapshot(): TableRenderSnapshot {
+        val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
         seats[SeatWind.EAST] = seatSnapshot(
             wind = SeatWind.EAST,
@@ -253,7 +255,7 @@ class CorePerformanceBenchmarksTest {
             hand = List(13) { MahjongTile.EAST },
             discards = listOf(MahjongTile.S1)
         )
-        return MahjongTableSession.RenderSnapshot(
+        return TableRenderSnapshot(
             1L,
             0L,
             "world",
@@ -289,7 +291,7 @@ class CorePerformanceBenchmarksTest {
         riichiDiscardIndex: Int = -1,
         scoringSticks: List<ScoringStick> = emptyList(),
         cornerSticks: List<ScoringStick> = emptyList()
-    ) = MahjongTableSession.SeatRenderSnapshot(
+    ) = TableSeatRenderSnapshot(
         wind,
         playerId,
         wind.name.lowercase(),
@@ -311,3 +313,4 @@ class CorePerformanceBenchmarksTest {
         cornerSticks
     )
 }
+

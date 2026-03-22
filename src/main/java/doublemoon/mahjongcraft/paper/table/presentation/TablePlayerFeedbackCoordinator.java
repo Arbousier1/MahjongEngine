@@ -2,6 +2,7 @@ package doublemoon.mahjongcraft.paper.table.presentation;
 
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableFinalStanding;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,7 +82,7 @@ public final class TablePlayerFeedbackCoordinator {
             || !this.session.plugin().database().rankingEnabled()) {
             return;
         }
-        List<MahjongTableSession.FinalStanding> standings = this.session.finalStandings();
+        List<TableFinalStanding> standings = this.session.finalStandings();
         if (standings.isEmpty()) {
             return;
         }
@@ -371,4 +372,5 @@ public final class TablePlayerFeedbackCoordinator {
         }
     }
 }
+
 

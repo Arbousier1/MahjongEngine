@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -447,7 +446,7 @@ public final class MahjongTableSession {
         this.diceAnimationCoordinator.clear();
     }
 
-    public void applyRenderPrecompute(RenderPrecomputeResult result) {
+    public void applyRenderPrecompute(TableRenderPrecomputeResult result) {
         this.regionDisplayCoordinator.applyRenderPrecompute(result);
         this.viewerPresentation.flushIfNeeded();
     }
@@ -1078,8 +1077,8 @@ public final class MahjongTableSession {
         if (wind == null) {
             return;
         }
-        RenderSnapshot snapshot = this.captureRenderSnapshot(0L, 0L);
-        SeatRenderSnapshot seat = snapshot.seat(wind);
+        TableRenderSnapshot snapshot = this.captureRenderSnapshot(0L, 0L);
+        TableSeatRenderSnapshot seat = snapshot.seat(wind);
         if (seat == null || seat.playerId() == null) {
             return;
         }
@@ -1136,14 +1135,14 @@ public final class MahjongTableSession {
         );
     }
 
-    public List<FinalStanding> finalStandings() {
+    public List<TableFinalStanding> finalStandings() {
         if (this.roundController == null || !this.roundController.gameFinished()) {
             return List.of();
         }
         if (this.currentVariant() != MahjongVariant.RIICHI || this.engine() == null) {
-            List<FinalStanding> standings = new ArrayList<>();
+            List<TableFinalStanding> standings = new ArrayList<>();
             for (UUID playerId : this.players()) {
-                standings.add(new FinalStanding(
+                standings.add(new TableFinalStanding(
                     playerId,
                     this.displayName(playerId),
                     0,
@@ -1159,35 +1158,35 @@ public final class MahjongTableSession {
                 }
                 return Integer.compare(this.players().indexOf(left.playerId()), this.players().indexOf(right.playerId()));
             });
-            List<FinalStanding> ranked = new ArrayList<>(standings.size());
+            List<TableFinalStanding> ranked = new ArrayList<>(standings.size());
             for (int i = 0; i < standings.size(); i++) {
-                FinalStanding standing = standings.get(i);
-                ranked.add(new FinalStanding(standing.playerId(), standing.displayName(), i + 1, standing.points(), standing.gameScore(), standing.bot()));
+                TableFinalStanding standing = standings.get(i);
+                ranked.add(new TableFinalStanding(standing.playerId(), standing.displayName(), i + 1, standing.points(), standing.gameScore(), standing.bot()));
             }
             return List.copyOf(ranked);
         }
         RiichiRoundEngine engine = this.engine();
         List<RiichiPlayerState> ranked = new ArrayList<>(engine.placementOrder());
 
-        List<FinalStanding> standings = new ArrayList<>(ranked.size());
+        List<TableFinalStanding> standings = new ArrayList<>(ranked.size());
         for (int i = 0; i < ranked.size(); i++) {
             RiichiPlayerState player = ranked.get(i);
             double gameScore = MahjongSoulScoring.gameScore(player.getPoints(), i + 1);
             UUID playerId = UUID.fromString(player.getUuid());
-            standings.add(new FinalStanding(playerId, player.getDisplayName(), i + 1, player.getPoints(), gameScore, this.isBot(playerId)));
+            standings.add(new TableFinalStanding(playerId, player.getDisplayName(), i + 1, player.getPoints(), gameScore, this.isBot(playerId)));
         }
         return List.copyOf(standings);
     }
 
-    public ViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
+    public TableViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
         return this.viewerSnapshotFactory.captureViewerOverlaySnapshot(viewer);
     }
 
-    public ViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
+    public TableViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
         return this.viewerSnapshotFactory.captureViewerHudSnapshot(locale, viewerId);
     }
 
-    public void updateViewerOverlayRegion(ViewerOverlaySnapshot snapshot) {
+    public void updateViewerOverlayRegion(TableViewerOverlaySnapshot snapshot) {
         this.regionDisplayCoordinator.updateViewerOverlayRegion(snapshot);
     }
 
@@ -1264,12 +1263,12 @@ public final class MahjongTableSession {
         BotActionScheduler.schedule(this);
     }
 
-    public RenderSnapshot captureRenderSnapshot(long version, long cancellationNonce) {
+    public TableRenderSnapshot captureRenderSnapshot(long version, long cancellationNonce) {
         return this.renderSnapshotFactory.create(this, version, cancellationNonce);
     }
 
-    public RenderPrecomputeResult precomputeRender(RenderSnapshot snapshot) {
-        return new RenderPrecomputeResult(
+    public TableRenderPrecomputeResult precomputeRender(TableRenderSnapshot snapshot) {
+        return new TableRenderPrecomputeResult(
             snapshot,
             this.regionFingerprintService.precomputeRegionFingerprints(this, snapshot),
             TableRenderLayout.precompute(snapshot)
@@ -1307,91 +1306,6 @@ public final class MahjongTableSession {
 
     private static FingerprintBuilder fingerprintBuilder(int capacity) {
         return new FingerprintBuilder(capacity);
-    }
-
-    public record RenderSnapshot(
-        long version,
-        long cancellationNonce,
-        String worldName,
-        double centerX,
-        double centerY,
-        double centerZ,
-        boolean started,
-        boolean gameFinished,
-        int remainingWallCount,
-        int kanCount,
-        int dicePoints,
-        int roundIndex,
-        int honbaCount,
-        SeatWind dealerSeat,
-        SeatWind currentSeat,
-        SeatWind openDoorSeat,
-        String waitingDisplaySummary,
-        String ruleDisplaySummary,
-        String publicCenterText,
-        UUID lastPublicDiscardPlayerId,
-        doublemoon.mahjongcraft.paper.model.MahjongTile lastPublicDiscardTile,
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> doraIndicators,
-        EnumMap<SeatWind, SeatRenderSnapshot> seats
-    ) {
-        public SeatRenderSnapshot seat(SeatWind wind) {
-            return this.seats.get(wind);
-        }
-    }
-
-    public record SeatRenderSnapshot(
-        SeatWind wind,
-        UUID playerId,
-        String displayName,
-        String publicSeatStatus,
-        int points,
-        boolean riichi,
-        boolean ready,
-        boolean queuedToLeave,
-        boolean online,
-        String viewerMembershipSignature,
-        int selectedHandTileIndex,
-        int riichiDiscardIndex,
-        int stickLayoutCount,
-        List<UUID> viewerIdsExcluding,
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> hand,
-        List<doublemoon.mahjongcraft.paper.model.MahjongTile> discards,
-        List<MeldView> melds,
-        List<ScoringStick> scoringSticks,
-        List<ScoringStick> cornerSticks
-    ) {
-    }
-
-    public record ViewerOverlaySnapshot(
-        UUID viewerId,
-        String regionKey,
-        boolean spectator,
-        Component overlay,
-        List<SpectatorSeatOverlaySnapshot> spectatorSeatOverlays,
-        String fingerprint
-    ) {
-    }
-
-    public record SpectatorSeatOverlaySnapshot(
-        SeatWind wind,
-        Component overlay,
-        String signature
-    ) {
-    }
-
-    public record ViewerHudSnapshot(
-        Component title,
-        float progress,
-        BossBar.Color color,
-        String stateSignature
-    ) {
-    }
-
-    public record RenderPrecomputeResult(
-        RenderSnapshot snapshot,
-        Map<String, String> regionFingerprints,
-        TableRenderLayout.LayoutPlan layout
-    ) {
     }
 
     private static final class FingerprintBuilder {
@@ -1558,48 +1472,6 @@ public final class MahjongTableSession {
 
     private SeatWind firstEmptySeat() {
         return this.participants.firstEmptySeat();
-    }
-
-    public static final class FinalStanding {
-        private final UUID playerId;
-        private final String displayName;
-        private final int place;
-        private final int points;
-        private final double gameScore;
-        private final boolean bot;
-
-        public FinalStanding(UUID playerId, String displayName, int place, int points, double gameScore, boolean bot) {
-            this.playerId = playerId;
-            this.displayName = displayName;
-            this.place = place;
-            this.points = points;
-            this.gameScore = gameScore;
-            this.bot = bot;
-        }
-
-        public UUID playerId() {
-            return this.playerId;
-        }
-
-        public String displayName() {
-            return this.displayName;
-        }
-
-        public int place() {
-            return this.place;
-        }
-
-        public int points() {
-            return this.points;
-        }
-
-        public double gameScore() {
-            return this.gameScore;
-        }
-
-        public boolean bot() {
-            return this.bot;
-        }
     }
 
     public enum ReadyResult {

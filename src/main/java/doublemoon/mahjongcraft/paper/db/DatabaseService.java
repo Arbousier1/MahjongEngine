@@ -10,6 +10,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.ScoreItem;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement;
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableFinalStanding;
 import java.net.ConnectException;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -78,11 +79,11 @@ public final class DatabaseService {
         });
     }
 
-    public void persistMatchRanksAsync(String tableId, MahjongRule.GameLength length, List<MahjongTableSession.FinalStanding> standings) {
+    public void persistMatchRanksAsync(String tableId, MahjongRule.GameLength length, List<TableFinalStanding> standings) {
         if (!this.rankingEnabled() || standings.isEmpty()) {
             return;
         }
-        List<MahjongTableSession.FinalStanding> snapshot = List.copyOf(standings);
+        List<TableFinalStanding> snapshot = List.copyOf(standings);
         this.plugin.debug().log("database", "Queueing rank persistence for table=" + tableId + " standings=" + snapshot.size());
         this.plugin.async().execute("persist-match-ranks", () -> {
             try {
@@ -108,7 +109,7 @@ public final class DatabaseService {
         this.persistRoundResult(session, resolution);
     }
 
-    void persistMatchRanksSync(String tableId, MahjongRule.GameLength length, List<MahjongTableSession.FinalStanding> standings) throws SQLException {
+    void persistMatchRanksSync(String tableId, MahjongRule.GameLength length, List<TableFinalStanding> standings) throws SQLException {
         this.persistMatchRanks(tableId, length, standings);
     }
 
@@ -334,8 +335,8 @@ public final class DatabaseService {
         return results;
     }
 
-    private void persistMatchRanks(String tableId, MahjongRule.GameLength gameLength, List<MahjongTableSession.FinalStanding> standings) throws SQLException {
-        List<MahjongTableSession.FinalStanding> humanStandings = standings.stream()
+    private void persistMatchRanks(String tableId, MahjongRule.GameLength gameLength, List<TableFinalStanding> standings) throws SQLException {
+        List<TableFinalStanding> humanStandings = standings.stream()
             .filter(standing -> !standing.bot())
             .toList();
         if (humanStandings.isEmpty()) {
@@ -354,7 +355,7 @@ public final class DatabaseService {
             try {
                 Map<java.util.UUID, MahjongSoulRankProfile> currentProfiles = new HashMap<>();
                 boolean allPlayersCelestial = true;
-                for (MahjongTableSession.FinalStanding standing : humanStandings) {
+                for (TableFinalStanding standing : humanStandings) {
                     MahjongSoulRankProfile current = this.selectRankProfile(connection, standing.playerId());
                     if (current == null) {
                         current = MahjongSoulRankProfile.defaultProfile(standing.playerId(), standing.displayName());
@@ -365,7 +366,7 @@ public final class DatabaseService {
                     }
                 }
 
-                for (MahjongTableSession.FinalStanding standing : humanStandings) {
+                for (TableFinalStanding standing : humanStandings) {
                     MahjongSoulRankProfile current = currentProfiles.get(standing.playerId());
                     MahjongSoulRankRules.RankedMatchResult result = MahjongSoulRankRules.applyMatch(
                         current,
@@ -647,4 +648,5 @@ public final class DatabaseService {
         }
     }
 }
+
 

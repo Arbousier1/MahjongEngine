@@ -3,6 +3,9 @@ package doublemoon.mahjongcraft.paper.table.presentation;
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.riichi.ReactionOptions;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableSpectatorSeatOverlaySnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerHudSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerOverlaySnapshot;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -38,19 +41,19 @@ public final class TableViewerSnapshotFactory {
         return this.viewerOverlay(locale, this.captureViewerSummarySnapshot(locale, viewer.getUniqueId()));
     }
 
-    public MahjongTableSession.ViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
+    public TableViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
         Locale locale = this.session.plugin().messages().resolveLocale(viewer);
         UUID viewerId = viewer.getUniqueId();
         String regionKey = "viewer-overlay:" + viewerId;
         boolean spectator = this.session.isSpectator(viewerId);
         ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
         Component overlay = this.viewerOverlay(locale, summary);
-        List<MahjongTableSession.SpectatorSeatOverlaySnapshot> seatOverlays = List.of();
+        List<TableSpectatorSeatOverlaySnapshot> seatOverlays = List.of();
         String fingerprint = this.viewerOverlayFingerprint(locale, viewerId, spectator, summary, seatOverlays);
-        return new MahjongTableSession.ViewerOverlaySnapshot(viewerId, regionKey, spectator, overlay, seatOverlays, fingerprint);
+        return new TableViewerOverlaySnapshot(viewerId, regionKey, spectator, overlay, seatOverlays, fingerprint);
     }
 
-    public MahjongTableSession.ViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
+    public TableViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
         float progress = this.hudProgress();
         BossBar.Color color = this.hudColor(viewerId);
         ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
@@ -80,7 +83,7 @@ public final class TableViewerSnapshotFactory {
                 .field(summary.round())
                 .field(summary.resolutionTitle())
                 .toString();
-            return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+            return new TableViewerHudSnapshot(title, progress, color, stateSignature);
         }
 
         if (!this.session.isStarted()) {
@@ -117,10 +120,10 @@ public final class TableViewerSnapshotFactory {
             .field(this.session.lastPublicDiscardTile())
             .field(summary.reactionOptionsFingerprint())
             .toString();
-        return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+        return new TableViewerHudSnapshot(title, progress, color, stateSignature);
     }
 
-    private MahjongTableSession.ViewerHudSnapshot buildWaitingHudSnapshot(
+    private TableViewerHudSnapshot buildWaitingHudSnapshot(
         Locale locale,
         float progress,
         BossBar.Color color,
@@ -146,7 +149,7 @@ public final class TableViewerSnapshotFactory {
             .field(summary.waitingSummary())
             .field(summary.ruleSummary())
             .toString();
-        return new MahjongTableSession.ViewerHudSnapshot(title, progress, color, stateSignature);
+        return new TableViewerHudSnapshot(title, progress, color, stateSignature);
     }
 
     private Component viewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
@@ -347,7 +350,7 @@ public final class TableViewerSnapshotFactory {
         UUID viewerId,
         boolean spectator,
         ViewerSummarySnapshot summary,
-        List<MahjongTableSession.SpectatorSeatOverlaySnapshot> seatOverlays
+        List<TableSpectatorSeatOverlaySnapshot> seatOverlays
     ) {
         FingerprintBuilder builder = fingerprintBuilder(256)
             .field(locale.toLanguageTag())
@@ -376,7 +379,7 @@ public final class TableViewerSnapshotFactory {
             .field(this.session.lastPublicDiscardPlayerId())
             .field(this.session.lastPublicDiscardTile())
             .field(summary.reactionOptionsFingerprint());
-        for (MahjongTableSession.SpectatorSeatOverlaySnapshot seatOverlay : seatOverlays) {
+        for (TableSpectatorSeatOverlaySnapshot seatOverlay : seatOverlays) {
             builder.field(seatOverlay.signature());
         }
         return builder.toString();
@@ -586,4 +589,5 @@ public final class TableViewerSnapshotFactory {
         }
     }
 }
+
 

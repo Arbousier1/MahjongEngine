@@ -6,6 +6,8 @@ import doublemoon.mahjongcraft.paper.render.display.DisplayEntities;
 import doublemoon.mahjongcraft.paper.render.scene.MeldView;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -44,7 +46,7 @@ public final class TableRenderLayout {
     private TableRenderLayout() {
     }
 
-    public static LayoutPlan precompute(MahjongTableSession.RenderSnapshot snapshot) {
+    public static LayoutPlan precompute(TableRenderSnapshot snapshot) {
         Point displayCenter = new Point(snapshot.centerX(), snapshot.centerY() + DISPLAY_CENTER_Y_OFFSET, snapshot.centerZ());
         TableBounds bounds = tableBoundsFromTiles(displayCenter);
         Point tableCenter = new Point(bounds.centerX(), displayCenter.y(), bounds.centerZ());
@@ -54,7 +56,7 @@ public final class TableRenderLayout {
 
         EnumMap<SeatWind, SeatLayoutPlan> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {
-            MahjongTableSession.SeatRenderSnapshot seat = snapshot.seat(wind);
+            TableSeatRenderSnapshot seat = snapshot.seat(wind);
             seats.put(wind, precomputeSeat(displayCenter, snapshot, seat));
         }
 
@@ -72,8 +74,8 @@ public final class TableRenderLayout {
 
     private static SeatLayoutPlan precomputeSeat(
         Point displayCenter,
-        MahjongTableSession.RenderSnapshot snapshot,
-        MahjongTableSession.SeatRenderSnapshot seat
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat
     ) {
         SeatWind wind = seat.wind();
         Point handBase = handDirectionBase(displayCenter, wind);
@@ -119,7 +121,7 @@ public final class TableRenderLayout {
         );
     }
 
-    private static List<TilePlacement> precomputeWall(Point displayCenter, MahjongTableSession.RenderSnapshot snapshot) {
+    private static List<TilePlacement> precomputeWall(Point displayCenter, TableRenderSnapshot snapshot) {
         if (!snapshot.started()) {
             return List.of();
         }
@@ -160,7 +162,7 @@ public final class TableRenderLayout {
         return Collections.unmodifiableList(new ArrayList<>(placements));
     }
 
-    private static List<TilePlacement> precomputeDora(Point displayCenter, MahjongTableSession.RenderSnapshot snapshot) {
+    private static List<TilePlacement> precomputeDora(Point displayCenter, TableRenderSnapshot snapshot) {
         if (!snapshot.started()) {
             return List.of();
         }
@@ -173,7 +175,7 @@ public final class TableRenderLayout {
         return List.copyOf(placements);
     }
 
-    private static List<StickPlacement> precomputeSticks(Point displayCenter, MahjongTableSession.SeatRenderSnapshot seat) {
+    private static List<StickPlacement> precomputeSticks(Point displayCenter, TableSeatRenderSnapshot seat) {
         if (seat.playerId() == null) {
             return List.of();
         }
@@ -189,7 +191,7 @@ public final class TableRenderLayout {
 
     private static List<TilePlacement> precomputeDiscards(
         Point displayCenter,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         SeatWind openDoorSeat
     ) {
         if (seat.playerId() == null) {
@@ -236,7 +238,7 @@ public final class TableRenderLayout {
         return List.copyOf(placements);
     }
 
-    private static List<TilePlacement> precomputeMelds(Point displayCenter, MahjongTableSession.SeatRenderSnapshot seat) {
+    private static List<TilePlacement> precomputeMelds(Point displayCenter, TableSeatRenderSnapshot seat) {
         if (seat.playerId() == null || seat.melds().isEmpty()) {
             return List.of();
         }
@@ -316,7 +318,7 @@ public final class TableRenderLayout {
 
     private static Point handTilePoint(
         Point displayCenter,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         SeatWind wind,
         int tileIndex,
         boolean selected
@@ -339,7 +341,7 @@ public final class TableRenderLayout {
         };
     }
 
-    private static int wallBreakTileIndex(MahjongTableSession.RenderSnapshot snapshot) {
+    private static int wallBreakTileIndex(TableRenderSnapshot snapshot) {
         int seatCount = SeatWind.values().length;
         int dicePoints = snapshot.dicePoints();
         int directionIndex = 4 - (((dicePoints % seatCount) - 1 + snapshot.roundIndex()) % seatCount);
@@ -383,7 +385,7 @@ public final class TableRenderLayout {
         return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
     }
 
-    private static List<DeadWallPlacement> deadWallPlacements(Point center, MahjongTableSession.RenderSnapshot snapshot) {
+    private static List<DeadWallPlacement> deadWallPlacements(Point center, TableRenderSnapshot snapshot) {
         int breakTileIndex = wallBreakTileIndex(snapshot);
         List<DeadWallPlacementMutable> placements = new ArrayList<>(DEAD_WALL_SIZE);
         for (int i = 0; i < DEAD_WALL_SIZE; i++) {
@@ -739,4 +741,5 @@ public final class TableRenderLayout {
     private record DeadWallPlacement(int wallSlot, Point point, float yaw) {
     }
 }
+
 

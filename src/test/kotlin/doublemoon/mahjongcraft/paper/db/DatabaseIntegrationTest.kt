@@ -14,6 +14,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement
 import doublemoon.mahjongcraft.paper.runtime.AsyncService
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.TableFinalStanding
 import org.bukkit.configuration.file.YamlConfiguration
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -139,7 +140,7 @@ class DatabaseIntegrationTest {
             "TABLE99",
             MahjongRule.GameLength.TWO_WIND,
             listOf(
-                MahjongTableSession.FinalStanding(playerId, "Alice", 1, 42000, 57.0, false)
+                TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false)
             )
         )
 
@@ -171,3 +172,4 @@ class DatabaseIntegrationTest {
         dataSource.connection.use(block)
     }
 }
+

@@ -9,6 +9,8 @@ import doublemoon.mahjongcraft.paper.render.layout.WallLayout
 import doublemoon.mahjongcraft.paper.render.scene.TableRenderer
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot
 import java.util.EnumMap
 import java.util.UUID
 import kotlin.test.Test
@@ -82,7 +84,7 @@ class TableRendererTest {
     @Test
     fun `waiting snapshot skips live wall and dora layout`() {
         val base = startedSnapshot()
-        val snapshot = MahjongTableSession.RenderSnapshot(
+        val snapshot = TableRenderSnapshot(
                 base.version(),
                 base.cancellationNonce(),
                 base.worldName(),
@@ -119,7 +121,7 @@ class TableRendererTest {
         val base = startedSnapshot()
         val before = TableRenderLayout.precompute(base)
         val after = TableRenderLayout.precompute(
-            MahjongTableSession.RenderSnapshot(
+            TableRenderSnapshot(
                 base.version(),
                 base.cancellationNonce(),
                 base.worldName(),
@@ -170,8 +172,8 @@ class TableRendererTest {
         assertEquals(listOf(seat.playerId()), spec.hiddenViewers())
     }
 
-    private fun startedSnapshot(): MahjongTableSession.RenderSnapshot {
-        val seats = EnumMap<SeatWind, MahjongTableSession.SeatRenderSnapshot>(SeatWind::class.java)
+    private fun startedSnapshot(): TableRenderSnapshot {
+        val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
         seats[SeatWind.EAST] = seatSnapshot(
             wind = SeatWind.EAST,
@@ -186,7 +188,7 @@ class TableRendererTest {
         seats[SeatWind.SOUTH] = seatSnapshot(SeatWind.SOUTH, UUID.fromString("00000000-0000-0000-0000-000000000002"))
         seats[SeatWind.WEST] = seatSnapshot(SeatWind.WEST, UUID.fromString("00000000-0000-0000-0000-000000000003"))
         seats[SeatWind.NORTH] = seatSnapshot(SeatWind.NORTH, UUID.fromString("00000000-0000-0000-0000-000000000004"))
-        return MahjongTableSession.RenderSnapshot(
+        return TableRenderSnapshot(
             1L,
             0L,
             "world",
@@ -222,7 +224,7 @@ class TableRendererTest {
         riichiDiscardIndex: Int = -1,
         scoringSticks: List<ScoringStick> = emptyList(),
         cornerSticks: List<ScoringStick> = emptyList()
-    ) = MahjongTableSession.SeatRenderSnapshot(
+    ) = TableSeatRenderSnapshot(
         wind,
         playerId,
         wind.name.lowercase(),
@@ -257,3 +259,4 @@ class TableRendererTest {
             && left.pose() == right.pose()
     }
 }
+

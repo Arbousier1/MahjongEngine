@@ -1,6 +1,8 @@
 package doublemoon.mahjongcraft.paper.table.render;
 
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderPrecomputeResult;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot;
 import org.bukkit.Bukkit;
 
 public final class TableRenderCoordinator {
@@ -12,7 +14,7 @@ public final class TableRenderCoordinator {
     private boolean renderPrecomputeRunning;
     private boolean renderFlushScheduled;
     private long nextDisplayRestoreCheckTick;
-    private MahjongTableSession.RenderSnapshot pendingRenderSnapshot;
+    private TableRenderSnapshot pendingRenderSnapshot;
 
     public TableRenderCoordinator(MahjongTableSession session) {
         this.session = session;
@@ -61,7 +63,7 @@ public final class TableRenderCoordinator {
     }
 
     private void scheduleAsyncRenderPrecompute() {
-        MahjongTableSession.RenderSnapshot snapshot = this.session.captureRenderSnapshot(++this.renderRequestVersion, this.renderCancellationNonce);
+        TableRenderSnapshot snapshot = this.session.captureRenderSnapshot(++this.renderRequestVersion, this.renderCancellationNonce);
         this.pendingRenderSnapshot = snapshot;
         if (this.renderPrecomputeRunning) {
             return;
@@ -69,22 +71,22 @@ public final class TableRenderCoordinator {
         this.startAsyncRenderPrecompute(snapshot);
     }
 
-    private void startAsyncRenderPrecompute(MahjongTableSession.RenderSnapshot snapshot) {
+    private void startAsyncRenderPrecompute(TableRenderSnapshot snapshot) {
         this.renderPrecomputeRunning = true;
         this.session.plugin().async().execute("render-precompute-" + this.session.id(), () -> {
-            MahjongTableSession.RenderPrecomputeResult result = this.session.precomputeRender(snapshot);
+            TableRenderPrecomputeResult result = this.session.precomputeRender(snapshot);
             this.session.plugin().scheduler().runRegion(this.session.center(), () -> this.finishAsyncRenderPrecompute(result));
         });
     }
 
-    private void finishAsyncRenderPrecompute(MahjongTableSession.RenderPrecomputeResult result) {
+    private void finishAsyncRenderPrecompute(TableRenderPrecomputeResult result) {
         this.renderPrecomputeRunning = false;
         if (result.snapshot().cancellationNonce() != this.renderCancellationNonce) {
             this.startNextPendingRenderIfNeeded(result.snapshot().version());
             return;
         }
 
-        MahjongTableSession.RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
+        TableRenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
         if (latestSnapshot != null && latestSnapshot.version() > result.snapshot().version()) {
             this.startNextPendingRenderIfNeeded(result.snapshot().version());
             return;
@@ -96,7 +98,7 @@ public final class TableRenderCoordinator {
     }
 
     private void startNextPendingRenderIfNeeded(long completedVersion) {
-        MahjongTableSession.RenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
+        TableRenderSnapshot latestSnapshot = this.pendingRenderSnapshot;
         if (latestSnapshot == null || latestSnapshot.version() <= completedVersion) {
             return;
         }
@@ -109,4 +111,5 @@ public final class TableRenderCoordinator {
         this.renderPrecomputeRunning = false;
     }
 }
+
 

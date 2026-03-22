@@ -1,6 +1,8 @@
 package doublemoon.mahjongcraft.paper.table.presentation;
 
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerHudSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerOverlaySnapshot;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -86,7 +88,7 @@ public final class TableViewerPresentationCoordinator {
         }
         Set<String> activeKeys = new LinkedHashSet<>();
         for (Player viewer : viewers) {
-            MahjongTableSession.ViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
+            TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
             activeKeys.add(snapshot.regionKey());
             this.session.updateViewerOverlayRegion(snapshot);
         }
@@ -114,7 +116,7 @@ public final class TableViewerPresentationCoordinator {
         UUID viewerId = viewer.getUniqueId();
         onlineViewerIds.add(viewerId);
         Locale locale = this.session.plugin().messages().resolveLocale(viewer);
-        MahjongTableSession.ViewerHudSnapshot snapshot = this.session.captureViewerHudSnapshot(locale, viewerId);
+        TableViewerHudSnapshot snapshot = this.session.captureViewerHudSnapshot(locale, viewerId);
         BossBar bar = this.viewerHudBars.get(viewerId);
         if (bar == null) {
             bar = this.createHudBar(viewerId, viewer);
@@ -168,4 +170,5 @@ public final class TableViewerPresentationCoordinator {
         }
     }
 }
+
 

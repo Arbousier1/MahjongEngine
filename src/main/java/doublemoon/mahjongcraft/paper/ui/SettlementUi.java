@@ -7,6 +7,7 @@ import doublemoon.mahjongcraft.paper.riichi.model.RankedScoreItem;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoreSettlement;
 import doublemoon.mahjongcraft.paper.riichi.model.YakuSettlement;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableFinalStanding;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -138,7 +139,7 @@ public final class SettlementUi {
                 lore.add(messages.render(locale, "ui.score.rank_shift", messages.tag("value", rankShiftLabel(session, locale, item.getRankFloatText()))));
             }
             if (session.isRoundFinished()) {
-                MahjongTableSession.FinalStanding standing = finalStanding(session, item.getScoreItem().getStringUUID());
+                TableFinalStanding standing = finalStanding(session, item.getScoreItem().getStringUUID());
                 if (standing != null) {
                     lore.add(messages.render(locale, "ui.score.place", messages.number(locale, "value", standing.place())));
                     lore.add(messages.render(locale, "ui.score.majsoul", messages.tag("value", formatGameScore(locale, standing.gameScore()))));
@@ -300,7 +301,7 @@ public final class SettlementUi {
         };
     }
 
-    private static MahjongTableSession.FinalStanding finalStanding(MahjongTableSession session, String stringUuid) {
+    private static TableFinalStanding finalStanding(MahjongTableSession session, String stringUuid) {
         try {
             UUID uuid = UUID.fromString(stringUuid);
             return session.finalStandings().stream()
@@ -370,4 +371,5 @@ public final class SettlementUi {
         }
     }
 }
+
 

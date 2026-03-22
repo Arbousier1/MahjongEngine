@@ -2,6 +2,8 @@ package doublemoon.mahjongcraft.paper.table.render;
 
 import doublemoon.mahjongcraft.paper.model.SeatWind;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,7 +16,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 public final class TableRenderSnapshotFactory {
-    public MahjongTableSession.RenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
+    public TableRenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
         Location tableCenter = session.center();
         boolean started = session.isStarted();
         List<UUID> onlineViewerIds = session.viewers().stream()
@@ -28,11 +30,11 @@ public final class TableRenderSnapshotFactory {
             viewerMembershipSignatures.put(viewerId, this.viewerMembershipSignature(onlineViewerIds, viewerId));
             viewerIdsExcluding.put(viewerId, this.viewerIdsExcluding(onlineViewerIds, viewerId));
         }
-        EnumMap<SeatWind, MahjongTableSession.SeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
+        EnumMap<SeatWind, TableSeatRenderSnapshot> seats = new EnumMap<>(SeatWind.class);
         for (SeatWind wind : SeatWind.values()) {
             seats.put(wind, this.captureSeatSnapshot(session, wind, onlineViewerIdSet, viewerMembershipSignatures, viewerIdsExcluding));
         }
-        return new MahjongTableSession.RenderSnapshot(
+        return new TableRenderSnapshot(
             version,
             cancellationNonce,
             Objects.toString(tableCenter.getWorld() == null ? null : tableCenter.getWorld().getName(), ""),
@@ -59,7 +61,7 @@ public final class TableRenderSnapshotFactory {
         );
     }
 
-    private MahjongTableSession.SeatRenderSnapshot captureSeatSnapshot(
+    private TableSeatRenderSnapshot captureSeatSnapshot(
         MahjongTableSession session,
         SeatWind wind,
         Set<UUID> onlineViewerIdSet,
@@ -68,7 +70,7 @@ public final class TableRenderSnapshotFactory {
     ) {
         UUID playerId = session.playerAt(wind);
         boolean occupied = playerId != null;
-        return new MahjongTableSession.SeatRenderSnapshot(
+        return new TableSeatRenderSnapshot(
             wind,
             playerId,
             session.displayName(playerId),
@@ -107,4 +109,5 @@ public final class TableRenderSnapshotFactory {
             .toList();
     }
 }
+
 

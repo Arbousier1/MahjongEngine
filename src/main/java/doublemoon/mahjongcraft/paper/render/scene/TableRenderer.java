@@ -9,6 +9,10 @@ import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout;
 import doublemoon.mahjongcraft.paper.render.layout.WallLayout;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
 import doublemoon.mahjongcraft.paper.table.core.MahjongVariant;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableSpectatorSeatOverlaySnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerOverlaySnapshot;
 import doublemoon.mahjongcraft.paper.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.List;
@@ -341,7 +345,7 @@ public final class TableRenderer {
 
     public List<Entity> renderSeatLabels(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         List<Entity> spawned = new ArrayList<>(2);
@@ -385,7 +389,7 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderSeatLabelSpecs(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         List<DisplayEntities.EntitySpec> specs = new ArrayList<>(3);
@@ -512,7 +516,7 @@ public final class TableRenderer {
 
     public List<Entity> renderSticks(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -580,7 +584,7 @@ public final class TableRenderer {
 
     public List<Entity> renderCenterLabel(
         MahjongTableSession session,
-        MahjongTableSession.RenderSnapshot snapshot,
+        TableRenderSnapshot snapshot,
         TableRenderLayout.LayoutPlan plan
     ) {
         Location center = toLocation(session, plan.displayCenter());
@@ -599,7 +603,7 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderCenterLabelSpecs(
         MahjongTableSession session,
-        MahjongTableSession.RenderSnapshot snapshot,
+        TableRenderSnapshot snapshot,
         TableRenderLayout.LayoutPlan plan
     ) {
         Location center = toLocation(session, plan.displayCenter());
@@ -654,7 +658,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderViewerOverlay(MahjongTableSession session, MahjongTableSession.ViewerOverlaySnapshot snapshot) {
+    public List<Entity> renderViewerOverlay(MahjongTableSession session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
         List<Entity> spawned = new ArrayList<>(snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size());
         if (session.isStarted() || snapshot.spectator()) {
@@ -667,7 +671,7 @@ public final class TableRenderer {
             ));
         }
         if (snapshot.spectator()) {
-            for (MahjongTableSession.SpectatorSeatOverlaySnapshot seatOverlay : snapshot.spectatorSeatOverlays()) {
+            for (TableSpectatorSeatOverlaySnapshot seatOverlay : snapshot.spectatorSeatOverlays()) {
                 spawned.add(DisplayEntities.spawnLabel(
                     session.plugin(),
                     add(handDirectionBase(center, seatOverlay.wind()), offsetAcrossSeat(seatOverlay.wind(), 0.42D)).add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
@@ -682,7 +686,7 @@ public final class TableRenderer {
 
     public List<Entity> renderDiscards(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -697,7 +701,7 @@ public final class TableRenderer {
 
     public List<Entity> renderDiscardTile(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int discardIndex
     ) {
@@ -709,7 +713,7 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderDiscardTileSpecs(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int discardIndex
     ) {
@@ -721,7 +725,7 @@ public final class TableRenderer {
 
     public List<Entity> renderHandPrivate(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -764,7 +768,7 @@ public final class TableRenderer {
 
     public List<Entity> renderHandPrivateTile(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
     ) {
@@ -806,8 +810,8 @@ public final class TableRenderer {
 
     public List<Entity> renderHandPublic(
         MahjongTableSession session,
-        MahjongTableSession.RenderSnapshot snapshot,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -835,8 +839,8 @@ public final class TableRenderer {
 
     public List<Entity> renderHandPublicTile(
         MahjongTableSession session,
-        MahjongTableSession.RenderSnapshot snapshot,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
     ) {
@@ -861,8 +865,8 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderHandPublicTileSpecs(
         MahjongTableSession session,
-        MahjongTableSession.RenderSnapshot snapshot,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
     ) {
@@ -975,7 +979,7 @@ public final class TableRenderer {
 
     public List<Entity> renderMelds(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -990,7 +994,7 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderHandPrivateTileSpecs(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
     ) {
@@ -1027,7 +1031,7 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderMeldSpecs(
         MahjongTableSession session,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         if (seat.playerId() == null) {
@@ -1122,7 +1126,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(MahjongTableSession session, MahjongTableSession.ViewerOverlaySnapshot snapshot) {
+    public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(MahjongTableSession session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
         List<DisplayEntities.EntitySpec> specs = new ArrayList<>(snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size());
         if (session.isStarted() || snapshot.spectator()) {
@@ -1138,7 +1142,7 @@ public final class TableRenderer {
             ));
         }
         if (snapshot.spectator()) {
-            for (MahjongTableSession.SpectatorSeatOverlaySnapshot seatOverlay : snapshot.spectatorSeatOverlays()) {
+            for (TableSpectatorSeatOverlaySnapshot seatOverlay : snapshot.spectatorSeatOverlays()) {
                 specs.add(DisplayEntities.labelSpec(
                     add(handDirectionBase(center, seatOverlay.wind()), offsetAcrossSeat(seatOverlay.wind(), 0.42D)).add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                     seatOverlay.overlay(),
@@ -1738,4 +1742,5 @@ public final class TableRenderer {
     private record DeadWallPlacement(Location location, float yaw) {
     }
 }
+
 

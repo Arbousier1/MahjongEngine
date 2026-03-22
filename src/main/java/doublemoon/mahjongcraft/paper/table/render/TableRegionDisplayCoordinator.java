@@ -6,6 +6,10 @@ import doublemoon.mahjongcraft.paper.render.display.DisplayVisibilityRegistry;
 import doublemoon.mahjongcraft.paper.render.display.TableDisplayRegistry;
 import doublemoon.mahjongcraft.paper.render.layout.TableRenderLayout;
 import doublemoon.mahjongcraft.paper.table.core.MahjongTableSession;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderPrecomputeResult;
+import doublemoon.mahjongcraft.paper.table.core.TableRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableSeatRenderSnapshot;
+import doublemoon.mahjongcraft.paper.table.core.TableViewerOverlaySnapshot;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,8 +36,8 @@ public final class TableRegionDisplayCoordinator {
         this.fingerprintService = fingerprintService;
     }
 
-    public void applyRenderPrecompute(MahjongTableSession.RenderPrecomputeResult result) {
-        MahjongTableSession.RenderSnapshot snapshot = result.snapshot();
+    public void applyRenderPrecompute(TableRenderPrecomputeResult result) {
+        TableRenderSnapshot snapshot = result.snapshot();
         TableRenderLayout.LayoutPlan plan = result.layout();
         Map<String, String> fingerprints = result.regionFingerprints();
 
@@ -46,7 +50,7 @@ public final class TableRegionDisplayCoordinator {
             () -> this.session.renderer().renderCenterLabelSpecs(this.session, snapshot, plan)
         );
         for (SeatWind wind : SeatWind.values()) {
-            MahjongTableSession.SeatRenderSnapshot seat = snapshot.seat(wind);
+            TableSeatRenderSnapshot seat = snapshot.seat(wind);
             TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
             String visualRegionKey = this.seatRegionKey("visual", wind);
             String labelsRegionKey = this.seatRegionKey("labels", wind);
@@ -70,11 +74,11 @@ public final class TableRegionDisplayCoordinator {
         }
     }
 
-    public void refreshPrivateHandRegions(MahjongTableSession.SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
+    public void refreshPrivateHandRegions(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
         this.updatePrivateHandRegions(seat, plan);
     }
 
-    public void updateViewerOverlayRegion(MahjongTableSession.ViewerOverlaySnapshot snapshot) {
+    public void updateViewerOverlayRegion(TableViewerOverlaySnapshot snapshot) {
         this.updateRegionWithSpecs(
             snapshot.regionKey(),
             snapshot.fingerprint(),
@@ -112,7 +116,7 @@ public final class TableRegionDisplayCoordinator {
         return false;
     }
 
-    private void updatePrivateHandRegions(MahjongTableSession.SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
+    private void updatePrivateHandRegions(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
         this.clearRegion(this.seatRegionKey("hand-private", seat.wind()));
         int handSize = seat.playerId() == null ? 0 : seat.hand().size();
         for (int tileIndex = 0; tileIndex < MAX_HAND_TILE_REGIONS; tileIndex++) {
@@ -131,8 +135,8 @@ public final class TableRegionDisplayCoordinator {
     }
 
     private void updatePublicHandRegions(
-        MahjongTableSession.RenderSnapshot snapshot,
-        MahjongTableSession.SeatRenderSnapshot seat,
+        TableRenderSnapshot snapshot,
+        TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
         this.clearRegion(this.seatRegionKey("hand-public", seat.wind()));
@@ -152,7 +156,7 @@ public final class TableRegionDisplayCoordinator {
         }
     }
 
-    private void updateDiscardRegions(MahjongTableSession.SeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
+    private void updateDiscardRegions(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan) {
         this.clearRegion(this.seatRegionKey("discards", seat.wind()));
         int discardCount = seat.playerId() == null ? 0 : plan.discardPlacements().size();
         for (int discardIndex = 0; discardIndex < MAX_DISCARD_TILE_REGIONS; discardIndex++) {
@@ -305,4 +309,5 @@ public final class TableRegionDisplayCoordinator {
         List<DisplayEntities.EntitySpec> render();
     }
 }
+
 
