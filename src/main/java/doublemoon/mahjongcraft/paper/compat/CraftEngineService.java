@@ -54,11 +54,20 @@ public final class CraftEngineService {
     private static final String HAND_TILE_HITBOX_ITEM_ID = "mahjongpaper:hand_tile_hitbox";
     private static final String SEAT_HITBOX_ITEM_ID = "mahjongpaper:seat_hitbox";
     private static final String MAHJONGPAPER_FURNITURE_PREFIX = "mahjongpaper:";
+    private static final String WRAPPED_BLOCK_STATE_HELPER_CLASS =
+        "net.momirealms.craftengine.bukkit.compatibility.packetevents.WrappedBlockStateHelper";
+    private static final String WRAPPED_BLOCK_STATE_REGISTER_METHOD = "register";
+    private static final String GRIM_PACKETEVENTS_PACKAGE = "ac{}grim{}grimac{}shaded{}com{}github{}retrooper{}packetevents";
+    private static final String[] VULCAN_PACKETEVENTS_PACKAGES = new String[] {
+        "me{}frep{}vulcan{}shaded{}com{}github{}retrooper{}packetevents",
+        "me{}frep{}vulcan{}libs{}com{}github{}retrooper{}packetevents"
+    };
 
     private final MahjongPaperPlugin plugin;
     private final boolean exportBundleOnEnable;
     private final boolean preferCustomItems;
     private final boolean preferFurnitureHitbox;
+    private final boolean injectAntiCheatPacketEventsMappings;
     private final String bundleFolderName;
     private final Map<String, ItemStack> customItemCache = new ConcurrentHashMap<>();
     private final Map<String, Object> craftEngineKeyCache = new ConcurrentHashMap<>();
@@ -78,6 +87,7 @@ public final class CraftEngineService {
     private volatile FurnitureBridge furnitureBridge;
     private volatile ReflectionBridge reflectionBridge;
     private volatile NamespacedKey furnitureDataKey;
+    private volatile boolean antiCheatMappingsInjected;
     private Listener furnitureInteractListener;
 
     public CraftEngineService(MahjongPaperPlugin plugin, ConfigurationSection section) {
@@ -85,6 +95,12 @@ public final class CraftEngineService {
         this.exportBundleOnEnable = ConfigAccess.bool(section, true, "exportBundleOnEnable", "bundle.exportOnEnable");
         this.preferCustomItems = ConfigAccess.bool(section, true, "preferCustomItems", "items.preferCustomItems");
         this.preferFurnitureHitbox = ConfigAccess.bool(section, true, "preferFurnitureHitbox", "furniture.preferHitboxInteraction");
+        this.injectAntiCheatPacketEventsMappings = ConfigAccess.bool(
+            section,
+            true,
+            "injectAntiCheatPacketEventsMappings",
+            "compatibility.injectAntiCheatPacketEventsMappings"
+        );
         this.bundleFolderName = ConfigAccess.string(section, "mahjongpaper", "bundleFolder", "bundle.folder");
     }
 
@@ -98,6 +114,7 @@ public final class CraftEngineService {
         if (this.exportBundleOnEnable) {
             this.plugin.async().execute("export-craftengine-bundle", () -> this.exportBundle(craftEngine));
         }
+        this.injectAntiCheatMappingsIfNeeded(craftEngine);
     }
 
     public int cleanupMahjongFurniture() {
@@ -981,6 +998,68 @@ public final class CraftEngineService {
             }
         }
         return null;
+    }
+
+    private void injectAntiCheatMappingsIfNeeded(Plugin craftEngine) {
+        if (!this.injectAntiCheatPacketEventsMappings || this.antiCheatMappingsInjected) {
+            return;
+        }
+        if (craftEngine == null || !craftEngine.isEnabled()) {
+            return;
+        }
+
+        boolean attempted = false;
+        boolean injected = false;
+        if (this.isPluginEnabled("packetevents")) {
+            attempted = true;
+            injected = this.invokeWrappedBlockStateRegister(craftEngine, null, "PacketEvents") || injected;
+        }
+        if (this.isPluginEnabled("GrimAC")) {
+            attempted = true;
+            injected = this.invokeWrappedBlockStateRegister(craftEngine, GRIM_PACKETEVENTS_PACKAGE, "GrimAC") || injected;
+        }
+        if (this.isPluginEnabled("Vulcan")) {
+            attempted = true;
+            for (String candidate : VULCAN_PACKETEVENTS_PACKAGES) {
+                injected = this.invokeWrappedBlockStateRegister(craftEngine, candidate, "Vulcan") || injected;
+                if (injected) {
+                    break;
+                }
+            }
+        }
+        if (attempted && !injected) {
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine anti-cheat PacketEvents mapping injection was attempted but no compatible package was found."
+            );
+        }
+        this.antiCheatMappingsInjected = injected;
+    }
+
+    private boolean invokeWrappedBlockStateRegister(Plugin craftEngine, String packageName, String sourceName) {
+        try {
+            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+            Class<?> helperClass = Class.forName(WRAPPED_BLOCK_STATE_HELPER_CLASS, true, classLoader);
+            Method registerMethod = helperClass.getMethod(WRAPPED_BLOCK_STATE_REGISTER_METHOD, String.class);
+            registerMethod.invoke(null, packageName);
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine anti-cheat PacketEvents mapping injection succeeded via " + sourceName + "."
+            );
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            this.plugin.debug().log(
+                "lifecycle",
+                "CraftEngine anti-cheat PacketEvents mapping injection skipped for "
+                    + sourceName + ": " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+            );
+            return false;
+        }
+    }
+
+    private boolean isPluginEnabled(String pluginName) {
+        Plugin plugin = this.plugin.getServer().getPluginManager().getPlugin(pluginName);
+        return plugin != null && plugin.isEnabled();
     }
 
     private Method resolveBuildItemStackMethod(Class<?> customItemClass) {

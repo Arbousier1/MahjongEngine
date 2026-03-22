@@ -71,6 +71,11 @@ integrations:
     bundle:
       folder: mahjongpaper
 
+    compatibility:
+      # Inject CraftEngine PacketEvents wrapped block-state mappings for anti-cheat stacks
+      # (PacketEvents, GrimAC, Vulcan when compatible shaded classes are available).
+      injectAntiCheatPacketEventsMappings: true
+
     items:
       # Prefer CraftEngine custom items for tile visuals when available.
       preferCustomItems: true
