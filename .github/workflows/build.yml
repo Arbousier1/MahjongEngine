@@ -87,19 +87,19 @@ jobs:
           java-version: "21"
 
       - name: Download Linux jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mahjong-paper-jar-linux
           path: artifacts/linux
 
       - name: Download Windows jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mahjong-paper-jar-windows
           path: artifacts/windows
 
       - name: Download macOS jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mahjong-paper-jar-macos
           path: artifacts/macos
