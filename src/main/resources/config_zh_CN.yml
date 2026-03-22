@@ -1,36 +1,36 @@
-# MahjongPaper 配置文件
+﻿# MahjongPaper 閰嶇疆鏂囦欢
 #
-# 插件会在启动时读取并缓存这个文件。修改后请重启服务器或插件进程，
-# 这样数据库、CraftEngine 和牌桌持久化设置才能一起重新加载。
+# 鎻掍欢浼氬湪鍚姩鏃惰鍙栧苟缂撳瓨杩欎釜鏂囦欢銆備慨鏀瑰悗璇烽噸鍚湇鍔″櫒鎴栨彃浠惰繘绋嬶紝
+# 杩欐牱鏁版嵁搴撱€丆raftEngine 鍜岀墝妗屾寔涔呭寲璁剧疆鎵嶈兘涓€璧烽噸鏂板姞杞姐€?
 #
-# 现在更推荐使用新的分组键名，但代码仍兼容旧的扁平键名。
+# 鐜板湪鏇存帹鑽愪娇鐢ㄦ柊鐨勫垎缁勯敭鍚嶏紝浣嗕唬鐮佷粛鍏煎鏃х殑鎵佸钩閿悕銆?
 
 database:
-  # 设为 false 可完全关闭对局历史持久化。
+  # 璁句负 false 鍙畬鍏ㄥ叧闂灞€鍘嗗彶鎸佷箙鍖栥€?
   enabled: true
 
-  # 若为 true，则数据库初始化失败时插件会直接停用自身。
+  # 鑻ヤ负 true锛屽垯鏁版嵁搴撳垵濮嬪寲澶辫触鏃舵彃浠朵細鐩存帴鍋滅敤鑷韩銆?
   failOnError: false
 
   connection:
-    # 支持的值: h2, mariadb
+    # 鏀寔鐨勫€? h2, mariadb
     type: h2
 
-    # 仅用于 MariaDB。
+    # 浠呯敤浜?MariaDB銆?
     host: 127.0.0.1
     port: 3306
     name: mahjongpaper
 
-    # MariaDB 额外的 JDBC 查询参数。
+    # MariaDB 棰濆鐨?JDBC 鏌ヨ鍙傛暟銆?
     parameters: useUnicode=true&characterEncoding=utf8&useSsl=false
 
   credentials:
-    # 仅用于 MariaDB。
+    # 浠呯敤浜?MariaDB銆?
     username: root
     password: change_me
 
   h2:
-    # 相对路径会基于插件数据目录解析。
+    # 鐩稿璺緞浼氬熀浜庢彃浠舵暟鎹洰褰曡В鏋愩€?
     path: data/mahjongpaper
     username: sa
     password: ""
@@ -42,87 +42,92 @@ database:
     connectionTimeoutMillis: 10000
 
 tables:
-  # 服务器启动后，每 tick 重建多少张持久化牌桌。
-  # 数值越低越能减少启动卡顿，越高则恢复得更快。
+  # 鏈嶅姟鍣ㄥ惎鍔ㄥ悗锛屾瘡 tick 閲嶅缓澶氬皯寮犳寔涔呭寲鐗屾銆?
+  # 鏁板€艰秺浣庤秺鑳藉噺灏戝惎鍔ㄥ崱椤匡紝瓒婇珮鍒欐仮澶嶅緱鏇村揩銆?
   startupRebuildBatchSize: 3
 
   persistence:
-    # 持久化牌桌会在启动时从这个文件恢复。
+    # 鎸佷箙鍖栫墝妗屼細鍦ㄥ惎鍔ㄦ椂浠庤繖涓枃浠舵仮澶嶃€?
     enabled: true
     file: tables.yml
 
 ranking:
-  # 雀魂风格的段位分与段位持久化。
-  # 需要 database.enabled=true。
+  # 闆€榄傞鏍肩殑娈典綅鍒嗕笌娈典綅鎸佷箙鍖栥€?
+  # 闇€瑕?database.enabled=true銆?
   enabled: true
 
-  # 四麻东风战和半庄战使用的排位房间预设。
-  # 支持: BRONZE, SILVER, GOLD, JADE, THRONE
+  # 鍥涢夯涓滈鎴樺拰鍗婂簞鎴樹娇鐢ㄧ殑鎺掍綅鎴块棿棰勮銆?
+  # 鏀寔: BRONZE, SILVER, GOLD, JADE, THRONE
   eastRoom: SILVER
   southRoom: GOLD
 
 integrations:
   craftengine:
-    # 启动时导出内置的 MahjongPaper CraftEngine 资源包。
+    # 鍚姩鏃跺鍑哄唴缃殑 MahjongPaper CraftEngine 璧勬簮鍖呫€?
     exportBundleOnEnable: true
 
     bundle:
       folder: mahjongpaper
 
+    compatibility:
+      # 注入 CraftEngine 的 PacketEvents 方块状态映射，以兼容常见反作弊插件
+      # （PacketEvents / GrimAC / Vulcan，存在可兼容的 shaded 类时生效）。
+      injectAntiCheatPacketEventsMappings: true
+
     items:
-      # 可用时优先用 CraftEngine 自定义物品显示麻将牌。
+      # 鍙敤鏃朵紭鍏堢敤 CraftEngine 鑷畾涔夌墿鍝佹樉绀洪夯灏嗙墝銆?
       preferCustomItems: true
 
-      # 用于解析所有麻将牌视觉所用 CraftEngine 物品 id 的前缀。
-      # 这个配置只控制 CraftEngine 自定义物品；麻将牌本身仍通过 ItemDisplay 渲染，
-      # 不会因为这里的配置改成逐张放置 CraftEngine 家具实体。
-      # MahjongPaper 会自动拼接小写牌名，例如 east、m1、back、unknown，
-      # 以及国麻花牌的 plum、orchid、bamboo、chrysanthemum、spring、summer、autumn、winter。
-      # 完整后缀列表：
+      # 鐢ㄤ簬瑙ｆ瀽鎵€鏈夐夯灏嗙墝瑙嗚鎵€鐢?CraftEngine 鐗╁搧 id 鐨勫墠缂€銆?
+      # 杩欎釜閰嶇疆鍙帶鍒?CraftEngine 鑷畾涔夌墿鍝侊紱楹诲皢鐗屾湰韬粛閫氳繃 ItemDisplay 娓叉煋锛?
+      # 涓嶄細鍥犱负杩欓噷鐨勯厤缃敼鎴愰€愬紶鏀剧疆 CraftEngine 瀹跺叿瀹炰綋銆?
+      # MahjongPaper 浼氳嚜鍔ㄦ嫾鎺ュ皬鍐欑墝鍚嶏紝渚嬪 east銆乵1銆乥ack銆乽nknown锛?
+      # 浠ュ強鍥介夯鑺辩墝鐨?plum銆乷rchid銆乥amboo銆乧hrysanthemum銆乻pring銆乻ummer銆乤utumn銆亀inter銆?
+      # 瀹屾暣鍚庣紑鍒楄〃锛?
       # m1 m2 m3 m4 m5 m5_red m6 m7 m8 m9
       # p1 p2 p3 p4 p5 p5_red p6 p7 p8 p9
       # s1 s2 s3 s4 s5 s5_red s6 s7 s8 s9
       # east south west north white_dragon green_dragon red_dragon
       # plum orchid bamboo chrysanthemum spring summer autumn winter
       # back unknown
-      # 背面牌统一使用 back，所以你只需要提供公共前缀，不需要把每张牌完整写一遍。
-      # 例: custom:tile_ -> custom:tile_east、custom:tile_m1、custom:tile_back
-      # 花牌例子: custom:tile_plum、custom:tile_orchid、custom:tile_bamboo、custom:tile_winter
-      # 默认值 mahjongpaper: 会解析成 mahjongpaper:east、mahjongpaper:m1、
-      # mahjongpaper:back 和 mahjongpaper:unknown 这样的物品 id。
-      # 这是共享兼容前缀；下面的日麻/国麻专用前缀会优先覆盖它。
+      # 鑳岄潰鐗岀粺涓€浣跨敤 back锛屾墍浠ヤ綘鍙渶瑕佹彁渚涘叕鍏卞墠缂€锛屼笉闇€瑕佹妸姣忓紶鐗屽畬鏁村啓涓€閬嶃€?
+      # 渚? custom:tile_ -> custom:tile_east銆乧ustom:tile_m1銆乧ustom:tile_back
+      # 鑺辩墝渚嬪瓙: custom:tile_plum銆乧ustom:tile_orchid銆乧ustom:tile_bamboo銆乧ustom:tile_winter
+      # 榛樿鍊?mahjongpaper: 浼氳В鏋愭垚 mahjongpaper:east銆乵ahjongpaper:m1銆?
+      # mahjongpaper:back 鍜?mahjongpaper:unknown 杩欐牱鐨勭墿鍝?id銆?
+      # 杩欐槸鍏变韩鍏煎鍓嶇紑锛涗笅闈㈢殑鏃ラ夯/鍥介夯涓撶敤鍓嶇紑浼氫紭鍏堣鐩栧畠銆?
       tileItemIdPrefix: "mahjongpaper:"
 
-      # 日麻牌桌使用的 CraftEngine 物品前缀。
+      # 鏃ラ夯鐗屾浣跨敤鐨?CraftEngine 鐗╁搧鍓嶇紑銆?
       riichiTileItemIdPrefix: "mahjongpaper:"
 
-      # 国标牌桌使用的 CraftEngine 物品前缀。
+      # 鍥芥爣鐗屾浣跨敤鐨?CraftEngine 鐗╁搧鍓嶇紑銆?
       gbTileItemIdPrefix: "mahjongpaper:"
 
-      # 如果某张正面牌解析出的 CE 物品不存在，插件会先尝试对应规则集的
-      # unknown 牌面物品，便于不完整资源包先临时显示。
-      # 如果 preferCustomItems 为 false，或解析出的 CraftEngine 物品无法构建，
-      # MahjongPaper 会回退到内置的 direct item_model 麻将牌物品。
+      # 濡傛灉鏌愬紶姝ｉ潰鐗岃В鏋愬嚭鐨?CE 鐗╁搧涓嶅瓨鍦紝鎻掍欢浼氬厛灏濊瘯瀵瑰簲瑙勫垯闆嗙殑
+      # unknown 鐗岄潰鐗╁搧锛屼究浜庝笉瀹屾暣璧勬簮鍖呭厛涓存椂鏄剧ず銆?
+      # 濡傛灉 preferCustomItems 涓?false锛屾垨瑙ｆ瀽鍑虹殑 CraftEngine 鐗╁搧鏃犳硶鏋勫缓锛?
+      # MahjongPaper 浼氬洖閫€鍒板唴缃殑 direct item_model 楹诲皢鐗岀墿鍝併€?
 
     furniture:
-      # 桌子和座位交互优先使用 CraftEngine 家具 hitbox。
+      # 妗屽瓙鍜屽骇浣嶄氦浜掍紭鍏堜娇鐢?CraftEngine 瀹跺叿 hitbox銆?
       preferHitboxInteraction: true
 
-      # 牌桌视觉使用的 CraftEngine 家具 id。
-      # 设为 "" 时改用内置的 block-display 牌桌后备方案。
-      # 设置后，MahjongPaper 会完整使用该家具自身的 hitbox 与其他行为。
-      # 留空时，则使用内置 block-display 牌桌并补上 MahjongPaper 的回退桌面 hitbox。
+      # 鐗屾瑙嗚浣跨敤鐨?CraftEngine 瀹跺叿 id銆?
+      # 璁句负 "" 鏃舵敼鐢ㄥ唴缃殑 block-display 鐗屾鍚庡鏂规銆?
+      # 璁剧疆鍚庯紝MahjongPaper 浼氬畬鏁翠娇鐢ㄨ瀹跺叿鑷韩鐨?hitbox 涓庡叾浠栬涓恒€?
+      # 鐣欑┖鏃讹紝鍒欎娇鐢ㄥ唴缃?block-display 鐗屾骞惰ˉ涓?MahjongPaper 鐨勫洖閫€妗岄潰 hitbox銆?
       tableFurnitureId: mahjongpaper:table_visual
 
-      # 每个座位使用的 CraftEngine 家具 id。
-      # 设为 "" 时改用内置的 block-display 椅子后备方案。
-      # 这个家具应当在 CraftEngine 中自行定义 hitbox 和 seats。
+      # 姣忎釜搴т綅浣跨敤鐨?CraftEngine 瀹跺叿 id銆?
+      # 璁句负 "" 鏃舵敼鐢ㄥ唴缃殑 block-display 妞呭瓙鍚庡鏂规銆?
+      # 杩欎釜瀹跺叿搴斿綋鍦?CraftEngine 涓嚜琛屽畾涔?hitbox 鍜?seats銆?
       seatFurnitureId: mahjongpaper:seat_chair
 
 debug:
   enabled: false
 
-  # 留空表示 debug 开启时输出所有分类。
+  # 鐣欑┖琛ㄧず debug 寮€鍚椂杈撳嚭鎵€鏈夊垎绫汇€?
   categories:
     - lifecycle
     - table
@@ -130,3 +135,4 @@ debug:
     - packet
     - render
     - database
+
