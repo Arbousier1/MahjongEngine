@@ -795,7 +795,7 @@ public final class DisplayEntities {
     }
 
     public static BlockDisplay spawnBlockDisplay(Plugin plugin, Location location, Material material, float scaleX, float scaleY, float scaleZ) {
-        return spawnBlockDisplay(plugin, location, material, scaleX, scaleY, scaleZ, true, null);
+        return spawnBlockDisplay(plugin, location, material, scaleX, scaleY, scaleZ, true, null, null);
     }
 
     public static BlockDisplay spawnBlockDisplay(
@@ -807,6 +807,20 @@ public final class DisplayEntities {
         float scaleZ,
         boolean visibleByDefault,
         Collection<UUID> privateViewers
+    ) {
+        return spawnBlockDisplay(plugin, location, material, scaleX, scaleY, scaleZ, visibleByDefault, privateViewers, null);
+    }
+
+    public static BlockDisplay spawnBlockDisplay(
+        Plugin plugin,
+        Location location,
+        Material material,
+        float scaleX,
+        float scaleY,
+        float scaleZ,
+        boolean visibleByDefault,
+        Collection<UUID> privateViewers,
+        DisplayClickAction clickAction
     ) {
         World world = location.getWorld();
         if (world == null) {
@@ -826,6 +840,9 @@ public final class DisplayEntities {
             spawned.setVisibleByDefault(!privateOnly && visibleByDefault);
             spawned.setRotation(0.0F, 0.0F);
             spawned.setBlock(material.createBlockData());
+            // Keep display hit volume aligned with visual scale so custom ray hit-testing is stable.
+            spawned.setDisplayWidth(scaleX);
+            spawned.setDisplayHeight(scaleY);
             spawned.setTransformation(new Transformation(
                 new Vector3f(),
                 new AxisAngle4f(),
@@ -833,6 +850,9 @@ public final class DisplayEntities {
                 new AxisAngle4f()
             ));
         });
+        if (clickAction != null) {
+            TableDisplayRegistry.register(display.getEntityId(), clickAction);
+        }
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
             syncPrivateVisibility(plugin, display, privateViewers);

@@ -175,6 +175,8 @@ public final class TableRegionFingerprintService {
         return fingerprintBuilder(96)
             .field("visual")
             .field(wind.name())
+            .field(session.isStarted())
+            .field(Objects.toString(session.playerAt(wind), "empty"))
             .field(Objects.toString(session.plugin().settings().craftEngineSeatFurnitureId(), ""))
             .toString();
     }

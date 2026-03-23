@@ -5,19 +5,27 @@ import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
+import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.GameMode;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.util.RayTraceResult;
 
 final class TableEventCoordinator {
     private static final long DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS = 40_000_000L;
@@ -110,6 +118,41 @@ final class TableEventCoordinator {
         this.handleDisplayInteract(event.getPlayer(), event.getRightClicked(), event);
     }
 
+    void onDisplayPacketRayInteract(PlayerInteractEvent event) {
+        if (event == null) {
+            return;
+        }
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) {
+            return;
+        }
+        Player player = event.getPlayer();
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        RayTraceResult rayTraceResult = player.getWorld().rayTrace(
+            player.getEyeLocation(),
+            player.getEyeLocation().getDirection(),
+            displayActionRayDistance(player),
+            FluidCollisionMode.NEVER,
+            true,
+            0.0D,
+            entity -> this.isManagedDisplayActionEntity(entity, player.getUniqueId())
+        );
+        Entity hitEntity = rayTraceResult == null ? null : rayTraceResult.getHitEntity();
+        if (hitEntity == null) {
+            return;
+        }
+        DisplayClickAction action = TableDisplayRegistry.get(hitEntity.getEntityId());
+        if (action == null) {
+            return;
+        }
+        event.setCancelled(true);
+        this.handleResolvedDisplayAction(player, action);
+    }
+
     void onProtectedDisplayDamage(EntityDamageEvent event) {
         if (this.isProtectedTableEntity(event.getEntity())) {
             event.setCancelled(true);
@@ -129,19 +172,7 @@ final class TableEventCoordinator {
         }
 
         event.setCancelled(true);
-        UUID playerId = player.getUniqueId();
-        if (this.isDuplicateDisplayAction(playerId, action)) {
-            return;
-        }
-        this.rememberDisplayAction(playerId, action);
-        boolean accepted = this.manager.handleDisplayAction(player, action);
-        if (!accepted) {
-            if (action.actionType() == ActionType.HAND_TILE) {
-                this.manager.pluginRef().messages().actionBar(player, "packet.cannot_click_tile");
-            } else {
-                this.manager.pluginRef().messages().actionBar(player, "command.join_failed");
-            }
-        }
+        this.handleResolvedDisplayAction(player, action);
     }
 
     private boolean isProtectedTableEntity(Entity entity) {
@@ -177,11 +208,58 @@ final class TableEventCoordinator {
         return System.nanoTime() - recent.timestampNanos() <= DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS;
     }
 
+    private void handleResolvedDisplayAction(Player player, DisplayClickAction action) {
+        if (player == null || action == null) {
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (this.isDuplicateDisplayAction(playerId, action)) {
+            return;
+        }
+        this.rememberDisplayAction(playerId, action);
+        boolean accepted = this.manager.handleDisplayAction(player, action);
+        if (!accepted) {
+            if (action.actionType() == ActionType.HAND_TILE) {
+                this.manager.pluginRef().messages().actionBar(player, "packet.cannot_click_tile");
+            } else {
+                this.manager.pluginRef().messages().actionBar(player, "command.join_failed");
+            }
+        }
+    }
+
     private void rememberDisplayAction(UUID playerId, DisplayClickAction action) {
         if (playerId == null || action == null) {
             return;
         }
         this.recentDisplayActions.put(playerId, new RecentDisplayAction(action, System.nanoTime()));
+    }
+
+    private boolean isManagedDisplayActionEntity(Entity entity, UUID viewerId) {
+        if (entity == null) {
+            return false;
+        }
+        if (!(entity instanceof org.bukkit.entity.Display)) {
+            return false;
+        }
+        if (!DisplayEntities.isManagedEntity(this.manager.pluginRef(), entity)) {
+            return false;
+        }
+        int entityId = entity.getEntityId();
+        if (TableDisplayRegistry.get(entityId) == null) {
+            return false;
+        }
+        return DisplayVisibilityRegistry.canView(entityId, viewerId);
+    }
+
+    private static double displayActionRayDistance(Player player) {
+        if (player == null) {
+            return 4.5D;
+        }
+        AttributeInstance attribute = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
+        if (attribute != null && attribute.getValue() > 0.0D) {
+            return attribute.getValue();
+        }
+        return player.getGameMode() == GameMode.CREATIVE ? 5.0D : 4.5D;
     }
 
     private record RecentDisplayAction(DisplayClickAction action, long timestampNanos) {
