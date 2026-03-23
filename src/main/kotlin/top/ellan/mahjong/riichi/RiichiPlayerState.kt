@@ -13,6 +13,7 @@ import top.ellan.mahjong.riichi.model.TileInstance
 import top.ellan.mahjong.riichi.model.Wind
 import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.riichi.model.toMahjongTileList
+import mahjongutils.CalcContext
 import mahjongutils.hora.HoraOptions
 import mahjongutils.hora.hora
 import mahjongutils.models.Tile
@@ -26,6 +27,8 @@ import mahjongutils.shanten.shanten
 import mahjongutils.yaku.Yaku
 import mahjongutils.yaku.Yakus
 import kotlin.math.absoluteValue
+import java.lang.reflect.Constructor
+import java.lang.reflect.Method
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -46,6 +49,39 @@ open class RiichiPlayerState(
 ) {
     companion object {
         private val LOGGER: Logger = Logger.getLogger(RiichiPlayerState::class.java.name)
+
+        private data class StableUtilShantenInvoker(
+            val internalArgsConstructor: Constructor<*>,
+            val shantenMethod: Method
+        )
+
+        private val stableUtilShantenInvoker: StableUtilShantenInvoker? = runCatching {
+            val internalArgsClass = Class.forName("mahjongutils.shanten.InternalShantenArgs")
+            val calcContextClass = Class.forName("mahjongutils.CalcContext")
+            val shantenKtClass = Class.forName("mahjongutils.shanten.ShantenKt")
+            val internalArgsConstructor = internalArgsClass.getDeclaredConstructor(
+                List::class.java,
+                List::class.java,
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType
+            ).apply { isAccessible = true }
+            val shantenMethod = shantenKtClass.getDeclaredMethod(
+                "shanten",
+                calcContextClass,
+                internalArgsClass
+            ).apply { isAccessible = true }
+            StableUtilShantenInvoker(
+                internalArgsConstructor = internalArgsConstructor,
+                shantenMethod = shantenMethod
+            )
+        }.getOrElse { error ->
+            LOGGER.log(Level.FINE, "Unable to initialize util stable shanten invoker", error)
+            null
+        }
+
         internal var shantenCalculator: (
             tiles: List<Tile>,
             furo: List<mahjongutils.models.Furo>,
@@ -703,7 +739,27 @@ open class RiichiPlayerState(
                 return fallback.getOrNull()
             }
             val fallbackError = fallback.exceptionOrNull() ?: return null
-            val fallbackLevel = if (fallbackError is IllegalArgumentException) Level.FINE else Level.WARNING
+            if (fallbackError.isNoSuchElementFailure()) {
+                val stableFallback = runCatching {
+                    shantenWithUtilStableArgs(tiles, furo, false)
+                }
+                if (stableFallback.isSuccess) {
+                    LOGGER.log(
+                        Level.FINE,
+                        "Shanten fallback recovered via util stable args (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                        fallbackError
+                    )
+                    return stableFallback.getOrNull()
+                }
+                val stableFallbackError = stableFallback.exceptionOrNull() ?: return null
+                LOGGER.log(
+                    shantenFailureLogLevel(stableFallbackError),
+                    "Shanten stable fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                    stableFallbackError
+                )
+                return null
+            }
+            val fallbackLevel = shantenFailureLogLevel(fallbackError)
             LOGGER.log(
                 fallbackLevel,
                 "Shanten analysis fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
@@ -711,7 +767,27 @@ open class RiichiPlayerState(
             )
             return null
         }
-        val level = if (primaryError is IllegalArgumentException) Level.FINE else Level.WARNING
+        if (!bestShantenOnly && primaryError.isNoSuchElementFailure()) {
+            val stableFallback = runCatching {
+                shantenWithUtilStableArgs(tiles, furo, false)
+            }
+            if (stableFallback.isSuccess) {
+                LOGGER.log(
+                    Level.FINE,
+                    "Shanten recovered via util stable args (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                    primaryError
+                )
+                return stableFallback.getOrNull()
+            }
+            val stableFallbackError = stableFallback.exceptionOrNull() ?: return null
+            LOGGER.log(
+                shantenFailureLogLevel(stableFallbackError),
+                "Shanten stable fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                stableFallbackError
+            )
+            return null
+        }
+        val level = shantenFailureLogLevel(primaryError)
         LOGGER.log(
             level,
             "Shanten analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=$bestShantenOnly)",
@@ -719,6 +795,32 @@ open class RiichiPlayerState(
         )
         return null
     }
+
+    private fun shantenWithUtilStableArgs(
+        tiles: List<Tile>,
+        furo: List<mahjongutils.models.Furo>,
+        bestShantenOnly: Boolean
+    ): UnionShantenResult {
+        val invoker = stableUtilShantenInvoker
+            ?: throw IllegalStateException("mahjongutils internal shanten API is unavailable")
+        val args = invoker.internalArgsConstructor.newInstance(
+            tiles,
+            furo,
+            true,
+            false,
+            bestShantenOnly,
+            true,
+            true
+        )
+        val result = invoker.shantenMethod.invoke(null, CalcContext(), args)
+        return result as? UnionShantenResult
+            ?: throw IllegalStateException(
+                "mahjongutils internal shanten returned unexpected result type: ${result?.javaClass?.name}"
+            )
+    }
+
+    private fun shantenFailureLogLevel(error: Throwable): Level =
+        if (error is IllegalArgumentException) Level.FINE else Level.WARNING
 
     private fun Throwable.isNoSuchElementFailure(): Boolean {
         var current: Throwable? = this

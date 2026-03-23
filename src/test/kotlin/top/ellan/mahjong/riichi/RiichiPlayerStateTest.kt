@@ -66,6 +66,43 @@ class RiichiPlayerStateTest {
     }
 
     @Test
+    fun `shanten no such element in both attempts recovers via util stable args`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S6,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.P6,
+            MahjongTile.M9
+        )
+
+        val originalCalculator = RiichiPlayerState.shantenCalculator
+        var calculatorCalls = 0
+        try {
+            RiichiPlayerState.shantenCalculator = { _, _, _ ->
+                calculatorCalls++
+                throw java.util.NoSuchElementException("forced failure for stable util fallback test")
+            }
+
+            val suggestions = player.discardSuggestions()
+
+            assertTrue(suggestions.isNotEmpty())
+            assertEquals(2, calculatorCalls)
+        } finally {
+            RiichiPlayerState.shantenCalculator = originalCalculator
+        }
+    }
+
+    @Test
     fun `invalid hand size does not throw during shanten checks`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
