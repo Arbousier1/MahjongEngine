@@ -10,6 +10,7 @@ import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongVariant;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -1213,8 +1215,30 @@ public final class CraftEngineService {
     }
 
     private Object[] asObjectArray(Object value) {
+        if (value == null) {
+            return new Object[0];
+        }
         if (value instanceof Object[] array) {
             return array;
+        }
+        if (value instanceof Collection<?> collection) {
+            return collection.toArray();
+        }
+        if (value instanceof Iterable<?> iterable) {
+            List<Object> collected = new ArrayList<>();
+            for (Object element : iterable) {
+                collected.add(element);
+            }
+            return collected.toArray();
+        }
+        Class<?> valueClass = value.getClass();
+        if (valueClass.isArray()) {
+            int length = Array.getLength(value);
+            Object[] converted = new Object[length];
+            for (int index = 0; index < length; index++) {
+                converted[index] = Array.get(value, index);
+            }
+            return converted;
         }
         return new Object[0];
     }
