@@ -417,12 +417,14 @@ public final class CraftEngineService {
             Player player = (Player) playerMethod.invoke(event);
             Object furniture = furnitureMethod.invoke(event);
             int entityId = (int) entityIdMethod.invoke(furniture);
+            Entity furnitureEntity = null;
+            Object bukkitEntity = bukkitEntityMethod.invoke(furniture);
+            if (bukkitEntity instanceof Entity entity) {
+                furnitureEntity = entity;
+            }
             DisplayClickAction action = TableDisplayRegistry.get(entityId);
-            if (action == null) {
-                Object bukkitEntity = bukkitEntityMethod.invoke(furniture);
-                if (bukkitEntity instanceof Entity entity) {
-                    action = TableDisplayRegistry.get(entity.getEntityId());
-                }
+            if (action == null && furnitureEntity != null) {
+                action = TableDisplayRegistry.get(furnitureEntity.getEntityId());
             }
             if (action == null) {
                 return;
@@ -431,6 +433,9 @@ public final class CraftEngineService {
                 cancellable.setCancelled(true);
             }
             boolean accepted = tableManager.handleDisplayAction(player, action);
+            if (accepted && action.actionType() == DisplayClickAction.ActionType.JOIN_SEAT && furnitureEntity != null) {
+                this.seatPlayerOnFurniture(furnitureEntity, player);
+            }
             if (!accepted) {
                 if (action.actionType() == DisplayClickAction.ActionType.HAND_TILE) {
                     this.plugin.messages().actionBar(player, "packet.cannot_click_tile");
