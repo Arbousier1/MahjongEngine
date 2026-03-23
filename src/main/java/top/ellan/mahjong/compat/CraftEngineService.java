@@ -156,6 +156,9 @@ public final class CraftEngineService {
                         }
                         boolean removedByCraftEngine = this.removeFurniture(entity);
                         if (!removedByCraftEngine && entity.isValid()) {
+                            if (entity instanceof Interaction interaction) {
+                                interaction.setResponsive(false);
+                            }
                             long delayTicks = 1L + (scheduledFallbackRemovals / STARTUP_FURNITURE_CLEANUP_REMOVALS_PER_TICK);
                             this.plugin.scheduler().removeEntity(entity, delayTicks);
                             scheduledFallbackRemovals++;

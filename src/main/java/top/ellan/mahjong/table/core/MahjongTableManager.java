@@ -441,6 +441,9 @@ public final class MahjongTableManager implements Listener {
                 continue;
             }
             if (!removedByCraftEngine && entity.isValid()) {
+                if (entity instanceof Interaction interaction) {
+                    interaction.setResponsive(false);
+                }
                 long delayTicks = 1L + (scheduledFallbackRemovals / PERSISTED_TABLE_CLEANUP_REMOVALS_PER_TICK);
                 this.plugin.scheduler().removeEntity(entity, delayTicks);
                 scheduledFallbackRemovals++;
