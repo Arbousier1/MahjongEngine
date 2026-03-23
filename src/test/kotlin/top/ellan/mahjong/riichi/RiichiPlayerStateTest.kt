@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 
 class RiichiPlayerStateTest {
     @Test
-    fun `best-only shanten crash falls back to full analysis`() {
+    fun `best-only shanten crash falls back to full analysis when Java no such element is thrown`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -45,7 +45,7 @@ class RiichiPlayerStateTest {
             RiichiPlayerState.shantenCalculator = { tiles, furo, bestShantenOnly ->
                 if (bestShantenOnly) {
                     bestOnlyCalls++
-                    throw NoSuchElementException("forced failure for regression test")
+                    throw java.util.NoSuchElementException("forced failure for regression test")
                 }
                 fullCalls++
                 shanten(

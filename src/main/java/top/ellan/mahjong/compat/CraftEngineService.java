@@ -219,7 +219,8 @@ public final class CraftEngineService {
             if (customItem == null) {
                 return null;
             }
-            Object built = this.resolveBuildItemStackMethod(customItem.getClass()).invoke(customItem);
+            Method buildMethod = this.resolveBuildItemStackMethod(customItem.getClass());
+            Object built = this.invokeCustomItemBuildMethod(customItem, buildMethod);
             if (!(built instanceof ItemStack itemStack)) {
                 return null;
             }
@@ -1097,9 +1098,57 @@ public final class CraftEngineService {
     private Method lookupBuildItemStackMethod(Class<?> customItemClass) {
         try {
             return customItemClass.getMethod("buildItemStack");
-        } catch (NoSuchMethodException exception) {
-            throw new IllegalStateException("CraftEngine custom item class does not expose buildItemStack(): " + customItemClass.getName(), exception);
+        } catch (NoSuchMethodException buildItemStackMissing) {
+            for (Method method : customItemClass.getMethods()) {
+                if (!method.getName().equals("buildBukkitItem")) {
+                    continue;
+                }
+                Class<?>[] parameters = method.getParameterTypes();
+                if (parameters.length == 1 && isItemBuildContextType(parameters[0])) {
+                    return method;
+                }
+                if (
+                    parameters.length == 2
+                        && isItemBuildContextType(parameters[0])
+                        && (parameters[1] == int.class || parameters[1] == Integer.class)
+                ) {
+                    return method;
+                }
+            }
+            throw new IllegalStateException(
+                "CraftEngine custom item class does not expose a compatible build method "
+                    + "(buildItemStack() or buildBukkitItem(ItemBuildContext[, int])): "
+                    + customItemClass.getName(),
+                buildItemStackMissing
+            );
         }
+    }
+
+    private Object invokeCustomItemBuildMethod(Object customItem, Method buildMethod) throws ReflectiveOperationException {
+        Class<?>[] parameters = buildMethod.getParameterTypes();
+        if (parameters.length == 0) {
+            return buildMethod.invoke(customItem);
+        }
+        if (parameters.length == 1 && isItemBuildContextType(parameters[0])) {
+            return buildMethod.invoke(customItem, emptyItemBuildContext(parameters[0]));
+        }
+        if (
+            parameters.length == 2
+                && isItemBuildContextType(parameters[0])
+                && (parameters[1] == int.class || parameters[1] == Integer.class)
+        ) {
+            return buildMethod.invoke(customItem, emptyItemBuildContext(parameters[0]), 1);
+        }
+        throw new IllegalStateException("Unsupported CraftEngine custom item build method signature: " + buildMethod.toGenericString());
+    }
+
+    private static boolean isItemBuildContextType(Class<?> type) {
+        return "net.momirealms.craftengine.core.item.ItemBuildContext".equals(type.getName());
+    }
+
+    private static Object emptyItemBuildContext(Class<?> itemBuildContextType) throws ReflectiveOperationException {
+        Method emptyMethod = itemBuildContextType.getMethod("empty");
+        return emptyMethod.invoke(null);
     }
 
     private Method resolveFurnitureEntityMethod(Class<?> furnitureInstanceClass) {

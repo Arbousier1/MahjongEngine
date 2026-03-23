@@ -690,7 +690,7 @@ open class RiichiPlayerState(
             return primary.getOrNull()
         }
         val primaryError = primary.exceptionOrNull() ?: return null
-        if (bestShantenOnly && primaryError is NoSuchElementException) {
+        if (bestShantenOnly && primaryError.isNoSuchElementFailure()) {
             val fallback = runCatching {
                 shantenCalculator(tiles, furo, false)
             }
@@ -718,6 +718,20 @@ open class RiichiPlayerState(
             primaryError
         )
         return null
+    }
+
+    private fun Throwable.isNoSuchElementFailure(): Boolean {
+        var current: Throwable? = this
+        repeat(8) {
+            if (current == null) {
+                return false
+            }
+            if (current is kotlin.NoSuchElementException || current is java.util.NoSuchElementException) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     private fun shantenWithoutGot(
