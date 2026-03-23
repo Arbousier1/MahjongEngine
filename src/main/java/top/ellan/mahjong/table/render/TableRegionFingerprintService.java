@@ -159,6 +159,7 @@ public final class TableRegionFingerprintService {
     private String seatLabelFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         return fingerprintBuilder(128)
             .field("labels")
+            .field("depth-v2")
             .field(seat.wind().name())
             .field(snapshot.currentSeat().name())
             .field(Objects.toString(seat.playerId(), "empty"))

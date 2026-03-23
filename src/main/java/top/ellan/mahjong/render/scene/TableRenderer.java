@@ -62,6 +62,7 @@ public final class TableRenderer {
     private static final double SEAT_BACKREST_OFFSET = 0.26D;
     private static final double SEAT_CARPET_INSET = 0.08D;
     private static final double SEAT_CARPET_THICKNESS = 0.04D;
+    private static final double SEAT_LABEL_DEPTH_OFFSET = 0.03D;
     private static final double CENTER_LABEL_Y_OFFSET = 0.55D + FLOATING_TEXT_Y_OFFSET - 0.5D;
     private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
     private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
@@ -301,10 +302,15 @@ public final class TableRenderer {
         UUID playerId = session.playerAt(wind);
         Location handBase = handDirectionBase(center, wind);
         boolean active = session.currentSeat() == wind;
+        Location statusLabelLocation = withSeatLabelDepthOffset(
+            handBase.clone().add(0.0D, 0.45D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            wind,
+            -SEAT_LABEL_DEPTH_OFFSET * 0.5D
+        );
 
         spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
-            handBase.clone().add(0.0D, 0.45D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            statusLabelLocation,
             Component.text(session.publicSeatStatus(wind)),
             seatLabelColor(wind, active),
             null,
@@ -313,9 +319,14 @@ public final class TableRenderer {
             0.0F
         ));
         if (playerId != null) {
+            Location playerNameLocation = withSeatLabelDepthOffset(
+                handBase.clone().add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+                wind,
+                SEAT_LABEL_DEPTH_OFFSET * 0.5D
+            );
             spawned.add(DisplayEntities.spawnLabel(
                 session.plugin(),
-                handBase.clone().add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+                playerNameLocation,
                 Component.text(session.displayName(playerId, session.publicLocale())),
                 Color.fromARGB(100, 18, 18, 18),
                 null,
@@ -351,10 +362,15 @@ public final class TableRenderer {
     ) {
         List<Entity> spawned = new ArrayList<>(2);
         boolean active = seat.wind() == session.currentSeat();
+        Location statusLabelLocation = withSeatLabelDepthOffset(
+            toLocation(session, plan.statusLabelLocation()),
+            seat.wind(),
+            -SEAT_LABEL_DEPTH_OFFSET * 0.5D
+        );
 
         spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
-            toLocation(session, plan.statusLabelLocation()),
+            statusLabelLocation,
             Component.text(seat.publicSeatStatus()),
             seatLabelColor(seat.wind(), active),
             null,
@@ -363,9 +379,14 @@ public final class TableRenderer {
             0.0F
         ));
         if (seat.playerId() != null) {
+            Location playerNameLocation = withSeatLabelDepthOffset(
+                toLocation(session, plan.playerNameLocation()),
+                seat.wind(),
+                SEAT_LABEL_DEPTH_OFFSET * 0.5D
+            );
             spawned.add(DisplayEntities.spawnLabel(
                 session.plugin(),
-                toLocation(session, plan.playerNameLocation()),
+                playerNameLocation,
                 Component.text(seat.displayName()),
                 Color.fromARGB(100, 18, 18, 18),
                 null,
@@ -395,8 +416,13 @@ public final class TableRenderer {
     ) {
         List<DisplayEntities.EntitySpec> specs = new ArrayList<>(3);
         boolean active = seat.wind() == session.currentSeat();
-        specs.add(DisplayEntities.labelSpec(
+        Location statusLabelLocation = withSeatLabelDepthOffset(
             toLocation(session, plan.statusLabelLocation()),
+            seat.wind(),
+            -SEAT_LABEL_DEPTH_OFFSET * 0.5D
+        );
+        specs.add(DisplayEntities.labelSpec(
+            statusLabelLocation,
             Component.text(seat.publicSeatStatus()),
             seatLabelColor(seat.wind(), active),
             null,
@@ -406,8 +432,13 @@ public final class TableRenderer {
             true
         ));
         if (seat.playerId() != null) {
-            specs.add(DisplayEntities.labelSpec(
+            Location playerNameLocation = withSeatLabelDepthOffset(
                 toLocation(session, plan.playerNameLocation()),
+                seat.wind(),
+                SEAT_LABEL_DEPTH_OFFSET * 0.5D
+            );
+            specs.add(DisplayEntities.labelSpec(
+                playerNameLocation,
                 Component.text(seat.displayName()),
                 Color.fromARGB(100, 18, 18, 18),
                 null,
@@ -1074,6 +1105,11 @@ public final class TableRenderer {
     private static Location seatBaseLocation(Location handBase, SeatWind wind) {
         Offset forward = offsetTowardSeatFront(wind, SEAT_DISTANCE_FROM_HAND_BASE);
         return handBase.clone().add(forward.x(), SEAT_BASE_Y_OFFSET + SEAT_RAISE_Y_OFFSET, forward.z());
+    }
+
+    private static Location withSeatLabelDepthOffset(Location location, SeatWind wind, double amount) {
+        Offset offset = offsetTowardSeatFront(wind, amount);
+        return location.clone().add(offset.x(), 0.0D, offset.z());
     }
 
     private static List<Entity> renderSeatVisual(
