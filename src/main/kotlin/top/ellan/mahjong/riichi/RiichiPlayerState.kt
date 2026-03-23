@@ -78,7 +78,7 @@ open class RiichiPlayerState(
                 shantenMethod = shantenMethod
             )
         }.getOrElse { error ->
-            LOGGER.log(Level.FINE, "Unable to initialize util stable shanten invoker", error)
+            LOGGER.log(Level.WARNING, "Unable to initialize util stable shanten invoker", error)
             null
         }
 
@@ -493,8 +493,8 @@ open class RiichiPlayerState(
         return false
     }
 
-    fun isKokushimuso(tile: MahjongTile): Boolean =
-        runCatching {
+    fun isKokushimuso(tile: MahjongTile): Boolean {
+        val result = runCatching {
             hora(
                 tiles = (hands.toMahjongTileList() + tile).toUtilsTiles(),
                 furo = fuuroList.map { it.utilsFuro },
@@ -502,7 +502,16 @@ open class RiichiPlayerState(
                 tsumo = false,
                 options = HoraOptions.Default
             )
-        }.getOrNull()?.yaku?.any { it.name == "Kokushi" || it.name == "KokushiThirteenWaiting" } == true
+        }.getOrElse { error ->
+            LOGGER.log(
+                shantenFailureLogLevel(error),
+                "Kokushi check failed (hands=${hands.size}, fuuro=${fuuroList.size}, tile=$tile)",
+                error
+            )
+            return false
+        }
+        return result.yaku.any { it.name == "Kokushi" || it.name == "KokushiThirteenWaiting" }
+    }
 
     fun canWin(
         winningTile: MahjongTile,
@@ -534,7 +543,14 @@ open class RiichiPlayerState(
                 furo = fuuroList.map { it.utilsFuro },
                 bestShantenOnly = true
             ).shantenInfo.shantenNum == -1
-        }.getOrDefault(false)
+        }.getOrElse { error ->
+            LOGGER.log(
+                shantenFailureLogLevel(error),
+                "Winning hand pre-check failed (hands=${hands.size}, fuuro=${fuuroList.size})",
+                error
+            )
+            false
+        }
 
     private fun calculateYakuSettlement(
         winningTile: MahjongTile,
@@ -579,7 +595,12 @@ open class RiichiPlayerState(
                 extraYaku = extraYaku,
                 options = horaOptions
             )
-        }.getOrElse {
+        }.getOrElse { error ->
+            LOGGER.log(
+                shantenFailureLogLevel(error),
+                "Yaku settlement hora failed (hands=${fullHands.size}, fuuro=${fuuroList.size}, winningTile=$winningTile, tsumo=${personalSituation.isTsumo})",
+                error
+            )
             return YakuSettlement.NO_YAKU
         }
 
@@ -869,7 +890,14 @@ open class RiichiPlayerState(
                     bestShantenOnly = false,
                     allowKuikae = false
                 )
-            }.getOrNull() ?: return@getOrPut null
+            }.getOrElse { error ->
+                LOGGER.log(
+                    shantenFailureLogLevel(error),
+                    "Furo reaction analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, tile=${tile.mahjongTile}, allowChii=$allowChii)",
+                    error
+                )
+                return@getOrPut null
+            }
             val shanten = result.shantenInfo
             val chiChoices = if (allowChii) {
                 shanten.chi.entries.mapNotNull { entry ->
