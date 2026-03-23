@@ -349,7 +349,8 @@ public final class CraftEngineService {
                 tableManager,
                 playerMethod,
                 furnitureMethod,
-                entityIdMethod
+                entityIdMethod,
+                bukkitEntityMethod
             );
             EventExecutor breakProtectionExecutor = (ignored, event) -> this.handleProtectedFurnitureEvent(
                 event,
@@ -409,13 +410,20 @@ public final class CraftEngineService {
         MahjongTableManager tableManager,
         Method playerMethod,
         Method furnitureMethod,
-        Method entityIdMethod
+        Method entityIdMethod,
+        Method bukkitEntityMethod
     ) throws EventException {
         try {
             Player player = (Player) playerMethod.invoke(event);
             Object furniture = furnitureMethod.invoke(event);
             int entityId = (int) entityIdMethod.invoke(furniture);
             DisplayClickAction action = TableDisplayRegistry.get(entityId);
+            if (action == null) {
+                Object bukkitEntity = bukkitEntityMethod.invoke(furniture);
+                if (bukkitEntity instanceof Entity entity) {
+                    action = TableDisplayRegistry.get(entity.getEntityId());
+                }
+            }
             if (action == null) {
                 return;
             }
@@ -776,6 +784,11 @@ public final class CraftEngineService {
 
     public boolean isManagedFurnitureEntity(Entity entity) {
         return entity != null && entity.getPersistentDataContainer().has(managedFurnitureKey(), PersistentDataType.BYTE);
+    }
+
+    public boolean isMahjongFurnitureEntity(Entity entity) {
+        String itemId = this.furnitureItemId(entity);
+        return itemId != null && itemId.startsWith(MAHJONGPAPER_FURNITURE_PREFIX);
     }
 
     public String furnitureItemId(Entity entity) {

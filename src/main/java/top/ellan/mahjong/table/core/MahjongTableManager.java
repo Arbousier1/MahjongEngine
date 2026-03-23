@@ -434,10 +434,11 @@ public final class MahjongTableManager implements Listener {
         CraftEngineService craftEngine = this.plugin.craftEngine();
         for (Entity entity : world.getNearbyEntities(center, PERSISTED_TABLE_CLEANUP_RADIUS_XZ, PERSISTED_TABLE_CLEANUP_RADIUS_Y, PERSISTED_TABLE_CLEANUP_RADIUS_XZ)) {
             boolean managedDisplay = DisplayEntities.isManagedEntity(this.plugin, entity);
-            boolean legacyVisual = entity instanceof Display || entity instanceof Interaction;
             boolean managedCraftEngineFurniture = craftEngine != null && craftEngine.isManagedFurnitureEntity(entity);
-            boolean removedByCraftEngine = managedCraftEngineFurniture && craftEngine.removeFurniture(entity);
-            if (!removedByCraftEngine && !managedDisplay && !legacyVisual) {
+            boolean mahjongCraftEngineFurniture = craftEngine != null && craftEngine.isMahjongFurnitureEntity(entity);
+            boolean craftEngineCleanupCandidate = managedCraftEngineFurniture || mahjongCraftEngineFurniture;
+            boolean removedByCraftEngine = craftEngineCleanupCandidate && craftEngine.removeFurniture(entity);
+            if (!removedByCraftEngine && !managedDisplay && !craftEngineCleanupCandidate) {
                 continue;
             }
             if (!removedByCraftEngine && entity.isValid()) {
