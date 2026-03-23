@@ -1,4 +1,4 @@
-import org.gradle.api.GradleException
+﻿import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
@@ -262,7 +262,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("      furniture:")
         appendLine("        settings:")
         appendLine("          item: mahjongpaper:table_visual")
-        appendLine("          hit-times: 2147483647")
+
         appendLine("          sounds:")
         appendLine("            break: minecraft:block.wood.break")
         appendLine("            place: minecraft:block.wood.place")
@@ -323,7 +323,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
                 appendLine("      furniture:")
                 appendLine("        settings:")
                 appendLine("          item: mahjongpaper:$furnitureId")
-                appendLine("          hit-times: 1")
+
                 appendLine("        variants:")
                 appendLine("          ground:")
                 appendLine("            elements:")
@@ -354,7 +354,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("      furniture:")
         appendLine("        settings:")
         appendLine("          item: mahjongpaper:table_hitbox")
-        appendLine("          hit-times: 2147483647")
+
         appendLine("          sounds:")
         appendLine("            break: minecraft:block.wood.break")
         appendLine("            place: minecraft:block.wood.place")
@@ -397,7 +397,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("      furniture:")
         appendLine("        settings:")
         appendLine("          item: mahjongpaper:hand_tile_hitbox")
-        appendLine("          hit-times: 1")
+
         appendLine("        variants:")
         appendLine("          ground:")
         appendLine("            elements:")
@@ -441,7 +441,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("      furniture:")
         appendLine("        settings:")
         appendLine("          item: mahjongpaper:seat_chair")
-        appendLine("          hit-times: 2147483647")
+
         appendLine("        variants:")
         appendLine("          ground:")
         appendLine("            elements:")
@@ -477,7 +477,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
         appendLine("      furniture:")
         appendLine("        settings:")
         appendLine("          item: mahjongpaper:seat_hitbox")
-        appendLine("          hit-times: 2147483647")
+
         appendLine("        variants:")
         appendLine("          ground:")
         appendLine("            elements:")
@@ -530,7 +530,7 @@ fun writeCraftEngineBundle(enumSource: File, resourcepackDir: File, attributionF
                 appendLine("      furniture:")
                 appendLine("        settings:")
                 appendLine("          item: mahjongpaper:${prefix}_$tileName")
-                appendLine("          hit-times: 1")
+
                 appendLine("        variants:")
                 appendLine("          ground:")
                 appendLine("            elements:")
