@@ -536,21 +536,14 @@ open class RiichiPlayerState(
             yakuSettlement.han >= rule.minimumHan.han
     }
 
-    private fun canFormWinningHand(hands: List<MahjongTile>, fuuroList: List<Fuuro>): Boolean =
-        runCatching {
-            shanten(
-                tiles = hands.toUtilsTiles(),
-                furo = fuuroList.map { it.utilsFuro },
-                bestShantenOnly = true
-            ).shantenInfo.shantenNum == -1
-        }.getOrElse { error ->
-            LOGGER.log(
-                shantenFailureLogLevel(error),
-                "Winning hand pre-check failed (hands=${hands.size}, fuuro=${fuuroList.size})",
-                error
-            )
-            false
-        }
+    private fun canFormWinningHand(hands: List<MahjongTile>, fuuroList: List<Fuuro>): Boolean {
+        val shantenResult = analyzeShanten(
+            hands = hands,
+            fuuroList = fuuroList,
+            bestShantenOnly = true
+        ) ?: return false
+        return shantenResult.shantenInfo.shantenNum == -1
+    }
 
     private fun calculateYakuSettlement(
         winningTile: MahjongTile,

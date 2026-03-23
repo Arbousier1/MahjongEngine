@@ -103,6 +103,58 @@ class RiichiPlayerStateTest {
     }
 
     @Test
+    fun `can win pre-check reuses shanten fallback chain`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S6,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.P6
+        )
+
+        val originalCalculator = RiichiPlayerState.shantenCalculator
+        var bestOnlyCalls = 0
+        var fullCalls = 0
+        try {
+            RiichiPlayerState.shantenCalculator = { tiles, furo, bestShantenOnly ->
+                if (bestShantenOnly) {
+                    bestOnlyCalls++
+                    throw java.util.NoSuchElementException("forced pre-check failure")
+                }
+                fullCalls++
+                shanten(
+                    tiles = tiles,
+                    furo = furo,
+                    bestShantenOnly = false
+                )
+            }
+
+            val canWin = player.canWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation()
+            )
+
+            assertTrue(canWin)
+            assertEquals(1, bestOnlyCalls)
+            assertEquals(1, fullCalls)
+        } finally {
+            RiichiPlayerState.shantenCalculator = originalCalculator
+        }
+    }
+
+    @Test
     fun `invalid hand size does not throw during shanten checks`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
