@@ -65,6 +65,7 @@ public final class CraftEngineService {
         "me{}frep{}vulcan{}shaded{}com{}github{}retrooper{}packetevents",
         "me{}frep{}vulcan{}libs{}com{}github{}retrooper{}packetevents"
     };
+    private static final int STARTUP_FURNITURE_CLEANUP_REMOVALS_PER_TICK = 8;
 
     private final MahjongPaperPlugin plugin;
     private final boolean exportBundleOnEnable;
@@ -147,6 +148,7 @@ public final class CraftEngineService {
                     if (!world.isChunkLoaded(chunkX, chunkZ)) {
                         return;
                     }
+                    int scheduledFallbackRemovals = 0;
                     for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
                         String furnitureId = entity.getPersistentDataContainer().get(furnitureKey, PersistentDataType.STRING);
                         if (furnitureId == null || !furnitureId.startsWith(MAHJONGPAPER_FURNITURE_PREFIX)) {
@@ -154,7 +156,9 @@ public final class CraftEngineService {
                         }
                         boolean removedByCraftEngine = this.removeFurniture(entity);
                         if (!removedByCraftEngine && entity.isValid()) {
-                            this.plugin.scheduler().removeEntity(entity);
+                            long delayTicks = 1L + (scheduledFallbackRemovals / STARTUP_FURNITURE_CLEANUP_REMOVALS_PER_TICK);
+                            this.plugin.scheduler().removeEntity(entity, delayTicks);
+                            scheduledFallbackRemovals++;
                         }
                         removed.incrementAndGet();
                     }

@@ -1,6 +1,7 @@
 package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
@@ -45,6 +46,7 @@ public final class MahjongTableManager implements Listener {
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_XZ = 4.5D;
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_Y = 3.5D;
     private static final double ADMIN_NEAREST_TABLE_RADIUS = 4.5D;
+    private static final int PERSISTED_TABLE_CLEANUP_REMOVALS_PER_TICK = 8;
     private final MahjongPaperPlugin plugin;
     private final PersistentTableStore persistentTableStore;
     private final TableDirectory directory = new TableDirectory();
@@ -428,21 +430,30 @@ public final class MahjongTableManager implements Listener {
             return;
         }
         int removed = 0;
+        int scheduledFallbackRemovals = 0;
+        CraftEngineService craftEngine = this.plugin.craftEngine();
         for (Entity entity : world.getNearbyEntities(center, PERSISTED_TABLE_CLEANUP_RADIUS_XZ, PERSISTED_TABLE_CLEANUP_RADIUS_Y, PERSISTED_TABLE_CLEANUP_RADIUS_XZ)) {
             boolean managedDisplay = DisplayEntities.isManagedEntity(this.plugin, entity);
             boolean legacyVisual = entity instanceof Display || entity instanceof Interaction;
-            boolean removedByCraftEngine = this.plugin.craftEngine() != null && this.plugin.craftEngine().removeFurniture(entity);
+            boolean managedCraftEngineFurniture = craftEngine != null && craftEngine.isManagedFurnitureEntity(entity);
+            boolean removedByCraftEngine = managedCraftEngineFurniture && craftEngine.removeFurniture(entity);
             if (!removedByCraftEngine && !managedDisplay && !legacyVisual) {
                 continue;
             }
             if (!removedByCraftEngine && entity.isValid()) {
-                this.plugin.scheduler().removeEntity(entity);
+                long delayTicks = 1L + (scheduledFallbackRemovals / PERSISTED_TABLE_CLEANUP_REMOVALS_PER_TICK);
+                this.plugin.scheduler().removeEntity(entity, delayTicks);
+                scheduledFallbackRemovals++;
             }
             removed++;
         }
         if (removed > 0) {
             this.plugin.debug().log("table", "Cleaned " + removed + " table entities near " + center.getBlockX() + "," + center.getBlockY() + "," + center.getBlockZ());
         }
+    }
+
+    public void cleanupTableArtifactsNow(Location center) {
+        this.cleanupTableArtifacts(center);
     }
 
     public void cleanupTableArtifactsAt(Location center) {

@@ -170,9 +170,8 @@ public final class TableRefreshCoordinator {
             return;
         }
         this.pendingArtifactCleanupTableIds.remove(session.id());
-        Location center = session.center();
         session.clearDisplays();
-        this.tableManager.cleanupTableArtifactsAt(center);
+        this.tableManager.cleanupTableArtifactsNow(session.center());
     }
 
     private boolean affectsTableArea(Chunk chunk, MahjongTableSession session) {

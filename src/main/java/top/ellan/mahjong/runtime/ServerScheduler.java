@@ -91,14 +91,22 @@ public final class ServerScheduler {
     }
 
     public PluginTask removeEntity(Entity entity) {
+        return this.removeEntity(entity, 0L);
+    }
+
+    public PluginTask removeEntity(Entity entity, long delayTicks) {
         if (entity == null) {
             return NO_OP_TASK;
         }
-        return this.runEntity(entity, () -> {
+        Runnable removeTask = () -> {
             if (!entity.isDead() && entity.isValid()) {
                 entity.remove();
             }
-        });
+        };
+        if (delayTicks <= 0L) {
+            return this.runEntity(entity, removeTask);
+        }
+        return this.runEntityDelayed(entity, removeTask, delayTicks);
     }
 
     private static PluginTask wrap(ScheduledTask task) {
