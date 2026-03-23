@@ -1086,7 +1086,20 @@ public final class TableRenderer {
         if (seatFurnitureId != null) {
             Entity furniture = spawnSeatFurniture(session, seatBaseLocation(handBase, wind), wind, seatFurnitureId, action);
             if (furniture != null) {
-                return List.of(furniture);
+                if (action == null) {
+                    return List.of(furniture);
+                }
+                // Keep a native interaction layer even when using CraftEngine seat furniture.
+                // This avoids hard dependency on CraftEngine furniture interaction bridge details.
+                Entity interaction = DisplayEntities.spawnInteraction(
+                    session.plugin(),
+                    seatPlacementLocation(seatInteractionLocation(handBase, wind), wind),
+                    SEAT_INTERACTION_WIDTH,
+                    SEAT_INTERACTION_HEIGHT,
+                    action,
+                    null
+                );
+                return List.of(furniture, interaction);
             }
         }
 
