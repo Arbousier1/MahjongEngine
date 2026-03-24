@@ -25,6 +25,7 @@ public final class TableRegionDisplayCoordinator {
     private static final int MAX_WALL_TILE_REGIONS = 136;
     private static final int MAX_HAND_TILE_REGIONS = 14;
     private static final int MAX_DISCARD_TILE_REGIONS = 24;
+    private static final int MAX_MELD_TILE_REGIONS = 20;
     private static final int MAX_REGION_UPDATES_PER_APPLY = 64;
     private static final int MAX_ENTITY_SPAWNS_PER_APPLY = 192;
 
@@ -67,7 +68,6 @@ public final class TableRegionDisplayCoordinator {
             String visualRegionKey = this.seatRegionKey("visual", wind);
             String labelsRegionKey = this.seatRegionKey("labels", wind);
             String sticksRegionKey = this.seatRegionKey("sticks", wind);
-            String meldsRegionKey = this.seatRegionKey("melds", wind);
             if (!this.updateRegion(visualRegionKey, fingerprints.get(visualRegionKey), budget, () -> this.session.renderer().renderSeatVisual(this.session, wind))) {
                 return true;
             }
@@ -91,12 +91,7 @@ public final class TableRegionDisplayCoordinator {
             if (!this.updateDiscardRegions(seat, seatPlan, budget)) {
                 return true;
             }
-            if (!this.updateRegionWithSpecs(
-                meldsRegionKey,
-                fingerprints.get(meldsRegionKey),
-                budget,
-                () -> this.session.renderer().renderMeldSpecs(this.session, seat, seatPlan)
-            )) {
+            if (!this.updateMeldRegions(seat, seatPlan, budget)) {
                 return true;
             }
         }
@@ -210,6 +205,28 @@ public final class TableRegionDisplayCoordinator {
                 this.fingerprintService.discardTileFingerprint(seat, plan, discardIndex),
                 budget,
                 () -> this.session.renderer().renderDiscardTileSpecs(this.session, seat, plan, index)
+            )) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean updateMeldRegions(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, ApplyBudget budget) {
+        this.clearRegion(this.seatRegionKey("melds", seat.wind()));
+        int meldCount = seat.playerId() == null ? 0 : plan.meldPlacements().size();
+        for (int meldIndex = 0; meldIndex < MAX_MELD_TILE_REGIONS; meldIndex++) {
+            String regionKey = this.meldRegionKey(seat.wind(), meldIndex);
+            if (meldIndex >= meldCount) {
+                this.clearRegion(regionKey);
+                continue;
+            }
+            int index = meldIndex;
+            if (!this.updateRegionWithSpecs(
+                regionKey,
+                this.fingerprintService.meldTileFingerprint(seat, plan, meldIndex),
+                budget,
+                () -> this.session.renderer().renderMeldTileSpecs(this.session, seat, plan, index)
             )) {
                 return false;
             }
@@ -348,6 +365,10 @@ public final class TableRegionDisplayCoordinator {
 
     private String discardRegionKey(SeatWind wind, int discardIndex) {
         return this.seatRegionKey("discards-" + discardIndex, wind);
+    }
+
+    private String meldRegionKey(SeatWind wind, int meldIndex) {
+        return this.seatRegionKey("melds-" + meldIndex, wind);
     }
 
     private String wallRegionKey(int wallIndex) {

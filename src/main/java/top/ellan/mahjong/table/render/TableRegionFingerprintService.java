@@ -28,7 +28,6 @@ public final class TableRegionFingerprintService {
             fingerprints.put(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(snapshot, seat));
             fingerprints.put(this.seatRegionKey("sticks", wind), this.stickFingerprint(snapshot, seat));
             fingerprints.put(this.seatRegionKey("hand-public", wind), this.handPublicFingerprint(snapshot, seat));
-            fingerprints.put(this.seatRegionKey("melds", wind), this.meldFingerprint(seat));
         }
         return Map.copyOf(fingerprints);
     }
@@ -197,17 +196,20 @@ public final class TableRegionFingerprintService {
         return builder.toString();
     }
 
-    private String meldFingerprint(TableSeatRenderSnapshot seat) {
-        FingerprintBuilder builder = fingerprintBuilder(256)
-            .field("melds")
+    public String meldTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int meldIndex) {
+        TableRenderLayout.TilePlacement placement = plan.meldPlacements().get(meldIndex);
+        return fingerprintBuilder(160)
+            .field("meld-tile")
             .field(seat.wind().name())
-            .field(Objects.toString(seat.playerId(), "empty"));
-        if (seat.playerId() == null) {
-            return builder.toString();
-        }
-        builder.field(seat.stickLayoutCount());
-        seat.melds().forEach(meld -> this.appendMeldFingerprint(builder, meld));
-        return builder.toString();
+            .field(Objects.toString(seat.playerId(), "empty"))
+            .field(meldIndex)
+            .field(Float.floatToIntBits(placement.yaw()))
+            .field(Double.doubleToLongBits(placement.point().x()))
+            .field(Double.doubleToLongBits(placement.point().y()))
+            .field(Double.doubleToLongBits(placement.point().z()))
+            .field(placement.tile().name())
+            .field(placement.pose().name())
+            .toString();
     }
 
     private String stickFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
@@ -224,23 +226,6 @@ public final class TableRegionFingerprintService {
         seat.scoringSticks().forEach(stick -> builder.field(stick.name()));
         seat.cornerSticks().forEach(stick -> builder.field(stick.name()));
         return builder.toString();
-    }
-
-    private void appendMeldFingerprint(FingerprintBuilder builder, MeldView meld) {
-        builder.raw('[')
-            .raw(meld.claimTileIndex())
-            .raw('/')
-            .raw(meld.claimYawOffset())
-            .raw('/')
-            .raw(Objects.toString(meld.addedKanTile(), "none"))
-            .raw(':');
-        for (int i = 0; i < meld.tiles().size(); i++) {
-            builder.raw(meld.tiles().get(i).name())
-                .raw('/')
-                .raw(meld.faceDownAt(i))
-                .raw(',');
-        }
-        builder.raw(']');
     }
 
     private String seatRegionKey(String region, SeatWind wind) {

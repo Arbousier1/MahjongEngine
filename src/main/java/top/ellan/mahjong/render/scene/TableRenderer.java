@@ -1053,6 +1053,18 @@ public final class TableRenderer {
         return List.copyOf(specs);
     }
 
+    public List<DisplayEntities.EntitySpec> renderMeldTileSpecs(
+        MahjongTableSession session,
+        TableSeatRenderSnapshot seat,
+        TableRenderLayout.SeatLayoutPlan plan,
+        int meldIndex
+    ) {
+        if (seat.playerId() == null || meldIndex < 0 || meldIndex >= plan.meldPlacements().size()) {
+            return List.of();
+        }
+        return List.of(publicTileSpec(session, plan.meldPlacements().get(meldIndex)));
+    }
+
     private static Location displayCenter(MahjongTableSession session) {
         return session.center().add(0.0D, DISPLAY_CENTER_Y_OFFSET, 0.0D);
     }
