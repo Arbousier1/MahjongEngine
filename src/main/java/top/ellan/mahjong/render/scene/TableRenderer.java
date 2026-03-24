@@ -73,8 +73,8 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    // Keep kakan as a near-table overlay on the target tile (not visually stacked high above it).
-    private static final double KAKAN_STACK_Y_OFFSET = 0.003D;
+    // Keep kakan near table height and use only a tiny lift to avoid z-fighting.
+    private static final double KAKAN_STACK_Y_OFFSET = 0.001D;
     private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
     private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
@@ -1644,8 +1644,12 @@ public final class TableRenderer {
 
     private static Offset kakanAdjacentOffset(SeatWind wind, int claimYawOffset) {
         int direction = claimYawOffset == 0 ? 1 : Integer.signum(claimYawOffset);
-        double amount = TILE_WIDTH - TILE_PADDING;
-        return offsetTowardSeatFront(wind, amount * direction);
+        double amount = TILE_WIDTH + TILE_PADDING;
+        return offsetTowardTableCenter(wind, amount * direction);
+    }
+
+    private static Offset offsetTowardTableCenter(SeatWind wind, double amount) {
+        return offsetTowardSeatFront(wind, -amount);
     }
 
     private static Offset offsetAcrossSeat(SeatWind wind, double amount) {
