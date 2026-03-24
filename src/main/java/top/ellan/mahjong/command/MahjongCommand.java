@@ -4,12 +4,17 @@ import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.db.MahjongSoulRankProfile;
 import top.ellan.mahjong.db.MahjongSoulRankRules;
 import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.riichi.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongTableManager;
+import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
+import top.ellan.mahjong.table.core.TableRenderSnapshot;
 import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
 import top.ellan.mahjong.table.core.MahjongVariant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import kotlin.Pair;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -26,12 +32,12 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 
 public final class MahjongCommand implements BasicCommand {
     private static final Set<String> ADMIN_ROOT_COMMANDS = Set.of(
-        "create", "botmatch", "list", "render", "inspect", "clear", "forceend", "deletetable", "reload"
+        "create", "botmatch", "list", "render", "inspect", "debug", "clear", "forceend", "deletetable", "reload"
     );
     private static final List<String> ROOT_COMMANDS = List.of(
         "help", "create", "botmatch", "mode", "join", "leave", "list", "spectate", "unspectate", "addbot",
         "removebot", "rule", "start", "state", "riichi", "tsumo", "ron", "pon", "minkan", "chii", "kan",
-        "skip", "kyuushu", "settlement", "rank", "render", "inspect", "clear", "forceend", "deletetable", "reload"
+        "skip", "kyuushu", "settlement", "rank", "render", "inspect", "debug", "clear", "forceend", "deletetable", "reload"
     );
     private static final List<String> BOTMATCH_PRESETS = List.of("MAJSOUL_HANCHAN", "MAJSOUL_TONPUU", "hanchan", "tonpuu");
     private static final String[] HELP_KEYS = {
@@ -365,6 +371,13 @@ public final class MahjongCommand implements BasicCommand {
                 table.inspectRender(player);
                 this.messages.send(player, "command.inspect_sent");
             }
+            case "debug" -> {
+                MahjongTableSession table = requireViewedTable(player);
+                if (table == null) {
+                    return;
+                }
+                this.sendMeldLayoutDebug(player, table, args);
+            }
             case "clear" -> {
                 MahjongTableSession table = requireTable(player);
                 if (table == null) {
@@ -652,6 +665,76 @@ public final class MahjongCommand implements BasicCommand {
             return this.messages.plain(locale, tierKey) + " " + profile.level();
         }
         return this.messages.plain(locale, tierKey) + " " + profile.level();
+    }
+
+    private void sendMeldLayoutDebug(Player player, MahjongTableSession table, String[] args) {
+        TableRenderSnapshot snapshot = table.captureRenderSnapshot(System.nanoTime(), 0L);
+        TableRenderPrecomputeResult precompute = table.precomputeRender(snapshot);
+        TableRenderLayout.LayoutPlan layout = precompute.layout();
+
+        List<SeatWind> targets = this.debugTargetWinds(player, table, args);
+        if (targets.isEmpty()) {
+            player.sendMessage(Component.text("[MahjongDebug] no target seat found"));
+            return;
+        }
+
+        player.sendMessage(Component.text("[MahjongDebug] table=" + table.id() + " seats=" + targets));
+        for (SeatWind wind : targets) {
+            TableSeatRenderSnapshot seatSnapshot = snapshot.seat(wind);
+            TableRenderLayout.SeatLayoutPlan seatPlan = layout.seat(wind);
+            if (seatSnapshot == null || seatPlan == null) {
+                player.sendMessage(Component.text("[MahjongDebug] " + wind.name() + " snapshot/plan missing"));
+                continue;
+            }
+            String nameLoc = this.formatPoint(seatPlan.playerNameLocation());
+            String labelLoc = this.formatPoint(seatPlan.statusLabelLocation());
+            player.sendMessage(Component.text(
+                "[MahjongDebug] " + wind.name()
+                    + " name=" + seatSnapshot.displayName()
+                    + " plate=" + nameLoc
+                    + " status=" + labelLoc
+                    + " melds=" + seatSnapshot.melds().size()
+                    + " placements=" + seatPlan.meldPlacements().size()
+            ));
+
+            List<TableRenderLayout.TilePlacement> placements = seatPlan.meldPlacements();
+            for (int i = 0; i < placements.size(); i++) {
+                TableRenderLayout.TilePlacement placement = placements.get(i);
+                player.sendMessage(Component.text(
+                    "[MahjongDebug] "
+                        + wind.name()
+                        + " meld#" + i
+                        + " tile=" + placement.tile().name()
+                        + " pose=" + placement.pose().name()
+                        + " yaw=" + this.formatDecimal(placement.yaw())
+                        + " at=" + this.formatPoint(placement.point())
+                ));
+            }
+        }
+    }
+
+    private List<SeatWind> debugTargetWinds(Player player, MahjongTableSession table, String[] args) {
+        if (args.length >= 2) {
+            String raw = args[1].toUpperCase(Locale.ROOT);
+            if ("ALL".equals(raw)) {
+                return List.of(SeatWind.values());
+            }
+            try {
+                return List.of(SeatWind.valueOf(raw));
+            } catch (IllegalArgumentException ignored) {
+                return List.of();
+            }
+        }
+        SeatWind self = table.seatOf(player.getUniqueId());
+        return self == null ? List.of(SeatWind.values()) : List.of(self);
+    }
+
+    private String formatPoint(TableRenderLayout.Point point) {
+        return this.formatDecimal(point.x()) + "," + this.formatDecimal(point.y()) + "," + this.formatDecimal(point.z());
+    }
+
+    private String formatDecimal(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
     }
 }
 
