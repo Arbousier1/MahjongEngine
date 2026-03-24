@@ -150,17 +150,27 @@ public final class TableRegionDisplayCoordinator {
         this.clearRegion(this.seatRegionKey("hand-private", seat.wind()));
         int handSize = seat.playerId() == null ? 0 : seat.hand().size();
         for (int tileIndex = 0; tileIndex < MAX_HAND_TILE_REGIONS; tileIndex++) {
-            String regionKey = this.handPrivateRegionKey(seat.wind(), tileIndex);
+            String displayRegionKey = this.handPrivateDisplayRegionKey(seat.wind(), tileIndex);
+            String hitboxRegionKey = this.handPrivateHitboxRegionKey(seat.wind(), tileIndex);
             if (tileIndex >= handSize) {
-                this.clearRegion(regionKey);
+                this.clearRegion(displayRegionKey);
+                this.clearRegion(hitboxRegionKey);
                 continue;
             }
             int index = tileIndex;
             if (!this.updateRegionWithSpecs(
-                regionKey,
-                this.fingerprintService.handPrivateTileFingerprint(seat, plan, tileIndex),
+                displayRegionKey,
+                this.fingerprintService.handPrivateDisplayTileFingerprint(seat, plan, tileIndex),
                 budget,
-                () -> this.session.renderer().renderHandPrivateTileSpecs(this.session, seat, plan, index)
+                () -> this.session.renderer().renderHandPrivateDisplayTileSpecs(this.session, seat, plan, index)
+            )) {
+                return false;
+            }
+            if (!this.updateRegionWithSpecs(
+                hitboxRegionKey,
+                this.fingerprintService.handPrivateHitboxTileFingerprint(seat, plan, tileIndex),
+                budget,
+                () -> this.session.renderer().renderHandPrivateHitboxTileSpecs(this.session, seat, plan, index)
             )) {
                 return false;
             }
@@ -338,8 +348,12 @@ public final class TableRegionDisplayCoordinator {
         return region + ":" + wind.name();
     }
 
-    private String handPrivateRegionKey(SeatWind wind, int tileIndex) {
-        return this.seatRegionKey("hand-private-" + tileIndex, wind);
+    private String handPrivateDisplayRegionKey(SeatWind wind, int tileIndex) {
+        return this.seatRegionKey("hand-private-display-" + tileIndex, wind);
+    }
+
+    private String handPrivateHitboxRegionKey(SeatWind wind, int tileIndex) {
+        return this.seatRegionKey("hand-private-hitbox-" + tileIndex, wind);
     }
 
     private String handPublicRegionKey(SeatWind wind, int tileIndex) {
