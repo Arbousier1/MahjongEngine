@@ -435,9 +435,6 @@ public final class CraftEngineService {
                 cancellable.setCancelled(true);
             }
             boolean accepted = tableManager.handleDisplayAction(player, action);
-            if (accepted && action.actionType() == DisplayClickAction.ActionType.JOIN_SEAT && furnitureEntity != null) {
-                this.seatPlayerOnFurniture(furnitureEntity, player);
-            }
             if (!accepted) {
                 if (action.actionType() == DisplayClickAction.ActionType.HAND_TILE) {
                     this.plugin.messages().actionBar(player, "packet.cannot_click_tile");
