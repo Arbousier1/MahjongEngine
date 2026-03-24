@@ -67,13 +67,21 @@ final class TableEventCoordinator {
             return;
         }
         UUID playerId = player.getUniqueId();
-        MahjongTableSession playerSession = this.manager.tableFor(playerId);
-        SeatWind playerSeatWind = playerSession == null ? null : playerSession.seatOf(playerId);
-        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getDismounted());
-        if (action == null) {
+        if (this.manager.seatCoordinatorRef().consumeDismountBypass(playerId)) {
             return;
         }
-        if (this.manager.seatCoordinatorRef().consumeDismountBypass(player.getUniqueId())) {
+        MahjongTableSession playerSession = this.manager.tableFor(playerId);
+        SeatWind playerSeatWind = playerSession == null ? null : playerSession.seatOf(playerId);
+        if (playerSession != null && playerSession.isStarted() && playerSeatWind != null) {
+            MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
+            event.setCancelled(true);
+            this.manager.seatCoordinatorRef().startSeatWatchdog(playerSession, playerId, playerSeatWind);
+            this.manager.seatCoordinatorRef().requestSeatRestore(player, playerSession, playerSeatWind);
+            this.manager.pluginRef().messages().actionBar(player, result.status() == MahjongTableManager.LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
+            return;
+        }
+        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getDismounted());
+        if (action == null) {
             return;
         }
         MahjongTableSession session = this.manager.resolveTableById(action.tableId());
