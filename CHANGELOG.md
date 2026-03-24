@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.4 - 2026-03-24
+
+Table and chair stability release / 牌桌与椅子稳定性版本
+
+- Kept table and chair visual regions static during normal gameplay updates, so ready-state and game-info refreshes no longer trigger table/chair re-spawns.
+- During regular render updates, MahjongPaper now refreshes board tiles and state overlays while preserving existing table/chair entities.
+- Fixed chair interaction mapping to keep seat furniture focused on `JOIN_SEAT`, while ready toggles remain on seat labels/status layers.
+- 在常规对局状态刷新中，牌桌与椅子区域保持静态，不再因准备状态或游戏信息更新而重建。
+- 常规渲染只刷新牌桌上的麻将牌与状态信息图层，保留已有牌桌/椅子实体不动。
+- 修正椅子交互映射：椅子保持用于 `JOIN_SEAT`（入座），准备切换由座位标签/状态层处理。
+
 ## 0.6.2 - 2026-03-22
 
 Riichi added-kong display hotfix release.
