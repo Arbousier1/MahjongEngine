@@ -2,7 +2,6 @@ package top.ellan.mahjong.render.scene;
 
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.render.display.CraftEngineFurnitureSpec;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.layout.DiscardLayout;
@@ -75,6 +74,10 @@ public final class TableRenderer {
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
     private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
+    private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
+    private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
+    private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
+    private static final float SEAT_LABEL_INTERACTION_HEIGHT = 0.85F;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
     private static final int DEAD_WALL_SIZE = 14;
@@ -84,8 +87,6 @@ public final class TableRenderer {
     private static final String TABLE_VISUAL_FURNITURE_ID = "mahjongpaper:table_visual";
     private static final String SEAT_VISUAL_FURNITURE_ID = "mahjongpaper:seat_chair";
     private static final String STICK_FURNITURE_PREFIX = "mahjongpaper:stick_";
-    private static final String HAND_TILE_HITBOX_FURNITURE_ID = "mahjongpaper:hand_tile_hitbox";
-    private static final String SEAT_HITBOX_FURNITURE_ID = "mahjongpaper:seat_hitbox";
 
     public List<Entity> renderTableStructure(MahjongTableSession session) {
         Location center = displayCenter(session);
@@ -320,12 +321,16 @@ public final class TableRenderer {
             0.0F
         ));
         if (action != null) {
-            Entity hitbox = session.plugin().craftEngine().placeSeatHitbox(
+            Entity interaction = DisplayEntities.spawnInteraction(
+                session.plugin(),
                 seatLabelInteractionLocation(statusLabelLocation),
-                action
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
             );
-            if (hitbox != null) {
-                spawned.add(hitbox);
+            if (interaction != null) {
+                spawned.add(interaction);
             }
         }
         return spawned;
@@ -364,12 +369,16 @@ public final class TableRenderer {
             0.0F
         ));
         if (action != null) {
-            Entity hitbox = session.plugin().craftEngine().placeSeatHitbox(
+            Entity interaction = DisplayEntities.spawnInteraction(
+                session.plugin(),
                 seatLabelInteractionLocation(statusLabelLocation),
-                action
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
             );
-            if (hitbox != null) {
-                spawned.add(hitbox);
+            if (interaction != null) {
+                spawned.add(interaction);
             }
         }
         return spawned;
@@ -402,10 +411,12 @@ public final class TableRenderer {
             true
         ));
         if (action != null) {
-            specs.add(new CraftEngineFurnitureSpec(
+            specs.add(DisplayEntities.interactionSpec(
                 seatLabelInteractionLocation(statusLabelLocation),
-                SEAT_HITBOX_FURNITURE_ID,
-                action
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
             ));
         }
         return List.copyOf(specs);
@@ -734,9 +745,13 @@ public final class TableRenderer {
                 null,
                 true
             ));
-            Entity clickHitbox = session.plugin().craftEngine().placeHandTileHitbox(
+            Entity clickHitbox = DisplayEntities.spawnInteraction(
+                session.plugin(),
                 handInteractionLocation(tileLocation),
-                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex)
+                HAND_INTERACTION_WIDTH,
+                HAND_INTERACTION_HEIGHT,
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+                ownerOnly
             );
             if (clickHitbox != null) {
                 spawned.add(clickHitbox);
@@ -773,9 +788,13 @@ public final class TableRenderer {
             null,
             true
         ));
-        Entity clickHitbox = session.plugin().craftEngine().placeHandTileHitbox(
+        Entity clickHitbox = DisplayEntities.spawnInteraction(
+            session.plugin(),
             handInteractionLocation(tileLocation),
-            DisplayClickAction.handTile(session.id(), playerId, tileIndex)
+            HAND_INTERACTION_WIDTH,
+            HAND_INTERACTION_HEIGHT,
+            DisplayClickAction.handTile(session.id(), playerId, tileIndex),
+            List.of(playerId)
         );
         if (clickHitbox != null) {
             spawned.add(clickHitbox);
@@ -996,10 +1015,12 @@ public final class TableRenderer {
         );
         return List.of(
             tileSpec,
-            new CraftEngineFurnitureSpec(
+            DisplayEntities.interactionSpec(
                 handInteractionLocation(tileLocation),
-                HAND_TILE_HITBOX_FURNITURE_ID,
-                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex)
+                HAND_INTERACTION_WIDTH,
+                HAND_INTERACTION_HEIGHT,
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+                List.of(seat.playerId())
             )
         );
     }
@@ -1712,4 +1733,6 @@ public final class TableRenderer {
     private record DeadWallPlacement(Location location, float yaw) {
     }
 }
+
+
 
