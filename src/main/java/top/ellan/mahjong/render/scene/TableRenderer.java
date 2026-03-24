@@ -73,7 +73,8 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
+    // Keep kakan as a near-table overlay on the target tile (not visually stacked high above it).
+    private static final double KAKAN_STACK_Y_OFFSET = 0.003D;
     private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
     private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
@@ -902,11 +903,13 @@ public final class TableRenderer {
         if (stickCount > 0) {
             cursor = add(cursor, cornerStickMeldOffset(wind, Math.min(stickCount, STICKS_PER_STACK)));
         }
-        Location lastClaimBase = null;
         boolean lastTileWasHorizontal = false;
         int placedTileCount = 0;
 
         for (MeldView meld : melds) {
+            Location kakanStackBase = null;
+            float kakanStackYaw = yaw;
+            Location firstTileBase = null;
             boolean concealedKan = meld.tiles().size() == 4 && meld.faceDownAt(0) && meld.faceDownAt(meld.tiles().size() - 1);
             if (concealedKan) {
                 for (int i = 0; i < meld.tiles().size(); i++) {
@@ -926,7 +929,6 @@ public final class TableRenderer {
                     ));
                     placedTileCount++;
                 }
-                lastClaimBase = null;
                 lastTileWasHorizontal = false;
                 continue;
             }
@@ -944,29 +946,38 @@ public final class TableRenderer {
                 }
 
                 Location baseLocation = isClaimTile ? add(cursor, horizontalTileGravityOffset(wind)) : cursor;
+                if (firstTileBase == null) {
+                    firstTileBase = baseLocation.clone();
+                }
+                float tileYaw = isClaimTile ? yaw + meld.claimYawOffset() : yaw;
                 spawned.add(spawnPublicTile(
                     session,
                     baseLocation.clone().add(0.0D, FLAT_TILE_Y, 0.0D),
-                    isClaimTile ? yaw + meld.claimYawOffset() : yaw,
+                    tileYaw,
                     meld.tiles().get(i),
                     meld.faceDownAt(i) ? DisplayEntities.TileRenderPose.FLAT_FACE_DOWN : DisplayEntities.TileRenderPose.FLAT_FACE_UP
                 ));
+                // Added-kan tile should follow the target (claimed) tile position.
                 if (isClaimTile) {
-                    lastClaimBase = baseLocation.clone();
+                    kakanStackBase = baseLocation.clone();
+                    kakanStackYaw = tileYaw;
                 }
                 lastTileWasHorizontal = isClaimTile;
                 placedTileCount++;
             }
 
-            if (meld.hasAddedKanTile() && lastClaimBase != null) {
+            if (meld.hasAddedKanTile() && kakanStackBase == null) {
+                kakanStackBase = firstTileBase;
+                kakanStackYaw = yaw;
+            }
+            if (meld.hasAddedKanTile() && kakanStackBase != null) {
                 spawned.add(spawnPublicTile(
                     session,
-                    lastClaimBase.clone().add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
-                    yaw + meld.claimYawOffset(),
+                    kakanStackBase.clone().add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    kakanStackYaw,
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
                 ));
-                lastClaimBase = null;
                 lastTileWasHorizontal = false;
             }
         }
