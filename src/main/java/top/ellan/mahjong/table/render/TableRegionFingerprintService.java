@@ -173,8 +173,8 @@ public final class TableRegionFingerprintService {
     private String seatVisualFingerprint(MahjongTableSession session, SeatWind wind) {
         return fingerprintBuilder(96)
             .field("visual")
+            .field("chair-stable-v2")
             .field(wind.name())
-            .field(Objects.toString(session.playerAt(wind), "empty"))
             .field(Objects.toString(session.plugin().settings().craftEngineSeatFurnitureId(), ""))
             .toString();
     }

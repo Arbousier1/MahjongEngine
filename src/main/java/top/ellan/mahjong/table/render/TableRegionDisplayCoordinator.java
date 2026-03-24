@@ -45,7 +45,7 @@ public final class TableRegionDisplayCoordinator {
         TableRenderLayout.LayoutPlan plan = result.layout();
         Map<String, String> fingerprints = result.regionFingerprints();
 
-        if (!this.updateRegion(REGION_TABLE, fingerprints.get(REGION_TABLE), budget, () -> this.session.renderer().renderTableStructure(this.session, plan))) {
+        if (!this.updateStaticRegion(REGION_TABLE, fingerprints.get(REGION_TABLE), budget, () -> this.session.renderer().renderTableStructure(this.session, plan))) {
             return true;
         }
         if (!this.updateWallRegions(plan, budget)) {
@@ -68,7 +68,7 @@ public final class TableRegionDisplayCoordinator {
             String visualRegionKey = this.seatRegionKey("visual", wind);
             String labelsRegionKey = this.seatRegionKey("labels", wind);
             String sticksRegionKey = this.seatRegionKey("sticks", wind);
-            if (!this.updateRegion(visualRegionKey, fingerprints.get(visualRegionKey), budget, () -> this.session.renderer().renderSeatVisual(this.session, wind))) {
+            if (!this.updateStaticRegion(visualRegionKey, fingerprints.get(visualRegionKey), budget, () -> this.session.renderer().renderSeatVisual(this.session, wind))) {
                 return true;
             }
             if (!this.updateRegionWithSpecs(
@@ -277,6 +277,15 @@ public final class TableRegionDisplayCoordinator {
         }
         this.regionFingerprints.put(regionKey, fingerprint);
         return true;
+    }
+
+    private boolean updateStaticRegion(String regionKey, String fingerprint, ApplyBudget budget, RegionRenderer renderer) {
+        List<Entity> currentEntities = this.regionDisplays.get(regionKey);
+        if (!this.hasInvalidDisplayEntity(currentEntities) && currentEntities != null) {
+            this.regionFingerprints.put(regionKey, fingerprint);
+            return true;
+        }
+        return this.updateRegion(regionKey, fingerprint, budget, renderer);
     }
 
     private boolean updateRegionWithSpecs(String regionKey, String fingerprint, ApplyBudget budget, RegionSpecRenderer renderer) {

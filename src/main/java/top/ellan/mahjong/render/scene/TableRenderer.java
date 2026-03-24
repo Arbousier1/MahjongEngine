@@ -340,7 +340,7 @@ public final class TableRenderer {
     public List<Entity> renderSeatVisual(MahjongTableSession session, SeatWind wind) {
         Location center = displayCenter(session);
         Location handBase = handDirectionBase(center, wind);
-        return renderSeatVisual(session, wind, handBase, seatVisualAction(session, wind));
+        return renderSeatVisual(session, wind, handBase, seatChairAction(session, wind));
     }
 
     public List<Entity> renderSeatLabels(
@@ -1287,6 +1287,13 @@ public final class TableRenderer {
             return DisplayClickAction.toggleReady(session.id(), wind);
         }
         return null;
+    }
+
+    private static DisplayClickAction seatChairAction(MahjongTableSession session, SeatWind wind) {
+        if (session == null || wind == null) {
+            return null;
+        }
+        return DisplayClickAction.joinSeat(session.id(), wind);
     }
 
     private static Entity spawnPublicTile(
