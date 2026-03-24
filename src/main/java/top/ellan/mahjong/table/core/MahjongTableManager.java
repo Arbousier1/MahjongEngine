@@ -72,7 +72,8 @@ public final class MahjongTableManager implements Listener {
             return this.sessionForViewer(owner.getUniqueId());
         }
         String id = this.nextId();
-        MahjongTableSession session = new MahjongTableSession(this.plugin, id, owner.getLocation().toCenterLocation(), true);
+        Location center = this.foliaSafeTableCenter(owner.getLocation());
+        MahjongTableSession session = new MahjongTableSession(this.plugin, id, center, true);
         this.registerTable(session);
         session.render();
         this.persistTables();
@@ -86,10 +87,11 @@ public final class MahjongTableManager implements Listener {
         }
 
         String id = this.nextId();
+        Location center = this.foliaSafeTableCenter(owner.getLocation());
         MahjongTableSession session = new MahjongTableSession(
             this.plugin,
             id,
-            owner.getLocation().toCenterLocation(),
+            center,
             MahjongVariant.RIICHI,
             SessionRulePresetResolver.majsoulRule(top.ellan.mahjong.riichi.model.MahjongRule.GameLength.TWO_WIND),
             true,
@@ -531,7 +533,8 @@ public final class MahjongTableManager implements Listener {
         boolean botMatchRoom
     ) {
         String normalizedId = tableId.toUpperCase(Locale.ROOT);
-        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, center, variant, rule, true, botMatchRoom);
+        Location normalizedCenter = this.foliaSafeTableCenter(center);
+        MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, normalizedCenter, variant, rule, true, botMatchRoom);
         this.registerTable(session);
         if (botMatchRoom) {
             while (session.size() < 4) {
@@ -573,6 +576,25 @@ public final class MahjongTableManager implements Listener {
             && java.util.Objects.equals(left.ownerId(), right.ownerId())
             && left.tileIndex() == right.tileIndex()
             && left.seatWind() == right.seatWind();
+    }
+
+    private Location foliaSafeTableCenter(Location source) {
+        if (source == null || source.getWorld() == null) {
+            return source;
+        }
+        Location centered = source.toCenterLocation();
+        int chunkX = Math.floorDiv(centered.getBlockX(), 16);
+        int chunkZ = Math.floorDiv(centered.getBlockZ(), 16);
+        double snappedX = chunkX * 16.0D + 8.5D;
+        double snappedZ = chunkZ * 16.0D + 8.5D;
+        return new Location(
+            centered.getWorld(),
+            snappedX,
+            centered.getY(),
+            snappedZ,
+            centered.getYaw(),
+            centered.getPitch()
+        );
     }
 
     public void sendReadyResult(Player player, MahjongTableSession.ReadyResult result) {

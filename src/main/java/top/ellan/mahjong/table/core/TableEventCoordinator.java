@@ -22,7 +22,6 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 final class TableEventCoordinator {
     private static final long DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS = 40_000_000L;
-    private static final double MAX_ENTITY_CLICK_DISTANCE_SQUARED = 25.0D;
     private final MahjongTableManager manager;
     private final Map<UUID, RecentDisplayAction> recentDisplayActions = new ConcurrentHashMap<>();
 
@@ -135,7 +134,7 @@ final class TableEventCoordinator {
         if (action == null) {
             return;
         }
-        if (!this.isClickAllowedForEntity(player, clickedEntity, action)) {
+        if (!this.isClickAllowedForEntity(player, clickedEntity)) {
             return;
         }
         if (this.manager.pluginRef().craftEngine() != null && this.manager.pluginRef().craftEngine().isFurnitureEntity(clickedEntity)) {
@@ -222,17 +221,11 @@ final class TableEventCoordinator {
         return DisplayVisibilityRegistry.canView(entityId, viewerId);
     }
 
-    private boolean isClickAllowedForEntity(Player player, Entity entity, DisplayClickAction action) {
-        if (player == null || entity == null || action == null) {
+    private boolean isClickAllowedForEntity(Player player, Entity entity) {
+        if (player == null || entity == null) {
             return false;
         }
         if (!player.isOnline()) {
-            return false;
-        }
-        if (player.getWorld() != entity.getWorld()) {
-            return false;
-        }
-        if (player.getLocation().distanceSquared(entity.getLocation()) > MAX_ENTITY_CLICK_DISTANCE_SQUARED) {
             return false;
         }
         return DisplayVisibilityRegistry.canView(entity.getEntityId(), player.getUniqueId());

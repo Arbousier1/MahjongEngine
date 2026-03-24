@@ -1035,6 +1035,13 @@ public final class DisplayEntities {
                 if (!player.isOnline()) {
                     return;
                 }
+                // Folia region safety: show/hide touches both viewer and target entity internals.
+                if (!Bukkit.isOwnedByCurrentRegion(player) || !Bukkit.isOwnedByCurrentRegion(entity)) {
+                    return;
+                }
+                if (!entity.isValid() || entity.isDead()) {
+                    return;
+                }
                 runnable.run();
             });
             return;
