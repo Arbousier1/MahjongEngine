@@ -71,9 +71,6 @@ final class TableEventCoordinator {
         MahjongTableSession playerSession = this.manager.tableFor(playerId);
         SeatWind playerSeatWind = playerSession == null ? null : playerSession.seatOf(playerId);
         DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getDismounted());
-        if (action == null && playerSession != null && playerSeatWind != null) {
-            action = DisplayClickAction.joinSeat(playerSession.id(), playerSeatWind);
-        }
         if (action == null) {
             return;
         }
@@ -81,9 +78,6 @@ final class TableEventCoordinator {
             return;
         }
         MahjongTableSession session = this.manager.resolveTableById(action.tableId());
-        if (session == null) {
-            session = playerSession;
-        }
         SeatWind seatWind = action.seatWind() != null ? action.seatWind() : playerSeatWind;
         if (session != null && session.isStarted() && seatWind != null) {
             MahjongTableManager.LeaveResult result = this.manager.leave(playerId);

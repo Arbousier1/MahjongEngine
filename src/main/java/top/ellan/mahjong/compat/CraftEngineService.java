@@ -419,15 +419,7 @@ public final class CraftEngineService {
             Player player = (Player) playerMethod.invoke(event);
             Object furniture = furnitureMethod.invoke(event);
             int entityId = (int) entityIdMethod.invoke(furniture);
-            Entity furnitureEntity = null;
-            Object bukkitEntity = bukkitEntityMethod.invoke(furniture);
-            if (bukkitEntity instanceof Entity entity) {
-                furnitureEntity = entity;
-            }
             DisplayClickAction action = TableDisplayRegistry.get(entityId);
-            if (action == null && furnitureEntity != null) {
-                action = TableDisplayRegistry.get(furnitureEntity.getEntityId());
-            }
             if (action == null) {
                 return;
             }

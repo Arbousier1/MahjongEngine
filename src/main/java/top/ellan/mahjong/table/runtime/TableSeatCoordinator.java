@@ -338,37 +338,19 @@ public final class TableSeatCoordinator {
         if (world == null) {
             return null;
         }
-        Entity nearestSeatFurniture = null;
-        double nearestSeatFurnitureDistanceSquared = Double.MAX_VALUE;
-        String configuredSeatFurnitureId = session.plugin().settings().craftEngineSeatFurnitureId();
-        String normalizedConfiguredSeatFurnitureId = configuredSeatFurnitureId == null ? "" : configuredSeatFurnitureId.trim();
         for (Entity entity : world.getNearbyEntities(anchor, 1.6D, 1.6D, 1.6D)) {
             if (!this.plugin.craftEngine().isFurnitureEntity(entity)) {
                 continue;
             }
             DisplayClickAction action = TableDisplayRegistry.get(entity.getEntityId());
             if (action == null || !session.id().equals(action.tableId()) || action.seatWind() != wind) {
-                String itemId = this.plugin.craftEngine().furnitureItemId(entity);
-                if (itemId == null) {
-                    continue;
-                }
-                boolean isSeatHitbox = "mahjongpaper:seat_hitbox".equals(itemId);
-                boolean isConfiguredSeatFurniture = !normalizedConfiguredSeatFurnitureId.isEmpty() && normalizedConfiguredSeatFurnitureId.equals(itemId);
-                if (!isSeatHitbox && !isConfiguredSeatFurniture) {
-                    continue;
-                }
-                double distanceSquared = entity.getLocation().distanceSquared(anchor);
-                if (distanceSquared < nearestSeatFurnitureDistanceSquared) {
-                    nearestSeatFurnitureDistanceSquared = distanceSquared;
-                    nearestSeatFurniture = entity;
-                }
                 continue;
             }
             if (action.actionType() == ActionType.JOIN_SEAT || action.actionType() == ActionType.TOGGLE_READY) {
                 return entity;
             }
         }
-        return nearestSeatFurniture;
+        return null;
     }
 
     private record SeatWatchdogBinding(String tableId, SeatWind wind, long expiresAtTick) {
