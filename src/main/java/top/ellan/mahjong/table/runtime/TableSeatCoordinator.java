@@ -352,9 +352,8 @@ public final class TableSeatCoordinator {
                 if (itemId == null) {
                     continue;
                 }
-                boolean isSeatHitbox = "mahjongpaper:seat_hitbox".equals(itemId);
                 boolean isConfiguredSeatFurniture = !normalizedConfiguredSeatFurnitureId.isEmpty() && normalizedConfiguredSeatFurnitureId.equals(itemId);
-                if (!isSeatHitbox && !isConfiguredSeatFurniture) {
+                if (!isConfiguredSeatFurniture) {
                     continue;
                 }
                 double distanceSquared = entity.getLocation().distanceSquared(anchor);
