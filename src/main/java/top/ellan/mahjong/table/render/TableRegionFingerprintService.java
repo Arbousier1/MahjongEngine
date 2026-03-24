@@ -33,10 +33,10 @@ public final class TableRegionFingerprintService {
         return Map.copyOf(fingerprints);
     }
 
-    public String handPrivateDisplayTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
+    public String handPrivateTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
         TableRenderLayout.Point point = plan.privateHandPoints().get(tileIndex);
         return fingerprintBuilder(160)
-            .field("hand-private-display-tile")
+            .field("hand-private-tile")
             .field(seat.wind().name())
             .field(Objects.toString(seat.playerId(), "empty"))
             .field(tileIndex)
@@ -47,20 +47,6 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(point.y()))
             .field(Double.doubleToLongBits(point.z()))
             .field(seat.hand().get(tileIndex).name())
-            .toString();
-    }
-
-    public String handPrivateHitboxTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
-        TableRenderLayout.Point point = plan.privateHandPoints().get(tileIndex);
-        return fingerprintBuilder(160)
-            .field("hand-private-hitbox-tile")
-            .field(seat.wind().name())
-            .field(Objects.toString(seat.playerId(), "empty"))
-            .field(tileIndex)
-            .field(seat.hand().size())
-            .field(Double.doubleToLongBits(point.x()))
-            .field(Double.doubleToLongBits(point.y()))
-            .field(Double.doubleToLongBits(point.z()))
             .toString();
     }
 

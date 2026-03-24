@@ -969,7 +969,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<DisplayEntities.EntitySpec> renderHandPrivateDisplayTileSpecs(
+    public List<DisplayEntities.EntitySpec> renderHandPrivateTileSpecs(
         MahjongTableSession session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
@@ -994,25 +994,14 @@ public final class TableRenderer {
             null,
             true
         );
-        return List.of(tileSpec);
-    }
-
-    public List<DisplayEntities.EntitySpec> renderHandPrivateHitboxTileSpecs(
-        MahjongTableSession session,
-        TableSeatRenderSnapshot seat,
-        TableRenderLayout.SeatLayoutPlan plan,
-        int tileIndex
-    ) {
-        if (seat.playerId() == null || tileIndex < 0 || tileIndex >= seat.hand().size()) {
-            return List.of();
-        }
-
-        Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
-        return List.of(new CraftEngineFurnitureSpec(
-            handInteractionLocation(tileLocation),
-            HAND_TILE_HITBOX_FURNITURE_ID,
-            DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex)
-        ));
+        return List.of(
+            tileSpec,
+            new CraftEngineFurnitureSpec(
+                handInteractionLocation(tileLocation),
+                HAND_TILE_HITBOX_FURNITURE_ID,
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex)
+            )
+        );
     }
 
     public List<DisplayEntities.EntitySpec> renderMeldSpecs(
