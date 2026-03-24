@@ -665,6 +665,11 @@ public final class CraftEngineService {
             if (!viewer.isOnline()) {
                 return;
             }
+            // Folia/Paper region threading: showEntity/hideEntity touches both viewer and target entity internals.
+            // Only run when the current thread owns both entities to avoid cross-region thread-check violations.
+            if (!Bukkit.isOwnedByCurrentRegion(viewer) || !Bukkit.isOwnedByCurrentRegion(entity)) {
+                return;
+            }
             if (!entity.isValid() || entity.isDead()) {
                 return;
             }
