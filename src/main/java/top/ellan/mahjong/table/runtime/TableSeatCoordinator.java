@@ -26,6 +26,10 @@ public final class TableSeatCoordinator {
     private static final long SEAT_WATCHDOG_DURATION_TICKS = 40L;
     private static final long SEAT_RESTORE_COOLDOWN_MILLIS = 150L;
     private static final double SEAT_RESTORE_MAX_DISTANCE_SQUARED = 16.0D;
+    private static final String DEFAULT_SEAT_FURNITURE_ID = "mahjongpaper:seat_chair";
+    private static final String SEAT_HITBOX_FURNITURE_ID = "mahjongpaper:seat_hitbox";
+    private static final String TABLE_HITBOX_FURNITURE_ID = "mahjongpaper:table_hitbox";
+    private static final String HAND_TILE_HITBOX_FURNITURE_ID = "mahjongpaper:hand_tile_hitbox";
 
     private final MahjongPaperPlugin plugin;
     private final MahjongTableManager tableManager;
@@ -346,16 +350,12 @@ public final class TableSeatCoordinator {
             if (!this.plugin.craftEngine().isFurnitureEntity(entity)) {
                 continue;
             }
+            String itemId = this.plugin.craftEngine().furnitureItemId(entity);
+            if (!isValidSeatFurnitureItem(itemId, normalizedConfiguredSeatFurnitureId)) {
+                continue;
+            }
             DisplayClickAction action = TableDisplayRegistry.get(entity.getEntityId());
             if (action == null || !session.id().equals(action.tableId()) || action.seatWind() != wind) {
-                String itemId = this.plugin.craftEngine().furnitureItemId(entity);
-                if (itemId == null) {
-                    continue;
-                }
-                boolean isConfiguredSeatFurniture = !normalizedConfiguredSeatFurnitureId.isEmpty() && normalizedConfiguredSeatFurnitureId.equals(itemId);
-                if (!isConfiguredSeatFurniture) {
-                    continue;
-                }
                 double distanceSquared = entity.getLocation().distanceSquared(anchor);
                 if (distanceSquared < nearestSeatFurnitureDistanceSquared) {
                     nearestSeatFurnitureDistanceSquared = distanceSquared;
@@ -368,6 +368,21 @@ public final class TableSeatCoordinator {
             }
         }
         return nearestSeatFurniture;
+    }
+
+    private static boolean isValidSeatFurnitureItem(String itemId, String configuredSeatFurnitureId) {
+        if (itemId == null || itemId.isBlank()) {
+            return false;
+        }
+        if (SEAT_HITBOX_FURNITURE_ID.equals(itemId)
+            || TABLE_HITBOX_FURNITURE_ID.equals(itemId)
+            || HAND_TILE_HITBOX_FURNITURE_ID.equals(itemId)) {
+            return false;
+        }
+        if (!configuredSeatFurnitureId.isEmpty()) {
+            return configuredSeatFurnitureId.equals(itemId);
+        }
+        return DEFAULT_SEAT_FURNITURE_ID.equals(itemId);
     }
 
     private record SeatWatchdogBinding(String tableId, SeatWind wind, long expiresAtTick) {
