@@ -36,7 +36,6 @@ import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
@@ -378,11 +377,6 @@ public final class MahjongTableManager implements Listener {
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onDisplayInteractAt(PlayerInteractAtEntityEvent event) {
         this.eventCoordinator.onDisplayInteractAt(event);
-    }
-
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onDisplayPacketRayInteract(PlayerInteractEvent event) {
-        this.eventCoordinator.onDisplayPacketRayInteract(event);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

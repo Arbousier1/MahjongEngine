@@ -52,7 +52,14 @@ public final class TableSeatCoordinator {
     }
 
     public DisplayClickAction seatAction(Entity entity) {
-        if (entity == null || this.plugin.craftEngine() == null) {
+        if (entity == null) {
+            return null;
+        }
+        DisplayClickAction direct = TableDisplayRegistry.get(entity.getEntityId());
+        if (direct != null && (direct.actionType() == ActionType.JOIN_SEAT || direct.actionType() == ActionType.TOGGLE_READY)) {
+            return direct;
+        }
+        if (this.plugin.craftEngine() == null) {
             return null;
         }
         Entity furniture = null;

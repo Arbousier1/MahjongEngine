@@ -3,32 +3,26 @@ package top.ellan.mahjong.table.core;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
+import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
-import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.FluidCollisionMode;
-import org.bukkit.GameMode;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
-import org.bukkit.util.RayTraceResult;
 
 final class TableEventCoordinator {
     private static final long DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS = 40_000_000L;
+    private static final double MAX_ENTITY_CLICK_DISTANCE_SQUARED = 25.0D;
     private final MahjongTableManager manager;
     private final Map<UUID, RecentDisplayAction> recentDisplayActions = new ConcurrentHashMap<>();
 
@@ -73,7 +67,13 @@ final class TableEventCoordinator {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
+        UUID playerId = player.getUniqueId();
+        MahjongTableSession playerSession = this.manager.tableFor(playerId);
+        SeatWind playerSeatWind = playerSession == null ? null : playerSession.seatOf(playerId);
         DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getDismounted());
+        if (action == null && playerSession != null && playerSeatWind != null) {
+            action = DisplayClickAction.joinSeat(playerSession.id(), playerSeatWind);
+        }
         if (action == null) {
             return;
         }
@@ -81,15 +81,19 @@ final class TableEventCoordinator {
             return;
         }
         MahjongTableSession session = this.manager.resolveTableById(action.tableId());
-        if (session != null && session.isStarted()) {
-            MahjongTableManager.LeaveResult result = this.manager.leave(player.getUniqueId());
+        if (session == null) {
+            session = playerSession;
+        }
+        SeatWind seatWind = action.seatWind() != null ? action.seatWind() : playerSeatWind;
+        if (session != null && session.isStarted() && seatWind != null) {
+            MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
             event.setCancelled(true);
-            this.manager.seatCoordinatorRef().startSeatWatchdog(session, player.getUniqueId(), action.seatWind());
-            this.manager.seatCoordinatorRef().requestSeatRestore(player, session, action.seatWind());
+            this.manager.seatCoordinatorRef().startSeatWatchdog(session, playerId, seatWind);
+            this.manager.seatCoordinatorRef().requestSeatRestore(player, session, seatWind);
             this.manager.pluginRef().messages().actionBar(player, result.status() == MahjongTableManager.LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
             return;
         }
-        this.manager.pluginRef().scheduler().runEntity(player, () -> this.manager.leave(player.getUniqueId()));
+        this.manager.pluginRef().scheduler().runEntity(player, () -> this.manager.leave(playerId));
     }
 
     void onSeatSneak(PlayerToggleSneakEvent event) {
@@ -101,12 +105,17 @@ final class TableEventCoordinator {
         if (session == null || !session.isStarted() || !player.isInsideVehicle()) {
             return;
         }
-        if (this.manager.seatCoordinatorRef().seatAction(player.getVehicle()) == null) {
+        SeatWind wind = session.seatOf(player.getUniqueId());
+        if (wind == null) {
+            return;
+        }
+        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(player.getVehicle());
+        if (action != null && action.seatWind() != null && action.seatWind() != wind) {
             return;
         }
         MahjongTableManager.LeaveResult result = this.manager.leave(player.getUniqueId());
         event.setCancelled(true);
-        this.manager.seatCoordinatorRef().startSeatWatchdog(session, player.getUniqueId(), session.seatOf(player.getUniqueId()));
+        this.manager.seatCoordinatorRef().startSeatWatchdog(session, player.getUniqueId(), wind);
         this.manager.pluginRef().messages().actionBar(player, result.status() == MahjongTableManager.LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
     }
 
@@ -116,41 +125,6 @@ final class TableEventCoordinator {
 
     void onDisplayInteractAt(PlayerInteractAtEntityEvent event) {
         this.handleDisplayInteract(event.getPlayer(), event.getRightClicked(), event);
-    }
-
-    void onDisplayPacketRayInteract(PlayerInteractEvent event) {
-        if (event == null) {
-            return;
-        }
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) {
-            return;
-        }
-        Player player = event.getPlayer();
-        if (player == null || !player.isOnline()) {
-            return;
-        }
-        RayTraceResult rayTraceResult = player.getWorld().rayTrace(
-            player.getEyeLocation(),
-            player.getEyeLocation().getDirection(),
-            displayActionRayDistance(player),
-            FluidCollisionMode.NEVER,
-            true,
-            0.0D,
-            entity -> this.isManagedDisplayActionEntity(entity, player.getUniqueId())
-        );
-        Entity hitEntity = rayTraceResult == null ? null : rayTraceResult.getHitEntity();
-        if (hitEntity == null) {
-            return;
-        }
-        DisplayClickAction action = TableDisplayRegistry.get(hitEntity.getEntityId());
-        if (action == null) {
-            return;
-        }
-        event.setCancelled(true);
-        this.handleResolvedDisplayAction(player, action);
     }
 
     void onProtectedDisplayDamage(EntityDamageEvent event) {
@@ -165,6 +139,9 @@ final class TableEventCoordinator {
         }
         DisplayClickAction action = TableDisplayRegistry.get(clickedEntity.getEntityId());
         if (action == null) {
+            return;
+        }
+        if (!this.isClickAllowedForEntity(player, clickedEntity, action)) {
             return;
         }
         if (this.manager.pluginRef().craftEngine() != null && this.manager.pluginRef().craftEngine().isFurnitureEntity(clickedEntity)) {
@@ -251,15 +228,20 @@ final class TableEventCoordinator {
         return DisplayVisibilityRegistry.canView(entityId, viewerId);
     }
 
-    private static double displayActionRayDistance(Player player) {
-        if (player == null) {
-            return 4.5D;
+    private boolean isClickAllowedForEntity(Player player, Entity entity, DisplayClickAction action) {
+        if (player == null || entity == null || action == null) {
+            return false;
         }
-        AttributeInstance attribute = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
-        if (attribute != null && attribute.getValue() > 0.0D) {
-            return attribute.getValue();
+        if (!player.isOnline()) {
+            return false;
         }
-        return player.getGameMode() == GameMode.CREATIVE ? 5.0D : 4.5D;
+        if (player.getWorld() != entity.getWorld()) {
+            return false;
+        }
+        if (player.getLocation().distanceSquared(entity.getLocation()) > MAX_ENTITY_CLICK_DISTANCE_SQUARED) {
+            return false;
+        }
+        return DisplayVisibilityRegistry.canView(entity.getEntityId(), player.getUniqueId());
     }
 
     private record RecentDisplayAction(DisplayClickAction action, long timestampNanos) {

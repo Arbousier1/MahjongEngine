@@ -74,6 +74,10 @@ public final class TableRenderer {
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
     private static final double KAKAN_STACK_Y_OFFSET = TILE_DEPTH + 0.001D;
+    private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
+    private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
+    private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
+    private static final float SEAT_LABEL_INTERACTION_HEIGHT = 0.85F;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
     private static final int DEAD_WALL_SIZE = 14;
@@ -302,34 +306,32 @@ public final class TableRenderer {
             wind,
             -SEAT_LABEL_DEPTH_OFFSET * 0.5D
         );
-
+        DisplayClickAction action = seatVisualAction(session, wind);
+        Component text = playerId == null
+            ? Component.text(session.publicSeatStatus(wind))
+            : Component.text(session.publicSeatStatus(wind) + "\n" + session.displayName(playerId, session.publicLocale()));
         spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
             statusLabelLocation,
-            Component.text(session.publicSeatStatus(wind)),
+            text,
             seatLabelColor(wind, active),
             null,
             Display.Billboard.FIXED,
             seatYaw(wind),
             0.0F
         ));
-        if (playerId != null) {
-            Location playerNameLocation = withSeatLabelDepthOffset(
-                handBase.clone().add(0.0D, 0.26D + FLOATING_TEXT_Y_OFFSET, 0.0D),
-                wind,
-                SEAT_LABEL_DEPTH_OFFSET * 0.5D
-            );
-            spawned.add(DisplayEntities.spawnLabel(
+        if (action != null) {
+            Entity interaction = DisplayEntities.spawnInteraction(
                 session.plugin(),
-                playerNameLocation,
-                Component.text(session.displayName(playerId, session.publicLocale())),
-                Color.fromARGB(100, 18, 18, 18),
-                null,
-                Display.Billboard.FIXED,
-                seatYaw(wind),
-                0.0F,
-                false
-            ));
+                seatLabelInteractionLocation(statusLabelLocation),
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
+            );
+            if (interaction != null) {
+                spawned.add(interaction);
+            }
         }
         return spawned;
     }
@@ -352,34 +354,32 @@ public final class TableRenderer {
             seat.wind(),
             -SEAT_LABEL_DEPTH_OFFSET * 0.5D
         );
-
+        DisplayClickAction action = seatVisualAction(session, seat.wind());
+        Component text = seat.playerId() == null
+            ? Component.text(seat.publicSeatStatus())
+            : Component.text(seat.publicSeatStatus() + "\n" + seat.displayName());
         spawned.add(DisplayEntities.spawnLabel(
             session.plugin(),
             statusLabelLocation,
-            Component.text(seat.publicSeatStatus()),
+            text,
             seatLabelColor(seat.wind(), active),
             null,
             Display.Billboard.FIXED,
             seatYaw(seat.wind()),
             0.0F
         ));
-        if (seat.playerId() != null) {
-            Location playerNameLocation = withSeatLabelDepthOffset(
-                toLocation(session, plan.playerNameLocation()),
-                seat.wind(),
-                SEAT_LABEL_DEPTH_OFFSET * 0.5D
-            );
-            spawned.add(DisplayEntities.spawnLabel(
+        if (action != null) {
+            Entity interaction = DisplayEntities.spawnInteraction(
                 session.plugin(),
-                playerNameLocation,
-                Component.text(seat.displayName()),
-                Color.fromARGB(100, 18, 18, 18),
-                null,
-                Display.Billboard.FIXED,
-                seatYaw(seat.wind()),
-                0.0F,
-                false
-            ));
+                seatLabelInteractionLocation(statusLabelLocation),
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
+            );
+            if (interaction != null) {
+                spawned.add(interaction);
+            }
         }
         return spawned;
     }
@@ -396,9 +396,13 @@ public final class TableRenderer {
             seat.wind(),
             -SEAT_LABEL_DEPTH_OFFSET * 0.5D
         );
+        DisplayClickAction action = seatVisualAction(session, seat.wind());
+        Component text = seat.playerId() == null
+            ? Component.text(seat.publicSeatStatus())
+            : Component.text(seat.publicSeatStatus() + "\n" + seat.displayName());
         specs.add(DisplayEntities.labelSpec(
             statusLabelLocation,
-            Component.text(seat.publicSeatStatus()),
+            text,
             seatLabelColor(seat.wind(), active),
             null,
             Display.Billboard.FIXED,
@@ -406,21 +410,13 @@ public final class TableRenderer {
             0.0F,
             true
         ));
-        if (seat.playerId() != null) {
-            Location playerNameLocation = withSeatLabelDepthOffset(
-                toLocation(session, plan.playerNameLocation()),
-                seat.wind(),
-                SEAT_LABEL_DEPTH_OFFSET * 0.5D
-            );
-            specs.add(DisplayEntities.labelSpec(
-                playerNameLocation,
-                Component.text(seat.displayName()),
-                Color.fromARGB(100, 18, 18, 18),
-                null,
-                Display.Billboard.FIXED,
-                seatYaw(seat.wind()),
-                0.0F,
-                false
+        if (action != null) {
+            specs.add(DisplayEntities.interactionSpec(
+                seatLabelInteractionLocation(statusLabelLocation),
+                SEAT_LABEL_INTERACTION_WIDTH,
+                SEAT_LABEL_INTERACTION_HEIGHT,
+                action,
+                null
             ));
         }
         return List.copyOf(specs);
@@ -731,7 +727,7 @@ public final class TableRenderer {
         }
 
         List<UUID> ownerOnly = List.of(seat.playerId());
-        List<Entity> spawned = new ArrayList<>(seat.hand().size());
+        List<Entity> spawned = new ArrayList<>(seat.hand().size() * 2);
         for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
             Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
             spawned.add(DisplayEntities.spawnTileDisplay(
@@ -741,7 +737,7 @@ public final class TableRenderer {
                 session.currentVariant(),
                 seat.hand().get(tileIndex),
                 DisplayEntities.TileRenderPose.STANDING,
-                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+                null,
                 true,
                 ownerOnly,
                 1.0F,
@@ -749,6 +745,17 @@ public final class TableRenderer {
                 null,
                 true
             ));
+            Entity clickHitbox = DisplayEntities.spawnInteraction(
+                session.plugin(),
+                handInteractionLocation(tileLocation),
+                HAND_INTERACTION_WIDTH,
+                HAND_INTERACTION_HEIGHT,
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+                ownerOnly
+            );
+            if (clickHitbox != null) {
+                spawned.add(clickHitbox);
+            }
         }
         return spawned;
     }
@@ -765,7 +772,7 @@ public final class TableRenderer {
 
         Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
         UUID playerId = seat.playerId();
-        List<Entity> spawned = new ArrayList<>(1);
+        List<Entity> spawned = new ArrayList<>(2);
         spawned.add(DisplayEntities.spawnTileDisplay(
             session.plugin(),
             tileLocation,
@@ -773,7 +780,7 @@ public final class TableRenderer {
             session.currentVariant(),
             seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
-            DisplayClickAction.handTile(session.id(), playerId, tileIndex),
+            null,
             true,
             List.of(playerId),
             1.0F,
@@ -781,6 +788,17 @@ public final class TableRenderer {
             null,
             true
         ));
+        Entity clickHitbox = DisplayEntities.spawnInteraction(
+            session.plugin(),
+            handInteractionLocation(tileLocation),
+            HAND_INTERACTION_WIDTH,
+            HAND_INTERACTION_HEIGHT,
+            DisplayClickAction.handTile(session.id(), playerId, tileIndex),
+            List.of(playerId)
+        );
+        if (clickHitbox != null) {
+            spawned.add(clickHitbox);
+        }
         return spawned;
     }
 
@@ -987,7 +1005,7 @@ public final class TableRenderer {
             session.currentVariant(),
             seat.hand().get(tileIndex),
             DisplayEntities.TileRenderPose.STANDING,
-            DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+            null,
             true,
             List.of(seat.playerId()),
             1.0F,
@@ -995,7 +1013,16 @@ public final class TableRenderer {
             null,
             true
         );
-        return List.of(tileSpec);
+        return List.of(
+            tileSpec,
+            DisplayEntities.interactionSpec(
+                handInteractionLocation(tileLocation),
+                HAND_INTERACTION_WIDTH,
+                HAND_INTERACTION_HEIGHT,
+                DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
+                List.of(seat.playerId())
+            )
+        );
     }
 
     public List<DisplayEntities.EntitySpec> renderMeldSpecs(
@@ -1015,6 +1042,10 @@ public final class TableRenderer {
 
     private static Location displayCenter(MahjongTableSession session) {
         return session.center().add(0.0D, DISPLAY_CENTER_Y_OFFSET, 0.0D);
+    }
+
+    private static Location handInteractionLocation(Location tileLocation) {
+        return tileLocation.clone().subtract(0.0D, UPRIGHT_TILE_Y, 0.0D);
     }
 
     public Location seatAnchorLocation(MahjongTableSession session, SeatWind wind) {
@@ -1037,6 +1068,10 @@ public final class TableRenderer {
     private static Location withSeatLabelDepthOffset(Location location, SeatWind wind, double amount) {
         Offset offset = offsetTowardSeatFront(wind, amount);
         return location.clone().add(offset.x(), 0.0D, offset.z());
+    }
+
+    private static Location seatLabelInteractionLocation(Location labelLocation) {
+        return labelLocation.clone().subtract(0.0D, 0.35D, 0.0D);
     }
 
     private static List<Entity> renderSeatVisual(
