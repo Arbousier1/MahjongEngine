@@ -57,10 +57,13 @@ public final class TableRegionFingerprintService {
             .field(seat.wind().name())
             .field(Objects.toString(seat.playerId(), "empty"))
             .field(tileIndex)
+            .field(seat.online())
             .field(seat.hand().size())
+            .field(tileIndex == seat.selectedHandTileIndex())
             .field(Double.doubleToLongBits(point.x()))
             .field(Double.doubleToLongBits(point.y()))
             .field(Double.doubleToLongBits(point.z()))
+            .field(seat.hand().get(tileIndex).name())
             .toString();
     }
 

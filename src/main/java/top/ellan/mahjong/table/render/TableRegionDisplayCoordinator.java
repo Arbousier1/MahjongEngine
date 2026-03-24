@@ -85,7 +85,7 @@ public final class TableRegionDisplayCoordinator {
             if (!this.updatePublicHandRegions(snapshot, seat, seatPlan, budget)) {
                 return true;
             }
-            if (!this.updatePrivateHandRegions(seat, seatPlan, budget)) {
+            if (!this.updatePrivateHandRegions(seat, seatPlan, ApplyBudget.unlimited())) {
                 return true;
             }
             if (!this.updateDiscardRegions(seat, seatPlan, budget)) {
