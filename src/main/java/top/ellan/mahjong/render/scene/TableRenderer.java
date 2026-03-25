@@ -11,13 +11,17 @@ import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.MahjongVariant;
 import top.ellan.mahjong.table.core.TableRenderSnapshot;
 import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+import top.ellan.mahjong.table.core.TableViewerActionButtonSnapshot;
 import top.ellan.mahjong.table.core.TableSpectatorSeatOverlaySnapshot;
 import top.ellan.mahjong.table.core.TableViewerOverlaySnapshot;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -62,6 +66,11 @@ public final class TableRenderer {
     private static final double SEAT_CARPET_INSET = 0.08D;
     private static final double SEAT_CARPET_THICKNESS = 0.04D;
     private static final double SEAT_LABEL_DEPTH_OFFSET = 0.03D;
+    private static final double SEAT_ACTION_LABEL_Y_OFFSET = -0.64D + FLOATING_TEXT_Y_OFFSET;
+    private static final double SEAT_SIDE_ACTION_HORIZONTAL_OFFSET = 0.44D;
+    private static final float SEAT_ACTION_INTERACTION_HEIGHT = 0.4F;
+    private static final float SEAT_ACTION_INTERACTION_MIN_WIDTH = 0.72F;
+    private static final float SEAT_ACTION_INTERACTION_MAX_WIDTH = 1.4F;
     private static final double CENTER_LABEL_Y_OFFSET = 0.55D + FLOATING_TEXT_Y_OFFSET - 0.5D;
     private static final double CENTER_LAST_DISCARD_TILE_Y_OFFSET = CENTER_LABEL_Y_OFFSET - 0.18D;
     private static final float CENTER_LAST_DISCARD_TILE_SCALE = 2.0F;
@@ -79,6 +88,11 @@ public final class TableRenderer {
     private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
     private static final float SEAT_LABEL_INTERACTION_HEIGHT = 0.85F;
+    private static final float OVERLAY_ACTION_BUTTON_HEIGHT = 0.4F;
+    private static final float OVERLAY_ACTION_BUTTON_SPACING = 0.55F;
+    private static final float OVERLAY_ACTION_BUTTON_GAP = 0.16F;
+    private static final int OVERLAY_ACTION_BUTTONS_PER_ROW = 4;
+    private static final double OVERLAY_ACTION_Y_OFFSET = SEAT_ACTION_LABEL_Y_OFFSET;
     private static final int WALL_TILES_PER_SIDE = 34;
     private static final int TOTAL_WALL_TILES = 136;
     private static final int DEAD_WALL_SIZE = 14;
@@ -297,7 +311,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderSeatLabels(MahjongTableSession session, SeatWind wind) {
-        List<Entity> spawned = new ArrayList<>(2);
+        List<Entity> spawned = new ArrayList<>(4);
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
         Location handBase = handDirectionBase(center, wind);
@@ -321,19 +335,7 @@ public final class TableRenderer {
             seatYaw(wind),
             0.0F
         ));
-        if (action != null) {
-            Entity interaction = DisplayEntities.spawnInteraction(
-                session.plugin(),
-                seatLabelInteractionLocation(statusLabelLocation),
-                SEAT_LABEL_INTERACTION_WIDTH,
-                SEAT_LABEL_INTERACTION_HEIGHT,
-                action,
-                null
-            );
-            if (interaction != null) {
-                spawned.add(interaction);
-            }
-        }
+        this.appendSeatActionEntities(session, wind, playerId, playerId != null && session.isReady(playerId), handBase, action, spawned);
         return spawned;
     }
 
@@ -348,7 +350,7 @@ public final class TableRenderer {
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
-        List<Entity> spawned = new ArrayList<>(2);
+        List<Entity> spawned = new ArrayList<>(4);
         boolean active = seat.wind() == session.currentSeat();
         Location statusLabelLocation = withSeatLabelDepthOffset(
             toLocation(session, plan.statusLabelLocation()),
@@ -369,19 +371,8 @@ public final class TableRenderer {
             seatYaw(seat.wind()),
             0.0F
         ));
-        if (action != null) {
-            Entity interaction = DisplayEntities.spawnInteraction(
-                session.plugin(),
-                seatLabelInteractionLocation(statusLabelLocation),
-                SEAT_LABEL_INTERACTION_WIDTH,
-                SEAT_LABEL_INTERACTION_HEIGHT,
-                action,
-                null
-            );
-            if (interaction != null) {
-                spawned.add(interaction);
-            }
-        }
+        Location handBase = handDirectionBase(displayCenter(session), seat.wind());
+        this.appendSeatActionEntities(session, seat.wind(), seat.playerId(), seat.ready(), handBase, action, spawned);
         return spawned;
     }
 
@@ -390,7 +381,7 @@ public final class TableRenderer {
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
-        List<DisplayEntities.EntitySpec> specs = new ArrayList<>(3);
+        List<DisplayEntities.EntitySpec> specs = new ArrayList<>(5);
         boolean active = seat.wind() == session.currentSeat();
         Location statusLabelLocation = withSeatLabelDepthOffset(
             toLocation(session, plan.statusLabelLocation()),
@@ -411,15 +402,8 @@ public final class TableRenderer {
             0.0F,
             true
         ));
-        if (action != null) {
-            specs.add(DisplayEntities.interactionSpec(
-                seatLabelInteractionLocation(statusLabelLocation),
-                SEAT_LABEL_INTERACTION_WIDTH,
-                SEAT_LABEL_INTERACTION_HEIGHT,
-                action,
-                null
-            ));
-        }
+        Location handBase = handDirectionBase(displayCenter(session), seat.wind());
+        this.appendSeatActionSpecs(session, seat.wind(), seat.playerId(), seat.ready(), handBase, action, specs);
         return List.copyOf(specs);
     }
 
@@ -1096,7 +1080,7 @@ public final class TableRenderer {
     }
 
     private static Location seatLabelInteractionLocation(Location labelLocation) {
-        return labelLocation.clone().subtract(0.0D, 0.35D, 0.0D);
+        return labelLocation.clone().subtract(0.0D, 0.1D, 0.0D);
     }
 
     private static List<Entity> renderSeatVisual(
@@ -1160,7 +1144,10 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(MahjongTableSession session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
-        List<DisplayEntities.EntitySpec> specs = new ArrayList<>(snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size());
+        int actionButtonSpecCount = snapshot.actionButtons().size() * 2;
+        List<DisplayEntities.EntitySpec> specs = new ArrayList<>(
+            (snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size()) + actionButtonSpecCount
+        );
         if (session.isStarted() || snapshot.spectator()) {
             specs.add(DisplayEntities.labelSpec(
                 center.clone().add(0.0D, 0.9D + FLOATING_TEXT_Y_OFFSET, 0.0D),
@@ -1187,7 +1174,93 @@ public final class TableRenderer {
                 ));
             }
         }
+        this.appendViewerActionButtonSpecs(session, snapshot, center, specs);
         return List.copyOf(specs);
+    }
+
+    private void appendViewerActionButtonSpecs(
+        MahjongTableSession session,
+        TableViewerOverlaySnapshot snapshot,
+        Location center,
+        List<DisplayEntities.EntitySpec> specs
+    ) {
+        if (snapshot.actionButtons().isEmpty()) {
+            return;
+        }
+        SeatWind viewerSeat = session.seatOf(snapshot.viewerId());
+        Location actionAnchor = viewerSeat == null
+            ? center.clone().add(0.0D, OVERLAY_ACTION_Y_OFFSET, 0.0D)
+            : add(handDirectionBase(center, viewerSeat), offsetTowardTableCenter(viewerSeat, 0.42D)).add(0.0D, OVERLAY_ACTION_Y_OFFSET, 0.0D);
+        float yaw = viewerSeat == null ? 0.0F : seatYaw(viewerSeat);
+        int row = 0;
+        for (int rowStart = 0; rowStart < snapshot.actionButtons().size(); rowStart += OVERLAY_ACTION_BUTTONS_PER_ROW) {
+            int rowEnd = Math.min(snapshot.actionButtons().size(), rowStart + OVERLAY_ACTION_BUTTONS_PER_ROW);
+            List<TableViewerActionButtonSnapshot> rowButtons = snapshot.actionButtons().subList(rowStart, rowEnd);
+            double rowWidth = 0.0D;
+            for (TableViewerActionButtonSnapshot rowButton : rowButtons) {
+                rowWidth += this.viewerActionButtonWidth(rowButton);
+            }
+            rowWidth += Math.max(0, rowButtons.size() - 1) * OVERLAY_ACTION_BUTTON_GAP;
+            double cursor = -rowWidth / 2.0D;
+            for (TableViewerActionButtonSnapshot button : rowButtons) {
+                double buttonWidth = this.viewerActionButtonWidth(button);
+                double xOffset = cursor + buttonWidth / 2.0D;
+                cursor += buttonWidth + OVERLAY_ACTION_BUTTON_GAP;
+                Location labelLocation = viewerSeat == null
+                    ? actionAnchor.clone().add(xOffset, -row * 0.24D, 0.0D)
+                    : add(actionAnchor.clone().add(0.0D, -row * 0.24D, 0.0D), offsetAcrossSeat(viewerSeat, xOffset));
+                specs.add(DisplayEntities.labelSpec(
+                    labelLocation,
+                    Component.text("[" + button.label() + "]", button.color()),
+                    Color.fromARGB(60, 0, 0, 0),
+                    List.of(snapshot.viewerId()),
+                    Display.Billboard.FIXED,
+                    yaw,
+                    0.0F,
+                    true
+                ));
+                specs.add(DisplayEntities.interactionSpec(
+                    labelLocation.clone().subtract(0.0D, 0.1D, 0.0D),
+                    (float) buttonWidth,
+                    OVERLAY_ACTION_BUTTON_HEIGHT,
+                    DisplayClickAction.playerCommand(session.id(), snapshot.viewerId(), button.command()),
+                    List.of(snapshot.viewerId())
+                ));
+            }
+            row++;
+        }
+    }
+
+    private float viewerActionButtonWidth(TableViewerActionButtonSnapshot button) {
+        if (button == null) {
+            return OVERLAY_ACTION_BUTTON_SPACING;
+        }
+        float estimated = this.estimateActionLabelWidth(button.label());
+        return Math.max(Math.max(OVERLAY_ACTION_BUTTON_SPACING, button.hitboxWidth()), estimated);
+    }
+
+    private float estimateActionLabelWidth(String label) {
+        if (label == null || label.isBlank()) {
+            return 0.7F;
+        }
+        int visualUnits = 0;
+        for (int i = 0; i < label.length(); i++) {
+            char ch = label.charAt(i);
+            if (Character.isWhitespace(ch)) {
+                visualUnits += 1;
+                continue;
+            }
+            visualUnits += this.isWideGlyph(ch) ? 2 : 1;
+        }
+        float estimated = 0.24F + visualUnits * 0.085F;
+        return Math.max(0.7F, Math.min(2.2F, estimated));
+    }
+
+    private boolean isWideGlyph(char ch) {
+        return (ch >= 0x2E80 && ch <= 0x9FFF)
+            || (ch >= 0xF900 && ch <= 0xFAFF)
+            || (ch >= 0xFF01 && ch <= 0xFF60)
+            || (ch >= 0xFFE0 && ch <= 0xFFE6);
     }
 
     private static Entity spawnSeatFurniture(
@@ -1279,14 +1352,243 @@ public final class TableRenderer {
         if (session == null || wind == null) {
             return null;
         }
+        if (session.isStarted() || session.isRoundStartInProgress()) {
+            return null;
+        }
         UUID seatedPlayer = session.playerAt(wind);
         if (seatedPlayer == null) {
             return DisplayClickAction.joinSeat(session.id(), wind);
         }
-        if (!session.isStarted()) {
-            return DisplayClickAction.toggleReady(session.id(), wind);
+        return DisplayClickAction.toggleReady(session.id(), wind);
+    }
+
+    private static Component seatActionLabel(MahjongTableSession session, DisplayClickAction action, boolean ready) {
+        if (action == null || session == null) {
+            return Component.empty();
+        }
+        java.util.Locale locale = session.publicLocale();
+        return switch (action.actionType()) {
+            case JOIN_SEAT -> Component.text(
+                "[" + session.plugin().messages().plain(locale, "table.action.join_seat") + "]",
+                NamedTextColor.GREEN
+            ).decorate(TextDecoration.BOLD);
+            case TOGGLE_READY -> Component.text(
+                "[" + session.plugin().messages().plain(locale, ready ? "table.action.unready" : "table.action.ready") + "]",
+                ready ? NamedTextColor.YELLOW : NamedTextColor.AQUA
+            ).decorate(TextDecoration.BOLD);
+            case PLAYER_COMMAND -> {
+                if ("lobby:leave".equalsIgnoreCase(action.command())) {
+                    yield Component.text(
+                        "[" + session.plugin().messages().plain(locale, "table.action.leave") + "]",
+                        NamedTextColor.RED
+                    ).decorate(TextDecoration.BOLD);
+                }
+                yield Component.empty();
+            }
+            default -> Component.empty();
+        };
+    }
+
+    private static Color seatActionLabelColor(DisplayClickAction action) {
+        if (action == null) {
+            return Color.fromARGB(92, 16, 18, 20);
+        }
+        return switch (action.actionType()) {
+            case JOIN_SEAT -> Color.fromARGB(104, 12, 54, 20);
+            case TOGGLE_READY -> Color.fromARGB(104, 12, 32, 52);
+            case PLAYER_COMMAND -> "lobby:leave".equalsIgnoreCase(action.command())
+                ? Color.fromARGB(108, 68, 18, 18)
+                : Color.fromARGB(92, 16, 18, 20);
+            default -> Color.fromARGB(92, 16, 18, 20);
+        };
+    }
+
+    private static float seatActionInteractionWidth(Component label) {
+        String plain = label == null ? "" : net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(label);
+        float estimated = 0.3F + Math.max(0, plain.length()) * 0.07F;
+        return Math.max(SEAT_ACTION_INTERACTION_MIN_WIDTH, Math.min(SEAT_ACTION_INTERACTION_MAX_WIDTH, estimated));
+    }
+
+    private static Collection<UUID> seatActionPrivateViewers(UUID seatedPlayerId, DisplayClickAction action) {
+        if (action == null) {
+            return null;
+        }
+        if (action.actionType() == DisplayClickAction.ActionType.TOGGLE_READY && seatedPlayerId != null) {
+            return List.of(seatedPlayerId);
+        }
+        if (action.actionType() == DisplayClickAction.ActionType.PLAYER_COMMAND && action.ownerId() != null) {
+            return List.of(action.ownerId());
         }
         return null;
+    }
+
+    private void appendSeatActionEntities(
+        MahjongTableSession session,
+        SeatWind wind,
+        UUID seatedPlayerId,
+        boolean ready,
+        Location handBase,
+        DisplayClickAction action,
+        List<Entity> spawned
+    ) {
+        if (action == null) {
+            return;
+        }
+        if (action.actionType() == DisplayClickAction.ActionType.TOGGLE_READY && seatedPlayerId != null && !session.isStarted()) {
+            this.appendSeatActionEntity(
+                session,
+                wind,
+                seatedPlayerId,
+                handBase,
+                action,
+                ready,
+                -SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
+                spawned
+            );
+            this.appendSeatActionEntity(
+                session,
+                wind,
+                seatedPlayerId,
+                handBase,
+                DisplayClickAction.playerCommand(session.id(), seatedPlayerId, "lobby:leave"),
+                ready,
+                SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
+                spawned
+            );
+            return;
+        }
+        this.appendSeatActionEntity(session, wind, seatedPlayerId, handBase, action, ready, 0.0D, spawned);
+    }
+
+    private void appendSeatActionSpecs(
+        MahjongTableSession session,
+        SeatWind wind,
+        UUID seatedPlayerId,
+        boolean ready,
+        Location handBase,
+        DisplayClickAction action,
+        List<DisplayEntities.EntitySpec> specs
+    ) {
+        if (action == null) {
+            return;
+        }
+        if (action.actionType() == DisplayClickAction.ActionType.TOGGLE_READY && seatedPlayerId != null && !session.isStarted()) {
+            this.appendSeatActionSpec(
+                session,
+                wind,
+                seatedPlayerId,
+                handBase,
+                action,
+                ready,
+                -SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
+                specs
+            );
+            this.appendSeatActionSpec(
+                session,
+                wind,
+                seatedPlayerId,
+                handBase,
+                DisplayClickAction.playerCommand(session.id(), seatedPlayerId, "lobby:leave"),
+                ready,
+                SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
+                specs
+            );
+            return;
+        }
+        this.appendSeatActionSpec(session, wind, seatedPlayerId, handBase, action, ready, 0.0D, specs);
+    }
+
+    private void appendSeatActionEntity(
+        MahjongTableSession session,
+        SeatWind wind,
+        UUID seatedPlayerId,
+        Location handBase,
+        DisplayClickAction action,
+        boolean ready,
+        double acrossOffset,
+        List<Entity> spawned
+    ) {
+        Component actionLabel = seatActionLabel(session, action, ready);
+        if (isBlankActionLabel(actionLabel)) {
+            return;
+        }
+        float actionWidth = seatActionInteractionWidth(actionLabel);
+        Collection<UUID> actionViewers = seatActionPrivateViewers(seatedPlayerId, action);
+        Location actionLabelLocation = seatActionLabelLocation(handBase, wind, acrossOffset);
+        spawned.add(DisplayEntities.spawnLabel(
+            session.plugin(),
+            actionLabelLocation,
+            actionLabel,
+            seatActionLabelColor(action),
+            actionViewers,
+            Display.Billboard.FIXED,
+            seatYaw(wind),
+            0.0F,
+            true
+        ));
+        Entity interaction = DisplayEntities.spawnInteraction(
+            session.plugin(),
+            seatLabelInteractionLocation(actionLabelLocation),
+            actionWidth,
+            SEAT_ACTION_INTERACTION_HEIGHT,
+            action,
+            actionViewers
+        );
+        if (interaction != null) {
+            spawned.add(interaction);
+        }
+    }
+
+    private void appendSeatActionSpec(
+        MahjongTableSession session,
+        SeatWind wind,
+        UUID seatedPlayerId,
+        Location handBase,
+        DisplayClickAction action,
+        boolean ready,
+        double acrossOffset,
+        List<DisplayEntities.EntitySpec> specs
+    ) {
+        Component actionLabel = seatActionLabel(session, action, ready);
+        if (isBlankActionLabel(actionLabel)) {
+            return;
+        }
+        float actionWidth = seatActionInteractionWidth(actionLabel);
+        Collection<UUID> actionViewers = seatActionPrivateViewers(seatedPlayerId, action);
+        Location actionLabelLocation = seatActionLabelLocation(handBase, wind, acrossOffset);
+        specs.add(DisplayEntities.labelSpec(
+            actionLabelLocation,
+            actionLabel,
+            seatActionLabelColor(action),
+            actionViewers,
+            Display.Billboard.FIXED,
+            seatYaw(wind),
+            0.0F,
+            true
+        ));
+        specs.add(DisplayEntities.interactionSpec(
+            seatLabelInteractionLocation(actionLabelLocation),
+            actionWidth,
+            SEAT_ACTION_INTERACTION_HEIGHT,
+            action,
+            actionViewers
+        ));
+    }
+
+    private static Location seatActionLabelLocation(Location handBase, SeatWind wind, double acrossOffset) {
+        return withSeatLabelDepthOffset(
+            add(handBase.clone(), offsetAcrossSeat(wind, acrossOffset)).add(0.0D, SEAT_ACTION_LABEL_Y_OFFSET, 0.0D),
+            wind,
+            -SEAT_LABEL_DEPTH_OFFSET * 0.5D
+        );
+    }
+
+    private static boolean isBlankActionLabel(Component label) {
+        if (label == null) {
+            return true;
+        }
+        String plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(label);
+        return plain == null || plain.isBlank();
     }
 
     private static DisplayClickAction seatChairAction(MahjongTableSession session, SeatWind wind) {

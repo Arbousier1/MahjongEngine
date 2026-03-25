@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 - 2026-03-25
+
+MahjongPlay-style interaction alignment release.
+
+- Aligned action overlay layout with MahjongPlay: fixed-facing action labels, seat-relative placement, and improved row arrangement.
+- Added robust dynamic action-button spacing and hitbox sizing using wide-character aware width estimation to prevent label overlap in CJK locales.
+- Reworked waiting controls so `Join` / `Ready` / `Leave` hide immediately when round-start dice flow begins (`roundStartInProgress`).
+- Optimized submenu transitions to reduce flicker and keep button switching consistent.
+- Simplified center/public text output to reduce overload while preserving last-discard ownership.
+- Migrated actionable prompts out of chat-click buttons and into in-world controls while keeping suggestion text in chat.
+- Added MySQL compatibility support alongside existing database options.
+- Fixed and normalized Chinese localization bundles (zh_CN / zh_HK / zh_MO / zh_TW), including action labels and overlay wording consistency.
+
 ## 0.6.4 - 2026-03-24
 
 Table and chair stability release / 牌桌与椅子稳定性版本

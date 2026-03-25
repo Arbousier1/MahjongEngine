@@ -84,6 +84,8 @@ public final class MahjongTableSession {
     private final SessionRoundActionCoordinator roundActionCoordinator;
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
+    private final Map<UUID, String> viewerActionMenuStates = new HashMap<>();
+    private final Map<UUID, PluginTask> viewerActionMenuTransitions = new HashMap<>();
     private MahjongVariant configuredVariant;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
@@ -188,6 +190,8 @@ public final class MahjongTableSession {
 
     public boolean removeSpectator(UUID playerId) {
         this.viewerPresentation.hideHud(playerId);
+        this.cancelViewerActionMenuTransition(playerId);
+        this.viewerActionMenuStates.remove(playerId);
         return this.participants.removeSpectator(playerId);
     }
 
@@ -240,6 +244,8 @@ public final class MahjongTableSession {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
+        this.cancelViewerActionMenuTransition(playerId);
+        this.viewerActionMenuStates.remove(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
         this.handSelectionCoordinator.clearPlayer(playerId);
         return this.participants.removePlayer(playerId);
@@ -409,6 +415,8 @@ public final class MahjongTableSession {
         this.clearLastPublicDiscardInternal();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
+        this.cancelAllViewerActionMenuTransitions();
+        this.viewerActionMenuStates.clear();
     }
 
     public void invalidateRenderFingerprints() {
@@ -974,6 +982,82 @@ public final class MahjongTableSession {
 
     void clearSelectedHandTilesInternal() {
         this.handSelectionCoordinator.clearAll();
+    }
+
+    public String viewerActionMenuState(UUID viewerId) {
+        if (viewerId == null) {
+            return "";
+        }
+        return Objects.toString(this.viewerActionMenuStates.get(viewerId), "");
+    }
+
+    public void setViewerActionMenuState(UUID viewerId, String menuState) {
+        if (viewerId == null) {
+            return;
+        }
+        this.cancelViewerActionMenuTransition(viewerId);
+        if (menuState == null || menuState.isBlank()) {
+            this.clearViewerActionMenuState(viewerId);
+            return;
+        }
+        if (Objects.equals(this.viewerActionMenuStates.get(viewerId), menuState)) {
+            return;
+        }
+        this.viewerActionMenuStates.put(viewerId, menuState);
+        this.viewerPresentation.markDirty();
+    }
+
+    public void clearViewerActionMenuState(UUID viewerId) {
+        if (viewerId == null) {
+            return;
+        }
+        this.cancelViewerActionMenuTransition(viewerId);
+        if (this.viewerActionMenuStates.remove(viewerId) != null) {
+            this.viewerPresentation.markDirty();
+        }
+    }
+
+    public void transitionViewerActionMenuState(UUID viewerId, String targetMenuState) {
+        if (viewerId == null) {
+            return;
+        }
+        this.cancelViewerActionMenuTransition(viewerId);
+        this.viewerActionMenuStates.remove(viewerId);
+        this.viewerPresentation.markDirty();
+        this.render();
+        PluginTask transitionTask = this.plugin.scheduler().runRegionDelayed(this.center(), () -> {
+            this.viewerActionMenuTransitions.remove(viewerId);
+            if (!this.contains(viewerId)) {
+                return;
+            }
+            if (targetMenuState == null || targetMenuState.isBlank()) {
+                this.viewerActionMenuStates.remove(viewerId);
+            } else {
+                this.viewerActionMenuStates.put(viewerId, targetMenuState);
+            }
+            this.viewerPresentation.markDirty();
+            this.render();
+        }, 1L);
+        this.viewerActionMenuTransitions.put(viewerId, transitionTask);
+    }
+
+    private void cancelViewerActionMenuTransition(UUID viewerId) {
+        if (viewerId == null) {
+            return;
+        }
+        PluginTask task = this.viewerActionMenuTransitions.remove(viewerId);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    private void cancelAllViewerActionMenuTransitions() {
+        for (PluginTask task : this.viewerActionMenuTransitions.values()) {
+            if (task != null) {
+                task.cancel();
+            }
+        }
+        this.viewerActionMenuTransitions.clear();
     }
 
     void playReactionSoundInternal(ReactionResponse response) {

@@ -6,6 +6,8 @@ import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.DisplayEntities;
+import top.ellan.mahjong.riichi.ReactionResponse;
+import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.table.runtime.ChunkNeighborhood;
 import top.ellan.mahjong.table.runtime.TableRefreshCoordinator;
 import top.ellan.mahjong.table.runtime.TableSeatCoordinator;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ConcurrentHashMap;
+import kotlin.Pair;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -329,7 +332,166 @@ public final class MahjongTableManager implements Listener {
             this.sendReadyResult(player, session.toggleReady(player.getUniqueId()));
             return true;
         }
+        if (action.actionType() == ActionType.PLAYER_COMMAND) {
+            return this.handlePlayerCommandAction(player, action);
+        }
         return false;
+    }
+
+    private boolean handlePlayerCommandAction(Player player, DisplayClickAction action) {
+        if (player == null || action == null || action.ownerId() == null || action.command() == null || action.command().isBlank()) {
+            return false;
+        }
+        UUID playerId = player.getUniqueId();
+        if (!playerId.equals(action.ownerId())) {
+            return false;
+        }
+        MahjongTableSession session = this.directory.resolveTable(action.tableId());
+        if (session == null || !session.contains(playerId)) {
+            return false;
+        }
+        String[] parts = action.command().split(":");
+        if (parts.length < 2) {
+            return false;
+        }
+        String category = parts[0].toLowerCase(Locale.ROOT);
+        String operation = parts[1].toLowerCase(Locale.ROOT);
+        if ("react".equals(category)) {
+            boolean accepted = this.handleReactionCommand(session, playerId, operation, parts);
+            if (accepted) {
+                session.clearViewerActionMenuState(playerId);
+            }
+            return accepted;
+        }
+        if ("turn".equals(category)) {
+            boolean accepted = this.handleTurnCommand(session, playerId, operation, parts);
+            if (accepted) {
+                session.clearViewerActionMenuState(playerId);
+            }
+            return accepted;
+        }
+        if ("menu".equals(category)) {
+            return this.handleMenuCommand(session, playerId, operation);
+        }
+        if ("lobby".equals(category)) {
+            return this.handleLobbyCommand(player, session, playerId, operation, parts);
+        }
+        return false;
+    }
+
+    private boolean handleReactionCommand(MahjongTableSession session, UUID playerId, String operation, String[] parts) {
+        return switch (operation) {
+            case "ron" -> session.react(playerId, new ReactionResponse(ReactionType.RON, null));
+            case "pon" -> session.react(playerId, new ReactionResponse(ReactionType.PON, null));
+            case "minkan" -> session.react(playerId, new ReactionResponse(ReactionType.MINKAN, null));
+            case "skip" -> session.react(playerId, new ReactionResponse(ReactionType.SKIP, null));
+            case "chii" -> {
+                if (parts.length < 4) {
+                    yield false;
+                }
+                top.ellan.mahjong.riichi.model.MahjongTile first = parseRiichiTile(parts[2]);
+                top.ellan.mahjong.riichi.model.MahjongTile second = parseRiichiTile(parts[3]);
+                if (first == null || second == null) {
+                    yield false;
+                }
+                yield session.react(playerId, new ReactionResponse(ReactionType.CHII, new Pair<>(first, second)));
+            }
+            default -> false;
+        };
+    }
+
+    private boolean handleTurnCommand(MahjongTableSession session, UUID playerId, String operation, String[] parts) {
+        return switch (operation) {
+            case "tsumo" -> session.declareTsumo(playerId);
+            case "kyuushu" -> session.declareKyuushuKyuuhai(playerId);
+            case "kan" -> parts.length < 3 ? false : session.declareKan(playerId, parts[2].toLowerCase(Locale.ROOT));
+            case "riichi" -> {
+                if (parts.length < 3) {
+                    yield false;
+                }
+                try {
+                    yield session.declareRiichi(playerId, Integer.parseInt(parts[2]));
+                } catch (NumberFormatException ignored) {
+                    yield false;
+                }
+            }
+            default -> false;
+        };
+    }
+
+    private boolean handleMenuCommand(MahjongTableSession session, UUID playerId, String operation) {
+        if ("back".equals(operation)) {
+            session.transitionViewerActionMenuState(playerId, "");
+            return true;
+        }
+        if (!"react-chii".equals(operation) && !"turn-kan".equals(operation) && !"turn-riichi".equals(operation)) {
+            return false;
+        }
+        session.transitionViewerActionMenuState(playerId, operation);
+        return true;
+    }
+
+    private boolean handleLobbyCommand(
+        Player player,
+        MahjongTableSession session,
+        UUID playerId,
+        String operation,
+        String[] parts
+    ) {
+        return switch (operation) {
+            case "join" -> {
+                if (parts.length < 3) {
+                    yield false;
+                }
+                SeatWind wind;
+                try {
+                    wind = SeatWind.valueOf(parts[2].trim().toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException ignored) {
+                    yield false;
+                }
+                MahjongTableSession joined = this.join(player, session.id(), wind);
+                if (joined == null) {
+                    yield false;
+                }
+                this.plugin.messages().send(player, "command.joined_table", this.plugin.messages().tag("table_id", joined.id()));
+                this.seatCoordinator.requestSeatRestore(player, joined, wind);
+                yield true;
+            }
+            case "ready" -> {
+                if (session.seatOf(playerId) == null) {
+                    yield false;
+                }
+                this.sendReadyResult(player, session.toggleReady(playerId));
+                yield true;
+            }
+            case "leave" -> {
+                LeaveResult leaveResult = this.leave(playerId);
+                this.sendLeaveResult(player, leaveResult);
+                yield leaveResult.status() != LeaveStatus.NOT_IN_TABLE && leaveResult.status() != LeaveStatus.BLOCKED;
+            }
+            case "start" -> {
+                if (session.seatOf(playerId) == null || !session.isReady(playerId) || session.isStarted() || session.isRoundStartInProgress()) {
+                    yield false;
+                }
+                if (session.size() < 4 || session.readyCount() < 4) {
+                    yield false;
+                }
+                session.startRound();
+                yield true;
+            }
+            default -> false;
+        };
+    }
+
+    private static top.ellan.mahjong.riichi.model.MahjongTile parseRiichiTile(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        try {
+            return top.ellan.mahjong.riichi.model.MahjongTile.valueOf(token.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     public void shutdown() {
@@ -575,7 +737,8 @@ public final class MahjongTableManager implements Listener {
             && java.util.Objects.equals(left.tableId(), right.tableId())
             && java.util.Objects.equals(left.ownerId(), right.ownerId())
             && left.tileIndex() == right.tileIndex()
-            && left.seatWind() == right.seatWind();
+            && left.seatWind() == right.seatWind()
+            && java.util.Objects.equals(left.command(), right.command());
     }
 
     private Location normalizedTableCenter(Location source) {
@@ -594,6 +757,19 @@ public final class MahjongTableManager implements Listener {
             case UNREADY -> this.plugin.messages().send(player, "command.ready_cancelled");
             case STARTED -> this.plugin.messages().send(player, "command.round_started");
             case BLOCKED -> this.plugin.messages().send(player, "command.ready_blocked");
+        }
+    }
+
+    private void sendLeaveResult(Player player, LeaveResult result) {
+        if (player == null || result == null) {
+            return;
+        }
+        switch (result.status()) {
+            case LEFT -> this.plugin.messages().send(player, "command.left_table");
+            case DEFERRED -> this.plugin.messages().send(player, "command.leave_deferred");
+            case UNSPECTATED -> this.plugin.messages().send(player, "command.unspectated");
+            case NOT_IN_TABLE -> this.plugin.messages().send(player, "command.not_in_table");
+            case BLOCKED -> this.plugin.messages().send(player, "command.leave_blocked_started");
         }
     }
 

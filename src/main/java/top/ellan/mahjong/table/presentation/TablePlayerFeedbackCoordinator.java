@@ -13,8 +13,6 @@ import java.util.Objects;
 import java.util.UUID;
 import kotlin.Pair;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -245,83 +243,25 @@ public final class TablePlayerFeedbackCoordinator {
     }
 
     private Component reactionPrompt(Locale locale, ReactionOptions options) {
-        Component message = this.session.plugin().messages().render(locale, "table.reactions_prefix");
-        if (options.getCanRon()) {
-            message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.ron"), "/mahjong ron", NamedTextColor.RED))
-                .append(Component.space());
-        }
-        if (options.getCanPon()) {
-            message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.pon"), "/mahjong pon", NamedTextColor.YELLOW))
-                .append(Component.space());
-        }
-        if (options.getCanMinkan()) {
-            message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.minkan"), "/mahjong minkan", NamedTextColor.DARK_AQUA))
-                .append(Component.space());
-        }
-        for (Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair : options.getChiiPairs()) {
-            String command = "/mahjong chii " + pair.getFirst().name().toLowerCase(Locale.ROOT) + " " + pair.getSecond().name().toLowerCase(Locale.ROOT);
-            String label = this.session.plugin().messages().plain(locale, "table.action.chii") + " "
-                + this.session.tileLabelForDisplay(locale, pair.getFirst().name()) + " "
-                + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
-            message = message.append(this.actionButton(label, command, NamedTextColor.GREEN)).append(Component.space());
-        }
-        message = message.append(this.actionButton(this.session.plugin().messages().plain(locale, "table.action.skip"), "/mahjong skip", NamedTextColor.GRAY));
-        Component suggestedAction = this.suggestedActionComponent(locale, options);
-        return suggestedAction == null ? message : message.append(Component.space()).append(suggestedAction);
+        return this.suggestedActionComponent(locale, options);
     }
 
     private Component turnPrompt(Locale locale, UUID playerId) {
-        List<Component> buttons = new ArrayList<>();
-        if (this.session.canDeclareTsumo(playerId)) {
-            buttons.add(this.actionButton(
-                this.session.plugin().messages().plain(locale, "table.action.tsumo"),
-                "/mahjong tsumo",
-                NamedTextColor.GOLD
-            ));
+        String discardSuggestion = this.discardSuggestionSuffix(locale, playerId);
+        if (!discardSuggestion.isBlank()) {
+            return Component.text(discardSuggestion, NamedTextColor.GRAY);
         }
-        if (this.session.canDeclareConcealedKan(playerId)) {
-            for (String tileName : this.session.suggestedConcealedKanTiles(playerId)) {
-                String label = this.session.plugin().messages().plain(locale, "table.action.ankan") + " "
-                    + this.session.tileLabelForDisplay(locale, tileName);
-                buttons.add(this.actionButton(label, "/mahjong kan " + tileName, NamedTextColor.DARK_AQUA));
+        if (this.session.currentVariant() == top.ellan.mahjong.table.core.MahjongVariant.GB) {
+            top.ellan.mahjong.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
+            if (ting.getValid()) {
+                return this.session.plugin().messages().render(
+                    locale,
+                    "table.gb_ting_prompt",
+                    this.session.plugin().messages().number(locale, "count", ting.getWaits().size())
+                );
             }
         }
-        if (this.session.canDeclareAddedKan(playerId)) {
-            for (String tileName : this.session.suggestedAddedKanTiles(playerId)) {
-                String label = this.session.plugin().messages().plain(locale, "table.action.kakan") + " "
-                    + this.session.tileLabelForDisplay(locale, tileName);
-                buttons.add(this.actionButton(label, "/mahjong kan " + tileName, NamedTextColor.BLUE));
-            }
-        }
-        if (this.session.canDeclareRiichi(playerId)) {
-            List<top.ellan.mahjong.model.MahjongTile> hand = this.session.hand(playerId);
-            for (Integer index : this.session.suggestedRiichiIndices(playerId)) {
-                if (index == null || index < 0 || index >= hand.size()) {
-                    continue;
-                }
-                String tileLabel = this.session.tileLabelForDisplay(locale, hand.get(index).name());
-                String label = this.session.plugin().messages().plain(locale, "table.action.riichi") + " " + tileLabel;
-                buttons.add(this.actionButton(label, "/mahjong riichi " + index, NamedTextColor.LIGHT_PURPLE));
-            }
-        }
-        if (this.session.canDeclareKyuushu(playerId)) {
-            buttons.add(this.actionButton(
-                this.session.plugin().messages().plain(locale, "table.action.kyuushu"),
-                "/mahjong kyuushu",
-                NamedTextColor.RED
-            ));
-        }
-        if (buttons.isEmpty()) {
-            return null;
-        }
-        Component message = this.session.plugin().messages().render(locale, "table.reactions_prefix");
-        for (int i = 0; i < buttons.size(); i++) {
-            message = message.append(buttons.get(i));
-            if (i + 1 < buttons.size()) {
-                message = message.append(Component.space());
-            }
-        }
-        return message;
+        return null;
     }
 
     private String discardSuggestionSuffix(Locale locale, UUID playerId) {
@@ -398,12 +338,6 @@ public final class TablePlayerFeedbackCoordinator {
                     + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
             }
         };
-    }
-
-    private Component actionButton(String label, String command, NamedTextColor color) {
-        return Component.text("[" + label + "]", color)
-            .clickEvent(ClickEvent.runCommand(command))
-            .hoverEvent(HoverEvent.showText(Component.text(command, NamedTextColor.GRAY)));
     }
 
     private static FingerprintBuilder fingerprintBuilder(int capacity) {

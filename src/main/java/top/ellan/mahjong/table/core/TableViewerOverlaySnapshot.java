@@ -9,6 +9,7 @@ public record TableViewerOverlaySnapshot(
     String regionKey,
     boolean spectator,
     Component overlay,
+    List<TableViewerActionButtonSnapshot> actionButtons,
     List<TableSpectatorSeatOverlaySnapshot> spectatorSeatOverlays,
     String fingerprint
 ) {

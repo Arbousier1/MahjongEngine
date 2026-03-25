@@ -27,6 +27,15 @@ class MahjongTableManagerTest {
     }
 
     @Test
+    fun `different player command payload does not match duplicate action`() {
+        val owner = UUID.fromString("00000000-0000-0000-0000-000000000099")
+        val left = DisplayClickAction.playerCommand("TABLE01", owner, "react:pon")
+        val right = DisplayClickAction.playerCommand("TABLE01", owner, "react:skip")
+
+        assertFalse(MahjongTableManager.sameDisplayAction(left, right))
+    }
+
+    @Test
     fun `same seat join action is treated as an existing binding`() {
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000021")
         val session = mock(MahjongTableSession::class.java)

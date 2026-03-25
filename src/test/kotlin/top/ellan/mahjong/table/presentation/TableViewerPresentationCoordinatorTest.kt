@@ -35,6 +35,7 @@ class TableViewerPresentationCoordinatorTest {
             false,
             Component.empty(),
             emptyList(),
+            emptyList(),
             "overlay-fingerprint"
         )
 

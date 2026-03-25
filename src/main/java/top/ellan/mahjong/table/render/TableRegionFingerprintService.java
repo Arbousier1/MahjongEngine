@@ -25,7 +25,7 @@ public final class TableRegionFingerprintService {
         for (SeatWind wind : SeatWind.values()) {
             TableSeatRenderSnapshot seat = snapshot.seat(wind);
             fingerprints.put(this.seatRegionKey("visual", wind), this.seatVisualFingerprint(session, wind));
-            fingerprints.put(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(snapshot, seat));
+            fingerprints.put(this.seatRegionKey("labels", wind), this.seatLabelFingerprint(session, snapshot, seat));
             fingerprints.put(this.seatRegionKey("sticks", wind), this.stickFingerprint(snapshot, seat));
             fingerprints.put(this.seatRegionKey("hand-public", wind), this.handPublicFingerprint(snapshot, seat));
         }
@@ -155,12 +155,14 @@ public final class TableRegionFingerprintService {
             .toString();
     }
 
-    private String seatLabelFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
+    private String seatLabelFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         return fingerprintBuilder(128)
             .field("labels")
             .field("depth-v2")
             .field(seat.wind().name())
             .field(snapshot.currentSeat().name())
+            .field(snapshot.started())
+            .field(session.isRoundStartInProgress())
             .field(Objects.toString(seat.playerId(), "empty"))
             .field(seat.displayName())
             .field(seat.publicSeatStatus())
