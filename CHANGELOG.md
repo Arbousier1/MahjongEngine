@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.2 - 2026-03-25
+
+Round-visibility and localization release.
+
+- Added `tables.allowFreeMoveDuringRound` so players can leave seats and walk around during active rounds without being treated as having left the table.
+- Updated seat dismount/sneak handling and round-start seat watchdog behavior to respect free-move mode.
+- Localized the new free-move config comments in `config_zh_CN.yml` and `config_zh_TW.yml`.
+- Added `mahjong-utils` to upstream references in `README.md` and `README.zh-CN.md`.
+
 ## 0.7.1 - 2026-03-25
 
 Match flow stabilization release.
