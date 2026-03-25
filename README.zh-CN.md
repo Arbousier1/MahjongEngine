@@ -114,5 +114,6 @@
 ## 上游参考
 
 - `MahjongCraft`
+- `MahjongPlay`: <https://github.com/7yunluo/MahjongPlay>
 - `Paper`
 - `CraftEngine`

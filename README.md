@@ -120,6 +120,7 @@ The bundled resource pack lives in [resourcepack](./resourcepack).
 ## Upstream References
 
 - `MahjongCraft`: <https://github.com/EndlessCheng/MahjongCraft>
+- `MahjongPlay`: <https://github.com/7yunluo/MahjongPlay>
 - `Paper`: <https://papermc.io/software/paper>
 - `CraftEngine`: <https://github.com/Xiao-MoMi/craft-engine>
 - `GB-Mahjong`: <https://github.com/zheng-fan/GB-Mahjong>
