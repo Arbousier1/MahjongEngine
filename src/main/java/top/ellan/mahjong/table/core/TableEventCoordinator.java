@@ -73,6 +73,9 @@ final class TableEventCoordinator {
         MahjongTableSession playerSession = this.manager.tableFor(playerId);
         SeatWind playerSeatWind = playerSession == null ? null : playerSession.seatOf(playerId);
         if (playerSession != null && playerSession.isStarted() && playerSeatWind != null) {
+            if (this.manager.pluginRef().settings().tableFreeMoveDuringRound()) {
+                return;
+            }
             MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
             event.setCancelled(true);
             this.manager.seatCoordinatorRef().startSeatWatchdog(playerSession, playerId, playerSeatWind);
@@ -87,6 +90,9 @@ final class TableEventCoordinator {
         MahjongTableSession session = this.manager.resolveTableById(action.tableId());
         SeatWind seatWind = action.seatWind() != null ? action.seatWind() : playerSeatWind;
         if (session != null && session.isStarted() && seatWind != null) {
+            if (this.manager.pluginRef().settings().tableFreeMoveDuringRound()) {
+                return;
+            }
             MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
             event.setCancelled(true);
             this.manager.seatCoordinatorRef().startSeatWatchdog(session, playerId, seatWind);
@@ -112,6 +118,9 @@ final class TableEventCoordinator {
         }
         DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(player.getVehicle());
         if (action != null && action.seatWind() != null && action.seatWind() != wind) {
+            return;
+        }
+        if (this.manager.pluginRef().settings().tableFreeMoveDuringRound()) {
             return;
         }
         MahjongTableManager.LeaveResult result = this.manager.leave(player.getUniqueId());

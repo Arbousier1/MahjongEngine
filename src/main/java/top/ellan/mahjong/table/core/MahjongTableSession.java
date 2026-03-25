@@ -1163,7 +1163,7 @@ public final class MahjongTableSession {
         this.roundController.startRound();
         this.roundStartInProgress = false;
         this.render();
-        if (this.plugin.tableManager() != null) {
+        if (this.plugin.tableManager() != null && !this.plugin.settings().tableFreeMoveDuringRound()) {
             this.plugin.tableManager().startSeatWatchdog(this, 60L);
         }
     }

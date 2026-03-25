@@ -115,5 +115,6 @@
 
 - `MahjongCraft`
 - `MahjongPlay`: <https://github.com/7yunluo/MahjongPlay>
+- `mahjong-utils`: <https://github.com/ssttkkl/mahjong-utils>
 - `Paper`
 - `CraftEngine`

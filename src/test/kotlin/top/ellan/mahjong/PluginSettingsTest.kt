@@ -18,6 +18,7 @@ class PluginSettingsTest {
         val settings = PluginSettings.from(config)
 
         assertEquals(1, settings.tableStartupRebuildBatchSize())
+        assertFalse(settings.tableFreeMoveDuringRound())
         assertFalse(settings.rankingEnabled())
         assertTrue(settings.tablePersistenceEnabled())
         assertEquals("tables.yml", settings.tablePersistenceFile())
@@ -38,6 +39,7 @@ class PluginSettingsTest {
         config.set("tablePersistence.enabled", false)
         config.set("tablePersistence.file", "custom.yml")
         config.set("tables.startup-rebuild-batch-size", 7)
+        config.set("tables.allow-free-move-during-round", true)
         config.set("craftengine.items.tile-item-id-prefix", "custom:tile_")
         config.set("craftengine.furniture.table-furniture-id", "custom:table")
         config.set("craftengine.furniture.seat-furniture-id", "custom:chair")
@@ -49,6 +51,7 @@ class PluginSettingsTest {
         assertFalse(settings.tablePersistenceEnabled())
         assertEquals("custom.yml", settings.tablePersistenceFile())
         assertEquals(7, settings.tableStartupRebuildBatchSize())
+        assertTrue(settings.tableFreeMoveDuringRound())
         assertEquals("custom:tile_", settings.craftEngineTileItemIdPrefix())
         assertEquals("custom:tile_", settings.craftEngineRiichiTileItemIdPrefix())
         assertEquals("custom:tile_", settings.craftEngineGbTileItemIdPrefix())

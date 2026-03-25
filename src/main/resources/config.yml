@@ -48,6 +48,11 @@ tables:
   # Lower values reduce startup lag; higher values finish recovery sooner.
   startupRebuildBatchSize: 3
 
+  # Allow players to dismount and move freely during an active round without
+  # being treated as leaving the table. Turn this on if players need to walk
+  # around for better visibility.
+  allowFreeMoveDuringRound: false
+
   persistence:
     # Persistent tables are restored from this file on startup.
     enabled: true

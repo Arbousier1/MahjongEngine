@@ -46,6 +46,9 @@ tables:
   # 数值越低越能减少启动卡顿，越高则恢复得更快。
   startupRebuildBatchSize: 3
 
+  # Enable free movement during active rounds without forcing table leave.
+  allowFreeMoveDuringRound: false
+
   persistence:
     # 持久化牌桌会在启动时从这个文件恢复。
     enabled: true

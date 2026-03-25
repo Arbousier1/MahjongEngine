@@ -12,6 +12,7 @@ public final class PluginSettings {
     private final boolean tablePersistenceEnabled;
     private final String tablePersistenceFile;
     private final int tableStartupRebuildBatchSize;
+    private final boolean tableFreeMoveDuringRound;
     private final String craftEngineSharedTileItemIdPrefix;
     private final String craftEngineRiichiTileItemIdPrefix;
     private final String craftEngineGbTileItemIdPrefix;
@@ -29,6 +30,7 @@ public final class PluginSettings {
         boolean tablePersistenceEnabled,
         String tablePersistenceFile,
         int tableStartupRebuildBatchSize,
+        boolean tableFreeMoveDuringRound,
         String craftEngineSharedTileItemIdPrefix,
         String craftEngineRiichiTileItemIdPrefix,
         String craftEngineGbTileItemIdPrefix,
@@ -45,6 +47,7 @@ public final class PluginSettings {
         this.tablePersistenceEnabled = tablePersistenceEnabled;
         this.tablePersistenceFile = tablePersistenceFile;
         this.tableStartupRebuildBatchSize = tableStartupRebuildBatchSize;
+        this.tableFreeMoveDuringRound = tableFreeMoveDuringRound;
         this.craftEngineSharedTileItemIdPrefix = craftEngineSharedTileItemIdPrefix;
         this.craftEngineRiichiTileItemIdPrefix = craftEngineRiichiTileItemIdPrefix;
         this.craftEngineGbTileItemIdPrefix = craftEngineGbTileItemIdPrefix;
@@ -72,6 +75,7 @@ public final class PluginSettings {
             ConfigAccess.bool(tablePersistenceSection, true, "enabled"),
             ConfigAccess.string(tablePersistenceSection, "tables.yml", "file"),
             Math.max(1, ConfigAccess.integer(tablesSection, 3, "startupRebuildBatchSize", "startup-rebuild-batch-size")),
+            ConfigAccess.bool(tablesSection, false, "allowFreeMoveDuringRound", "allow-free-move-during-round"),
             sharedTileItemIdPrefix,
             ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "riichiTileItemIdPrefix", "riichi-tile-item-id-prefix"),
             ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "gbTileItemIdPrefix", "gb-tile-item-id-prefix"),
@@ -109,6 +113,10 @@ public final class PluginSettings {
 
     public int tableStartupRebuildBatchSize() {
         return this.tableStartupRebuildBatchSize;
+    }
+
+    public boolean tableFreeMoveDuringRound() {
+        return this.tableFreeMoveDuringRound;
     }
 
     public String craftEngineTileItemIdPrefix() {
