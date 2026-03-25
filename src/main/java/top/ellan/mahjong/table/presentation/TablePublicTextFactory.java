@@ -143,7 +143,7 @@ public final class TablePublicTextFactory {
     public String publicCenterText() {
         Locale locale = this.session.publicLocale();
         if (this.session.isStarted()) {
-            return this.session.plugin().messages().plain(
+            String center = this.session.plugin().messages().plain(
                 locale,
                 "table.public.center_active",
                 this.session.plugin().messages().tag("round", this.roundDisplay(locale)),
@@ -152,6 +152,8 @@ public final class TablePublicTextFactory {
                 this.session.plugin().messages().tag("dealer", this.dealerName(locale)),
                 this.session.plugin().messages().tag("last_discard", this.centerLastDiscardSummary(locale))
             );
+            String lastAction = this.centerLastActionSummary(locale);
+            return lastAction.isBlank() ? center : center + "\n" + lastAction;
         }
         return this.session.plugin().messages().plain(
             locale,
@@ -219,6 +221,10 @@ public final class TablePublicTextFactory {
             "table.last_discard_player",
             this.session.plugin().messages().tag("player", this.session.displayName(this.session.lastPublicDiscardPlayerId(), locale))
         );
+    }
+
+    private String centerLastActionSummary(Locale locale) {
+        return this.session.publicLastActionSummary(locale);
     }
 
     private String readySummary(Locale locale) {

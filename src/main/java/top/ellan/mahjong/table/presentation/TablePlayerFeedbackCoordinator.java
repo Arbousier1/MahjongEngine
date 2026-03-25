@@ -50,9 +50,10 @@ public final class TablePlayerFeedbackCoordinator {
     }
 
     public void resetForRoundStart() {
-        this.lastSettlementFingerprint = "";
-        this.lastPersistedSettlementFingerprint = "";
-        this.lastPersistedRankFingerprint = "";
+        String currentSettlementFingerprint = this.currentSettlementFingerprint();
+        this.lastSettlementFingerprint = currentSettlementFingerprint;
+        this.lastPersistedSettlementFingerprint = currentSettlementFingerprint;
+        this.lastPersistedRankFingerprint = currentSettlementFingerprint;
     }
 
     public void resetState() {
@@ -61,6 +62,10 @@ public final class TablePlayerFeedbackCoordinator {
         this.lastPersistedSettlementFingerprint = "";
         this.lastPersistedRankFingerprint = "";
         this.session.cancelNextRoundCountdown();
+    }
+
+    private String currentSettlementFingerprint() {
+        return Objects.toString(this.session.lastResolution(), "");
     }
 
     private void persistSettlementIfNeeded(String settlementFingerprint) {

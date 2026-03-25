@@ -44,7 +44,7 @@ public final class TableStateSoundCoordinator {
     }
 
     public void resetForRoundStart() {
-        this.lastResolutionSoundFingerprint = "";
+        this.lastResolutionSoundFingerprint = Objects.toString(this.session.lastResolution(), "");
     }
 
     private void syncTurnSound() {

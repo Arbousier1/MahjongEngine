@@ -39,6 +39,7 @@ final class SessionRoundFlowCoordinator {
 
         this.session.clearSelectedHandTilesInternal();
         this.session.clearLastPublicDiscardInternal();
+        this.session.clearLastPublicActionInternal();
         this.session.resetRoundPresentationForStartInternal();
         this.session.setRoundStartInProgressInternal(true);
         // Hide waiting-state seat controls as soon as dice roll starts.

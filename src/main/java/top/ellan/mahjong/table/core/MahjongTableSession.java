@@ -52,6 +52,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class MahjongTableSession {
+    private static final long PUBLIC_ACTION_DISPLAY_TICKS = 40L;
     private final MahjongPaperPlugin plugin;
     private final String id;
     private final Location center;
@@ -66,6 +67,9 @@ public final class MahjongTableSession {
     private boolean roundStartInProgress;
     private top.ellan.mahjong.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
+    private PublicActionAnnouncement lastPublicActionAnnouncement;
+    private PluginTask publicActionClearTask;
+    private long publicActionAnnouncementSequence;
     private PluginTask botTask;
     private final TableRenderCoordinator renderCoordinator;
     private final TableViewerPresentationCoordinator viewerPresentation;
@@ -413,6 +417,7 @@ public final class MahjongTableSession {
         this.roundStartInProgress = false;
         this.diceAnimationCoordinator.clear();
         this.clearLastPublicDiscardInternal();
+        this.clearLastPublicActionInternal();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
         this.cancelAllViewerActionMenuTransitions();
@@ -980,6 +985,33 @@ public final class MahjongTableSession {
         this.lastPublicDiscardTile = null;
     }
 
+    void rememberPublicActionInternal(UUID playerId, String actionKey) {
+        this.rememberPublicActionInternal(playerId, actionKey, List.of());
+    }
+
+    void rememberPublicActionInternal(UUID playerId, String actionKey, List<top.ellan.mahjong.model.MahjongTile> tiles) {
+        if (playerId == null || actionKey == null || actionKey.isBlank()) {
+            return;
+        }
+        List<top.ellan.mahjong.model.MahjongTile> safeTiles = tiles == null ? List.of() : List.copyOf(tiles);
+        this.lastPublicActionAnnouncement = new PublicActionAnnouncement(playerId, actionKey, safeTiles);
+        long sequence = ++this.publicActionAnnouncementSequence;
+        this.cancelPublicActionClearTask();
+        this.publicActionClearTask = this.plugin.scheduler().runRegionDelayed(this.center(), () -> {
+            this.publicActionClearTask = null;
+            if (this.publicActionAnnouncementSequence != sequence) {
+                return;
+            }
+            this.lastPublicActionAnnouncement = null;
+            this.render();
+        }, PUBLIC_ACTION_DISPLAY_TICKS);
+    }
+
+    void clearLastPublicActionInternal() {
+        this.lastPublicActionAnnouncement = null;
+        this.cancelPublicActionClearTask();
+    }
+
     void clearSelectedHandTilesInternal() {
         this.handSelectionCoordinator.clearAll();
     }
@@ -1392,6 +1424,27 @@ public final class MahjongTableSession {
         return this.publicTextFactory.publicCenterText();
     }
 
+    public String publicLastActionSummary(Locale locale) {
+        PublicActionAnnouncement announcement = this.lastPublicActionAnnouncement;
+        if (announcement == null) {
+            return "";
+        }
+        String actor = this.displayName(announcement.playerId(), locale);
+        if (actor == null || actor.isBlank()) {
+            actor = this.plugin.messages().plain(locale, "common.unknown");
+        }
+        String action = this.actionLabelWithTiles(locale, announcement);
+        if (action.isBlank()) {
+            return "";
+        }
+        return this.plugin.messages().plain(
+            locale,
+            "table.last_action",
+            this.plugin.messages().tag("player", actor),
+            this.plugin.messages().tag("action", action)
+        );
+    }
+
     public top.ellan.mahjong.model.MahjongTile lastPublicDiscardTile() {
         return this.lastPublicDiscardTile;
     }
@@ -1418,6 +1471,28 @@ public final class MahjongTableSession {
         return this.plugin.messages().contains(locale, key) ? this.plugin.messages().plain(locale, key) : tileName.toLowerCase(Locale.ROOT);
     }
 
+    private String actionLabelWithTiles(Locale locale, PublicActionAnnouncement announcement) {
+        String action = this.plugin.messages().plain(locale, announcement.actionKey());
+        if (announcement.tiles().isEmpty()) {
+            return action;
+        }
+        String tileLabels = announcement.tiles().stream()
+            .map(tile -> this.tileLabelForDisplay(locale, tile.name()))
+            .collect(java.util.stream.Collectors.joining(" "));
+        if (tileLabels.isBlank()) {
+            return action;
+        }
+        return action + " " + tileLabels;
+    }
+
+    private void cancelPublicActionClearTask() {
+        if (this.publicActionClearTask == null) {
+            return;
+        }
+        this.publicActionClearTask.cancel();
+        this.publicActionClearTask = null;
+    }
+
     private static Location normalizedTableCenter(Location source) {
         Location normalized = source.clone();
         normalized.setYaw(0.0F);
@@ -1434,6 +1509,13 @@ public final class MahjongTableSession {
         UNREADY,
         STARTED,
         BLOCKED
+    }
+
+    private record PublicActionAnnouncement(
+        UUID playerId,
+        String actionKey,
+        List<top.ellan.mahjong.model.MahjongTile> tiles
+    ) {
     }
 }
 

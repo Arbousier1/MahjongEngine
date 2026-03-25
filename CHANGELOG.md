@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1 - 2026-03-25
+
+Match flow stabilization release.
+
+- Fixed a round-start regression where the previous hand settlement could reopen when a new hand began.
+- Added MahjongPlay-style public action announcements in center text for resolved actions (`Pon`/`Chii`/`Kan`/`Ron`/`Riichi`/`Tsumo`/`Kyuushu`), with automatic fade-out timing.
+- Improved action resolution detection to announce only when meld/reaction changes are actually applied.
+- Cleared stale public action state at discard and new-round boundaries to avoid carry-over overlays.
+- Added `table.last_action` localization key across default/Chinese bundles to keep wording consistent.
+
 ## 0.7.0 - 2026-03-25
 
 MahjongPlay-style interaction alignment release.
