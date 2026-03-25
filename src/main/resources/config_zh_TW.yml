@@ -46,7 +46,8 @@ tables:
   # 數值越低越能減少啟動卡頓，越高則能更快完成恢復。
   startupRebuildBatchSize: 3
 
-  # Enable free movement during active rounds without forcing table leave.
+  # 在對局進行中允許玩家離座並自由走動，
+  # 不會被判定為離桌。
   allowFreeMoveDuringRound: false
 
   persistence:
