@@ -26,7 +26,7 @@ The current branch already supports playable Riichi Mahjong and GB Mahjong flows
 - spectator mode, private hand visibility, HUD overlays, and localized prompts
 - Mahjong Soul-style rank persistence when database-backed ranking is enabled
 - CraftEngine-backed seat/table interaction and CraftEngine bundle export
-- round history persistence through H2 by default, with optional MariaDB
+- round history persistence through H2 by default, with optional MariaDB/MySQL
 
 ## Command Summary
 
@@ -79,8 +79,8 @@ The default config lives at [src/main/resources/config.yml](./src/main/resources
 
 The current human-friendly layout is:
 
-- `database.connection`: database type and MariaDB connection target
-- `database.credentials`: MariaDB username and password
+- `database.connection`: database type and MariaDB/MySQL connection target
+- `database.credentials`: MariaDB/MySQL username and password
 - `database.h2`: local embedded H2 settings
 - `database.pool`: connection pool sizing
 - `tables.persistence`: persistent table restore file

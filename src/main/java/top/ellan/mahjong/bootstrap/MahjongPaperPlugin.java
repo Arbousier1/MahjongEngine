@@ -98,7 +98,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.getLogger().severe("Database initialization failed. MahjongPaper will continue with persistence disabled.");
         this.getLogger().severe("Reason: " + ex.userFacingReason());
         this.getLogger().severe("Detail: " + rootCause.getClass().getSimpleName() + ": " + Objects.toString(rootCause.getMessage(), "(no additional detail)"));
-        this.getLogger().severe("Hint: use database.connection.type=h2 for local storage, or start MariaDB and verify the configured connection settings.");
+        this.getLogger().severe("Hint: use database.connection.type=h2 for local storage, or start MariaDB/MySQL and verify the configured connection settings.");
         if (this.debug != null && this.debug.isCategoryEnabled("database")) {
             this.getLogger().log(Level.SEVERE, "Database startup stack trace:", ex);
         }

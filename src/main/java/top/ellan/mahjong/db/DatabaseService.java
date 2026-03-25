@@ -143,8 +143,13 @@ public final class DatabaseService {
         String database = Objects.requireNonNull(ConfigAccess.string(config, null, "connection.name", "name"), "database.name");
         String parameters = ConfigAccess.string(config, "", "connection.parameters", "parameters");
 
-        hikari.setDriverClassName("org.mariadb.jdbc.Driver");
-        hikari.setJdbcUrl("jdbc:mariadb://" + host + ":" + port + "/" + database + (parameters.isBlank() ? "" : "?" + parameters));
+        if ("mysql".equals(this.databaseType)) {
+            hikari.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            hikari.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + (parameters.isBlank() ? "" : "?" + parameters));
+        } else {
+            hikari.setDriverClassName("org.mariadb.jdbc.Driver");
+            hikari.setJdbcUrl("jdbc:mariadb://" + host + ":" + port + "/" + database + (parameters.isBlank() ? "" : "?" + parameters));
+        }
         hikari.setUsername(Objects.requireNonNull(ConfigAccess.string(config, null, "credentials.username", "username"), "database.username"));
         hikari.setPassword(ConfigAccess.string(config, "", "credentials.password", "password"));
         return hikari;
@@ -437,7 +442,7 @@ public final class DatabaseService {
     private static String normalizedType(ConfigurationSection config) {
         String type = ConfigAccess.string(config, "h2", "connection.type", "type").trim().toLowerCase(Locale.ROOT);
         return switch (type) {
-            case "mariadb", "h2" -> type;
+            case "mariadb", "mysql", "h2" -> type;
             default -> throw new IllegalArgumentException("Unsupported database.type: " + type);
         };
     }
@@ -464,17 +469,18 @@ public final class DatabaseService {
         int port = ConfigAccess.integer(config, 3306, "connection.port", "port");
         String database = ConfigAccess.string(config, "mahjongpaper", "connection.name", "name");
         String target = host + ":" + port + "/" + database;
+        String databaseLabel = "mysql".equals(this.databaseType) ? "MySQL" : "MariaDB";
         String message = Objects.toString(rootCause.getMessage(), "");
         String lower = message.toLowerCase(Locale.ROOT);
         if (rootCause instanceof ConnectException || lower.contains("connection refused") || lower.contains("connect")) {
-            return "Could not connect to MariaDB at " + target
+            return "Could not connect to " + databaseLabel + " at " + target
                 + ". Check that the database server is running and verify database.connection.host, database.connection.port, database.connection.name, and database.credentials.";
         }
         if (lower.contains("access denied") || lower.contains("authentication")) {
-            return "MariaDB authentication failed for " + target
+            return databaseLabel + " authentication failed for " + target
                 + ". Check database.credentials.username and database.credentials.password.";
         }
-        return "MariaDB initialization failed for " + target
+        return databaseLabel + " initialization failed for " + target
             + ". Check the database connection settings and network availability.";
     }
 

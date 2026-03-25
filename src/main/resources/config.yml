@@ -15,19 +15,19 @@ database:
   failOnError: false
 
   connection:
-    # Supported values: h2, mariadb
+    # Supported values: h2, mariadb, mysql
     type: h2
 
-    # Used only for MariaDB.
+    # Used only for MariaDB/MySQL.
     host: 127.0.0.1
     port: 3306
     name: mahjongpaper
 
-    # Extra JDBC query parameters for MariaDB.
+    # Extra JDBC query parameters for MariaDB/MySQL.
     parameters: useUnicode=true&characterEncoding=utf8&useSsl=false
 
   credentials:
-    # Used only for MariaDB.
+    # Used only for MariaDB/MySQL.
     username: root
     password: change_me
 
