@@ -14,6 +14,7 @@ import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.riichi.model.MahjongSoulScoring;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.table.core.round.GbTableRoundController;
+import top.ellan.mahjong.table.core.round.GbRuleProfile;
 import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
 import top.ellan.mahjong.table.core.round.RiichiTableRoundController;
 import top.ellan.mahjong.table.core.round.TableRoundController;
@@ -912,8 +913,14 @@ public final class MahjongTableSession {
             seats.put(wind, playerId);
             displayNames.put(playerId, this.displayName(playerId));
         }
-        if (this.currentVariant() == MahjongVariant.GB) {
-            return new GbTableRoundController(this.copyRule(), seats, displayNames, new GbNativeRulesGateway());
+        if (this.currentVariant() != MahjongVariant.RIICHI) {
+            return new GbTableRoundController(
+                this.copyRule(),
+                seats,
+                displayNames,
+                new GbNativeRulesGateway(),
+                GbRuleProfile.forVariant(this.currentVariant())
+            );
         }
         List<RiichiPlayerState> players = new ArrayList<>(SeatWind.values().length);
         for (SeatWind wind : SeatWind.values()) {

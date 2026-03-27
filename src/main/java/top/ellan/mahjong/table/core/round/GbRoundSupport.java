@@ -163,9 +163,21 @@ final class GbRoundSupport {
     }
 
     static List<MahjongTile> buildWall() {
-        List<MahjongTile> wall = new ArrayList<>(144);
+        return buildWall(GbRuleProfile.GB);
+    }
+
+    static List<MahjongTile> buildWall(GbRuleProfile profile) {
+        GbRuleProfile safeProfile = profile == null ? GbRuleProfile.GB : profile;
+        int initialCapacity = safeProfile.includesHonors() && safeProfile.includesFlowers() ? 144 : 108;
+        List<MahjongTile> wall = new ArrayList<>(initialCapacity);
         for (MahjongTile tile : MahjongTile.values()) {
             if (tile == MahjongTile.UNKNOWN || tile.isRedFive()) {
+                continue;
+            }
+            if (!safeProfile.includesHonors() && isHonor(tile)) {
+                continue;
+            }
+            if (!safeProfile.includesFlowers() && tile.isFlower()) {
                 continue;
             }
             int copies = tile.isFlower() ? 1 : 4;

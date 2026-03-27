@@ -38,7 +38,7 @@ public final class TablePublicTextFactory {
     public String ruleDisplaySummary(Locale locale) {
         MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
-        if (variant == MahjongVariant.GB) {
+        if (variant != MahjongVariant.RIICHI) {
             return this.session.plugin().messages().plain(
                 locale,
                 "table.rule_display_summary_gb",
@@ -64,7 +64,7 @@ public final class TablePublicTextFactory {
     public String ruleSummary(Locale locale) {
         MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
-        if (variant == MahjongVariant.GB) {
+        if (variant != MahjongVariant.RIICHI) {
             return this.session.plugin().messages().plain(
                 locale,
                 "table.rule_summary_gb",

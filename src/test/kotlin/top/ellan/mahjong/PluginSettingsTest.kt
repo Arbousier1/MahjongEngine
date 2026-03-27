@@ -27,6 +27,7 @@ class PluginSettingsTest {
         assertEquals("mahjongpaper:", settings.craftEngineGbTileItemIdPrefix())
         assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.RIICHI))
         assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.GB))
+        assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.SICHUAN))
         assertEquals("mahjongpaper:table_visual", settings.craftEngineTableFurnitureId())
         assertEquals("mahjongpaper:seat_chair", settings.craftEngineSeatFurnitureId())
         assertEquals("SILVER", settings.rankingEastRoom())
@@ -73,6 +74,7 @@ class PluginSettingsTest {
         assertEquals("shared:", settings.craftEngineTileItemIdPrefix())
         assertEquals("riichi:", settings.craftEngineTileItemIdPrefix(MahjongVariant.RIICHI))
         assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.GB))
+        assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.SICHUAN))
     }
 }
 

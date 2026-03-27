@@ -18,7 +18,7 @@ public final class BotActionScheduler {
     }
 
     public static void schedule(MahjongTableSession session) {
-        if (session.currentVariant() == MahjongVariant.GB) {
+        if (session.currentVariant() != MahjongVariant.RIICHI) {
             scheduleGb(session);
             return;
         }
