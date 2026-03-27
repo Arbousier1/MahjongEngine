@@ -166,7 +166,7 @@ public final class PluginSettings {
     }
 
     public String craftEngineTileItemIdPrefix(MahjongVariant variant) {
-        if (variant == MahjongVariant.GB) {
+        if (variant != MahjongVariant.RIICHI) {
             return this.craftEngine.items().gbTileItemIdPrefix();
         }
         return this.craftEngine.items().riichiTileItemIdPrefix();

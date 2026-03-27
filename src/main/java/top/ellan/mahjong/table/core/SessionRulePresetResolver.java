@@ -18,12 +18,14 @@ final class SessionRulePresetResolver {
                 new Preset(MahjongVariant.RIICHI, majsoulRule(MahjongRule.GameLength.TWO_WIND));
             case "GB", "GUOBIAO", "ZHONGGUO", "CHINESE_OFFICIAL" ->
                 new Preset(MahjongVariant.GB, gbRule());
+            case "SICHUAN", "SCMJ", "SICHUAN_MAHJONG", "SICHUAN_TOURNAMENT" ->
+                new Preset(MahjongVariant.SICHUAN, sichuanRule());
             default -> null;
         };
     }
 
     static MahjongRule defaultRuleFor(MahjongVariant variant) {
-        return variant == MahjongVariant.GB ? gbRule() : majsoulRule(MahjongRule.GameLength.TWO_WIND);
+        return variant == MahjongVariant.RIICHI ? majsoulRule(MahjongRule.GameLength.TWO_WIND) : gbRule();
     }
 
     static MahjongRule majsoulRule(MahjongRule.GameLength length) {
@@ -56,6 +58,10 @@ final class SessionRulePresetResolver {
             MahjongRule.RonMode.MULTI_RON,
             MahjongRule.RiichiProfile.MAJSOUL
         );
+    }
+
+    static MahjongRule sichuanRule() {
+        return gbRule();
     }
 
     record Preset(MahjongVariant variant, MahjongRule rule) {

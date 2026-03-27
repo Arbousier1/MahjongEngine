@@ -185,7 +185,7 @@ public final class MahjongCommand implements BasicCommand {
         }
         if (sender instanceof Player player) {
             MahjongTableSession table = this.context.tableManager().tableFor(player.getUniqueId());
-            if (table != null && table.currentVariant() == MahjongVariant.GB) {
+            if (table != null && table.currentVariant() != MahjongVariant.RIICHI) {
                 commands.remove("riichi");
                 commands.remove("kyuushu");
             }
