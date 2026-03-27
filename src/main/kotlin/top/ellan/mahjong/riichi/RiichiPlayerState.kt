@@ -136,6 +136,7 @@ open class RiichiPlayerState(
     fun chii(
         tile: TileInstance,
         tilePair: Pair<MahjongTile, MahjongTile>,
+        claimTarget: ClaimTarget,
         target: RiichiPlayerState
     ) {
         lastDrawnTile = null
@@ -147,7 +148,7 @@ open class RiichiPlayerState(
         val fuuro = Fuuro(
             type = MeldType.CHII,
             tileInstances = tileShuntsu,
-            claimTarget = ClaimTarget.LEFT,
+            claimTarget = claimTarget,
             claimTile = tile
         )
         hands -= tileShuntsu.filter { it != tile }.toSet()

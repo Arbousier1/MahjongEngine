@@ -392,7 +392,7 @@ class RiichiRoundEngine(
 
     private fun computePendingReaction(discarder: RiichiPlayerState, tile: TileInstance): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()
-        seatOrderFrom(discarder).drop(1).forEach { candidate ->
+        turnOrderFrom(discarder).drop(1).forEach { candidate ->
             val target = claimTarget(candidate, discarder)
             val canRon = candidate.canWin(
                 tile.mahjongTile,
@@ -401,7 +401,7 @@ class RiichiRoundEngine(
                 generalSituation = generalSituation,
                 personalSituation = personalSituation(candidate, isTsumo = false)
             ) && !candidate.isFuriten(tile, discards)
-            val reactionOptions = candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
+            val reactionOptions = candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.RIGHT, canRon = canRon)
             if (reactionOptions != null) {
                 options[candidate.uuid] = reactionOptions
             }
@@ -411,7 +411,7 @@ class RiichiRoundEngine(
 
     private fun computeChankanReaction(discarder: RiichiPlayerState, tile: TileInstance, allowOnlyKokushi: Boolean): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()
-        seatOrderFrom(discarder).drop(1).forEach { candidate ->
+        turnOrderFrom(discarder).drop(1).forEach { candidate ->
             val canRon = candidate.canWin(
                 tile.mahjongTile,
                 false,
@@ -471,7 +471,7 @@ class RiichiRoundEngine(
 
         val ponKanResponses = pending.responses.filterValues { it.type == ReactionType.PON || it.type == ReactionType.MINKAN }
         if (ponKanResponses.isNotEmpty()) {
-            val ordered = seatOrderFrom(seatPlayer(pending.discarderUuid)!!).drop(1)
+            val ordered = turnOrderFrom(seatPlayer(pending.discarderUuid)!!).drop(1)
             val winner = ordered.first { it.uuid in ponKanResponses.keys }
             val response = ponKanResponses[winner.uuid]!!
             val discarder = seatPlayer(pending.discarderUuid)!!
@@ -497,7 +497,7 @@ class RiichiRoundEngine(
         if (chiiResponse != null) {
             val winner = seatPlayer(chiiResponse.key)!!
             val discarder = seatPlayer(pending.discarderUuid)!!
-            winner.chii(pending.tile, chiiResponse.value.chiiPair!!, discarder)
+            winner.chii(pending.tile, chiiResponse.value.chiiPair!!, claimTarget(winner, discarder), discarder)
             currentPlayerIndex = seats.indexOf(winner)
             currentDrawIsRinshan = false
             pendingAbortiveDraw = null
@@ -524,7 +524,7 @@ class RiichiRoundEngine(
             resolveDraw(ExhaustiveDraw.NORMAL)
             return
         }
-        currentPlayerIndex = (currentPlayerIndex + 1) % seats.size
+        currentPlayerIndex = previousSeatIndex(currentPlayerIndex)
         currentPlayer.drawTile(wall.removeFirst())
         currentPlayer.hands.sortBy { it.mahjongTile.sortOrder }
     }
@@ -559,8 +559,8 @@ class RiichiRoundEngine(
         pendingAbortiveDraw = null
         val yakuSettlements = mutableListOf<YakuSettlement>()
         val scoreList = mutableListOf<ScoreItem>()
-        val seatOrderFromTarget = seatOrderFrom(target)
-        val atamahanePlayer = seatOrderFromTarget.firstOrNull { it in winners }
+        val turnOrderFromTarget = turnOrderFrom(target)
+        val atamahanePlayer = turnOrderFromTarget.firstOrNull { it in winners }
         val allRiichiStickQuantity = seats.sumOf { it.riichiStickAmount }
         val honbaScore = round.honba * 300
         val riichiPoolScore = allRiichiStickQuantity * ScoringStick.P1000.point
@@ -791,9 +791,9 @@ class RiichiRoundEngine(
     private fun seatOrderFromDealer(): List<RiichiPlayerState> =
         List(4) { seats[(round.round + it) % 4] }
 
-    private fun seatOrderFrom(target: RiichiPlayerState): List<RiichiPlayerState> {
+    private fun turnOrderFrom(target: RiichiPlayerState): List<RiichiPlayerState> {
         val index = seats.indexOf(target)
-        return List(4) { seats[(index + it) % 4] }
+        return List(4) { offset -> seats[Math.floorMod(index - offset, seats.size)] }
     }
 
     private fun claimTarget(claimer: RiichiPlayerState, discarder: RiichiPlayerState): ClaimTarget {
@@ -805,6 +805,9 @@ class RiichiRoundEngine(
             else -> ClaimTarget.SELF
         }
     }
+
+    private fun previousSeatIndex(index: Int): Int =
+        Math.floorMod(index - 1, seats.size)
 
     private fun isSuukaikanAbort(): Boolean {
         if (kanCount < 4) {
