@@ -174,6 +174,460 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `turn advances east south west north after a discard with no reactions`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M9,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON
+        )
+        south.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M4,
+            MahjongTile.M7,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        west.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.M5,
+            MahjongTile.M8,
+            MahjongTile.P2,
+            MahjongTile.P5,
+            MahjongTile.P8,
+            MahjongTile.S2,
+            MahjongTile.S5,
+            MahjongTile.S8,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.WHITE_DRAGON
+        )
+        north.hands += tiles(
+            MahjongTile.M3,
+            MahjongTile.M6,
+            MahjongTile.M9,
+            MahjongTile.P3,
+            MahjongTile.P6,
+            MahjongTile.P9,
+            MahjongTile.S3,
+            MahjongTile.S6,
+            MahjongTile.S9,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        engine.wall.clear()
+        engine.wall += TileInstance(mahjongTile = MahjongTile.M1)
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertEquals("south", engine.currentPlayer.uuid)
+        assertEquals(14, south.hands.size)
+    }
+
+    @Test
+    fun `only the next player may chii a discard in east south west north flow`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON
+        )
+        south.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M3,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S4,
+            MahjongTile.S5,
+            MahjongTile.S6,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON
+        )
+        west.hands += tiles(
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M6,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        north.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M3,
+            MahjongTile.P7,
+            MahjongTile.P8,
+            MahjongTile.P9,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.S9,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.GREEN_DRAGON
+        )
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertEquals(listOf(MahjongTile.M1 to MahjongTile.M3), engine.availableReactions(south.uuid)?.chiiPairs)
+        assertEquals(null, engine.availableReactions(west.uuid))
+        assertEquals(null, engine.availableReactions(north.uuid))
+    }
+
+    @Test
+    fun `chii caller does not draw and must discard next`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON
+        )
+        south.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M3,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S4,
+            MahjongTile.S5,
+            MahjongTile.S6,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON
+        )
+        west.hands += tiles(
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M6,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        north.hands += tiles(
+            MahjongTile.M7,
+            MahjongTile.M8,
+            MahjongTile.M9,
+            MahjongTile.P7,
+            MahjongTile.P8,
+            MahjongTile.P9,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.S9,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.GREEN_DRAGON
+        )
+        engine.wall.clear()
+        engine.wall += TileInstance(mahjongTile = MahjongTile.P9)
+
+        assertTrue(engine.discard(east.uuid, 0))
+        val wallSizeBeforeChii = engine.wall.size
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.CHII, MahjongTile.M1 to MahjongTile.M3)))
+        assertEquals("south", engine.currentPlayer.uuid)
+        assertEquals(11, south.hands.size)
+        assertEquals(wallSizeBeforeChii, engine.wall.size)
+        assertEquals(MeldType.CHII, south.fuuroList.last().type)
+        assertEquals(ClaimTarget.LEFT, south.fuuroList.last().claimTarget)
+        assertFalse(engine.discard(west.uuid, 0))
+    }
+
+    @Test
+    fun `called discard leaves display river but still counts as discarder history`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON
+        )
+        south.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M3,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S4,
+            MahjongTile.S5,
+            MahjongTile.S6,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON
+        )
+        west.hands += tiles(
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M6,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        north.hands += tiles(
+            MahjongTile.M7,
+            MahjongTile.M8,
+            MahjongTile.M9,
+            MahjongTile.P7,
+            MahjongTile.P8,
+            MahjongTile.P9,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.S9,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.GREEN_DRAGON
+        )
+
+        assertTrue(engine.discard(east.uuid, 0))
+        val calledTile = engine.discards.last()
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.CHII, MahjongTile.M1 to MahjongTile.M3)))
+
+        assertTrue(east.discardedTiles.contains(calledTile))
+        assertFalse(east.discardedTilesForDisplay.contains(calledTile))
+    }
+
+    @Test
+    fun `pon takes priority over chii on the same discard`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON
+        )
+        south.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M3,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S4,
+            MahjongTile.S5,
+            MahjongTile.S6,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON
+        )
+        west.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.M2,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.GREEN_DRAGON
+        )
+        north.hands += tiles(
+            MahjongTile.M7,
+            MahjongTile.M8,
+            MahjongTile.M9,
+            MahjongTile.P7,
+            MahjongTile.P8,
+            MahjongTile.P9,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.S9,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.RED_DRAGON
+        )
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertEquals(listOf(MahjongTile.M1 to MahjongTile.M3), engine.availableReactions(south.uuid)?.chiiPairs)
+        assertTrue(engine.availableReactions(west.uuid)?.canPon == true)
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.CHII, MahjongTile.M1 to MahjongTile.M3)))
+        assertTrue(engine.react(west.uuid, ReactionResponse(ReactionType.PON)))
+        assertEquals("west", engine.currentPlayer.uuid)
+        assertTrue(west.fuuroList.any { it.type == MeldType.PON })
+        assertTrue(south.fuuroList.none { it.type == MeldType.CHII })
+    }
+
+    @Test
     fun `placement order uses current seat wind for tie breaks`() {
         val players = listOf(
             RiichiPlayerState("East", "east"),

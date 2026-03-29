@@ -65,6 +65,10 @@ Admin targeting details:
 - a round starts automatically only when all 4 seats are filled and all seated players are ready
 - after a hand or a full match ends, players must ready again before the next start
 
+## Rule References
+
+- Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
+
 ## Build
 
 ```powershell

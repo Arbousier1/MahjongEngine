@@ -445,6 +445,9 @@ class RiichiRoundEngine(
                 }
                 if (!pending.isChankan) {
                     val ponKanCandidates = pending.options.filterValues { it.canPon || it.canMinkan }.keys
+                    if (pending.responses.keys.containsAll(ponKanCandidates).not()) {
+                        return
+                    }
                     val anyPonKan = pending.responses.filterKeys { it in ponKanCandidates }.values.any { it.type == ReactionType.PON || it.type == ReactionType.MINKAN }
                     if (!anyPonKan) {
                         val chiiCandidates = pending.options.filterValues { it.chiiPairs.isNotEmpty() }.keys
@@ -497,7 +500,7 @@ class RiichiRoundEngine(
         if (chiiResponse != null) {
             val winner = seatPlayer(chiiResponse.key)!!
             val discarder = seatPlayer(pending.discarderUuid)!!
-            winner.chii(pending.tile, chiiResponse.value.chiiPair!!, discarder)
+            winner.chii(pending.tile, chiiResponse.value.chiiPair!!, claimTarget(winner, discarder), discarder)
             currentPlayerIndex = seats.indexOf(winner)
             currentDrawIsRinshan = false
             pendingAbortiveDraw = null
