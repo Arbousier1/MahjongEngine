@@ -86,15 +86,6 @@ class MahjongTableSessionTest {
     }
 
     @Test
-    fun `sichuan preset switches table variant to sichuan`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
-        val session = MahjongTableSession(plugin, "TABLE04B", Location(null, 0.0, 64.0, 0.0), false)
-
-        assertTrue(session.applyRulePreset("SICHUAN"))
-        assertEquals(MahjongVariant.SICHUAN, session.currentVariant())
-    }
-
-    @Test
     fun `gb helpers stay inactive before a gb round is created`() {
         val plugin = mock(MahjongPaperPlugin::class.java)
         val session = MahjongTableSession(plugin, "TABLE05", Location(null, 0.0, 64.0, 0.0), false)

@@ -526,7 +526,7 @@ public final class MahjongCommand implements BasicCommand {
             : ROOT_COMMANDS.stream().filter(command -> !this.isAdminRootCommand(command)).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         if (sender instanceof Player player) {
             MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
-            if (table != null && table.currentVariant() != MahjongVariant.RIICHI) {
+            if (table != null && table.currentVariant() == MahjongVariant.GB) {
                 commands.remove("riichi");
                 commands.remove("kyuushu");
             }

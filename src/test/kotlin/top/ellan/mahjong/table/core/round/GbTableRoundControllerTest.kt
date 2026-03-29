@@ -24,7 +24,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GbTableRoundControllerTest {
@@ -39,16 +38,6 @@ class GbTableRoundControllerTest {
         assertEquals(13, controller.hand(player(SeatWind.SOUTH)).size)
         assertEquals(13, controller.hand(player(SeatWind.WEST)).size)
         assertEquals(13, controller.hand(player(SeatWind.NORTH)).size)
-    }
-
-    @Test
-    fun `sichuan profile deals suited tiles only`() {
-        val controller = controller(profile = GbRuleProfile.SICHUAN)
-
-        controller.startRound()
-
-        val allHands = SeatWind.values().flatMap { wind -> controller.hand(player(wind)) }
-        assertTrue(allHands.all { !it.isFlower && !GbRoundSupport.isHonor(it) })
     }
 
     @Test
@@ -243,53 +232,6 @@ class GbTableRoundControllerTest {
         assertEquals("TSUMO", controller.lastResolution()?.title)
         assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
         assertEquals(24, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == player(SeatWind.EAST).toString() }?.scoreChange)
-    }
-
-    @Test
-    fun `sichuan tsumo uses local hu evaluation`() {
-        val controller = controller(profile = GbRuleProfile.SICHUAN)
-        controller.startRound()
-        val east = player(SeatWind.EAST)
-
-        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9", "S9"))
-
-        assertTrue(controller.canWinByTsumo(east))
-        assertTrue(controller.declareTsumo(east))
-        assertTrue(controller.started())
-        assertEquals(SeatWind.SOUTH, controller.currentSeat())
-        assertFalse(controller.canSelectHandTile(east, 0))
-        assertNull(controller.lastResolution())
-    }
-
-    @Test
-    fun `sichuan blood battle ends after three winners`() {
-        val controller = controller(profile = GbRuleProfile.SICHUAN)
-        controller.startRound()
-        val east = player(SeatWind.EAST)
-        val south = player(SeatWind.SOUTH)
-        val west = player(SeatWind.WEST)
-        val north = player(SeatWind.NORTH)
-
-        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9", "S9"))
-        forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9"))
-        forceHand(controller, west, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9"))
-        forceHand(controller, north, listOf("M2", "M3", "M4", "M5", "M6", "M7", "P1", "P2", "P3", "S1", "S2", "S3", "S4"))
-        forceWall(controller, listOf("S9", "S9", "M1"))
-
-        assertTrue(controller.declareTsumo(east))
-        assertTrue(controller.started())
-        assertEquals(SeatWind.SOUTH, controller.currentSeat())
-        assertTrue(controller.canDeclareTsumo(south))
-
-        assertTrue(controller.declareTsumo(south))
-        assertTrue(controller.started())
-        assertEquals(SeatWind.WEST, controller.currentSeat())
-        assertTrue(controller.canDeclareTsumo(west))
-
-        assertTrue(controller.declareTsumo(west))
-        assertFalse(controller.started())
-        assertEquals("TSUMO", controller.lastResolution()?.title)
-        assertEquals(3, controller.lastResolution()?.yakuSettlements?.size)
     }
 
     @Test
@@ -603,7 +545,6 @@ class GbTableRoundControllerTest {
 
     private fun controller(
         gateway: GbNativeRulesGateway = defaultGateway(),
-        profile: GbRuleProfile = GbRuleProfile.GB,
         dicePoints: Int? = null,
         wall: List<MahjongTile>? = null
     ): GbTableRoundController {
@@ -615,14 +556,13 @@ class GbTableRoundControllerTest {
             names[playerId] = wind.name
         }
         return if (dicePoints == null && wall == null) {
-            GbTableRoundController(MahjongRule(), seats, names, gateway, profile)
+            GbTableRoundController(MahjongRule(), seats, names, gateway)
         } else {
             GbTableRoundController(
                 MahjongRule(),
                 seats,
                 names,
                 gateway,
-                profile,
                 IntSupplier { dicePoints ?: 7 },
                 Supplier { wall ?: deterministicWall() }
             )

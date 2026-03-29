@@ -65,8 +65,8 @@ final class SessionRuleCoordinator {
 
     List<String> ruleValues(String key) {
         return switch (key.toLowerCase(Locale.ROOT)) {
-            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN", "GB", "SICHUAN");
-            case "variant", "ruleset" -> List.of("RIICHI", "GB", "SICHUAN");
+            case "preset", "mode" -> List.of("MAJSOUL_TONPUU", "MAJSOUL_HANCHAN", "GB");
+            case "variant", "ruleset" -> List.of("RIICHI", "GB");
             case "length" -> List.of("ONE_GAME", "EAST", "SOUTH", "TWO_WIND");
             case "thinkingtime", "thinking" -> List.of("VERY_SHORT", "SHORT", "NORMAL", "LONG", "VERY_LONG");
             case "minimumhan", "minhan" -> List.of("ONE", "TWO", "FOUR", "YAKUMAN");

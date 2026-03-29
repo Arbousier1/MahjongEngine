@@ -180,7 +180,7 @@ public final class SettlementUi {
     }
 
     static List<Component> settlementLore(Locale locale, MahjongTableSession session, YakuSettlement settlement) {
-        if (session.currentVariant() != top.ellan.mahjong.table.core.MahjongVariant.RIICHI) {
+        if (session.currentVariant() == top.ellan.mahjong.table.core.MahjongVariant.GB) {
             return gbSettlementLore(locale, session, settlement);
         }
         MessageService messages = session.plugin().messages();

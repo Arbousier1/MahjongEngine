@@ -4,8 +4,7 @@ import java.util.Locale;
 
 public enum MahjongVariant {
     RIICHI,
-    GB,
-    SICHUAN;
+    GB;
 
     public String translationKey() {
         return "rule.variant." + this.name().toLowerCase(Locale.ROOT);

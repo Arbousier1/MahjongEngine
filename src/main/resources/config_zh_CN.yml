@@ -49,6 +49,7 @@ tables:
   # 在对局进行中允许玩家离座并自由走动，
   # 不会被判定为离桌。
   allowFreeMoveDuringRound: false
+
   persistence:
     # 持久化牌桌会在启动时从这个文件恢复。
     enabled: true
