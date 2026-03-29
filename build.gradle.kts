@@ -1,4 +1,4 @@
-﻿import org.gradle.api.GradleException
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
@@ -17,7 +17,7 @@ val kotlinRuntimeVersion = "2.3.20"
 val kotlinSerializationVersion = "1.10.0"
 val mahjongUtilsVersion = "0.7.7"
 val mariadbVersion = "3.5.7"
-val mysqlVersion = "8.4.0"
+val mysqlVersion = "9.6.0"
 val h2Version = "2.4.240"
 val hikariVersion = "7.0.2"
 val adventureVersion = "4.26.1"
