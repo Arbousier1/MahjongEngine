@@ -6,10 +6,14 @@ import top.ellan.mahjong.gb.runtime.GbNativeRulesGateway
 import top.ellan.mahjong.model.MahjongTile
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.render.layout.TableRenderLayout
+import top.ellan.mahjong.riichi.ReactionResponse
+import top.ellan.mahjong.riichi.ReactionType
 import top.ellan.mahjong.riichi.RiichiPlayerState
 import top.ellan.mahjong.riichi.RiichiRoundEngine
+import top.ellan.mahjong.riichi.model.MahjongTile as RiichiTile
 import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.riichi.model.ScoringStick
+import top.ellan.mahjong.riichi.model.TileInstance as RiichiTileInstance
 import top.ellan.mahjong.table.core.MahjongTableSession
 import top.ellan.mahjong.table.core.TableRenderSnapshot
 import top.ellan.mahjong.table.core.TableSeatRenderSnapshot
@@ -81,6 +85,25 @@ class CorePerformanceBenchmarksTest {
                 ),
                 rule = MahjongRule()
             ).startRound()
+        }
+    }
+
+    @Test
+    fun `benchmark riichi discard reaction chain`() {
+        PerformanceBenchmarkSupport.run(
+            name = "riichi.round_engine.discard_reaction_chain",
+            batch = 80
+        ) {
+            val engine = riichiReactionChainEngine()
+            val east = engine.seats[0]
+            check(engine.discard(east.uuid, 0))
+            val pending = engine.pendingReaction
+            if (pending != null) {
+                pending.options.keys.forEach { responderUuid ->
+                    check(engine.react(responderUuid, ReactionResponse(ReactionType.SKIP)))
+                }
+            }
+            PerformanceBenchmarkSupport.consume(engine.discards.size + engine.currentPlayerIndex)
         }
     }
 
@@ -176,6 +199,95 @@ class CorePerformanceBenchmarksTest {
         }
         return GbTableRoundController(MahjongRule(), seats, names, object : GbNativeRulesGateway() {})
     }
+
+    private fun riichiReactionChainEngine(): RiichiRoundEngine {
+        val engine = RiichiRoundEngine(
+            players = listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            rule = MahjongRule()
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+
+        east.hands += riichiTiles(
+            RiichiTile.M2,
+            RiichiTile.P1,
+            RiichiTile.P2,
+            RiichiTile.P3,
+            RiichiTile.S1,
+            RiichiTile.S2,
+            RiichiTile.S3,
+            RiichiTile.EAST,
+            RiichiTile.SOUTH,
+            RiichiTile.WEST,
+            RiichiTile.NORTH,
+            RiichiTile.WHITE_DRAGON,
+            RiichiTile.GREEN_DRAGON,
+            RiichiTile.RED_DRAGON
+        )
+        south.hands += riichiTiles(
+            RiichiTile.M1,
+            RiichiTile.M3,
+            RiichiTile.P4,
+            RiichiTile.P5,
+            RiichiTile.P6,
+            RiichiTile.S4,
+            RiichiTile.S5,
+            RiichiTile.S6,
+            RiichiTile.EAST,
+            RiichiTile.SOUTH,
+            RiichiTile.WEST,
+            RiichiTile.NORTH,
+            RiichiTile.WHITE_DRAGON
+        )
+        west.hands += riichiTiles(
+            RiichiTile.M4,
+            RiichiTile.M5,
+            RiichiTile.M6,
+            RiichiTile.P1,
+            RiichiTile.P4,
+            RiichiTile.P7,
+            RiichiTile.S1,
+            RiichiTile.S4,
+            RiichiTile.S7,
+            RiichiTile.EAST,
+            RiichiTile.SOUTH,
+            RiichiTile.WEST,
+            RiichiTile.NORTH
+        )
+        north.hands += riichiTiles(
+            RiichiTile.M7,
+            RiichiTile.M8,
+            RiichiTile.M9,
+            RiichiTile.P7,
+            RiichiTile.P8,
+            RiichiTile.P9,
+            RiichiTile.S7,
+            RiichiTile.S8,
+            RiichiTile.S9,
+            RiichiTile.EAST,
+            RiichiTile.SOUTH,
+            RiichiTile.WEST,
+            RiichiTile.GREEN_DRAGON
+        )
+        engine.wall.clear()
+        engine.wall += RiichiTileInstance(mahjongTile = RiichiTile.P9)
+        return engine
+    }
+
+    private fun riichiTiles(vararg tiles: RiichiTile): List<RiichiTileInstance> =
+        tiles.map { RiichiTileInstance(mahjongTile = it) }
 
     private fun gbBotSuggestionController(): GbTableRoundController {
         val seats = EnumMap<SeatWind, UUID>(SeatWind::class.java)

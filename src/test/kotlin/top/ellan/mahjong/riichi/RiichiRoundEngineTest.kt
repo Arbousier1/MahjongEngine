@@ -721,6 +721,52 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `skipping ron applies temporary furiten until next draw`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        setupDualRedDragonRonReaction(engine)
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        engine.wall.clear()
+        engine.wall += tiles(MahjongTile.M1, MahjongTile.P1, MahjongTile.S1)
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertTrue(engine.availableReactions(south.uuid)?.canRon == true)
+        assertTrue(engine.availableReactions(north.uuid)?.canRon == true)
+
+        assertTrue(engine.react(north.uuid, ReactionResponse(ReactionType.SKIP)))
+        assertTrue(north.temporaryFuriten)
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.SKIP)))
+        assertTrue(engine.pendingReaction == null)
+        assertEquals(south.uuid, engine.currentPlayer.uuid)
+
+        val southRedDragonIndex = south.hands.indexOfFirst { it.mahjongTile == MahjongTile.RED_DRAGON }
+        assertTrue(southRedDragonIndex >= 0)
+        assertTrue(engine.discard(south.uuid, southRedDragonIndex))
+        val northOptionsAfterSkip = engine.availableReactions(north.uuid)
+        assertTrue(northOptionsAfterSkip != null)
+        assertFalse(northOptionsAfterSkip.canRon)
+        assertTrue(north.temporaryFuriten)
+        resolveAllPendingWithSkip(engine)
+        assertEquals(west.uuid, engine.currentPlayer.uuid)
+
+        assertTrue(engine.discard(west.uuid, 0))
+        resolveAllPendingWithSkip(engine)
+        assertEquals(north.uuid, engine.currentPlayer.uuid)
+        assertFalse(north.temporaryFuriten)
+    }
+
+    @Test
     fun `suufon renda only triggers on first four opening discards`() {
         val engine = RiichiRoundEngine(
             listOf(

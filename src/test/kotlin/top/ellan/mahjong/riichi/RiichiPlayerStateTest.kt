@@ -156,6 +156,62 @@ class RiichiPlayerStateTest {
     }
 
     @Test
+    fun `can win result is memoized for unchanged hand state`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S6,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.P6
+        )
+
+        val originalCalculator = RiichiPlayerState.shantenCalculator
+        var calculatorCalls = 0
+        try {
+            RiichiPlayerState.shantenCalculator = { tiles, furo, bestShantenOnly ->
+                calculatorCalls++
+                shanten(
+                    tiles = tiles,
+                    furo = furo,
+                    bestShantenOnly = bestShantenOnly
+                )
+            }
+
+            val firstCanWin = player.canWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation()
+            )
+            val callsAfterFirstEvaluation = calculatorCalls
+            val secondCanWin = player.canWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation()
+            )
+
+            assertTrue(firstCanWin)
+            assertTrue(secondCanWin)
+            assertTrue(callsAfterFirstEvaluation > 0)
+            assertEquals(callsAfterFirstEvaluation, calculatorCalls)
+        } finally {
+            RiichiPlayerState.shantenCalculator = originalCalculator
+        }
+    }
+
+    @Test
     fun `invalid hand size does not throw during shanten checks`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
@@ -294,6 +350,16 @@ class RiichiPlayerStateTest {
 
         assertTrue(analysisVersion(player) > cachedVersionBefore)
         assertEquals(cachedVersionBefore, cachedTilePairsVersion(player))
+    }
+
+    @Test
+    fun `drawing a tile clears temporary furiten`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.markTemporaryFuriten()
+
+        player.drawTile(TileInstance(mahjongTile = MahjongTile.M1))
+
+        assertFalse(player.temporaryFuriten)
     }
 
     @Test
