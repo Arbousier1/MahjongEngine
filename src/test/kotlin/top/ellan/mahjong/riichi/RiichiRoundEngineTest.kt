@@ -90,6 +90,27 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `houtei only applies when live wall is exhausted`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("A", "a"),
+                RiichiPlayerState("B", "b"),
+                RiichiPlayerState("C", "c"),
+                RiichiPlayerState("D", "d")
+            ),
+            MahjongRule()
+        )
+        engine.startRound()
+        engine.wall.clear()
+        engine.wall += tiles(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)
+
+        assertFalse(engine.isHoutei)
+
+        engine.wall.clear()
+        assertTrue(engine.isHoutei)
+    }
+
+    @Test
     fun `engine preserves input seat order`() {
         val players = listOf(
             RiichiPlayerState("East", "east"),
@@ -348,6 +369,49 @@ class RiichiRoundEngineTest {
         assertEquals(listOf(MahjongTile.M1 to MahjongTile.M3), engine.availableReactions(south.uuid)?.chiiPairs)
         assertEquals(null, engine.availableReactions(west.uuid))
         assertEquals(null, engine.availableReactions(north.uuid))
+    }
+
+    @Test
+    fun `riichi declaration requires at least four live-wall tiles`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule(riichiProfile = MahjongRule.RiichiProfile.MAJSOUL)
+        )
+        engine.startRound()
+        val east = engine.currentPlayer
+        east.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M9
+        )
+        val riichiTile = east.tilePairsForRiichi.firstOrNull()?.first
+        assertTrue(riichiTile != null)
+        val riichiIndex = east.hands.indexOfFirst { it.mahjongTile == riichiTile }
+        assertTrue(riichiIndex >= 0)
+
+        engine.wall.clear()
+        engine.wall += tiles(MahjongTile.M7, MahjongTile.P7, MahjongTile.S7)
+        assertFalse(engine.declareRiichi(east.uuid, riichiIndex))
+
+        engine.wall += TileInstance(mahjongTile = MahjongTile.EAST)
+        assertTrue(engine.declareRiichi(east.uuid, riichiIndex))
     }
 
     @Test
@@ -628,6 +692,57 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `last live-wall discard only allows ron responses`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule(riichiProfile = MahjongRule.RiichiProfile.TOURNAMENT)
+        )
+        engine.startRound()
+        setupDualRedDragonRonReaction(engine)
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val north = engine.seats[3]
+        engine.wall.clear()
+
+        assertTrue(engine.discard(east.uuid, 0))
+        val southOptions = engine.availableReactions(south.uuid)
+        val northOptions = engine.availableReactions(north.uuid)
+        assertTrue(southOptions != null)
+        assertTrue(northOptions != null)
+        assertTrue(southOptions.canRon)
+        assertFalse(southOptions.canPon)
+        assertFalse(southOptions.canMinkan)
+        assertTrue(southOptions.chiiPairs.isEmpty())
+    }
+
+    @Test
+    fun `suufon renda only triggers on first four opening discards`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule()
+        )
+        engine.discards += tiles(
+            MahjongTile.M1,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST
+        )
+
+        assertFalse(engine.isSuufonRenda)
+    }
+
+    @Test
     fun `placement order uses current seat wind for tie breaks`() {
         val players = listOf(
             RiichiPlayerState("East", "east"),
@@ -694,7 +809,7 @@ class RiichiRoundEngineTest {
     }
 
     @Test
-    fun `open kan reveals extra dora only after the caller discards`() {
+    fun `open kan reveals extra dora immediately in majsoul profile`() {
         val engine = RiichiRoundEngine(
             listOf(
                 RiichiPlayerState("East", "east"),
@@ -779,8 +894,98 @@ class RiichiRoundEngineTest {
         assertTrue(engine.discard(east.uuid, 0))
         assertTrue(engine.availableReactions(south.uuid)?.canMinkan == true)
         assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.MINKAN)))
+        assertEquals(2, engine.doraIndicators.size)
+    }
+
+    @Test
+    fun `open kan reveals extra dora after discard in tournament profile`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule(riichiProfile = MahjongRule.RiichiProfile.TOURNAMENT)
+        )
+        engine.startRound()
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+        east.hands += tiles(
+            MahjongTile.EAST,
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.RED_DRAGON,
+            MahjongTile.NORTH
+        )
+        south.hands += tiles(
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.M6,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S4,
+            MahjongTile.S5,
+            MahjongTile.S6,
+            MahjongTile.SOUTH
+        )
+        west.hands += tiles(
+            MahjongTile.M7,
+            MahjongTile.M8,
+            MahjongTile.M9,
+            MahjongTile.P7,
+            MahjongTile.P8,
+            MahjongTile.P9,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.S9,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON,
+            MahjongTile.GREEN_DRAGON
+        )
+        north.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M3,
+            MahjongTile.P1,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P2,
+            MahjongTile.S1,
+            MahjongTile.S1,
+            MahjongTile.RED_DRAGON
+        )
+
+        assertEquals(1, engine.doraIndicators.size)
+        assertTrue(engine.discard(east.uuid, 0))
+        assertTrue(engine.availableReactions(south.uuid)?.canMinkan == true)
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.MINKAN)))
         assertEquals(1, engine.doraIndicators.size)
         assertTrue(engine.discard(south.uuid, south.hands.lastIndex))
+        resolveAllPendingWithSkip(engine)
         assertEquals(2, engine.doraIndicators.size)
     }
 
@@ -1113,6 +1318,19 @@ class RiichiRoundEngineTest {
             MahjongTile.NORTH
         )
         configureClosedRedDragonRonWait(north)
+    }
+
+    private fun resolveAllPendingWithSkip(engine: RiichiRoundEngine) {
+        while (true) {
+            val pending = engine.pendingReaction ?: return
+            val undecided = pending.options.keys.filter { it !in pending.responses.keys }
+            if (undecided.isEmpty()) {
+                return
+            }
+            undecided.forEach { responderUuid ->
+                assertTrue(engine.react(responderUuid, ReactionResponse(ReactionType.SKIP)))
+            }
+        }
     }
 
     private fun setPaoLiability(engine: RiichiRoundEngine, winnerUuid: String, key: String, liableUuid: String) {

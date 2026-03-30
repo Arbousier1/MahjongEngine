@@ -1207,7 +1207,8 @@ public final class MahjongTableSession {
             rule.getRedFive(),
             rule.getOpenTanyao(),
             rule.getLocalYaku(),
-            rule.getRonMode()
+            rule.getRonMode(),
+            rule.getRiichiProfile()
         );
     }
 

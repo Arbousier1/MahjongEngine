@@ -331,7 +331,8 @@ data class MahjongRule(
     var redFive: RedFive = RedFive.THREE,
     var openTanyao: Boolean = true,
     var localYaku: Boolean = false,
-    var ronMode: RonMode = RonMode.MULTI_RON
+    var ronMode: RonMode = RonMode.MULTI_RON,
+    var riichiProfile: RiichiProfile = RiichiProfile.MAJSOUL
 ) {
     enum class GameLength(
         private val startingWind: Wind,
@@ -370,6 +371,11 @@ data class MahjongRule(
     enum class RonMode {
         HEAD_BUMP,
         MULTI_RON
+    }
+
+    enum class RiichiProfile {
+        MAJSOUL,
+        TOURNAMENT
     }
 }
 

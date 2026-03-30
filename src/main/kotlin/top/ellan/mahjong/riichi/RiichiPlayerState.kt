@@ -483,7 +483,7 @@ open class RiichiPlayerState(
     }
 
     fun isIppatsu(players: List<RiichiPlayerState>, discards: List<TileInstance>): Boolean {
-        if (riichi) {
+        if (riichi || doubleRiichi) {
             val riichiSengenIndex = discards.indexOf(riichiSengenTile!!)
             if (discards.lastIndex - riichiSengenIndex > 4) return false
             val someoneCalls = discards.slice(riichiSengenIndex..discards.lastIndex).any { tile ->

@@ -545,6 +545,24 @@ class RiichiPlayerStateTest {
         assertEquals(0, settlement.score)
     }
 
+    @Test
+    fun `double riichi still enables ippatsu when no one calls`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        val south = RiichiPlayerState("South", "south")
+        val west = RiichiPlayerState("West", "west")
+        val north = RiichiPlayerState("North", "north")
+        val riichiDiscard = TileInstance(mahjongTile = MahjongTile.M1)
+        val discards = listOf(
+            riichiDiscard,
+            TileInstance(mahjongTile = MahjongTile.P1),
+            TileInstance(mahjongTile = MahjongTile.S1)
+        )
+        player.doubleRiichi = true
+        player.riichiSengenTile = riichiDiscard
+
+        assertTrue(player.isIppatsu(listOf(player, south, west, north), discards))
+    }
+
     private fun analysisVersion(player: RiichiPlayerState): Long =
         playerField("analysisStateVersion").getLong(player)
 

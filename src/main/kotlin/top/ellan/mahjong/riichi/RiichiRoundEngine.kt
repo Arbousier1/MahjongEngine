@@ -96,15 +96,16 @@ class RiichiRoundEngine(
         get() = discards.size <= 4 && seats.none { it.fuuroList.isNotEmpty() }
 
     val isHoutei: Boolean
-        get() = wall.size <= 4
+        get() = wall.isEmpty()
 
     val isSuufonRenda: Boolean
         get() {
-            if (discards.size < 4) return false
+            if (discards.size != 4) return false
+            if (!isFirstRound) return false
             val lastFour = discards.takeLast(4)
             val first = lastFour.first().scoringTile
             if (first.type.name != "Z" || first.realNum !in 1..4) return false
-            return lastFour.all { it.code == lastFour.first().code }
+            return lastFour.all { it.scoringTile == first }
         }
 
     val doraIndicators: List<TileInstance>
@@ -190,9 +191,9 @@ class RiichiRoundEngine(
         val discarded = player.discardTile(selectedTile) ?: return false
         currentDrawIsRinshan = false
         discards += discarded
-        revealPendingOpenKanDoraIfNeeded()
         pendingReaction = computePendingReaction(player, discarded)
         if (pendingReaction == null) {
+            revealPendingOpenKanDoraForTournamentIfNeeded()
             advanceAfterDiscard()
         }
         return true
@@ -200,6 +201,7 @@ class RiichiRoundEngine(
 
     fun declareRiichi(playerUuid: String, tileIndex: Int): Boolean {
         if (!started || pendingReaction != null) return false
+        if (riichiRequiresMinimumWallTilesForDeclaration() && wall.size < 4) return false
         val player = currentPlayer
         if (player.uuid != playerUuid || tileIndex !in player.hands.indices) return false
         if (!player.isMenzenchin || player.riichi || player.doubleRiichi || player.points < ScoringStick.P1000.point) return false
@@ -237,6 +239,7 @@ class RiichiRoundEngine(
 
     fun tryAnkanOrKakan(playerUuid: String, tile: MahjongTile): Boolean {
         if (!started || pendingReaction != null || currentPlayer.uuid != playerUuid) return false
+        if (kanForbiddenAfterLastLiveDraw() && wall.isEmpty()) return false
         if (kanCount >= 4) return false
         val player = currentPlayer
         val ankanTile = player.tilesCanAnkan.find { it.mahjongTile == tile }
@@ -264,6 +267,7 @@ class RiichiRoundEngine(
                 return true
             }
             registerOpenKan()
+            revealPendingOpenKanDoraForMajsoulIfNeeded()
             drawRinshanAndContinue(player)
             return true
         }
@@ -392,6 +396,7 @@ class RiichiRoundEngine(
 
     private fun computePendingReaction(discarder: RiichiPlayerState, tile: TileInstance): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()
+        val lastLiveDiscard = lastDiscardRonOnly() && wall.isEmpty()
         seatOrderFrom(discarder).drop(1).forEach { candidate ->
             val target = claimTarget(candidate, discarder)
             val canRon = candidate.canWin(
@@ -401,7 +406,21 @@ class RiichiRoundEngine(
                 generalSituation = generalSituation,
                 personalSituation = personalSituation(candidate, isTsumo = false)
             ) && !candidate.isFuriten(tile, discards)
-            val reactionOptions = candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
+            val reactionOptions = if (lastLiveDiscard) {
+                if (!canRon) {
+                    null
+                } else {
+                    ReactionOptions(
+                        canRon = true,
+                        canPon = false,
+                        canMinkan = false,
+                        chiiPairs = emptyList(),
+                        suggestedResponse = ReactionResponse(ReactionType.RON, null)
+                    )
+                }
+            } else {
+                candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
+            }
             if (reactionOptions != null) {
                 options[candidate.uuid] = reactionOptions
             }
@@ -458,6 +477,7 @@ class RiichiRoundEngine(
             drawRinshanAndContinue(discarder)
             return
         }
+        revealPendingOpenKanDoraForTournamentIfNeeded()
 
         val ponKanCandidates = pending.options.filterValues { it.canPon || it.canMinkan }.keys
         if (pending.responses.keys.containsAll(ponKanCandidates).not()) {
@@ -481,6 +501,7 @@ class RiichiRoundEngine(
                 RiichiPaoRules.registerLiability(paoLiabilityByWinner, winner, discarder, pending.tile)
                 currentPlayerIndex = seats.indexOf(winner)
                 registerOpenKan()
+                revealPendingOpenKanDoraForMajsoulIfNeeded()
                 drawRinshanAndContinue(winner)
             }
             currentPlayerIndex = seats.indexOf(winner)
@@ -555,6 +576,33 @@ class RiichiRoundEngine(
             revealedKanDoraCount += revealCount
         }
         pendingOpenKanDoraCount = 0
+    }
+
+    private fun revealPendingOpenKanDoraForMajsoulIfNeeded() {
+        if (rule.riichiProfile == MahjongRule.RiichiProfile.MAJSOUL) {
+            revealPendingOpenKanDoraIfNeeded()
+        }
+    }
+
+    private fun revealPendingOpenKanDoraForTournamentIfNeeded() {
+        if (rule.riichiProfile == MahjongRule.RiichiProfile.TOURNAMENT) {
+            revealPendingOpenKanDoraIfNeeded()
+        }
+    }
+
+    private fun riichiRequiresMinimumWallTilesForDeclaration(): Boolean = when (rule.riichiProfile) {
+        MahjongRule.RiichiProfile.MAJSOUL -> true
+        MahjongRule.RiichiProfile.TOURNAMENT -> true
+    }
+
+    private fun lastDiscardRonOnly(): Boolean = when (rule.riichiProfile) {
+        MahjongRule.RiichiProfile.MAJSOUL -> true
+        MahjongRule.RiichiProfile.TOURNAMENT -> true
+    }
+
+    private fun kanForbiddenAfterLastLiveDraw(): Boolean = when (rule.riichiProfile) {
+        MahjongRule.RiichiProfile.MAJSOUL -> true
+        MahjongRule.RiichiProfile.TOURNAMENT -> true
     }
 
     private fun resolveRon(winners: List<RiichiPlayerState>, target: RiichiPlayerState, tile: TileInstance, isChankan: Boolean = false) {

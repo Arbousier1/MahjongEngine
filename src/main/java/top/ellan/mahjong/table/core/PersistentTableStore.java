@@ -174,6 +174,7 @@ final class PersistentTableStore {
         rule.setOpenTanyao(section.getBoolean("openTanyao", rule.getOpenTanyao()));
         rule.setLocalYaku(section.getBoolean("localYaku", rule.getLocalYaku()));
         rule.setRonMode(this.enumValue(section.getString("ronMode"), MahjongRule.RonMode.class, rule.getRonMode()));
+        rule.setRiichiProfile(this.enumValue(section.getString("riichiProfile"), MahjongRule.RiichiProfile.class, rule.getRiichiProfile()));
         return rule;
     }
 
@@ -212,6 +213,7 @@ final class PersistentTableStore {
         section.set("openTanyao", rule.getOpenTanyao());
         section.set("localYaku", rule.getLocalYaku());
         section.set("ronMode", rule.getRonMode().name());
+        section.set("riichiProfile", rule.getRiichiProfile().name());
     }
 
     record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
