@@ -436,48 +436,40 @@ class RiichiRoundEngine(
 
     private fun resolvePendingReactionsIfReady() {
         val pending = pendingReaction ?: return
-        if (pending.responses.keys.containsAll(pending.options.keys).not()) {
-            val hasRon = pending.responses.values.any { it.type == ReactionType.RON }
-            if (!hasRon) {
-                val ronCandidates = pending.options.filterValues { it.canRon }.keys
-                if (pending.responses.keys.containsAll(ronCandidates).not()) {
-                    return
-                }
-                if (!pending.isChankan) {
-                    val ponKanCandidates = pending.options.filterValues { it.canPon || it.canMinkan }.keys
-                    if (pending.responses.keys.containsAll(ponKanCandidates).not()) {
-                        return
-                    }
-                    val anyPonKan = pending.responses.filterKeys { it in ponKanCandidates }.values.any { it.type == ReactionType.PON || it.type == ReactionType.MINKAN }
-                    if (!anyPonKan) {
-                        val chiiCandidates = pending.options.filterValues { it.chiiPairs.isNotEmpty() }.keys
-                        if (pending.responses.keys.containsAll(chiiCandidates).not()) {
-                            return
-                        }
-                    }
-                }
-            }
+        val discarder = seatPlayer(pending.discarderUuid)!!
+        val orderedClaimers = seatOrderFrom(discarder).drop(1)
+        val ronCandidates = pending.options.filterValues { it.canRon }.keys
+        if (pending.responses.keys.containsAll(ronCandidates).not()) {
+            return
         }
-
-        val ronPlayers = pending.responses.filterValues { it.type == ReactionType.RON }.keys.mapNotNull { seatPlayer(it) }
+        val ronPlayers = orderedClaimers.filter { pending.responses[it.uuid]?.type == ReactionType.RON }
         if (ronPlayers.isNotEmpty()) {
-            resolveRon(ronPlayers, seatPlayer(pending.discarderUuid)!!, pending.tile, isChankan = pending.isChankan)
+            val winners = when (rule.ronMode) {
+                MahjongRule.RonMode.HEAD_BUMP -> ronPlayers.take(1)
+                MahjongRule.RonMode.MULTI_RON -> ronPlayers
+            }
+            resolveRon(winners, discarder, pending.tile, isChankan = pending.isChankan)
             pendingReaction = null
             return
         }
 
         if (pending.isChankan) {
             pendingReaction = null
-            drawRinshanAndContinue(seatPlayer(pending.discarderUuid)!!)
+            drawRinshanAndContinue(discarder)
             return
         }
 
-        val ponKanResponses = pending.responses.filterValues { it.type == ReactionType.PON || it.type == ReactionType.MINKAN }
-        if (ponKanResponses.isNotEmpty()) {
-            val ordered = seatOrderFrom(seatPlayer(pending.discarderUuid)!!).drop(1)
-            val winner = ordered.first { it.uuid in ponKanResponses.keys }
-            val response = ponKanResponses[winner.uuid]!!
-            val discarder = seatPlayer(pending.discarderUuid)!!
+        val ponKanCandidates = pending.options.filterValues { it.canPon || it.canMinkan }.keys
+        if (pending.responses.keys.containsAll(ponKanCandidates).not()) {
+            return
+        }
+        val ponKanWinner = orderedClaimers.firstOrNull { player ->
+            val type = pending.responses[player.uuid]?.type
+            type == ReactionType.PON || type == ReactionType.MINKAN
+        }
+        if (ponKanWinner != null) {
+            val response = pending.responses[ponKanWinner.uuid]!!
+            val winner = ponKanWinner
             val target = claimTarget(winner, discarder)
             if (response.type == ReactionType.PON) {
                 winner.pon(pending.tile, target, discarder)
@@ -496,11 +488,19 @@ class RiichiRoundEngine(
             return
         }
 
-        val chiiResponse = pending.responses.entries.firstOrNull { it.value.type == ReactionType.CHII }
+        val chiiCandidates = pending.options.filterValues { it.chiiPairs.isNotEmpty() }.keys
+        if (pending.responses.keys.containsAll(chiiCandidates).not()) {
+            return
+        }
+        val chiiResponse = orderedClaimers.firstNotNullOfOrNull { player ->
+            pending.responses[player.uuid]
+                ?.takeIf { it.type == ReactionType.CHII }
+                ?.let { player to it }
+        }
         if (chiiResponse != null) {
-            val winner = seatPlayer(chiiResponse.key)!!
-            val discarder = seatPlayer(pending.discarderUuid)!!
-            winner.chii(pending.tile, chiiResponse.value.chiiPair!!, claimTarget(winner, discarder), discarder)
+            val winner = chiiResponse.first
+            val response = chiiResponse.second
+            winner.chii(pending.tile, response.chiiPair!!, claimTarget(winner, discarder), discarder)
             currentPlayerIndex = seats.indexOf(winner)
             currentDrawIsRinshan = false
             pendingAbortiveDraw = null

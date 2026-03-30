@@ -24,11 +24,20 @@ public final class DiscardLayout {
     }
 
     public static float seatYaw(SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> -90.0F;
             case SOUTH -> 0.0F;
             case WEST -> 90.0F;
             case NORTH -> 180.0F;
+        };
+    }
+
+    private static SeatWind displayDirection(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> SeatWind.SOUTH;
+            case SOUTH -> SeatWind.EAST;
+            case WEST -> SeatWind.NORTH;
+            case NORTH -> SeatWind.WEST;
         };
     }
 }

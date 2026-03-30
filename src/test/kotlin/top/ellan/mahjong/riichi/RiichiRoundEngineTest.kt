@@ -849,6 +849,69 @@ class RiichiRoundEngineTest {
     }
 
     @Test
+    fun `head bump ron mode resolves to nearest claimant only after all ron candidates respond`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule(ronMode = MahjongRule.RonMode.HEAD_BUMP)
+        )
+        engine.startRound()
+        setupDualRedDragonRonReaction(engine)
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val north = engine.seats[3]
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertTrue(engine.availableReactions(south.uuid)?.canRon == true)
+        assertTrue(engine.availableReactions(north.uuid)?.canRon == true)
+
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.RON)))
+        assertTrue(engine.pendingReaction != null)
+        assertTrue(engine.lastResolution == null)
+
+        assertTrue(engine.react(north.uuid, ReactionResponse(ReactionType.RON)))
+        assertTrue(engine.pendingReaction == null)
+        assertEquals(listOf(south.uuid), engine.lastResolution!!.yakuSettlements.map { it.uuid })
+        assertEquals(25000, north.points)
+    }
+
+    @Test
+    fun `multi ron mode resolves all ron claimants after all ron candidates respond`() {
+        val engine = RiichiRoundEngine(
+            listOf(
+                RiichiPlayerState("East", "east"),
+                RiichiPlayerState("South", "south"),
+                RiichiPlayerState("West", "west"),
+                RiichiPlayerState("North", "north")
+            ),
+            MahjongRule(ronMode = MahjongRule.RonMode.MULTI_RON)
+        )
+        engine.startRound()
+        setupDualRedDragonRonReaction(engine)
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val north = engine.seats[3]
+
+        assertTrue(engine.discard(east.uuid, 0))
+        assertTrue(engine.availableReactions(south.uuid)?.canRon == true)
+        assertTrue(engine.availableReactions(north.uuid)?.canRon == true)
+
+        assertTrue(engine.react(south.uuid, ReactionResponse(ReactionType.RON)))
+        assertTrue(engine.pendingReaction != null)
+        assertTrue(engine.lastResolution == null)
+
+        assertTrue(engine.react(north.uuid, ReactionResponse(ReactionType.RON)))
+        val winnerUuids = engine.lastResolution!!.yakuSettlements.map { it.uuid }
+        assertEquals(2, winnerUuids.size)
+        assertTrue(south.uuid in winnerUuids)
+        assertTrue(north.uuid in winnerUuids)
+    }
+
+    @Test
     fun `pao tsumo charges the liable player the full yakuman value`() {
         val engine = RiichiRoundEngine(
             listOf(
@@ -1004,6 +1067,52 @@ class RiichiRoundEngineTest {
             MahjongTile.RED_DRAGON,
             MahjongTile.RED_DRAGON
         )
+    }
+
+    private fun setupDualRedDragonRonReaction(engine: RiichiRoundEngine) {
+        val east = engine.seats[0]
+        val south = engine.seats[1]
+        val west = engine.seats[2]
+        val north = engine.seats[3]
+
+        east.resetRoundState()
+        south.resetRoundState()
+        west.resetRoundState()
+        north.resetRoundState()
+
+        east.hands += tiles(
+            MahjongTile.RED_DRAGON,
+            MahjongTile.M9,
+            MahjongTile.P1,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.S1,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.GREEN_DRAGON
+        )
+        configureOpenDaisangenWait(south)
+        west.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M4,
+            MahjongTile.M7,
+            MahjongTile.P1,
+            MahjongTile.P4,
+            MahjongTile.P7,
+            MahjongTile.S1,
+            MahjongTile.S4,
+            MahjongTile.S7,
+            MahjongTile.EAST,
+            MahjongTile.SOUTH,
+            MahjongTile.WEST,
+            MahjongTile.NORTH
+        )
+        configureClosedRedDragonRonWait(north)
     }
 
     private fun setPaoLiability(engine: RiichiRoundEngine, winnerUuid: String, key: String, liableUuid: String) {

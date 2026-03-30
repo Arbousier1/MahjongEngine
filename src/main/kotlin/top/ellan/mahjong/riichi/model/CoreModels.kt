@@ -330,7 +330,8 @@ data class MahjongRule(
     var spectate: Boolean = true,
     var redFive: RedFive = RedFive.THREE,
     var openTanyao: Boolean = true,
-    var localYaku: Boolean = false
+    var localYaku: Boolean = false,
+    var ronMode: RonMode = RonMode.MULTI_RON
 ) {
     enum class GameLength(
         private val startingWind: Wind,
@@ -364,6 +365,11 @@ data class MahjongRule(
         NONE(0),
         THREE(3),
         FOUR(4)
+    }
+
+    enum class RonMode {
+        HEAD_BUMP,
+        MULTI_RON
     }
 }
 

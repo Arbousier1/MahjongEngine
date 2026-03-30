@@ -55,10 +55,10 @@ class TableRendererTest {
     @Test
     fun `riichi discard uses sideways footprint and yaw`() {
         assertTrue(DiscardLayout.discardFootprint(tileWidth, tileHeight, true) > DiscardLayout.discardFootprint(tileWidth, tileHeight, false))
-        assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
-        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
-        assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
-        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
+        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
+        assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
+        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
+        assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
     }
 
     @Test
@@ -379,18 +379,18 @@ class TableRendererTest {
 
     private fun leftToRightScalar(point: TableRenderLayout.Point, wind: SeatWind): Double =
         when (wind) {
-            SeatWind.EAST -> point.z()
-            SeatWind.SOUTH -> point.x()
-            SeatWind.WEST -> -point.z()
-            SeatWind.NORTH -> -point.x()
+            SeatWind.EAST -> -point.x()
+            SeatWind.SOUTH -> point.z()
+            SeatWind.WEST -> point.x()
+            SeatWind.NORTH -> -point.z()
         }
 
     private fun seatYawFor(wind: SeatWind): Float =
         when (wind) {
-            SeatWind.EAST -> -90.0f
-            SeatWind.SOUTH -> 0.0f
-            SeatWind.WEST -> 90.0f
-            SeatWind.NORTH -> -180.0f
+            SeatWind.EAST -> 0.0f
+            SeatWind.SOUTH -> -90.0f
+            SeatWind.WEST -> 180.0f
+            SeatWind.NORTH -> 90.0f
         }
 }
 

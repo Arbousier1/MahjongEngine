@@ -222,6 +222,42 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `minkan takes priority over chii on the same discard`() {
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                GbFanResponse(false, 0, emptyList(), "cannot win")
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                GbTingResponse(true, emptyList(), null)
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(false, error = "cannot win")
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
+        forceHand(controller, south, listOf("M2", "M3", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1", "P2"))
+        forceHand(controller, west, listOf("M1", "M1", "M1", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1"))
+
+        assertTrue(controller.discard(east, 0))
+        val chiiPair = controller.availableReactions(south)?.chiiPairs?.single()
+        assertNotNull(chiiPair)
+        assertTrue(controller.availableReactions(west)?.canMinkan == true)
+
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.CHII, chiiPair)))
+        assertTrue(controller.react(west, ReactionResponse(ReactionType.MINKAN, null)))
+
+        assertEquals(SeatWind.WEST, controller.currentSeat())
+        assertEquals(0, controller.fuuro(south).size)
+        assertEquals(1, controller.fuuro(west).size)
+    }
+
+    @Test
     fun `gb tsumo uses native fan validation`() {
         val controller = controller()
         controller.startRound()
@@ -427,7 +463,7 @@ class GbTableRoundControllerTest {
     }
 
     @Test
-    fun `multiple ron winners are settled together`() {
+    fun `gb ron uses intercept priority when multiple players call on one discard`() {
         val controller = controller(object : GbNativeRulesGateway() {
             override fun isAvailable(): Boolean = true
 
@@ -465,8 +501,9 @@ class GbTableRoundControllerTest {
         }
 
         assertFalse(controller.started())
-        assertEquals(2, controller.lastResolution()?.yakuSettlements?.size)
-        assertEquals(-16, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
+        assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
+        assertEquals("SOUTH", controller.lastResolution()?.yakuSettlements?.single()?.displayName)
+        assertEquals(-8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
     }
 
     @Test

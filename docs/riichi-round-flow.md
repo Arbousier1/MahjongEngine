@@ -29,8 +29,11 @@ This document describes the formal round-flow rules used by the Riichi mode in t
 - Chii: only the next player in turn order after the discarder may chii.
 - Pon: any non-discarding player may pon if legal.
 - Kan: any non-discarding player may minkan if legal; caller then performs a rinshan draw.
-- Ron: a legal ron claim immediately ends the hand.
+- Ron: a legal ron claim ends the hand after all ron-eligible players have had a chance to respond.
 - Priority when multiple claims compete on one discard: ron > pon/kan > chii.
+- Multi-ron behavior is configurable with `rule.ronMode`:
+- `MULTI_RON`: all ron claimants win (double/triple ron).
+- `HEAD_BUMP`: only the nearest ron claimant in turn order wins (atamahane).
 - After chii/pon, the caller does not take a normal draw and must discard directly.
 
 ## 5. Furiten
