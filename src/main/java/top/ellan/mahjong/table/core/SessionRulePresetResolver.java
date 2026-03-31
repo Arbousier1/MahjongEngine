@@ -38,7 +38,9 @@ final class SessionRulePresetResolver {
             true,
             MahjongRule.RedFive.THREE,
             true,
-            false
+            false,
+            MahjongRule.RonMode.MULTI_RON,
+            MahjongRule.RiichiProfile.MAJSOUL
         );
     }
 
@@ -52,7 +54,9 @@ final class SessionRulePresetResolver {
             true,
             MahjongRule.RedFive.NONE,
             false,
-            false
+            false,
+            MahjongRule.RonMode.MULTI_RON,
+            MahjongRule.RiichiProfile.MAJSOUL
         );
     }
 

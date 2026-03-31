@@ -6,7 +6,6 @@ import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.gb.jni.GbWinResponse;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -83,7 +82,7 @@ final class GbReactionResolver {
         if (pending == null || discarderSeat == null || playerAt == null || ronWinEvaluator == null) {
             return Resolution.noop();
         }
-        List<ResolvedGbWin> wins = new ArrayList<>();
+        // GB uses intercept ron: only the earliest in turn order may win on one discard.
         for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = playerAt.apply(wind);
             if (playerId == null) {
@@ -93,32 +92,46 @@ final class GbReactionResolver {
             if (response != null && response.getType() == ReactionType.RON) {
                 ResolvedGbWin win = ronWinEvaluator.evaluate(playerId, pending.discarderId(), pending.tile(), pending.flags());
                 if (win != null) {
-                    wins.add(win);
+                    return new Resolution(List.of(win), null, false, false);
                 }
             }
-        }
-        if (!wins.isEmpty()) {
-            return new Resolution(List.copyOf(wins), null, false, false);
         }
         if (pending.robbingKong()) {
             return new Resolution(List.of(), null, true, false);
         }
+
+        Claim claim = firstClaimOfType(pending, discarderSeat, playerAt, ReactionType.MINKAN);
+        if (claim != null) {
+            return new Resolution(List.of(), claim, false, false);
+        }
+        claim = firstClaimOfType(pending, discarderSeat, playerAt, ReactionType.PON);
+        if (claim != null) {
+            return new Resolution(List.of(), claim, false, false);
+        }
+        claim = firstClaimOfType(pending, discarderSeat, playerAt, ReactionType.CHII);
+        if (claim != null) {
+            return new Resolution(List.of(), claim, false, false);
+        }
+        return new Resolution(List.of(), null, false, true);
+    }
+
+    private static Claim firstClaimOfType(
+        PendingReactionWindow pending,
+        SeatWind discarderSeat,
+        Function<SeatWind, UUID> playerAt,
+        ReactionType type
+    ) {
         for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = playerAt.apply(wind);
             if (playerId == null) {
                 continue;
             }
             ReactionResponse response = pending.responses().get(playerId);
-            if (response == null) {
-                continue;
-            }
-            if (response.getType() == ReactionType.MINKAN
-                || response.getType() == ReactionType.PON
-                || response.getType() == ReactionType.CHII) {
-                return new Resolution(List.of(), new Claim(playerId, response), false, false);
+            if (response != null && response.getType() == type) {
+                return new Claim(playerId, response);
             }
         }
-        return new Resolution(List.of(), null, false, true);
+        return null;
     }
 
     record Resolution(List<ResolvedGbWin> wins, Claim claim, boolean finishAddedKong, boolean advanceAfterDiscard) {

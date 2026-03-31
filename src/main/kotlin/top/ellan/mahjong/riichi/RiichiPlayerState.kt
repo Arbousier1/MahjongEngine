@@ -105,6 +105,8 @@ open class RiichiPlayerState(
     var ready: Boolean = false
     var riichi: Boolean = false
     var doubleRiichi: Boolean = false
+    var temporaryFuriten: Boolean = false
+        private set
     val sticks: MutableList<ScoringStick> = mutableListOf()
     var points: Int = 0
     var basicThinkingTime: Int = 0
@@ -120,6 +122,14 @@ open class RiichiPlayerState(
     private var cachedDiscardSuggestions: List<RiichiDiscardSuggestion> = emptyList()
     private var cachedFuroReactionVersion: Long = -1
     private val cachedFuroReactions: MutableMap<Pair<MahjongTile, Boolean>, FuroReactionAnalysis?> = mutableMapOf()
+    private var cachedHandsMahjongTilesVersion: Long = -1
+    private var cachedHandsMahjongTiles: List<MahjongTile> = emptyList()
+    private var cachedHandsUtilsTilesVersion: Long = -1
+    private var cachedHandsUtilsTiles: List<Tile> = emptyList()
+    private var cachedFuuroUtilsVersion: Long = -1
+    private var cachedFuuroUtils: List<mahjongutils.models.Furo> = emptyList()
+    private var cachedCanWinVersion: Long = -1
+    private val cachedCanWinDecisions: MutableMap<CanWinMemoKey, Boolean> = mutableMapOf()
 
     val riichiStickAmount: Int
         get() = sticks.count { it == ScoringStick.P1000 }
@@ -131,7 +141,20 @@ open class RiichiPlayerState(
         get() = isMenzenchin && !(riichi || doubleRiichi) && tilePairsForRiichi.isNotEmpty() && points >= 1000
 
     val numbersOfYaochuuhaiTypes: Int
-        get() = hands.map { it.scoringTile }.distinct().count { it.isYaochu }
+        get() {
+            val seen = hashSetOf<Int>()
+            var count = 0
+            for (tile in hands) {
+                val scoringTile = tile.scoringTile
+                if (!scoringTile.isYaochu) {
+                    continue
+                }
+                if (seen.add(scoringTile.code)) {
+                    count++
+                }
+            }
+            return count
+        }
 
     fun chii(
         tile: TileInstance,
@@ -229,9 +252,16 @@ open class RiichiPlayerState(
 
     val tilesCanAnkan: Set<TileInstance>
         get() {
-            val candidates = hands.distinctBy { it.scoringTile.code }.filter { distinct ->
-                hands.count { it.mahjongTile.sameKind(distinct.mahjongTile) } == 4
-            }.toMutableSet()
+            val countsByBaseTile = hashMapOf<MahjongTile, Int>()
+            val firstTileByBaseTile = hashMapOf<MahjongTile, TileInstance>()
+            for (tile in hands) {
+                val baseTile = tile.mahjongTile.baseTile
+                countsByBaseTile.merge(baseTile, 1, Int::plus)
+                firstTileByBaseTile.putIfAbsent(baseTile, tile)
+            }
+            val candidates = firstTileByBaseTile.entries
+                .filter { (baseTile, _) -> countsByBaseTile[baseTile] == 4 }
+                .mapTo(mutableSetOf()) { it.value }
             if (!riichi && !doubleRiichi) {
                 return candidates
             }
@@ -259,8 +289,11 @@ open class RiichiPlayerState(
 
     private val tilesCanKakan: MutableSet<Pair<TileInstance, ClaimTarget>>
         get() = mutableSetOf<Pair<TileInstance, ClaimTarget>>().apply {
-            fuuroList.filter { it.isPon }.forEach { fuuro ->
-                val tile = hands.find { it.mahjongTile.sameKind(fuuro.claimTile.mahjongTile) }
+            fuuroList.forEach { fuuro ->
+                if (!fuuro.isPon) {
+                    return@forEach
+                }
+                val tile = hands.firstOrNull { it.mahjongTile.sameKind(fuuro.claimTile.mahjongTile) }
                 if (tile != null) {
                     add(tile to fuuro.claimTarget)
                 }
@@ -354,7 +387,7 @@ open class RiichiPlayerState(
         }
 
     private fun calculateMachi(
-        hands: List<MahjongTile> = this.hands.toMahjongTileList(),
+        hands: List<MahjongTile> = currentHandsMahjongTiles(),
         fuuroList: List<Fuuro> = this.fuuroList
     ): List<MahjongTile> = shantenWithoutGot(hands, fuuroList)
         ?.takeIf { it.shantenNum == 0 }
@@ -402,7 +435,7 @@ open class RiichiPlayerState(
     }
 
     fun calculateMachiAndHan(
-        hands: List<MahjongTile> = this.hands.toMahjongTileList(),
+        hands: List<MahjongTile> = currentHandsMahjongTiles(),
         fuuroList: List<Fuuro> = this.fuuroList,
         rule: MahjongRule,
         generalSituation: GeneralSituation,
@@ -426,10 +459,12 @@ open class RiichiPlayerState(
     }
 
     fun isFuriten(tile: TileInstance, discards: List<TileInstance>): Boolean {
-        val baseMachi = machi.map { it.baseTile }
+        val baseMachi = machi.mapTo(linkedSetOf()) { it.baseTile }
         val target = tile.mahjongTile.baseTile
-        if (target in discardedTiles.map { it.mahjongTile.baseTile }) {
-            return true
+        for (discardedTile in discardedTiles) {
+            if (discardedTile.mahjongTile.baseTile == target) {
+                return true
+            }
         }
         val lastOwnDiscard = discardedTiles.lastOrNull()
         if (lastOwnDiscard != null) {
@@ -461,29 +496,33 @@ open class RiichiPlayerState(
         discards: List<MahjongTile>,
         machi: List<MahjongTile> = this.machi
     ): Boolean {
-        val discardedTiles = discardedTiles.map { it.mahjongTile.baseTile }
+        val ownDiscardedBaseTiles = discardedTiles.mapTo(linkedSetOf()) { it.mahjongTile.baseTile }
         val target = tile.baseTile
-        val baseMachi = machi.map { it.baseTile }
-        if (target in discardedTiles) return true
+        val baseMachi = machi.mapTo(linkedSetOf()) { it.baseTile }
+        if (target in ownDiscardedBaseTiles) return true
         if (discardedTiles.isNotEmpty()) {
-            val lastDiscard = discardedTiles.last()
-            val sameTurnStartIndex = discards.map { it.baseTile }.indexOf(lastDiscard)
-            for (index in sameTurnStartIndex until discards.lastIndex) {
-                if (discards[index].baseTile in baseMachi) return true
+            val lastDiscard = discardedTiles.last().mahjongTile.baseTile
+            val sameTurnStartIndex = discards.indexOfFirst { it.baseTile == lastDiscard }
+            if (sameTurnStartIndex >= 0) {
+                for (index in sameTurnStartIndex until discards.lastIndex) {
+                    if (discards[index].baseTile in baseMachi) return true
+                }
             }
         }
         val riichiSengenTile = riichiSengenTile?.mahjongTile?.baseTile ?: return false
         if (riichi || doubleRiichi) {
-            val riichiStartIndex = discards.map { it.baseTile }.indexOf(riichiSengenTile)
-            for (index in riichiStartIndex until discards.lastIndex) {
-                if (discards[index].baseTile in baseMachi) return true
+            val riichiStartIndex = discards.indexOfFirst { it.baseTile == riichiSengenTile }
+            if (riichiStartIndex >= 0) {
+                for (index in riichiStartIndex until discards.lastIndex) {
+                    if (discards[index].baseTile in baseMachi) return true
+                }
             }
         }
         return false
     }
 
     fun isIppatsu(players: List<RiichiPlayerState>, discards: List<TileInstance>): Boolean {
-        if (riichi) {
+        if (riichi || doubleRiichi) {
             val riichiSengenIndex = discards.indexOf(riichiSengenTile!!)
             if (discards.lastIndex - riichiSengenIndex > 4) return false
             val someoneCalls = discards.slice(riichiSengenIndex..discards.lastIndex).any { tile ->
@@ -497,8 +536,8 @@ open class RiichiPlayerState(
     fun isKokushimuso(tile: MahjongTile): Boolean {
         val result = runCatching {
             hora(
-                tiles = (hands.toMahjongTileList() + tile).toUtilsTiles(),
-                furo = fuuroList.map { it.utilsFuro },
+                tiles = (currentHandsMahjongTiles() + tile).toUtilsTiles(),
+                furo = currentFuuroUtils(),
                 agari = tile.utilsTile,
                 tsumo = false,
                 options = HoraOptions.Default
@@ -517,8 +556,54 @@ open class RiichiPlayerState(
     fun canWin(
         winningTile: MahjongTile,
         isWinningTileInHands: Boolean,
-        hands: List<MahjongTile> = this.hands.toMahjongTileList(),
+        hands: List<MahjongTile> = currentHandsMahjongTiles(),
         fuuroList: List<Fuuro> = this.fuuroList,
+        rule: MahjongRule,
+        generalSituation: GeneralSituation,
+        personalSituation: PersonalSituation
+    ): Boolean {
+        val useMemo = hands === currentHandsMahjongTiles() && fuuroList === this.fuuroList
+        if (useMemo) {
+            if (cachedCanWinVersion != analysisStateVersion) {
+                cachedCanWinDecisions.clear()
+                cachedCanWinVersion = analysisStateVersion
+            }
+            val memoKey = canWinMemoKey(
+                winningTile = winningTile,
+                isWinningTileInHands = isWinningTileInHands,
+                rule = rule,
+                generalSituation = generalSituation,
+                personalSituation = personalSituation
+            )
+            cachedCanWinDecisions[memoKey]?.let { return it }
+            val result = evaluateCanWin(
+                winningTile = winningTile,
+                isWinningTileInHands = isWinningTileInHands,
+                hands = hands,
+                fuuroList = fuuroList,
+                rule = rule,
+                generalSituation = generalSituation,
+                personalSituation = personalSituation
+            )
+            cachedCanWinDecisions[memoKey] = result
+            return result
+        }
+        return evaluateCanWin(
+            winningTile = winningTile,
+            isWinningTileInHands = isWinningTileInHands,
+            hands = hands,
+            fuuroList = fuuroList,
+            rule = rule,
+            generalSituation = generalSituation,
+            personalSituation = personalSituation
+        )
+    }
+
+    private fun evaluateCanWin(
+        winningTile: MahjongTile,
+        isWinningTileInHands: Boolean,
+        hands: List<MahjongTile>,
+        fuuroList: List<Fuuro>,
         rule: MahjongRule,
         generalSituation: GeneralSituation,
         personalSituation: PersonalSituation
@@ -535,6 +620,45 @@ open class RiichiPlayerState(
         return yakuSettlement.yakumanList.isNotEmpty() ||
             yakuSettlement.doubleYakumanList.isNotEmpty() ||
             yakuSettlement.han >= rule.minimumHan.han
+    }
+
+    private fun canWinMemoKey(
+        winningTile: MahjongTile,
+        isWinningTileInHands: Boolean,
+        rule: MahjongRule,
+        generalSituation: GeneralSituation,
+        personalSituation: PersonalSituation
+    ): CanWinMemoKey = CanWinMemoKey(
+        winningTile = winningTile,
+        isWinningTileInHands = isWinningTileInHands,
+        rule = CanWinRuleSignature(
+            minimumHan = rule.minimumHan,
+            openTanyao = rule.openTanyao,
+            redFive = rule.redFive,
+            localYaku = rule.localYaku
+        ),
+        generalHash = canWinGeneralHash(generalSituation),
+        personalHash = canWinPersonalHash(personalSituation)
+    )
+
+    private fun canWinGeneralHash(generalSituation: GeneralSituation): Int {
+        var hash = if (generalSituation.isFirstRound) 1 else 0
+        hash = 31 * hash + if (generalSituation.isHoutei) 1 else 0
+        hash = 31 * hash + generalSituation.bakaze.ordinal
+        generalSituation.doraIndicators.forEach { hash = 31 * hash + it.code }
+        generalSituation.uraDoraIndicators.forEach { hash = 31 * hash + it.code }
+        return hash
+    }
+
+    private fun canWinPersonalHash(personalSituation: PersonalSituation): Int {
+        var hash = if (personalSituation.isTsumo) 1 else 0
+        hash = 31 * hash + if (personalSituation.isIppatsu) 1 else 0
+        hash = 31 * hash + if (personalSituation.isRiichi) 1 else 0
+        hash = 31 * hash + if (personalSituation.isDoubleRiichi) 1 else 0
+        hash = 31 * hash + if (personalSituation.isChankan) 1 else 0
+        hash = 31 * hash + if (personalSituation.isRinshanKaihoh) 1 else 0
+        hash = 31 * hash + personalSituation.jikaze.ordinal
+        return hash
     }
 
     private fun canFormWinningHand(hands: List<MahjongTile>, fuuroList: List<Fuuro>): Boolean {
@@ -580,7 +704,7 @@ open class RiichiPlayerState(
         val hora = runCatching {
             hora(
                 tiles = fullHands.toUtilsTiles(),
-                furo = fuuroList.map { it.utilsFuro },
+                furo = toUtilsFuroList(fuuroList),
                 agari = winningTile.utilsTile,
                 tsumo = personalSituation.isTsumo,
                 dora = doraCount + uraDoraCount,
@@ -649,7 +773,7 @@ open class RiichiPlayerState(
             redFiveCount = redFiveCount,
             riichi = riichi || doubleRiichi,
             winningTile = winningTile,
-            hands = this.hands.toMahjongTileList(),
+            hands = currentHandsMahjongTiles(),
             fuuroList = fuuroListForSettlement,
             doraIndicators = doraIndicators,
             uraDoraIndicators = uraDoraIndicators,
@@ -670,7 +794,7 @@ open class RiichiPlayerState(
     ): YakuSettlement = calculateYakuSettlement(
         winningTile = winningTile,
         isWinningTileInHands = isWinningTileInHands,
-        hands = hands.toMahjongTileList(),
+        hands = currentHandsMahjongTiles(),
         fuuroList = fuuroList,
         rule = rule,
         generalSituation = generalSituation,
@@ -681,8 +805,13 @@ open class RiichiPlayerState(
 
     fun drawTile(tile: TileInstance) {
         hands += tile
+        temporaryFuriten = false
         lastDrawnTile = tile
         invalidateHandAnalysis()
+    }
+
+    fun markTemporaryFuriten() {
+        temporaryFuriten = true
     }
 
     fun declareRiichi(riichiSengenTile: TileInstance, isFirstRound: Boolean) {
@@ -706,6 +835,7 @@ open class RiichiPlayerState(
         riichiSengenTile = null
         riichi = false
         doubleRiichi = false
+        temporaryFuriten = false
         invalidateHandAnalysis()
     }
 
@@ -728,12 +858,12 @@ open class RiichiPlayerState(
         currentShantenResult()?.shantenInfo as? ShantenWithoutGot
 
     private fun analyzeShanten(
-        hands: List<MahjongTile> = this.hands.toMahjongTileList(),
+        hands: List<MahjongTile> = currentHandsMahjongTiles(),
         fuuroList: List<Fuuro> = this.fuuroList,
         bestShantenOnly: Boolean = true
     ): UnionShantenResult? {
-        val tiles = hands.toUtilsTiles()
-        val furo = fuuroList.map { it.utilsFuro }
+        val tiles = toUtilsTilesCached(hands)
+        val furo = toUtilsFuroList(fuuroList)
         val primary = runCatching {
             shantenCalculator(tiles, furo, bestShantenOnly)
         }
@@ -866,6 +996,44 @@ open class RiichiPlayerState(
         invalidateHandAnalysis()
     }
 
+    private fun currentHandsMahjongTiles(): List<MahjongTile> {
+        if (cachedHandsMahjongTilesVersion != analysisStateVersion) {
+            cachedHandsMahjongTiles = hands.toMahjongTileList()
+            cachedHandsMahjongTilesVersion = analysisStateVersion
+        }
+        return cachedHandsMahjongTiles
+    }
+
+    private fun currentHandsUtilsTiles(): List<Tile> {
+        if (cachedHandsUtilsTilesVersion != analysisStateVersion) {
+            cachedHandsUtilsTiles = currentHandsMahjongTiles().toUtilsTiles()
+            cachedHandsUtilsTilesVersion = analysisStateVersion
+        }
+        return cachedHandsUtilsTiles
+    }
+
+    private fun currentFuuroUtils(): List<mahjongutils.models.Furo> {
+        if (cachedFuuroUtilsVersion != analysisStateVersion) {
+            cachedFuuroUtils = fuuroList.map { it.utilsFuro }
+            cachedFuuroUtilsVersion = analysisStateVersion
+        }
+        return cachedFuuroUtils
+    }
+
+    private fun toUtilsFuroList(fuuroList: List<Fuuro>): List<mahjongutils.models.Furo> =
+        if (fuuroList === this.fuuroList) {
+            currentFuuroUtils()
+        } else {
+            fuuroList.map { it.utilsFuro }
+        }
+
+    private fun toUtilsTilesCached(hands: List<MahjongTile>): List<Tile> =
+        if (hands === cachedHandsMahjongTiles && cachedHandsMahjongTilesVersion == analysisStateVersion) {
+            currentHandsUtilsTiles()
+        } else {
+            hands.toUtilsTiles()
+        }
+
     private fun List<MahjongTile>.toUtilsTiles(): List<Tile> =
         map { it.utilsTile }
 
@@ -878,7 +1046,7 @@ open class RiichiPlayerState(
         return cachedFuroReactions.getOrPut(cacheKey) {
             val result = runCatching {
                 furoChanceShanten(
-                    tiles = hands.toMahjongTileList().toUtilsTiles(),
+                    tiles = currentHandsUtilsTiles(),
                     chanceTile = tile.scoringTile,
                     allowChi = allowChii,
                     bestShantenOnly = false,
@@ -980,9 +1148,15 @@ open class RiichiPlayerState(
         fuuroList: List<Fuuro>,
         indicators: List<MahjongTile>
     ): Int {
-        val doraTiles = indicators.map { it.nextTile }
-        return hands.count { handTile -> doraTiles.any { dora -> handTile.sameKind(dora) } } +
-            fuuroList.sumOf { fuuro -> fuuro.tileInstances.count { tile -> doraTiles.any { dora -> tile.mahjongTile.sameKind(dora) } } }
+        if (indicators.isEmpty()) {
+            return 0
+        }
+        val doraBaseTiles = indicators.mapTo(hashSetOf()) { it.nextTile.baseTile }
+        val handCount = hands.count { it.baseTile in doraBaseTiles }
+        val fuuroCount = fuuroList.sumOf { fuuro ->
+            fuuro.tileInstances.count { tile -> tile.mahjongTile.baseTile in doraBaseTiles }
+        }
+        return handCount + fuuroCount
     }
 
     private fun buildExtraYaku(
@@ -1074,6 +1248,21 @@ open class RiichiPlayerState(
         "Chihou" -> "CHIIHOU"
         else -> name.uppercase()
     }
+
+    private data class CanWinRuleSignature(
+        val minimumHan: MahjongRule.MinimumHan,
+        val openTanyao: Boolean,
+        val redFive: MahjongRule.RedFive,
+        val localYaku: Boolean
+    )
+
+    private data class CanWinMemoKey(
+        val winningTile: MahjongTile,
+        val isWinningTileInHands: Boolean,
+        val rule: CanWinRuleSignature,
+        val generalHash: Int,
+        val personalHash: Int
+    )
 
     private data class FuroReactionAnalysis(
         val pass: ActionEvaluation,

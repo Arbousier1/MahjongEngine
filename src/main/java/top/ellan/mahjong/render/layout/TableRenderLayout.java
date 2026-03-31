@@ -349,7 +349,7 @@ public final class TableRenderLayout {
         double drawGap = tileIndex == handSize - 1 && handSize % 3 == 2 ? TILE_PADDING * 15.0D : 0.0D;
         double stackOffset = tileIndex * (TILE_WIDTH + TILE_PADDING) + drawGap;
         double tileYOffset = selected ? SELECTED_HAND_TILE_Y_OFFSET : 0.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> handBase.add(0.0D, UPRIGHT_TILE_Y + tileYOffset, startingPos - stackOffset);
             case SOUTH -> handBase.add(-startingPos + stackOffset, UPRIGHT_TILE_Y + tileYOffset, 0.0D);
             case WEST -> handBase.add(0.0D, UPRIGHT_TILE_Y + tileYOffset, -startingPos + stackOffset);
@@ -369,10 +369,10 @@ public final class TableRenderLayout {
     }
 
     private static TableBounds tableBoundsFromTiles(Point center) {
-        Point eastMeldStart = meldStart(center, SeatWind.EAST);
-        Point southMeldStart = meldStart(center, SeatWind.SOUTH);
-        Point westMeldStart = meldStart(center, SeatWind.WEST);
-        Point northMeldStart = meldStart(center, SeatWind.NORTH);
+        Point eastMeldStart = meldStartByDisplayDirection(center, SeatWind.EAST);
+        Point southMeldStart = meldStartByDisplayDirection(center, SeatWind.SOUTH);
+        Point westMeldStart = meldStartByDisplayDirection(center, SeatWind.WEST);
+        Point northMeldStart = meldStartByDisplayDirection(center, SeatWind.NORTH);
         double halfTileHeight = TILE_HEIGHT / 2.0D;
         double minX = northMeldStart.x();
         double maxX = southMeldStart.x();
@@ -383,13 +383,22 @@ public final class TableRenderLayout {
         return new TableBounds(centerX, centerZ, minX, maxX, minZ, maxZ);
     }
 
+    private static Point meldStartByDisplayDirection(Point center, SeatWind direction) {
+        for (SeatWind wind : SeatWind.values()) {
+            if (displayDirection(wind) == direction) {
+                return meldStart(center, wind);
+            }
+        }
+        throw new IllegalStateException("Missing meld start for display direction: " + direction);
+    }
+
     private static Point wallSlotPoint(Point center, int wallSlot) {
         SeatWind wind = WallLayout.wallSeat(wallSlot);
         int stackIndex = WallLayout.wallColumn(wallSlot);
         double stackWidth = stackIndex * WALL_TILE_STEP;
         double startingPos = (17.0D * TILE_WIDTH) / 2.0D - TILE_HEIGHT;
         double yOffset = FLAT_TILE_Y + wallLayerYOffset(WallLayout.wallLayer(wallSlot));
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> center.add(WALL_DIRECTION_OFFSET, yOffset, -startingPos + stackWidth);
             case SOUTH -> center.add(startingPos - stackWidth, yOffset, WALL_DIRECTION_OFFSET);
             case WEST -> center.add(-WALL_DIRECTION_OFFSET, yOffset, startingPos - stackWidth);
@@ -434,7 +443,7 @@ public final class TableRenderLayout {
             Point base = reversed.getFirst().point();
             double positionY = reversed.get(index % 2 == 0 ? 0 : 1).point().y();
             double offset = WALL_TILE_STEP * (index / 2);
-            placement.setPoint(switch (direction) {
+            placement.setPoint(switch (displayDirection(direction)) {
                 case EAST -> new Point(base.x(), positionY, base.z() - offset);
                 case SOUTH -> new Point(base.x() + offset, positionY, base.z());
                 case WEST -> new Point(base.x(), positionY, base.z() + offset);
@@ -454,7 +463,7 @@ public final class TableRenderLayout {
     }
 
     private static Point handDirectionBase(Point center, SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> center.add(HAND_DIRECTION_OFFSET, 0.0D, 0.0D);
             case SOUTH -> center.add(0.0D, 0.0D, HAND_DIRECTION_OFFSET);
             case WEST -> center.add(-HAND_DIRECTION_OFFSET, 0.0D, 0.0D);
@@ -466,7 +475,7 @@ public final class TableRenderLayout {
         double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
         double paddingFromCenter = halfWidthOfSixTiles + TILE_HEIGHT / 2.0D + TILE_HEIGHT / 4.0D;
         double basicOffset = halfWidthOfSixTiles - TILE_WIDTH / 2.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> center.add(paddingFromCenter, 0.0D, basicOffset);
             case SOUTH -> center.add(-basicOffset, 0.0D, paddingFromCenter);
             case WEST -> center.add(-paddingFromCenter, 0.0D, -basicOffset);
@@ -476,7 +485,7 @@ public final class TableRenderLayout {
 
     private static Point meldStart(Point center, SeatWind wind) {
         double halfHeight = TILE_HEIGHT / 2.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfHeight, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER);
             case SOUTH -> center.add(HALF_TABLE_LENGTH_NO_BORDER, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfHeight);
             case WEST -> center.add(-HALF_TABLE_LENGTH_NO_BORDER + halfHeight, 0.0D, HALF_TABLE_LENGTH_NO_BORDER);
@@ -487,7 +496,7 @@ public final class TableRenderLayout {
     private static Point riichiStickCenter(Point center, SeatWind wind) {
         double halfWidthOfSixTiles = TILE_WIDTH * DISCARDS_PER_ROW / 2.0D;
         double paddingFromCenter = halfWidthOfSixTiles - STICK_DEPTH / 2.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> center.add(paddingFromCenter, STICK_Y_OFFSET, 0.0D);
             case SOUTH -> center.add(0.0D, STICK_Y_OFFSET, paddingFromCenter);
             case WEST -> center.add(-paddingFromCenter, STICK_Y_OFFSET, 0.0D);
@@ -496,7 +505,8 @@ public final class TableRenderLayout {
     }
 
     private static boolean riichiStickLongOnX(SeatWind wind) {
-        return wind == SeatWind.SOUTH || wind == SeatWind.NORTH;
+        SeatWind direction = displayDirection(wind);
+        return direction == SeatWind.SOUTH || direction == SeatWind.NORTH;
     }
 
     private static Point cornerStickCenter(Point center, SeatWind wind, int index) {
@@ -504,7 +514,7 @@ public final class TableRenderLayout {
         int stickIndex = index % STICKS_PER_STACK;
         double halfWidthOfStick = STICK_WIDTH / 2.0D;
         double halfDepthOfStick = STICK_DEPTH / 2.0D;
-        Point start = switch (wind) {
+        Point start = switch (displayDirection(wind)) {
             case EAST -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick, 0.0D, -HALF_TABLE_LENGTH_NO_BORDER + halfDepthOfStick);
             case SOUTH -> center.add(HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfWidthOfStick);
             case WEST -> center.add(-HALF_TABLE_LENGTH_NO_BORDER + halfWidthOfStick, 0.0D, HALF_TABLE_LENGTH_NO_BORDER - halfDepthOfStick);
@@ -514,12 +524,13 @@ public final class TableRenderLayout {
     }
 
     private static boolean cornerStickLongOnX(SeatWind wind) {
-        return wind == SeatWind.EAST || wind == SeatWind.WEST;
+        SeatWind direction = displayDirection(wind);
+        return direction == SeatWind.EAST || direction == SeatWind.WEST;
     }
 
     private static Offset cornerStickOffset(SeatWind wind) {
         double amount = STICK_DEPTH + TILE_PADDING;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, amount);
             case SOUTH -> new Offset(-amount, 0.0D);
             case WEST -> new Offset(0.0D, -amount);
@@ -529,7 +540,7 @@ public final class TableRenderLayout {
 
     private static Offset cornerStickMeldOffset(SeatWind wind, int firstStackCount) {
         double amount = firstStackCount * STICK_DEPTH + Math.max(0, firstStackCount - 1) * TILE_PADDING;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, amount);
             case SOUTH -> new Offset(-amount, 0.0D);
             case WEST -> new Offset(0.0D, -amount);
@@ -538,7 +549,7 @@ public final class TableRenderLayout {
     }
 
     private static Offset deadWallGapOffset(SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, DEAD_WALL_GAP);
             case SOUTH -> new Offset(-DEAD_WALL_GAP, 0.0D);
             case WEST -> new Offset(0.0D, -DEAD_WALL_GAP);
@@ -547,7 +558,7 @@ public final class TableRenderLayout {
     }
 
     private static Offset deadWallCornerShift(SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, TILE_WIDTH);
             case SOUTH -> new Offset(-TILE_WIDTH, 0.0D);
             case WEST -> new Offset(0.0D, -TILE_WIDTH);
@@ -556,7 +567,7 @@ public final class TableRenderLayout {
     }
 
     private static Offset tileOffset(SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, -TILE_WIDTH);
             case SOUTH -> new Offset(TILE_WIDTH, 0.0D);
             case WEST -> new Offset(0.0D, TILE_WIDTH);
@@ -566,7 +577,7 @@ public final class TableRenderLayout {
 
     private static Offset riichiTileOffset(SeatWind wind) {
         double amount = (TILE_HEIGHT + TILE_WIDTH) / 2.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, -amount);
             case SOUTH -> new Offset(amount, 0.0D);
             case WEST -> new Offset(0.0D, amount);
@@ -576,7 +587,7 @@ public final class TableRenderLayout {
 
     private static Offset lineOffset(SeatWind wind) {
         double amount = TILE_HEIGHT + TILE_PADDING;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(amount, 0.0D);
             case SOUTH -> new Offset(0.0D, amount);
             case WEST -> new Offset(-amount, 0.0D);
@@ -585,7 +596,7 @@ public final class TableRenderLayout {
     }
 
     private static Offset smallGapOffset(SeatWind wind) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, -TILE_PADDING);
             case SOUTH -> new Offset(TILE_PADDING, 0.0D);
             case WEST -> new Offset(0.0D, TILE_PADDING);
@@ -595,7 +606,7 @@ public final class TableRenderLayout {
 
     private static Offset verticalTileOffset(SeatWind wind) {
         double amount = TILE_WIDTH + TILE_PADDING;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, amount);
             case SOUTH -> new Offset(-amount, 0.0D);
             case WEST -> new Offset(0.0D, -amount);
@@ -609,7 +620,7 @@ public final class TableRenderLayout {
 
     private static Offset horizontalTileOffset(SeatWind wind) {
         double amount = TILE_HEIGHT + TILE_PADDING;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, amount);
             case SOUTH -> new Offset(-amount, 0.0D);
             case WEST -> new Offset(0.0D, -amount);
@@ -623,7 +634,7 @@ public final class TableRenderLayout {
 
     private static Offset horizontalTileGravityOffset(SeatWind wind) {
         double amount = (TILE_HEIGHT - TILE_WIDTH) / 2.0D;
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(amount, 0.0D);
             case SOUTH -> new Offset(0.0D, amount);
             case WEST -> new Offset(-amount, 0.0D);
@@ -642,11 +653,20 @@ public final class TableRenderLayout {
     }
 
     private static Offset offsetTowardSeatFront(SeatWind wind, double amount) {
-        return switch (wind) {
+        return switch (displayDirection(wind)) {
             case EAST -> new Offset(amount, 0.0D);
             case SOUTH -> new Offset(0.0D, amount);
             case WEST -> new Offset(-amount, 0.0D);
             case NORTH -> new Offset(0.0D, -amount);
+        };
+    }
+
+    private static SeatWind displayDirection(SeatWind wind) {
+        return switch (wind) {
+            case EAST -> SeatWind.EAST;
+            case SOUTH -> SeatWind.NORTH;
+            case WEST -> SeatWind.WEST;
+            case NORTH -> SeatWind.SOUTH;
         };
     }
 
@@ -766,6 +786,4 @@ public final class TableRenderLayout {
     private record DeadWallPlacement(int wallSlot, Point point, float yaw) {
     }
 }
-
-
 

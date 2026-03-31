@@ -45,6 +45,8 @@ final class SessionRuleCoordinator {
                 case "redfive" -> this.session.configuredRuleInternal().setRedFive(MahjongRule.RedFive.valueOf(rawValue.toUpperCase(Locale.ROOT)));
                 case "opentanyao" -> this.session.configuredRuleInternal().setOpenTanyao(Boolean.parseBoolean(rawValue));
                 case "localyaku" -> this.session.configuredRuleInternal().setLocalYaku(Boolean.parseBoolean(rawValue));
+                case "ronmode", "ron" -> this.session.configuredRuleInternal().setRonMode(parseRonMode(rawValue));
+                case "riichiprofile", "profile" -> this.session.configuredRuleInternal().setRiichiProfile(parseRiichiProfile(rawValue));
                 case "startingpoints", "startpoints" -> this.session.configuredRuleInternal().setStartingPoints(Integer.parseInt(rawValue));
                 case "minpointstowin", "goal" -> this.session.configuredRuleInternal().setMinPointsToWin(Integer.parseInt(rawValue));
                 default -> {
@@ -60,7 +62,7 @@ final class SessionRuleCoordinator {
     }
 
     List<String> ruleKeys() {
-        return List.of("preset", "mode", "variant", "ruleset", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "startingPoints", "minPointsToWin");
+        return List.of("preset", "mode", "variant", "ruleset", "length", "thinkingTime", "minimumHan", "spectate", "redFive", "openTanyao", "localYaku", "ronMode", "riichiProfile", "startingPoints", "minPointsToWin");
     }
 
     List<String> ruleValues(String key) {
@@ -71,6 +73,8 @@ final class SessionRuleCoordinator {
             case "thinkingtime", "thinking" -> List.of("VERY_SHORT", "SHORT", "NORMAL", "LONG", "VERY_LONG");
             case "minimumhan", "minhan" -> List.of("ONE", "TWO", "FOUR", "YAKUMAN");
             case "redfive" -> List.of("NONE", "THREE", "FOUR");
+            case "ronmode", "ron" -> List.of("HEAD_BUMP", "MULTI_RON");
+            case "riichiprofile", "profile" -> List.of("MAJSOUL", "TOURNAMENT");
             case "spectate", "opentanyao", "localyaku" -> List.of("true", "false");
             case "startingpoints", "startpoints" -> List.of("25000", "30000", "35000");
             case "minpointstowin", "goal" -> List.of("30000", "35000", "40000");
@@ -88,8 +92,34 @@ final class SessionRuleCoordinator {
             rule.getSpectate(),
             rule.getRedFive(),
             rule.getOpenTanyao(),
-            rule.getLocalYaku()
+            rule.getLocalYaku(),
+            rule.getRonMode(),
+            rule.getRiichiProfile()
         );
+    }
+
+    private static MahjongRule.RonMode parseRonMode(String rawValue) {
+        if (rawValue == null) {
+            throw new IllegalArgumentException("ronMode value is required");
+        }
+        String normalized = rawValue.toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "ATAMAHANE", "HEAD_JUMP", "HEADJUMP" -> MahjongRule.RonMode.HEAD_BUMP;
+            case "MULTI", "DOUBLE_TRIPLE", "DOUBLERON", "TRIPLERON" -> MahjongRule.RonMode.MULTI_RON;
+            default -> MahjongRule.RonMode.valueOf(normalized);
+        };
+    }
+
+    private static MahjongRule.RiichiProfile parseRiichiProfile(String rawValue) {
+        if (rawValue == null) {
+            throw new IllegalArgumentException("riichiProfile value is required");
+        }
+        String normalized = rawValue.toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "MJS", "MAHJONGSOUL" -> MahjongRule.RiichiProfile.MAJSOUL;
+            case "COMPETITIVE", "JPML", "TOURNAMENT" -> MahjongRule.RiichiProfile.TOURNAMENT;
+            default -> MahjongRule.RiichiProfile.valueOf(normalized);
+        };
     }
 }
 

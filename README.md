@@ -42,6 +42,8 @@ The current branch already supports playable Riichi Mahjong and GB Mahjong flows
 - `/mahjong unspectate`: stop spectating
 - `/mahjong addbot` and `/mahjong removebot`: manage bots before the round starts
 - `/mahjong rule [key] [value]`: view or change table rules before the next start
+- Riichi multi-ron mode: `/mahjong rule ronMode <HEAD_BUMP|MULTI_RON>`
+- Riichi flow profile: `/mahjong rule riichiProfile <MAJSOUL|TOURNAMENT>`
 - `/mahjong state`: show the current table summary
 - `/mahjong riichi <index>`, `/mahjong tsumo`, `/mahjong ron`, `/mahjong pon`, `/mahjong minkan`, `/mahjong chii <tileA> <tileB>`, `/mahjong kan <tile>`, `/mahjong skip`, `/mahjong kyuushu`: round actions
 - `/mahjong settlement`: reopen the latest settlement UI
