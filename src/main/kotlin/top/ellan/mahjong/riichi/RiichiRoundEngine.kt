@@ -192,6 +192,12 @@ class RiichiRoundEngine(
         val player = currentPlayer
         if (tileIndex !in player.hands.indices) return false
         val selectedTile = player.hands[tileIndex]
+        if ((player.riichi || player.doubleRiichi) &&
+            selectedTile.id != player.lastDrawnTile?.id &&
+            selectedTile.id != player.riichiSengenTile?.id
+        ) {
+            return false
+        }
         val discarded = player.discardTile(selectedTile) ?: return false
         currentDrawIsRinshan = false
         discards += discarded
@@ -645,6 +651,7 @@ class RiichiRoundEngine(
     private fun resolveRon(winners: List<RiichiPlayerState>, target: RiichiPlayerState, tile: TileInstance, isChankan: Boolean = false) {
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
+        cancelRiichiDepositIfDeclarationRon(target, tile)
         val yakuSettlements = mutableListOf<YakuSettlement>()
         val scoreList = mutableListOf<ScoreItem>()
         val situation = generalSituation
@@ -722,6 +729,22 @@ class RiichiRoundEngine(
         }
         lastResolution = RoundResolution("Ron", yakuSettlements, ScoreSettlement("Ron", scoreList))
         finishRound(winners.contains(dealer), true)
+    }
+
+    private fun cancelRiichiDepositIfDeclarationRon(target: RiichiPlayerState, tile: TileInstance) {
+        if (!(target.riichi || target.doubleRiichi)) {
+            return
+        }
+        val declarationTile = target.riichiSengenTile ?: return
+        if (declarationTile.id != tile.id) {
+            return
+        }
+        if (target.sticks.remove(ScoringStick.P1000)) {
+            target.points += ScoringStick.P1000.point
+        }
+        target.riichi = false
+        target.doubleRiichi = false
+        target.riichiSengenTile = null
     }
 
     private fun resolveTsumo(player: RiichiPlayerState, tile: TileInstance, isRinshanKaihoh: Boolean = false) {
