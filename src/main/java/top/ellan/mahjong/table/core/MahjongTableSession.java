@@ -845,6 +845,10 @@ public final class MahjongTableSession {
         return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedDiscardSuggestions(playerId);
     }
 
+    public boolean canSelectHandTile(UUID playerId, int tileIndex) {
+        return this.canSelectHandTileInternal(playerId, tileIndex);
+    }
+
     public top.ellan.mahjong.gb.jni.GbTingResponse gbTingOptions(UUID playerId) {
         if (!(this.roundController instanceof GbTableRoundController gbController) || playerId == null) {
             return new top.ellan.mahjong.gb.jni.GbTingResponse(false, List.of(), "GB round is inactive.");

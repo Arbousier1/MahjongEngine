@@ -18,7 +18,7 @@ public final class BotActionScheduler {
     }
 
     public static void schedule(MahjongTableSession session) {
-        if (session.currentVariant() == MahjongVariant.GB) {
+        if (session.currentVariant() != MahjongVariant.RIICHI) {
             scheduleGb(session);
             return;
         }
@@ -159,10 +159,19 @@ public final class BotActionScheduler {
             return;
         }
         int discardIndex = session.gbSuggestedDiscardIndex(playerId);
-        if (discardIndex < 0 || discardIndex >= hand.size()) {
-            discardIndex = hand.size() - 1;
+        if (!session.canSelectHandTile(playerId, discardIndex)) {
+            discardIndex = findSelectableDiscardIndex(session, playerId, hand.size());
         }
-        session.discard(playerId, discardIndex);
+        if (discardIndex < 0) {
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleGbTurn(session, playerId), 10L));
+            return;
+        }
+        if (!session.discard(playerId, discardIndex)
+            && session.isStarted()
+            && !session.hasPendingReaction()
+            && Objects.equals(session.playerAt(session.currentSeat()), playerId)) {
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> handleGbTurn(session, playerId), 10L));
+        }
     }
 
     private static int findDiscardIndex(RiichiPlayerState player, MahjongTile tile) {
@@ -185,6 +194,15 @@ public final class BotActionScheduler {
             }
         }
         return player.getHands().size() - 1;
+    }
+
+    private static int findSelectableDiscardIndex(MahjongTableSession session, UUID playerId, int handSize) {
+        for (int i = handSize - 1; i >= 0; i--) {
+            if (session.canSelectHandTile(playerId, i)) {
+                return i;
+            }
+        }
+        return -1;
     }
 }
 
