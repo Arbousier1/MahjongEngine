@@ -41,7 +41,7 @@ class TableRendererFurnitureAnchorTest {
         assertEquals(2.0, anchor.x, 0.000001)
         assertEquals(63.525, anchor.y, 0.000001)
         assertEquals(5.0, anchor.z, 0.000001)
-        assertEquals(180.0f, anchor.yaw)
+        assertEquals(90.0f, anchor.yaw)
     }
 }
 

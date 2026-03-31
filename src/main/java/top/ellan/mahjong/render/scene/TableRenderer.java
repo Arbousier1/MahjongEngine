@@ -1667,10 +1667,10 @@ public final class TableRenderer {
     }
 
     private static TableBounds tableBoundsFromTiles(Location center) {
-        Location eastMeldStart = meldStart(center, SeatWind.EAST);
-        Location southMeldStart = meldStart(center, SeatWind.SOUTH);
-        Location westMeldStart = meldStart(center, SeatWind.WEST);
-        Location northMeldStart = meldStart(center, SeatWind.NORTH);
+        Location eastMeldStart = meldStartByDisplayDirection(center, SeatWind.EAST);
+        Location southMeldStart = meldStartByDisplayDirection(center, SeatWind.SOUTH);
+        Location westMeldStart = meldStartByDisplayDirection(center, SeatWind.WEST);
+        Location northMeldStart = meldStartByDisplayDirection(center, SeatWind.NORTH);
         double halfTileHeight = TILE_HEIGHT / 2.0D;
         double minX = northMeldStart.getX();
         double maxX = southMeldStart.getX();
@@ -1679,6 +1679,15 @@ public final class TableRenderer {
         double centerX = (westMeldStart.getX() - halfTileHeight + maxX) / 2.0D;
         double centerZ = (northMeldStart.getZ() - halfTileHeight + maxZ) / 2.0D;
         return new TableBounds(centerX, centerZ, minX, maxX, minZ, maxZ);
+    }
+
+    private static Location meldStartByDisplayDirection(Location center, SeatWind direction) {
+        for (SeatWind wind : SeatWind.values()) {
+            if (displayDirection(wind) == direction) {
+                return meldStart(center, wind);
+            }
+        }
+        throw new IllegalStateException("Missing meld start for display direction: " + direction);
     }
 
     private static int wallBreakTileIndex(MahjongTableSession session) {
@@ -1991,10 +2000,10 @@ public final class TableRenderer {
 
     private static SeatWind displayDirection(SeatWind wind) {
         return switch (wind) {
-            case EAST -> SeatWind.SOUTH;
-            case SOUTH -> SeatWind.EAST;
-            case WEST -> SeatWind.NORTH;
-            case NORTH -> SeatWind.WEST;
+            case EAST -> SeatWind.EAST;
+            case SOUTH -> SeatWind.NORTH;
+            case WEST -> SeatWind.WEST;
+            case NORTH -> SeatWind.SOUTH;
         };
     }
 

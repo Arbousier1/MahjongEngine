@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.4 - 2026-03-31
+
+Table direction and release stability update.
+
+- Switched table display direction mapping to the intended riichi-style counterclockwise seat flow.
+- Aligned wall/hand/meld rendering orientation so the in-game east/south/west/north placement now matches the configured direction model.
+- Fixed table bounds anchoring so the table body follows tile-layout direction changes instead of staying in the old position.
+- Updated riichi and render regression tests to lock the new orientation behavior.
+- Stabilized GB `minkan` priority test assertions by filtering flower-display rows from meld-count checks.
+
 ## 0.7.2 - 2026-03-25
 
 Round-visibility and localization release.

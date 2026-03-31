@@ -209,9 +209,9 @@ public final class RiichiTableRoundController implements TableRoundController {
             top.ellan.mahjong.riichi.model.TileInstance claimTile = fuuro.getClaimTile();
             orderedInstances.remove(claimTile);
             int claimTileIndex = switch (fuuro.getClaimTarget().name()) {
-                case "LEFT" -> 0;
+                case "RIGHT" -> 0;
                 case "ACROSS" -> 1;
-                case "RIGHT" -> orderedInstances.size();
+                case "LEFT" -> orderedInstances.size();
                 default -> -1;
             };
             if (claimTileIndex >= 0) {

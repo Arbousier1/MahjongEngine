@@ -24,7 +24,7 @@ class RiichiTableRoundControllerTest {
 
         east.fuuroList.clear()
         east.fuuroList += ponFuuro(ClaimTarget.LEFT)
-        assertEquals(0, controller.fuuro(eastId).single().claimTileIndex())
+        assertEquals(2, controller.fuuro(eastId).single().claimTileIndex())
 
         east.fuuroList.clear()
         east.fuuroList += ponFuuro(ClaimTarget.ACROSS)
@@ -32,7 +32,7 @@ class RiichiTableRoundControllerTest {
 
         east.fuuroList.clear()
         east.fuuroList += ponFuuro(ClaimTarget.RIGHT)
-        assertEquals(2, controller.fuuro(eastId).single().claimTileIndex())
+        assertEquals(0, controller.fuuro(eastId).single().claimTileIndex())
     }
 
     @Test

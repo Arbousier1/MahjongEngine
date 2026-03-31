@@ -253,8 +253,10 @@ class GbTableRoundControllerTest {
         assertTrue(controller.react(west, ReactionResponse(ReactionType.MINKAN, null)))
 
         assertEquals(SeatWind.WEST, controller.currentSeat())
-        assertEquals(0, controller.fuuro(south).size)
-        assertEquals(1, controller.fuuro(west).size)
+        val southMelds = controller.fuuro(south).filter { it.claimTileIndex() >= 0 }
+        val westMelds = controller.fuuro(west).filter { it.claimTileIndex() >= 0 }
+        assertEquals(0, southMelds.size)
+        assertEquals(1, westMelds.size)
     }
 
     @Test

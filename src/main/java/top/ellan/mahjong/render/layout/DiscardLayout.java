@@ -34,10 +34,10 @@ public final class DiscardLayout {
 
     private static SeatWind displayDirection(SeatWind wind) {
         return switch (wind) {
-            case EAST -> SeatWind.SOUTH;
-            case SOUTH -> SeatWind.EAST;
-            case WEST -> SeatWind.NORTH;
-            case NORTH -> SeatWind.WEST;
+            case EAST -> SeatWind.EAST;
+            case SOUTH -> SeatWind.NORTH;
+            case WEST -> SeatWind.WEST;
+            case NORTH -> SeatWind.SOUTH;
         };
     }
 }

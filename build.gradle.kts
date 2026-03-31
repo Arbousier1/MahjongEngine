@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "top.ellan"
-version = "0.7.3"
+version = "0.7.4"
 
 val kotlinRuntimeVersion = "2.3.20"
 val kotlinSerializationVersion = "1.10.0"

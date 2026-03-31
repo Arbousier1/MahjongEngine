@@ -55,10 +55,10 @@ class TableRendererTest {
     @Test
     fun `riichi discard uses sideways footprint and yaw`() {
         assertTrue(DiscardLayout.discardFootprint(tileWidth, tileHeight, true) > DiscardLayout.discardFootprint(tileWidth, tileHeight, false))
-        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
-        assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
-        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
-        assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
+        assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
+        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
+        assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
+        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
     }
 
     @Test
@@ -80,6 +80,28 @@ class TableRendererTest {
         assertEquals(13, plan.seat(SeatWind.EAST).publicHandPoints().size)
         assertEquals(13, plan.seat(SeatWind.EAST).privateHandPoints().size)
         assertEquals(2, plan.seat(SeatWind.EAST).stickPlacements().size)
+        assertTrue(plan.borderSpanX() > 0.0)
+        assertTrue(plan.borderSpanZ() > 0.0)
+    }
+
+    @Test
+    fun `table layout follows upstream seat sides`() {
+        val plan = TableRenderLayout.precompute(startedSnapshot())
+
+        assertTrue(plan.seat(SeatWind.EAST).privateHandPoints().first().x() > 0.0)
+        assertTrue(plan.seat(SeatWind.SOUTH).handBase().z() < 0.0)
+        assertTrue(plan.seat(SeatWind.WEST).handBase().x() < 0.0)
+        assertTrue(plan.seat(SeatWind.NORTH).handBase().z() > 0.0)
+
+        val eastWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.EAST }.value!!
+        val southWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.SOUTH }.value!!
+        val westWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.WEST }.value!!
+        val northWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.NORTH }.value!!
+
+        assertTrue(eastWall.point().x() > 0.0)
+        assertTrue(southWall.point().z() < 0.0)
+        assertTrue(westWall.point().x() < 0.0)
+        assertTrue(northWall.point().z() > 0.0)
     }
 
     @Test
@@ -232,9 +254,9 @@ class TableRendererTest {
         val left = horizontalTileRankForClaimIndex(SeatWind.EAST, 0)
         val middle = horizontalTileRankForClaimIndex(SeatWind.EAST, 1)
         val right = horizontalTileRankForClaimIndex(SeatWind.EAST, 2)
-        assertEquals(0, left)
+        assertEquals(2, left)
         assertEquals(1, middle)
-        assertEquals(2, right)
+        assertEquals(0, right)
     }
 
     private fun startedSnapshot(): TableRenderSnapshot {
@@ -379,18 +401,18 @@ class TableRendererTest {
 
     private fun leftToRightScalar(point: TableRenderLayout.Point, wind: SeatWind): Double =
         when (wind) {
-            SeatWind.EAST -> -point.x()
-            SeatWind.SOUTH -> point.z()
-            SeatWind.WEST -> point.x()
-            SeatWind.NORTH -> -point.z()
+            SeatWind.EAST -> -point.z()
+            SeatWind.SOUTH -> -point.x()
+            SeatWind.WEST -> point.z()
+            SeatWind.NORTH -> point.x()
         }
 
     private fun seatYawFor(wind: SeatWind): Float =
         when (wind) {
-            SeatWind.EAST -> 0.0f
-            SeatWind.SOUTH -> -90.0f
-            SeatWind.WEST -> 180.0f
-            SeatWind.NORTH -> 90.0f
+            SeatWind.EAST -> -90.0f
+            SeatWind.SOUTH -> 180.0f
+            SeatWind.WEST -> 90.0f
+            SeatWind.NORTH -> 0.0f
         }
 }
 
