@@ -3,8 +3,8 @@ package top.ellan.mahjong.table.core.round;
 import top.ellan.mahjong.table.core.MahjongVariant;
 
 public enum GbRuleProfile {
-    GB(MahjongVariant.GB, "GB_MAHJONG", 8, true, true, false),
-    SICHUAN(MahjongVariant.SICHUAN, "SICHUAN_MAHJONG", 0, false, false, true);
+    GB(MahjongVariant.GB, "GB_MAHJONG", 8, true, true, false, true),
+    SICHUAN(MahjongVariant.SICHUAN, "SICHUAN_MAHJONG", 0, false, false, true, false);
 
     private final MahjongVariant variant;
     private final String nativeRuleProfile;
@@ -12,6 +12,7 @@ public enum GbRuleProfile {
     private final boolean includesHonors;
     private final boolean includesFlowers;
     private final boolean useSichuanHuEvaluator;
+    private final boolean allowsChii;
 
     GbRuleProfile(
         MahjongVariant variant,
@@ -19,7 +20,8 @@ public enum GbRuleProfile {
         int minimumFan,
         boolean includesHonors,
         boolean includesFlowers,
-        boolean useSichuanHuEvaluator
+        boolean useSichuanHuEvaluator,
+        boolean allowsChii
     ) {
         this.variant = variant;
         this.nativeRuleProfile = nativeRuleProfile;
@@ -27,6 +29,7 @@ public enum GbRuleProfile {
         this.includesHonors = includesHonors;
         this.includesFlowers = includesFlowers;
         this.useSichuanHuEvaluator = useSichuanHuEvaluator;
+        this.allowsChii = allowsChii;
     }
 
     public MahjongVariant variant() {
@@ -51,6 +54,10 @@ public enum GbRuleProfile {
 
     public boolean useSichuanHuEvaluator() {
         return this.useSichuanHuEvaluator;
+    }
+
+    public boolean allowsChii() {
+        return this.allowsChii;
     }
 
     public static GbRuleProfile forVariant(MahjongVariant variant) {

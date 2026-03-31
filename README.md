@@ -12,7 +12,7 @@ Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 
 ## Current Scope
 
-The current branch already supports playable Riichi Mahjong and GB Mahjong flows on Paper/Folia:
+The current branch already supports playable Riichi Mahjong, GB Mahjong, and an in-progress Sichuan Mahjong flow on Paper/Folia:
 
 - lobby-style tables that can persist across restart
 - empty-table creation, fixed east/south/west/north seats, click-to-join, and click-to-ready
@@ -33,7 +33,7 @@ The current branch already supports playable Riichi Mahjong and GB Mahjong flows
 - `/mahjong help`: show in-game command help
 - `/mahjong create`: create a new empty table at your location
 - `/mahjong botmatch [hanchan|tonpuu]`: create a 4-bot test match and spectate it
-- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB>`: apply a preset before the next start
+- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`: apply a preset before the next start
 - `/mahjong join <tableId>`: join a table as a player
 - `/mahjong leave`: leave immediately before the hand starts, or queue a leave after the current hand
 - `/mahjong list`: list active tables and their locations
@@ -70,6 +70,26 @@ Admin targeting details:
 ## Rule References
 
 - Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
+
+## Sichuan Rules (Bilingual + Code Mapping)
+
+The following items describe what is already implemented for `SICHUAN` mode, with Chinese/English pairing and direct code references.
+
+- `规则档位` / `Rule profile`: Sichuan uses a dedicated profile with suited tiles only, no flowers/honors, and no `chii`.
+  Code: [GbRuleProfile.java](./src/main/java/top/ellan/mahjong/table/core/round/GbRuleProfile.java)
+- `定缺（当前为自动）` / `Missing suit (currently auto-selected)`: at round start, each player gets an auto-selected missing suit (fewest tiles, tie-break `M > P > S`).
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`assignSichuanMissingSuits`, `autoSelectSichuanMissingSuit`)
+- `强制定缺出牌` / `Forced missing-suit discard`: while the hand still contains missing-suit tiles, players can only discard that suit.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`canSelectHandTile`, `canDiscardBySichuanMissingSuit`)
+- `胡牌需缺一门 + 清空定缺` / `Win must be missing one suit + chosen missing suit cleared`: Sichuan win checks enforce both restrictions in fan/win/ting paths.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`satisfiesSichuanWinRestrictions`, `evaluateFanResponse`, `evaluateTing`)
+- `血战到底骨架` / `Blood battle skeleton`: winner settles and leaves active turn order until enough winners end the hand.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`usesSichuanBloodBattle`, `recordSichuanWins`, `finishSichuanBloodBattle`)
+
+Validation tests:
+
+- [GbTableRoundControllerTest.kt](./src/test/kotlin/top/ellan/mahjong/table/core/round/GbTableRoundControllerTest.kt)
+  Cases include `sichuan profile disables chii reactions`, `sichuan discard must follow selected missing suit`, and Sichuan tsumo/blood-battle coverage.
 
 ## Build
 

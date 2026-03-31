@@ -63,6 +63,7 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, List<GbMeldState>> melds = new HashMap<>();
     private final Map<UUID, GbTingResponse> tingCache = new HashMap<>();
     private final Map<UUID, Integer> roundStartPoints = new HashMap<>();
+    private final Map<UUID, SichuanSuit> sichuanMissingSuits = new HashMap<>();
     private final Set<UUID> settledSichuanPlayers = new HashSet<>();
     private final List<GbReactionResolver.ResolvedGbWin> sichuanWinHistory = new ArrayList<>();
     private List<MahjongTile> wall = List.of();
@@ -169,6 +170,7 @@ public final class GbTableRoundController implements TableRoundController {
         this.afterKanTsumoPlayer = null;
         this.roundStartPoints.clear();
         this.roundStartPoints.putAll(this.points);
+        this.sichuanMissingSuits.clear();
         this.settledSichuanPlayers.clear();
         this.sichuanWinHistory.clear();
         for (UUID playerId : this.seats.values()) {
@@ -188,6 +190,7 @@ public final class GbTableRoundController implements TableRoundController {
             }
         }
         this.drawTile(this.currentPlayerId(), false, false, true);
+        this.assignSichuanMissingSuits();
         this.refreshAllTing();
     }
 
@@ -491,7 +494,10 @@ public final class GbTableRoundController implements TableRoundController {
             return false;
         }
         List<MahjongTile> hand = this.hands.get(playerId);
-        return hand != null && tileIndex >= 0 && tileIndex < hand.size();
+        if (hand == null || tileIndex < 0 || tileIndex >= hand.size()) {
+            return false;
+        }
+        return this.canDiscardBySichuanMissingSuit(playerId, hand.get(tileIndex), hand);
     }
 
     @Override
@@ -589,6 +595,9 @@ public final class GbTableRoundController implements TableRoundController {
         EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
         for (int i = 0; i < hand.size(); i++) {
             MahjongTile discarded = hand.get(i);
+            if (!this.canDiscardBySichuanMissingSuit(playerId, discarded, hand)) {
+                continue;
+            }
             List<MahjongTile> remaining = new ArrayList<>(hand);
             remaining.remove(i);
             GbTingResponse response = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, currentMelds));
@@ -597,7 +606,11 @@ public final class GbTableRoundController implements TableRoundController {
                 best = candidate;
             }
         }
-        return best == null ? hand.size() - 1 : best.index();
+        if (best != null) {
+            return best.index();
+        }
+        int fallback = this.firstLegalDiscardIndex(playerId, hand);
+        return fallback >= 0 ? fallback : hand.size() - 1;
     }
 
     public ReactionResponse suggestedBotReaction(UUID playerId) {
@@ -889,9 +902,13 @@ public final class GbTableRoundController implements TableRoundController {
             return new GbFanResponse(false, 0, List.of(), "Player or winning tile is unavailable.");
         }
         List<MahjongTile> concealed = this.concealedHandForWin(playerId, winType);
-        int fixedMeldCount = this.melds.getOrDefault(playerId, List.of()).size();
+        List<GbMeldState> meldStates = this.melds.getOrDefault(playerId, List.of());
+        int fixedMeldCount = meldStates.size();
         if (!SichuanHuEvaluator.canWin(concealed, winningTile, fixedMeldCount)) {
             return new GbFanResponse(false, 0, List.of(), "Hand is not a valid Sichuan Mahjong winning hand.");
+        }
+        if (!this.satisfiesSichuanWinRestrictions(playerId, concealed, meldStates, winningTile)) {
+            return new GbFanResponse(false, 0, List.of(), "Sichuan Mahjong win requires clearing the selected missing suit.");
         }
         return new GbFanResponse(true, 1, List.of(new GbFanEntry(SICHUAN_WIN_FAN_NAME, 1, 1)), null);
     }
@@ -1149,6 +1166,171 @@ public final class GbTableRoundController implements TableRoundController {
         return filtered;
     }
 
+    private void assignSichuanMissingSuits() {
+        if (!this.ruleProfile.useSichuanHuEvaluator()) {
+            return;
+        }
+        for (UUID playerId : this.seats.values()) {
+            if (playerId == null) {
+                continue;
+            }
+            this.sichuanMissingSuits.put(playerId, this.autoSelectSichuanMissingSuit(this.hands.getOrDefault(playerId, List.of())));
+        }
+    }
+
+    private SichuanSuit autoSelectSichuanMissingSuit(List<MahjongTile> hand) {
+        int wan = 0;
+        int tong = 0;
+        int tiao = 0;
+        for (MahjongTile tile : hand) {
+            SichuanSuit suit = suitOf(tile);
+            if (suit == null) {
+                continue;
+            }
+            switch (suit) {
+                case WAN -> wan++;
+                case TONG -> tong++;
+                case TIAO -> tiao++;
+            }
+        }
+        if (wan <= tong && wan <= tiao) {
+            return SichuanSuit.WAN;
+        }
+        if (tong <= tiao) {
+            return SichuanSuit.TONG;
+        }
+        return SichuanSuit.TIAO;
+    }
+
+    private boolean canDiscardBySichuanMissingSuit(UUID playerId, MahjongTile candidate, List<MahjongTile> hand) {
+        if (!this.ruleProfile.useSichuanHuEvaluator()) {
+            return true;
+        }
+        SichuanSuit missingSuit = this.sichuanMissingSuits.get(playerId);
+        if (missingSuit == null || hand == null || hand.isEmpty()) {
+            return true;
+        }
+        if (!containsSuit(hand, missingSuit)) {
+            return true;
+        }
+        return suitOf(candidate) == missingSuit;
+    }
+
+    private int firstLegalDiscardIndex(UUID playerId, List<MahjongTile> hand) {
+        if (hand == null) {
+            return -1;
+        }
+        for (int i = 0; i < hand.size(); i++) {
+            if (this.canDiscardBySichuanMissingSuit(playerId, hand.get(i), hand)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean satisfiesSichuanWinRestrictions(
+        UUID playerId,
+        List<MahjongTile> concealedHand,
+        List<GbMeldState> meldStates,
+        MahjongTile winningTile
+    ) {
+        if (!this.ruleProfile.useSichuanHuEvaluator()) {
+            return true;
+        }
+        if (!hasAnyMissingSuit(concealedHand, meldStates, winningTile)) {
+            return false;
+        }
+        SichuanSuit missingSuit = this.sichuanMissingSuits.get(playerId);
+        if (missingSuit == null) {
+            return true;
+        }
+        if (suitOf(winningTile) == missingSuit) {
+            return false;
+        }
+        if (containsSuit(concealedHand, missingSuit)) {
+            return false;
+        }
+        for (GbMeldState meld : meldStates) {
+            if (containsSuit(meld.tiles(), missingSuit)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hasAnyMissingSuit(List<MahjongTile> concealedHand, List<GbMeldState> meldStates, MahjongTile winningTile) {
+        boolean hasWan = false;
+        boolean hasTong = false;
+        boolean hasTiao = false;
+        for (MahjongTile tile : concealedHand) {
+            SichuanSuit suit = suitOf(tile);
+            if (suit == null) {
+                continue;
+            }
+            switch (suit) {
+                case WAN -> hasWan = true;
+                case TONG -> hasTong = true;
+                case TIAO -> hasTiao = true;
+            }
+        }
+        for (GbMeldState meld : meldStates) {
+            for (MahjongTile tile : meld.tiles()) {
+                SichuanSuit suit = suitOf(tile);
+                if (suit == null) {
+                    continue;
+                }
+                switch (suit) {
+                    case WAN -> hasWan = true;
+                    case TONG -> hasTong = true;
+                    case TIAO -> hasTiao = true;
+                }
+            }
+        }
+        SichuanSuit winSuit = suitOf(winningTile);
+        if (winSuit != null) {
+            switch (winSuit) {
+                case WAN -> hasWan = true;
+                case TONG -> hasTong = true;
+                case TIAO -> hasTiao = true;
+            }
+        }
+        int suitKinds = 0;
+        if (hasWan) {
+            suitKinds++;
+        }
+        if (hasTong) {
+            suitKinds++;
+        }
+        if (hasTiao) {
+            suitKinds++;
+        }
+        return suitKinds <= 2;
+    }
+
+    private static boolean containsSuit(List<MahjongTile> tiles, SichuanSuit suit) {
+        if (tiles == null || suit == null) {
+            return false;
+        }
+        for (MahjongTile tile : tiles) {
+            if (suitOf(tile) == suit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static SichuanSuit suitOf(MahjongTile tile) {
+        if (tile == null || tile == MahjongTile.UNKNOWN || tile.isFlower() || GbRoundSupport.isHonor(tile)) {
+            return null;
+        }
+        return switch (tile.name().charAt(0)) {
+            case 'M' -> SichuanSuit.WAN;
+            case 'P' -> SichuanSuit.TONG;
+            case 'S' -> SichuanSuit.TIAO;
+            default -> null;
+        };
+    }
+
     private UUID nextTurnPlayerAfter(int pivotIndex) {
         for (int offset = 1; offset <= SeatWind.values().length; offset++) {
             int index = Math.floorMod(pivotIndex + offset, SeatWind.values().length);
@@ -1164,6 +1346,9 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private List<Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile>> availableChiiPairs(UUID playerId, MahjongTile claimedTile) {
+        if (!this.ruleProfile.allowsChii()) {
+            return List.of();
+        }
         if (GbRoundSupport.isHonor(claimedTile) || claimedTile == null || claimedTile.isFlower()) {
             return List.of();
         }
@@ -1413,7 +1598,9 @@ public final class GbTableRoundController implements TableRoundController {
             if (playerId == null) {
                 return new GbTingResponse(false, List.of(), "Player is unavailable.");
             }
-            List<MahjongTile> waits = SichuanHuEvaluator.waitingTiles(concealedHand, meldStates.size());
+            List<MahjongTile> waits = SichuanHuEvaluator.waitingTiles(concealedHand, meldStates.size()).stream()
+                .filter(tile -> this.satisfiesSichuanWinRestrictions(playerId, concealedHand, meldStates, tile))
+                .toList();
             List<GbTingCandidate> candidates = waits.stream()
                 .map(tile -> new GbTingCandidate(
                     GbTileEncoding.encode(tile),
@@ -1660,6 +1847,12 @@ public final class GbTableRoundController implements TableRoundController {
         public int compareTo(GbBotKanChoice other) {
             return Long.compare(this.readyScore, other.readyScore);
         }
+    }
+
+    private enum SichuanSuit {
+        WAN,
+        TONG,
+        TIAO
     }
 
     private enum GbMeldType {

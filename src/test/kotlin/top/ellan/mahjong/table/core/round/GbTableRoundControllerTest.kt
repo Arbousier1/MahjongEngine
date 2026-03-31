@@ -52,6 +52,57 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `sichuan profile disables chii reactions`() {
+        val controller = controller(
+            gateway = object : GbNativeRulesGateway() {
+                override fun isAvailable(): Boolean = true
+
+                override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                    GbFanResponse(false, 0, emptyList(), "cannot win")
+
+                override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                    GbTingResponse(true, emptyList(), null)
+
+                override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                    GbWinResponse(false, error = "cannot win")
+            },
+            profile = GbRuleProfile.SICHUAN
+        )
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+
+        forceHand(controller, east, listOf("M2", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "S1", "S2", "S3", "S4"))
+        forceHand(controller, south, listOf("M1", "M2", "M2", "M3", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "S1"))
+        forceSichuanMissingSuit(controller, east, "M")
+
+        assertTrue(controller.discard(east, 0))
+        val southOptions = controller.availableReactions(south)
+        assertNotNull(southOptions)
+        assertTrue(southOptions.canPon)
+        assertTrue(southOptions.chiiPairs.isEmpty())
+    }
+
+    @Test
+    fun `sichuan discard must follow selected missing suit`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        forceHand(controller, east, listOf("M1", "M2", "P1", "P2", "P3", "P4", "P5", "S1", "S2", "S3", "S4", "S5", "S6", "S7"))
+        forceSichuanMissingSuit(controller, east, "M")
+
+        val nonMissingIndex = controller.hand(east).indexOfFirst { !it.name.startsWith("M") }
+        val missingIndex = controller.hand(east).indexOfFirst { it.name.startsWith("M") }
+
+        assertTrue(nonMissingIndex >= 0)
+        assertTrue(missingIndex >= 0)
+        assertFalse(controller.canSelectHandTile(east, nonMissingIndex))
+        assertFalse(controller.discard(east, nonMissingIndex))
+        assertTrue(controller.canSelectHandTile(east, missingIndex))
+    }
+
+    @Test
     fun `gb round rolls dice and breaks wall from the matching side`() {
         val sourceWall = deterministicWall()
         val controller = controller(wall = sourceWall)
@@ -289,7 +340,8 @@ class GbTableRoundControllerTest {
         controller.startRound()
         val east = player(SeatWind.EAST)
 
-        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9", "S9"))
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "S2", "S3", "S4", "S9", "S9"))
+        forceSichuanMissingSuit(controller, east, "P")
 
         assertTrue(controller.canWinByTsumo(east))
         assertTrue(controller.declareTsumo(east))
@@ -297,6 +349,19 @@ class GbTableRoundControllerTest {
         assertEquals(SeatWind.SOUTH, controller.currentSeat())
         assertFalse(controller.canSelectHandTile(east, 0))
         assertNull(controller.lastResolution())
+    }
+
+    @Test
+    fun `sichuan tsumo fails when selected missing suit is not cleared`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "P2", "P2", "P2", "P3", "P4", "P5", "S3", "S4", "S5", "S7", "S7"))
+        forceSichuanMissingSuit(controller, east, "M")
+
+        assertFalse(controller.canWinByTsumo(east))
+        assertFalse(controller.declareTsumo(east))
     }
 
     @Test
@@ -308,10 +373,13 @@ class GbTableRoundControllerTest {
         val west = player(SeatWind.WEST)
         val north = player(SeatWind.NORTH)
 
-        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9", "S9"))
-        forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9"))
-        forceHand(controller, west, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9"))
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "S2", "S3", "S4", "S9", "S9"))
+        forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "S2", "S3", "S4", "S9"))
+        forceHand(controller, west, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "S2", "S3", "S4", "S9"))
         forceHand(controller, north, listOf("M2", "M3", "M4", "M5", "M6", "M7", "P1", "P2", "P3", "S1", "S2", "S3", "S4"))
+        forceSichuanMissingSuit(controller, east, "P")
+        forceSichuanMissingSuit(controller, south, "P")
+        forceSichuanMissingSuit(controller, west, "P")
         forceWall(controller, listOf("S9", "S9", "M1"))
 
         assertTrue(controller.declareTsumo(east))
@@ -696,8 +764,38 @@ class GbTableRoundControllerTest {
         handsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
         val hands = handsField.get(controller) as MutableMap<UUID, MutableList<top.ellan.mahjong.model.MahjongTile>>
-        hands[playerId] = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf).toMutableList()
+        val forced = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf).toMutableList()
+        hands[playerId] = forced
         forceFlowers(controller, playerId, emptyList())
+        autoForceSichuanMissingSuit(controller, playerId, forced)
+    }
+
+    private fun autoForceSichuanMissingSuit(controller: GbTableRoundController, playerId: UUID, tiles: List<MahjongTile>) {
+        val countM = tiles.count { it.name.startsWith("M") }
+        val countP = tiles.count { it.name.startsWith("P") }
+        val countS = tiles.count { it.name.startsWith("S") }
+        val suit = when {
+            countM <= countP && countM <= countS -> "M"
+            countP <= countS -> "P"
+            else -> "S"
+        }
+        forceSichuanMissingSuit(controller, playerId, suit)
+    }
+
+    private fun forceSichuanMissingSuit(controller: GbTableRoundController, playerId: UUID, suit: String) {
+        val mapField = GbTableRoundController::class.java.getDeclaredField("sichuanMissingSuits")
+        mapField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val missingSuits = mapField.get(controller) as MutableMap<UUID, Any>
+        val suitClass = Class.forName("top.ellan.mahjong.table.core.round.GbTableRoundController\$SichuanSuit")
+        val enumName = when (suit.uppercase()) {
+            "M" -> "WAN"
+            "P" -> "TONG"
+            "S" -> "TIAO"
+            else -> throw IllegalArgumentException("Unsupported suit: $suit")
+        }
+        val enumValue = suitClass.enumConstants.first { constant -> (constant as Enum<*>).name == enumName }
+        missingSuits[playerId] = enumValue
     }
 
     private fun addPung(controller: GbTableRoundController, playerId: UUID, tile: String, selfSeat: SeatWind = SeatWind.EAST) {
