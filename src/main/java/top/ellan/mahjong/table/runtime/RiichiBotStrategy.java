@@ -2,7 +2,7 @@ package top.ellan.mahjong.table.runtime;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
-import top.ellan.mahjong.riichi.ReactionType;
+import top.ellan.mahjong.riichi.ReactionResponses;
 import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RiichiPlayerState;
 import top.ellan.mahjong.riichi.RiichiRoundEngine;
@@ -66,7 +66,7 @@ final class RiichiBotStrategy implements BotStrategy {
             session.react(playerId, suggestion);
             return;
         }
-        session.react(playerId, new ReactionResponse(ReactionType.SKIP, null));
+        session.react(playerId, ReactionResponses.SKIP);
     }
 
     private void handleBotTurn(MahjongTableSession session, UUID playerId) {

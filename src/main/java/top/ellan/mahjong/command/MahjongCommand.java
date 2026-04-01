@@ -7,7 +7,7 @@ import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.riichi.ReactionOptions;
-import top.ellan.mahjong.riichi.ReactionResponse;
+import top.ellan.mahjong.riichi.ReactionResponses;
 import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.riichi.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongTableManager;
@@ -485,7 +485,7 @@ public final class MahjongCommand implements BasicCommand {
         if (table == null) {
             return;
         }
-        boolean ok = table.react(player.getUniqueId(), new ReactionResponse(type, pair));
+        boolean ok = table.react(player.getUniqueId(), ReactionResponses.of(type, pair));
         Locale locale = this.messages.resolveLocale(player);
         String action = this.messages.plain(locale, actionKey);
         this.messages.send(

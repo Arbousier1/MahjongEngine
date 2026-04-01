@@ -8,6 +8,7 @@ import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.render.scene.TableRenderer;
 import top.ellan.mahjong.riichi.ReactionResponse;
+import top.ellan.mahjong.riichi.ReactionResponses;
 import top.ellan.mahjong.riichi.RiichiPlayerState;
 import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.model.MahjongRule;
@@ -43,6 +44,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import net.kyori.adventure.text.Component;
@@ -615,11 +618,11 @@ public final class MahjongTableSession {
     }
 
     public List<top.ellan.mahjong.model.MahjongTile> hand(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.hand(playerId);
+        return this.fromRoundController(playerId, TableRoundController::hand, List.of());
     }
 
     public List<top.ellan.mahjong.model.MahjongTile> discards(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.discards(playerId);
+        return this.fromRoundController(playerId, TableRoundController::discards, List.of());
     }
 
     public int riichiDiscardIndex(UUID playerId) {
@@ -654,19 +657,19 @@ public final class MahjongTableSession {
     }
 
     public List<top.ellan.mahjong.model.MahjongTile> remainingWall() {
-        return this.roundController == null ? List.of() : this.roundController.remainingWall();
+        return this.fromRoundController(TableRoundController::remainingWall, List.of());
     }
 
     public int remainingWallCount() {
-        return this.roundController == null ? 0 : this.roundController.remainingWallCount();
+        return this.intFromRoundController(TableRoundController::remainingWallCount);
     }
 
     public List<MeldView> fuuro(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.fuuro(playerId);
+        return this.fromRoundController(playerId, TableRoundController::fuuro, List.of());
     }
 
     public List<ScoringStick> scoringSticks(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.scoringSticks(playerId);
+        return this.fromRoundController(playerId, TableRoundController::scoringSticks, List.of());
     }
 
     public int riichiPoolCount() {
@@ -722,15 +725,15 @@ public final class MahjongTableSession {
     }
 
     public List<top.ellan.mahjong.model.MahjongTile> doraIndicators() {
-        return this.roundController == null ? List.of() : this.roundController.doraIndicators();
+        return this.fromRoundController(TableRoundController::doraIndicators, List.of());
     }
 
     public List<top.ellan.mahjong.model.MahjongTile> uraDoraIndicators() {
-        return this.roundController == null ? List.of() : this.roundController.uraDoraIndicators();
+        return this.fromRoundController(TableRoundController::uraDoraIndicators, List.of());
     }
 
     public top.ellan.mahjong.riichi.RoundResolution lastResolution() {
-        return this.roundController == null ? null : this.roundController.lastResolution();
+        return this.fromRoundController(TableRoundController::lastResolution, null);
     }
 
     public boolean openSettlementUi(Player player) {
@@ -792,11 +795,11 @@ public final class MahjongTableSession {
     }
 
     public String currentTurnDisplayName() {
-        return this.roundController == null ? "" : this.roundController.currentPlayerDisplayName();
+        return this.fromRoundController(TableRoundController::currentPlayerDisplayName, "");
     }
 
     public top.ellan.mahjong.riichi.ReactionOptions availableReactions(UUID playerId) {
-        return playerId == null || this.roundController == null ? null : this.roundController.availableReactions(playerId);
+        return this.fromRoundController(playerId, TableRoundController::availableReactions, null);
     }
 
     public boolean hasPendingReaction() {
@@ -804,59 +807,59 @@ public final class MahjongTableSession {
     }
 
     public String pendingReactionFingerprint() {
-        return this.roundController == null ? "" : this.roundController.pendingReactionFingerprint();
+        return this.fromRoundController(TableRoundController::pendingReactionFingerprint, "");
     }
 
     public String pendingReactionTileKey() {
-        return this.roundController == null ? "" : this.roundController.pendingReactionTileKey();
+        return this.fromRoundController(TableRoundController::pendingReactionTileKey, "");
     }
 
     public boolean canDeclareRiichi(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareRiichi(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareRiichi);
     }
 
     public boolean canDeclareKan(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareKan(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareKan);
     }
 
     public boolean canDeclareConcealedKan(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareConcealedKan(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareConcealedKan);
     }
 
     public boolean canDeclareAddedKan(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareAddedKan(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareAddedKan);
     }
 
     public boolean canDeclareKyuushu(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareKyuushu(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareKyuushu);
     }
 
     public boolean canDeclareTsumo(UUID playerId) {
-        return playerId != null && this.roundController != null && this.roundController.canDeclareTsumo(playerId);
+        return this.fromRoundController(playerId, TableRoundController::canDeclareTsumo);
     }
 
     public List<Integer> suggestedRiichiIndices(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedRiichiIndices(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedRiichiIndices, List.of());
     }
 
     public List<String> suggestedKanTiles(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedKanTiles(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedKanTiles, List.of());
     }
 
     public List<String> suggestedConcealedKanTiles(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedConcealedKanTiles(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedConcealedKanTiles, List.of());
     }
 
     public List<String> suggestedAddedKanTiles(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedAddedKanTiles(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedAddedKanTiles, List.of());
     }
 
     public List<String> suggestedDiscardTiles(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedDiscardTiles(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedDiscardTiles, List.of());
     }
 
     public List<top.ellan.mahjong.riichi.RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
-        return playerId == null || this.roundController == null ? List.of() : this.roundController.suggestedDiscardSuggestions(playerId);
+        return this.fromRoundController(playerId, TableRoundController::suggestedDiscardSuggestions, List.of());
     }
 
     public boolean canSelectHandTile(UUID playerId, int tileIndex) {
@@ -864,32 +867,27 @@ public final class MahjongTableSession {
     }
 
     public top.ellan.mahjong.gb.jni.GbTingResponse gbTingOptions(UUID playerId) {
-        if (!(this.roundController instanceof GbTableRoundController gbController) || playerId == null) {
-            return new top.ellan.mahjong.gb.jni.GbTingResponse(false, List.of(), "GB round is inactive.");
-        }
-        return gbController.tingOptions(playerId);
+        return this.fromGbController(
+            playerId,
+            GbTableRoundController::tingOptions,
+            new top.ellan.mahjong.gb.jni.GbTingResponse(false, List.of(), "GB round is inactive.")
+        );
     }
 
     public boolean gbCanWinByTsumo(UUID playerId) {
-        return this.roundController instanceof GbTableRoundController gbController && playerId != null && gbController.canWinByTsumo(playerId);
+        return this.fromGbController(playerId, GbTableRoundController::canWinByTsumo, false);
     }
 
     public int gbSuggestedDiscardIndex(UUID playerId) {
-        return this.roundController instanceof GbTableRoundController gbController && playerId != null
-            ? gbController.suggestedBotDiscardIndex(playerId)
-            : -1;
+        return this.fromGbController(playerId, GbTableRoundController::suggestedBotDiscardIndex, -1);
     }
 
     public ReactionResponse gbSuggestedReaction(UUID playerId) {
-        return this.roundController instanceof GbTableRoundController gbController && playerId != null
-            ? gbController.suggestedBotReaction(playerId)
-            : new ReactionResponse(top.ellan.mahjong.riichi.ReactionType.SKIP, null);
+        return this.fromGbController(playerId, GbTableRoundController::suggestedBotReaction, ReactionResponses.SKIP);
     }
 
     public String gbSuggestedKanTile(UUID playerId) {
-        return this.roundController instanceof GbTableRoundController gbController && playerId != null
-            ? gbController.suggestedBotKanTile(playerId)
-            : null;
+        return this.fromGbController(playerId, GbTableRoundController::suggestedBotKanTile, null);
     }
 
     public void setBotTask(PluginTask botTask) {
@@ -917,6 +915,21 @@ public final class MahjongTableSession {
 
     private <T> T fromRoundController(Function<TableRoundController, T> extractor, T fallback) {
         return this.roundController == null ? fallback : extractor.apply(this.roundController);
+    }
+
+    private <T> T fromRoundController(UUID playerId, BiFunction<TableRoundController, UUID, T> extractor, T fallback) {
+        return playerId == null || this.roundController == null ? fallback : extractor.apply(this.roundController, playerId);
+    }
+
+    private boolean fromRoundController(UUID playerId, BiPredicate<TableRoundController, UUID> extractor) {
+        return playerId != null && this.roundController != null && extractor.test(this.roundController, playerId);
+    }
+
+    private <T> T fromGbController(UUID playerId, BiFunction<GbTableRoundController, UUID, T> extractor, T fallback) {
+        if (!(this.roundController instanceof GbTableRoundController gbController) || playerId == null) {
+            return fallback;
+        }
+        return extractor.apply(gbController, playerId);
     }
 
     private TableRoundController createRoundController() {
@@ -1301,7 +1314,7 @@ public final class MahjongTableSession {
     }
 
     public String riichiFingerprintValue() {
-        FingerprintBuilder builder = fingerprintBuilder(64);
+        DelimitedFingerprintBuilder builder = fingerprintBuilder(64);
         for (UUID playerId : this.participants.seatIds()) {
             if (playerId == null) {
                 continue;
@@ -1619,42 +1632,8 @@ public final class MahjongTableSession {
         }
     }
 
-    private static FingerprintBuilder fingerprintBuilder(int capacity) {
-        return new FingerprintBuilder(capacity);
-    }
-
-    private static final class FingerprintBuilder {
-        private final StringBuilder delegate;
-        private boolean needsSeparator;
-
-        private FingerprintBuilder(int capacity) {
-            this.delegate = new StringBuilder(capacity);
-        }
-
-        private FingerprintBuilder field(Object value) {
-            if (this.needsSeparator) {
-                this.delegate.append(':');
-            }
-            this.delegate.append(Objects.toString(value, ""));
-            this.needsSeparator = true;
-            return this;
-        }
-
-        private FingerprintBuilder raw(Object value) {
-            this.delegate.append(value);
-            return this;
-        }
-
-        private FingerprintBuilder entrySeparator() {
-            this.delegate.append(';');
-            this.needsSeparator = false;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return this.delegate.toString();
-        }
+    private static DelimitedFingerprintBuilder fingerprintBuilder(int capacity) {
+        return DelimitedFingerprintBuilder.create(capacity);
     }
 
     public Locale publicLocale() {

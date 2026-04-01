@@ -6,8 +6,7 @@ import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.DisplayEntities;
-import top.ellan.mahjong.riichi.ReactionResponse;
-import top.ellan.mahjong.riichi.ReactionType;
+import top.ellan.mahjong.riichi.ReactionResponses;
 import top.ellan.mahjong.table.runtime.ChunkNeighborhood;
 import top.ellan.mahjong.table.runtime.TableRefreshCoordinator;
 import top.ellan.mahjong.table.runtime.TableSeatCoordinator;
@@ -20,7 +19,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ConcurrentHashMap;
-import kotlin.Pair;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -381,10 +379,10 @@ public final class MahjongTableManager implements Listener {
 
     private boolean handleReactionCommand(MahjongTableSession session, UUID playerId, String operation, String[] parts) {
         return switch (operation) {
-            case "ron" -> session.react(playerId, new ReactionResponse(ReactionType.RON, null));
-            case "pon" -> session.react(playerId, new ReactionResponse(ReactionType.PON, null));
-            case "minkan" -> session.react(playerId, new ReactionResponse(ReactionType.MINKAN, null));
-            case "skip" -> session.react(playerId, new ReactionResponse(ReactionType.SKIP, null));
+            case "ron" -> session.react(playerId, ReactionResponses.RON);
+            case "pon" -> session.react(playerId, ReactionResponses.PON);
+            case "minkan" -> session.react(playerId, ReactionResponses.MINKAN);
+            case "skip" -> session.react(playerId, ReactionResponses.SKIP);
             case "chii" -> {
                 if (parts.length < 4) {
                     yield false;
@@ -394,7 +392,7 @@ public final class MahjongTableManager implements Listener {
                 if (first == null || second == null) {
                     yield false;
                 }
-                yield session.react(playerId, new ReactionResponse(ReactionType.CHII, new Pair<>(first, second)));
+                yield session.react(playerId, ReactionResponses.chii(first, second));
             }
             default -> false;
         };

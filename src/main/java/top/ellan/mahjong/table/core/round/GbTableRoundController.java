@@ -18,6 +18,7 @@ import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
+import top.ellan.mahjong.riichi.ReactionResponses;
 import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.ExhaustiveDraw;
@@ -44,6 +45,8 @@ import kotlin.Pair;
 
 public final class GbTableRoundController implements TableRoundController {
     private static final int MIN_GB_FAN = 8;
+    private static final MahjongTile[] HAND_TILE_ORDER = MahjongTile.values();
+    private static final int HAND_TILE_KIND_COUNT = HAND_TILE_ORDER.length;
 
     private final MahjongRule rule;
     private final GbNativeRulesGateway nativeGateway;
@@ -466,7 +469,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareConcealedKan(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return false;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
@@ -480,7 +483,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareAddedKan(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return false;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
@@ -494,7 +497,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedKanTiles(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -509,7 +512,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedConcealedKanTiles(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -525,7 +528,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedAddedKanTiles(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -542,39 +545,27 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     public int suggestedBotDiscardIndex(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return -1;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
         if (hand.isEmpty()) {
             return -1;
         }
-        GbBotDiscardChoice best = null;
-        List<GbMeldState> currentMelds = this.melds.getOrDefault(playerId, List.of());
-        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
-        for (int i = 0; i < hand.size(); i++) {
-            MahjongTile discarded = hand.get(i);
-            List<MahjongTile> remaining = new ArrayList<>(hand);
-            remaining.remove(i);
-            GbTingResponse response = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, currentMelds));
-            GbBotDiscardChoice candidate = new GbBotDiscardChoice(i, botReadyScore(response), botDiscardPreference(hand, discarded));
-            if (best == null || candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
+        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, this.melds.getOrDefault(playerId, List.of()));
         return best == null ? hand.size() - 1 : best.index();
     }
 
     public ReactionResponse suggestedBotReaction(UUID playerId) {
         ReactionOptions options = this.availableReactions(playerId);
         if (playerId == null || options == null || this.pendingReactionWindow == null) {
-            return new ReactionResponse(ReactionType.SKIP, null);
+            return ReactionResponses.SKIP;
         }
         if (options.getCanRon()) {
-            return new ReactionResponse(ReactionType.RON, null);
+            return ReactionResponses.RON;
         }
         long skipReadyScore = botReadyScore(this.tingOptions(playerId));
-        GbBotReactionChoice best = new GbBotReactionChoice(new ReactionResponse(ReactionType.SKIP, null), skipReadyScore, 0);
+        GbBotReactionChoice best = new GbBotReactionChoice(ReactionResponses.SKIP, skipReadyScore, 0);
         MahjongTile claimedTile = this.pendingReactionWindow.tile();
         SeatWind fromSeat = this.seatOf(this.pendingReactionWindow.discarderId());
         if (options.getCanPon()) {
@@ -595,11 +586,11 @@ public final class GbTableRoundController implements TableRoundController {
                 best = candidate;
             }
         }
-        return best.readyScore() > skipReadyScore ? best.response() : new ReactionResponse(ReactionType.SKIP, null);
+        return best.readyScore() > skipReadyScore ? best.response() : ReactionResponses.SKIP;
     }
 
     public String suggestedBotKanTile(UUID playerId) {
-        if (playerId == null || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (!this.canOperateOnCurrentTurn(playerId)) {
             return null;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
@@ -1130,16 +1121,26 @@ public final class GbTableRoundController implements TableRoundController {
             return;
         }
         if (!this.hasDrawnTile(playerId)) {
-            hand.sort((left, right) -> Integer.compare(handTileSort(left), handTileSort(right)));
+            sortConcealedHandByCount(hand);
             return;
         }
         MahjongTile drawn = hand.remove(hand.size() - 1);
-        hand.sort((left, right) -> Integer.compare(handTileSort(left), handTileSort(right)));
+        sortConcealedHandByCount(hand);
         hand.add(drawn);
     }
 
-    private static int handTileSort(MahjongTile tile) {
-        return tile.ordinal();
+    private static void sortConcealedHandByCount(List<MahjongTile> hand) {
+        int[] counts = new int[HAND_TILE_KIND_COUNT];
+        for (MahjongTile tile : hand) {
+            counts[tile.ordinal()]++;
+        }
+        hand.clear();
+        for (MahjongTile tile : HAND_TILE_ORDER) {
+            int count = counts[tile.ordinal()];
+            while (count-- > 0) {
+                hand.add(tile);
+            }
+        }
     }
 
     private void consumeClaimedDiscard(UUID discarderId, MahjongTile claimedTile) {
@@ -1172,7 +1173,7 @@ public final class GbTableRoundController implements TableRoundController {
         GbRoundSupport.removeTiles(hand, claimedTile, 2);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.pung(claimedTile, fromSeat, this.seatOf(playerId)));
-        return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.PON, null));
+        return this.bestBotClaimDiscard(playerId, hand, meldStates, ReactionResponses.PON);
     }
 
     private GbBotReactionChoice evaluateBotOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
@@ -1181,7 +1182,7 @@ public final class GbTableRoundController implements TableRoundController {
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.openKong(claimedTile, fromSeat, this.seatOf(playerId)));
         long readyScore = botReadyScore(this.evaluateTing(playerId, hand, meldStates));
-        return new GbBotReactionChoice(new ReactionResponse(ReactionType.MINKAN, null), readyScore, 0);
+        return new GbBotReactionChoice(ReactionResponses.MINKAN, readyScore, 0);
     }
 
     private GbBotReactionChoice evaluateBotChow(
@@ -1197,7 +1198,7 @@ public final class GbTableRoundController implements TableRoundController {
         GbRoundSupport.removeTiles(hand, second, 1);
         List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
         meldStates.add(GbMeldState.chow(claimedTile, first, second, fromSeat));
-        return this.bestBotClaimDiscard(playerId, hand, meldStates, new ReactionResponse(ReactionType.CHII, pair));
+        return this.bestBotClaimDiscard(playerId, hand, meldStates, ReactionResponses.chii(pair));
     }
 
     private GbBotReactionChoice bestBotClaimDiscard(
@@ -1206,8 +1207,18 @@ public final class GbTableRoundController implements TableRoundController {
         List<GbMeldState> meldStates,
         ReactionResponse response
     ) {
+        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, meldStates);
+        return best == null ? new GbBotReactionChoice(response, 0, 0) : new GbBotReactionChoice(response, best.readyScore(), best.discardPreference());
+    }
+
+    private long botReadyScoreForBestDiscard(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
+        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, meldStates);
+        return best == null ? 0 : best.readyScore();
+    }
+
+    private GbBotDiscardChoice bestBotDiscardChoice(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
         if (hand.isEmpty()) {
-            return new GbBotReactionChoice(response, 0, 0);
+            return null;
         }
         GbBotDiscardChoice best = null;
         EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
@@ -1220,19 +1231,6 @@ public final class GbTableRoundController implements TableRoundController {
             if (best == null || candidate.compareTo(best) > 0) {
                 best = candidate;
             }
-        }
-        return best == null ? new GbBotReactionChoice(response, 0, 0) : new GbBotReactionChoice(response, best.readyScore(), best.discardPreference());
-    }
-
-    private long botReadyScoreForBestDiscard(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
-        long best = 0;
-        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
-        for (int i = 0; i < hand.size(); i++) {
-            MahjongTile discarded = hand.get(i);
-            List<MahjongTile> remaining = new ArrayList<>(hand);
-            remaining.remove(i);
-            GbTingResponse ting = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, meldStates));
-            best = Math.max(best, botReadyScore(ting));
         }
         return best;
     }
@@ -1361,6 +1359,10 @@ public final class GbTableRoundController implements TableRoundController {
 
     private UUID currentPlayerId() {
         return this.playerAt(SeatWind.fromIndex(this.currentPlayerIndex));
+    }
+
+    private boolean canOperateOnCurrentTurn(UUID playerId) {
+        return playerId != null && this.isCurrentPlayer(playerId) && !this.hasPendingReaction();
     }
 
     private record GbBotState(List<MahjongTile> hand, List<GbMeldState> melds) {

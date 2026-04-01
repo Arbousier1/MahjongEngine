@@ -1,6 +1,7 @@
 package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
+import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.util.LinkedHashSet;
@@ -345,8 +346,8 @@ public final class TablePlayerFeedbackCoordinator {
         };
     }
 
-    private static FingerprintBuilder fingerprintBuilder(int capacity) {
-        return new FingerprintBuilder(capacity);
+    private static DelimitedFingerprintBuilder fingerprintBuilder(int capacity) {
+        return DelimitedFingerprintBuilder.create(capacity);
     }
 
     private record PlayerFeedbackSnapshot(
@@ -357,28 +358,6 @@ public final class TablePlayerFeedbackCoordinator {
     ) {
     }
 
-    private static final class FingerprintBuilder {
-        private final StringBuilder delegate;
-        private boolean needsSeparator;
-
-        private FingerprintBuilder(int capacity) {
-            this.delegate = new StringBuilder(capacity);
-        }
-
-        private FingerprintBuilder field(Object value) {
-            if (this.needsSeparator) {
-                this.delegate.append(':');
-            }
-            this.delegate.append(Objects.toString(value, ""));
-            this.needsSeparator = true;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return this.delegate.toString();
-        }
-    }
 }
 
 

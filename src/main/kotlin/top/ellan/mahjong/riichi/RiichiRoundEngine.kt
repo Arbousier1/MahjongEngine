@@ -21,6 +21,8 @@ import mahjongutils.models.isYaochu
 import kotlin.random.Random
 import java.util.ArrayDeque
 
+private val HAND_SORT_BUCKET_SIZE = MahjongTile.entries.maxOf { tile -> tile.sortOrder } + 1
+
 enum class ReactionType {
     RON,
     PON,
@@ -383,7 +385,7 @@ class RiichiRoundEngine(
         }
         seats.forEach { it.drawTile(drawFromLiveWallFront()) }
         dealer.drawTile(drawFromLiveWallFront())
-        seats.forEach { it.hands.sortBy { tile -> tile.mahjongTile.sortOrder } }
+        seats.forEach { player -> sortHandByCount(player.hands) }
     }
 
     private fun drawRinshanTile(player: RiichiPlayerState): TileInstance {
@@ -397,7 +399,7 @@ class RiichiRoundEngine(
 
     private fun drawRinshanAndContinue(player: RiichiPlayerState) {
         val rinshan = drawRinshanTile(player)
-        player.hands.sortBy { it.mahjongTile.sortOrder }
+        sortHandByCount(player.hands)
         player.hands.remove(rinshan)
         player.hands.add(rinshan)
         currentDrawIsRinshan = true
@@ -587,7 +589,30 @@ class RiichiRoundEngine(
         }
         currentPlayerIndex = (currentPlayerIndex + 1) % seats.size
         currentPlayer.drawTile(drawFromLiveWallFront())
-        currentPlayer.hands.sortBy { it.mahjongTile.sortOrder }
+        sortHandByCount(currentPlayer.hands)
+    }
+
+    private fun sortHandByCount(hand: MutableList<TileInstance>) {
+        if (hand.size < 2) {
+            return
+        }
+        val counts = IntArray(HAND_SORT_BUCKET_SIZE)
+        hand.forEach { tile ->
+            counts[tile.mahjongTile.sortOrder]++
+        }
+        for (index in 1 until counts.size) {
+            counts[index] += counts[index - 1]
+        }
+        val sorted = arrayOfNulls<TileInstance>(hand.size)
+        for (index in hand.lastIndex downTo 0) {
+            val tile = hand[index]
+            val order = tile.mahjongTile.sortOrder
+            val position = --counts[order]
+            sorted[position] = tile
+        }
+        for (index in sorted.indices) {
+            hand[index] = sorted[index]!!
+        }
     }
 
     private fun drawFromLiveWallFront(): TileInstance =

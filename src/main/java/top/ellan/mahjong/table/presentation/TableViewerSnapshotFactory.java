@@ -1,6 +1,7 @@
 package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
+import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.TableSpectatorSeatOverlaySnapshot;
 import top.ellan.mahjong.table.core.TableViewerActionButtonSnapshot;
@@ -75,14 +76,9 @@ public final class TableViewerSnapshotFactory {
                 this.session.plugin().messages().tag("round", summary.round()),
                 this.session.plugin().messages().tag("title", summary.resolutionTitle())
             );
-            String stateSignature = fingerprintBuilder(192)
-                .field(locale.toLanguageTag())
-                .field(progress)
-                .field(color)
-                .field(nextRoundSeconds)
-                .field(spectator)
-                .field(this.session.isStarted())
-                .field(lastResolution)
+            String stateSignature = this.hudSignatureBuilder(
+                    locale, progress, color, nextRoundSeconds, spectator, this.session.isStarted(), lastResolution
+                )
                 .field(summary.round())
                 .field(summary.resolutionTitle())
                 .toString();
@@ -104,14 +100,7 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("dora", summary.doraSummary()),
             this.session.plugin().messages().tag("role", summary.roleLabel())
         );
-        String stateSignature = fingerprintBuilder(192)
-            .field(locale.toLanguageTag())
-            .field(progress)
-            .field(color)
-            .field(nextRoundSeconds)
-            .field(spectator)
-            .field(true)
-            .field(lastResolution)
+        String stateSignature = this.hudSignatureBuilder(locale, progress, color, nextRoundSeconds, spectator, true, lastResolution)
             .field(summary.round())
             .field(summary.dealer())
             .field(summary.turn())
@@ -141,18 +130,30 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("table_id", this.session.id()),
             this.session.plugin().messages().tag("summary", summary.waitingSummary())
         );
-        String stateSignature = fingerprintBuilder(192)
+        String stateSignature = this.hudSignatureBuilder(locale, progress, color, nextRoundSeconds, spectator, false, lastResolution)
+            .field(summary.waitingSummary())
+            .field(summary.ruleSummary())
+            .toString();
+        return new TableViewerHudSnapshot(title, progress, color, stateSignature);
+    }
+
+    private DelimitedFingerprintBuilder hudSignatureBuilder(
+        Locale locale,
+        float progress,
+        BossBar.Color color,
+        long nextRoundSeconds,
+        boolean spectator,
+        boolean started,
+        Object lastResolution
+    ) {
+        return fingerprintBuilder(192)
             .field(locale.toLanguageTag())
             .field(progress)
             .field(color)
             .field(nextRoundSeconds)
             .field(spectator)
-            .field(false)
-            .field(lastResolution)
-            .field(summary.waitingSummary())
-            .field(summary.ruleSummary())
-            .toString();
-        return new TableViewerHudSnapshot(title, progress, color, stateSignature);
+            .field(started)
+            .field(lastResolution);
     }
 
     private Component viewerOverlay(Locale locale, ViewerSummarySnapshot summary) {
@@ -332,7 +333,7 @@ public final class TableViewerSnapshotFactory {
         List<TableViewerActionButtonSnapshot> actionButtons,
         List<TableSpectatorSeatOverlaySnapshot> seatOverlays
     ) {
-        FingerprintBuilder builder = fingerprintBuilder(256)
+        DelimitedFingerprintBuilder builder = fingerprintBuilder(256)
             .field(locale.toLanguageTag())
             .field(viewerId)
             .field(spectator)
@@ -707,8 +708,8 @@ public final class TableViewerSnapshotFactory {
             || (ch >= 0xFFE0 && ch <= 0xFFE6);
     }
 
-    private static FingerprintBuilder fingerprintBuilder(int capacity) {
-        return new FingerprintBuilder(capacity);
+    private static DelimitedFingerprintBuilder fingerprintBuilder(int capacity) {
+        return DelimitedFingerprintBuilder.create(capacity);
     }
 
     private record ViewerSummarySnapshot(
@@ -730,28 +731,6 @@ public final class TableViewerSnapshotFactory {
     ) {
     }
 
-    private static final class FingerprintBuilder {
-        private final StringBuilder delegate;
-        private boolean needsSeparator;
-
-        private FingerprintBuilder(int capacity) {
-            this.delegate = new StringBuilder(capacity);
-        }
-
-        private FingerprintBuilder field(Object value) {
-            if (this.needsSeparator) {
-                this.delegate.append(':');
-            }
-            this.delegate.append(Objects.toString(value, ""));
-            this.needsSeparator = true;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return this.delegate.toString();
-        }
-    }
 }
 
 
