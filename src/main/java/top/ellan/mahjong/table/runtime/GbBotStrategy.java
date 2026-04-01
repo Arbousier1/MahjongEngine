@@ -74,6 +74,8 @@ final class GbBotStrategy implements BotStrategy {
                     + ", reason=" + reason
                     + ", maxRetries=" + MAX_GB_TURN_RETRY_ATTEMPTS
             );
+            // Keep the bot loop alive with a normal-paced retry, so the table cannot deadlock.
+            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleGbTurn(session, playerId, 0), 20L));
             return;
         }
         session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleGbTurn(session, playerId, nextRetry), 10L));

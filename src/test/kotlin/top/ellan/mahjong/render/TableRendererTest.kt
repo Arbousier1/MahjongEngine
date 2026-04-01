@@ -250,6 +250,65 @@ class TableRendererTest {
     }
 
     @Test
+    fun `kakan with negative claim yaw does not protrude away from table center`() {
+        val centerX = 0.0
+        val centerZ = 0.0
+        for (wind in SeatWind.values()) {
+            val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
+            seats[wind] = seatSnapshot(
+                wind = wind,
+                playerId = UUID.nameUUIDFromBytes(("kakan-$wind").toByteArray()),
+                melds = listOf(
+                    MeldView(
+                        listOf(MahjongTile.M5, MahjongTile.M5, MahjongTile.M5),
+                        listOf(false, false, false),
+                        0,
+                        -90,
+                        MahjongTile.M5
+                    )
+                )
+            )
+            for (other in SeatWind.values()) {
+                if (other == wind) {
+                    continue
+                }
+                seats[other] = seatSnapshot(other, UUID.nameUUIDFromBytes(("kakan-other-$other").toByteArray()))
+            }
+            val snapshot = TableRenderSnapshot(
+                1L,
+                0L,
+                "world",
+                centerX,
+                64.0,
+                centerZ,
+                true,
+                false,
+                70,
+                0,
+                6,
+                0,
+                1,
+                SeatWind.EAST,
+                SeatWind.SOUTH,
+                SeatWind.EAST,
+                "waiting",
+                "rules",
+                "center",
+                null,
+                null,
+                listOf(MahjongTile.M1),
+                seats
+            )
+
+            val placements = TableRenderLayout.precompute(snapshot).seat(wind).meldPlacements()
+            assertEquals(4, placements.size)
+            val claimTile = placements[0].point()
+            val addedTile = placements[3].point()
+            assertTrue(centerDistanceSquared(addedTile, centerX, centerZ) <= centerDistanceSquared(claimTile, centerX, centerZ) + 1e-9)
+        }
+    }
+
+    @Test
     fun `claim tile index maps to left middle right slots visually`() {
         val left = horizontalTileRankForClaimIndex(SeatWind.EAST, 0)
         val middle = horizontalTileRankForClaimIndex(SeatWind.EAST, 1)
@@ -414,6 +473,12 @@ class TableRendererTest {
             SeatWind.WEST -> 90.0f
             SeatWind.NORTH -> 0.0f
         }
+
+    private fun centerDistanceSquared(point: TableRenderLayout.Point, centerX: Double, centerZ: Double): Double {
+        val dx = point.x() - centerX
+        val dz = point.z() - centerZ
+        return dx * dx + dz * dz
+    }
 }
 
 

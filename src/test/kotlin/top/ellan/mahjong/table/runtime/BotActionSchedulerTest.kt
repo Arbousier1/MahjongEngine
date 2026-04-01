@@ -140,8 +140,8 @@ class BotActionSchedulerTest {
 
         BotActionScheduler.schedule(session)
 
-        assertEquals(1, initialRunnables.size)
-        initialRunnables.single().run()
+        assertTrue(initialRunnables.isNotEmpty())
+        initialRunnables.first().run()
 
         var executedRetries = 0
         while (executedRetries < retryRunnables.size && executedRetries < 32) {
@@ -152,11 +152,12 @@ class BotActionSchedulerTest {
         assertTrue(executedRetries <= 32, "Retry execution guard should prevent infinite loops in the test harness.")
         verify(scheduler, times(MAX_GB_TURN_RETRY_ATTEMPTS)).runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(10L))
         verify(logger).warning(contains("GB bot turn retry exhausted"))
+        assertEquals(2, initialRunnables.size)
         verify(session, never()).discard(eq(botId), any(Int::class.java))
     }
 
     @Test
-    fun `gb bot turn retries reset on next scheduling cycle`() {
+    fun `gb bot turn retries auto recover after exhaustion`() {
         val session = mock(MahjongTableSession::class.java)
         val plugin = mock(MahjongPaperPlugin::class.java)
         val scheduler = mock(ServerScheduler::class.java)
@@ -198,18 +199,16 @@ class BotActionSchedulerTest {
         }.`when`(scheduler).runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(10L))
 
         BotActionScheduler.schedule(session)
-        initialRunnables.single().run()
+        assertTrue(initialRunnables.isNotEmpty())
+        initialRunnables.first().run()
         var executedRetries = 0
         while (executedRetries < retryRunnables.size && executedRetries < 32) {
             retryRunnables[executedRetries].run()
             executedRetries++
         }
         assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS, retryRunnables.size)
-
-        BotActionScheduler.schedule(session)
         assertEquals(2, initialRunnables.size)
         initialRunnables[1].run()
-
         assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS + 1, retryRunnables.size)
     }
 }

@@ -894,7 +894,6 @@ public final class TableRenderer {
             Location kakanStackBase = null;
             float kakanStackYaw = yaw;
             Location firstTileBase = null;
-            Offset kakanPlanarOffset = new Offset(0.0D, 0.0D);
             boolean concealedKan = meld.tiles().size() == 4 && meld.faceDownAt(0) && meld.faceDownAt(meld.tiles().size() - 1);
             if (concealedKan) {
                 for (int i = 0; i < meld.tiles().size(); i++) {
@@ -946,7 +945,6 @@ public final class TableRenderer {
                 if (isClaimTile) {
                     kakanStackBase = baseLocation.clone();
                     kakanStackYaw = tileYaw;
-                    kakanPlanarOffset = kakanAdjacentOffset(wind, meld.claimYawOffset());
                 }
                 lastTileWasHorizontal = isClaimTile;
                 placedTileCount++;
@@ -959,7 +957,7 @@ public final class TableRenderer {
             if (meld.hasAddedKanTile() && kakanStackBase != null) {
                 spawned.add(spawnPublicTile(
                     session,
-                    add(kakanStackBase, kakanPlanarOffset).add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    kakanStackBase.clone().add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
                     kakanStackYaw,
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
@@ -1962,16 +1960,6 @@ public final class TableRenderer {
         };
     }
 
-    private static Offset kakanAdjacentOffset(SeatWind wind, int claimYawOffset) {
-        int direction = claimYawOffset == 0 ? 1 : Integer.signum(claimYawOffset);
-        double amount = TILE_WIDTH + TILE_PADDING;
-        return offsetTowardTableCenter(wind, amount * direction);
-    }
-
-    private static Offset offsetTowardTableCenter(SeatWind wind, double amount) {
-        return offsetTowardSeatFront(wind, -amount);
-    }
-
     private static Offset offsetAcrossSeat(SeatWind wind, double amount) {
         return switch (displayDirection(wind)) {
             case EAST -> new Offset(0.0D, amount);
@@ -1979,6 +1967,10 @@ public final class TableRenderer {
             case WEST -> new Offset(0.0D, -amount);
             case NORTH -> new Offset(amount, 0.0D);
         };
+    }
+
+    private static Offset offsetTowardTableCenter(SeatWind wind, double amount) {
+        return offsetTowardSeatFront(wind, -amount);
     }
 
     private static Offset offsetTowardSeatFront(SeatWind wind, double amount) {

@@ -259,7 +259,6 @@ public final class TableRenderLayout {
             Point kakanStackBase = null;
             float kakanStackYaw = yaw;
             Point firstTileBase = null;
-            Offset kakanPlanarOffset = new Offset(0.0D, 0.0D);
             boolean concealedKan = meld.tiles().size() == 4 && meld.faceDownAt(0) && meld.faceDownAt(meld.tiles().size() - 1);
             if (concealedKan) {
                 for (int i = 0; i < meld.tiles().size(); i++) {
@@ -309,7 +308,6 @@ public final class TableRenderLayout {
                 if (claimTile) {
                     kakanStackBase = basePoint;
                     kakanStackYaw = tileYaw;
-                    kakanPlanarOffset = kakanAdjacentOffset(seat.wind(), meld.claimYawOffset());
                 }
                 lastTileWasHorizontal = claimTile;
                 placedTileCount++;
@@ -321,7 +319,7 @@ public final class TableRenderLayout {
             }
             if (meld.hasAddedKanTile() && kakanStackBase != null) {
                 placements.add(new TilePlacement(
-                    add(kakanStackBase, kakanPlanarOffset).add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    kakanStackBase.add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
                     kakanStackYaw,
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
@@ -640,16 +638,6 @@ public final class TableRenderLayout {
             case WEST -> new Offset(-amount, 0.0D);
             case NORTH -> new Offset(0.0D, -amount);
         };
-    }
-
-    private static Offset kakanAdjacentOffset(SeatWind wind, int claimYawOffset) {
-        int direction = claimYawOffset == 0 ? 1 : Integer.signum(claimYawOffset);
-        double amount = TILE_WIDTH + TILE_PADDING;
-        return offsetTowardTableCenter(wind, amount * direction);
-    }
-
-    private static Offset offsetTowardTableCenter(SeatWind wind, double amount) {
-        return offsetTowardSeatFront(wind, -amount);
     }
 
     private static Offset offsetTowardSeatFront(SeatWind wind, double amount) {
