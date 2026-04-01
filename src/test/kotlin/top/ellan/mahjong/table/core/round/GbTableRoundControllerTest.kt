@@ -505,10 +505,10 @@ class GbTableRoundControllerTest {
             assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
         }
 
-        assertEquals(25008, controller.points(south))
-        assertEquals(24992, controller.points(east))
-        assertEquals(25000, controller.points(west))
-        assertEquals(25000, controller.points(north))
+        assertEquals(25006, controller.points(south))
+        assertEquals(24998, controller.points(east))
+        assertEquals(24998, controller.points(west))
+        assertEquals(24998, controller.points(north))
     }
 
     @Test

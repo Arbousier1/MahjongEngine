@@ -1244,18 +1244,16 @@ public final class GbTableRoundController implements TableRoundController {
             if (!event.transferable()) {
                 continue;
             }
-            int refunded = 0;
+            int eventTransfer = 0;
             for (Map.Entry<UUID, Integer> transfer : event.transfers().entrySet()) {
                 int amount = transfer.getValue();
                 if (amount <= 0) {
                     continue;
                 }
-                this.applyPointDelta(transfer.getKey(), amount);
-                refunded += amount;
+                eventTransfer += amount;
             }
-            if (refunded > 0) {
-                this.applyPointDelta(discarderId, -refunded);
-                totalTransferred += refunded;
+            if (eventTransfer > 0) {
+                totalTransferred += eventTransfer;
             }
             event.markTransferApplied();
         }

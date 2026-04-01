@@ -70,6 +70,7 @@ Admin targeting details:
 ## Rule References
 
 - Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
+- Sichuan (Tencent TMT 2016, as cited by the AI testbed): <http://majiang.qq.com/webplat/info/news_version3/7207/25932/25933/25936/m16340/201611/523252.shtml>
 
 ## Sichuan Rules (Blood Battle, Chengdu-style)
 
@@ -83,7 +84,7 @@ The current `SICHUAN` mode implements mainstream Chengdu blood-battle flow and s
   Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`recordSichuanWins`, `activeSichuanPlayerCount`, `finishSichuanBloodBattle`)
 - `Sichuan fan engine`: `ping hu / dui dui hu / qing yi se / qi dui / long qi dui / qing dui / jiang dui / gen`, plus `gang shang hua`, `gang shang pao`, and `qiang gang hu`.
   Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`evaluateSichuanFanResponse`)
-- `Gang economy`: immediate gang settlement for concealed/open/added kong, plus call-transfer (`hu jiao zhuan yi`) on post-kong discard ron.
+- `Gang economy`: immediate gang settlement for concealed/open/added kong, plus call-transfer (`hu jiao zhuan yi`) on post-kong discard ron (gang income transfers to the winner, not refunded to the original gang payers).
   Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`applySichuanKanSettlement`, `applySichuanGangTransferOnRon`)
 - `Exhaustive draw penalties`: hua-zhu penalty, cha-jiao style noten-to-tenpai settlement, and gang-tax refund for noten players.
   Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`resolveSichuanExhaustiveDraw`)
