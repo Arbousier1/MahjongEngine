@@ -1,6 +1,7 @@
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.Test
 import java.io.File
+import java.util.Properties
 
 plugins {
     java
@@ -22,6 +23,7 @@ val h2Version = "2.4.240"
 val hikariVersion = "7.0.2"
 val adventureVersion = "4.26.1"
 val junitVersion = "6.0.3"
+val testcontainersVersion = "1.21.3"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
 val generatedNativeResourcesDir = layout.buildDirectory.dir("generated/resources/native")
 
@@ -96,6 +98,33 @@ fun jsonString(value: String): String = buildString {
         }
     }
     append('"')
+}
+
+fun loadUtf8Properties(file: File): Map<String, String> {
+    val properties = Properties()
+    file.reader(Charsets.UTF_8).use { reader ->
+        properties.load(reader)
+    }
+    return properties.stringPropertyNames().associateWith { properties.getProperty(it) }
+}
+
+fun renderTemplateWithTokens(template: String, tokens: Map<String, String>): String {
+    val pattern = Regex("""\{\{([a-zA-Z0-9_.-]+)}}""")
+    val missing = linkedSetOf<String>()
+    val rendered = pattern.replace(template) { match ->
+        val key = match.groupValues[1]
+        val value = tokens[key]
+        if (value == null) {
+            missing += key
+            match.value
+        } else {
+            value
+        }
+    }
+    if (missing.isNotEmpty()) {
+        throw GradleException("Missing config template tokens: ${missing.joinToString(", ")}")
+    }
+    return rendered
 }
 
 fun parseMahjongTileNames(sourceFile: File): List<String> {
@@ -573,6 +602,29 @@ val generateMessageIndex = tasks.register("generateMessageIndex") {
     }
 }
 
+val generateLocalizedConfigs = tasks.register("generateLocalizedConfigs") {
+    val templateFile = layout.projectDirectory.file("src/main/config-template/config.template.yml").asFile
+    val translations = linkedMapOf(
+        "config.yml" to layout.projectDirectory.file("src/main/config-template/config_comments_en.properties").asFile,
+        "config_zh_CN.yml" to layout.projectDirectory.file("src/main/config-template/config_comments_zh_CN.properties").asFile,
+        "config_zh_TW.yml" to layout.projectDirectory.file("src/main/config-template/config_comments_zh_TW.properties").asFile
+    )
+    val outputDir = generatedResourcesDir.get().asFile
+
+    inputs.file(templateFile)
+    translations.values.forEach { inputs.file(it) }
+    outputs.files(translations.keys.map { outputDir.resolve(it) })
+
+    doLast {
+        outputDir.mkdirs()
+        val template = templateFile.readText(Charsets.UTF_8)
+        translations.forEach { (targetFileName, translationFile) ->
+            val rendered = renderTemplateWithTokens(template, loadUtf8Properties(translationFile))
+            outputDir.resolve(targetFileName).writeText(rendered, Charsets.UTF_8)
+        }
+    }
+}
+
 val verifyMahjongTileResources = tasks.register("verifyMahjongTileResources") {
     val enumSource = layout.projectDirectory.file("src/main/java/top/ellan/mahjong/model/MahjongTile.java").asFile
     val itemsDir = layout.projectDirectory.dir("resourcepack/assets/mahjongcraft/items/mahjong_tile").asFile
@@ -694,6 +746,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("org.mockito:mockito-core:5.23.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
+    testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
     testImplementation("net.kyori:adventure-api:$adventureVersion")
     testImplementation("net.kyori:adventure-text-minimessage:$adventureVersion")
     testImplementation("net.kyori:adventure-text-serializer-plain:$adventureVersion")
@@ -730,7 +785,7 @@ tasks {
     }
 
     processResources {
-        dependsOn(generateMessageIndex, verifyMahjongTileResources, generateCraftEngineBundle, packageGbMahjongNative)
+        dependsOn(generateMessageIndex, generateLocalizedConfigs, verifyMahjongTileResources, generateCraftEngineBundle, packageGbMahjongNative)
         filteringCharset = Charsets.UTF_8.name()
         from(generatedResourcesDir)
         from(generatedNativeResourcesDir)

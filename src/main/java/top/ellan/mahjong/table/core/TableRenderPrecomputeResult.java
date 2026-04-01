@@ -5,7 +5,7 @@ import java.util.Map;
 
 public record TableRenderPrecomputeResult(
     TableRenderSnapshot snapshot,
-    Map<String, String> regionFingerprints,
+    Map<String, Long> regionFingerprints,
     TableRenderLayout.LayoutPlan layout
 ) {
 }

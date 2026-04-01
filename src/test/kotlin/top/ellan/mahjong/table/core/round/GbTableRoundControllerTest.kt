@@ -214,6 +214,64 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `gb end to end flow settles after discard and reaction`() {
+        val controller = controller(object : GbNativeRulesGateway() {
+            override fun isAvailable(): Boolean = true
+
+            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                if (request.seatWind == "SOUTH") {
+                    GbFanResponse(true, 8, listOf(GbFanEntry("Mock Ron", 8, 1)), null)
+                } else {
+                    GbFanResponse(false, 0, emptyList(), "cannot win")
+                }
+
+            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                GbTingResponse(true, emptyList(), null)
+
+            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                GbWinResponse(
+                    true,
+                    "RON",
+                    8,
+                    listOf(GbFanEntry("Mock Ron", 8, 1)),
+                    listOf(
+                        GbScoreDelta(request.winnerSeat, 8),
+                        GbScoreDelta(request.discarderSeat ?: "EAST", -8)
+                    ),
+                    null
+                )
+        })
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
+        forceHand(controller, south, listOf("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1", "P2", "P3", "P4"))
+
+        assertTrue(controller.discard(east, 0))
+        assertTrue(controller.hasPendingReaction())
+        assertNotNull(controller.availableReactions(south))
+
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.RON, null)))
+        if (controller.availableReactions(west) != null) {
+            assertTrue(controller.react(west, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(north) != null) {
+            assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
+        }
+
+        assertFalse(controller.started())
+        assertFalse(controller.hasPendingReaction())
+        assertEquals("RON", controller.lastResolution()?.title)
+        assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
+        assertEquals("SOUTH", controller.lastResolution()?.yakuSettlements?.single()?.displayName)
+        assertEquals(8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == south.toString() }?.scoreChange)
+        assertEquals(-8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
+    }
+
+    @Test
     fun `pon claim keeps claimant on discard turn without drawing`() {
         val controller = controller()
         controller.startRound()

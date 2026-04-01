@@ -1,5 +1,8 @@
 package top.ellan.mahjong.riichi
 
+import top.ellan.mahjong.error.MahjongBusinessException
+import top.ellan.mahjong.error.MahjongErrorCode
+import top.ellan.mahjong.error.MahjongInfrastructureException
 import top.ellan.mahjong.riichi.model.ClaimTarget
 import top.ellan.mahjong.riichi.model.DoubleYakuman
 import top.ellan.mahjong.riichi.model.Fuuro
@@ -55,6 +58,15 @@ open class RiichiPlayerState(
             val shantenMethod: Method
         )
 
+        private data class ShantenStrategy(
+            val name: String,
+            val evaluate: (
+                tiles: List<Tile>,
+                furo: List<mahjongutils.models.Furo>,
+                bestShantenOnly: Boolean
+            ) -> UnionShantenResult
+        )
+
         private val stableUtilShantenInvoker: StableUtilShantenInvoker? = runCatching {
             val internalArgsClass = Class.forName("mahjongutils.shanten.InternalShantenArgs")
             val calcContextClass = Class.forName("mahjongutils.CalcContext")
@@ -82,6 +94,24 @@ open class RiichiPlayerState(
             null
         }
 
+        private val strategyProbeTiles: List<Tile> = listOf(
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M3,
+            MahjongTile.M4,
+            MahjongTile.M5,
+            MahjongTile.P4,
+            MahjongTile.P5,
+            MahjongTile.P6,
+            MahjongTile.S6,
+            MahjongTile.S7,
+            MahjongTile.S8,
+            MahjongTile.P6,
+            MahjongTile.M9
+        ).map { it.utilsTile }
+        private val strategyProbeFuro: List<mahjongutils.models.Furo> = emptyList()
+
         internal var shantenCalculator: (
             tiles: List<Tile>,
             furo: List<mahjongutils.models.Furo>,
@@ -92,6 +122,136 @@ open class RiichiPlayerState(
                 furo = furo,
                 bestShantenOnly = bestOnly
             )
+        }
+            set(value) {
+                field = value
+                shantenStrategy = resolveShantenStrategy(value)
+            }
+
+        @Volatile
+        private var shantenStrategy: ShantenStrategy = resolveShantenStrategy(shantenCalculator)
+
+        internal val activeShantenStrategyName: String
+            get() = shantenStrategy.name
+
+        private fun primaryFullScanStrategy(
+            calculator: (
+                tiles: List<Tile>,
+                furo: List<mahjongutils.models.Furo>,
+                bestShantenOnly: Boolean
+            ) -> UnionShantenResult
+        ): ShantenStrategy = ShantenStrategy("primary-full-scan") { tiles, furo, _ ->
+            calculator(tiles, furo, false)
+        }
+
+        private fun stableFullScanStrategy(invoker: StableUtilShantenInvoker): ShantenStrategy =
+            ShantenStrategy("stable-full-scan") { tiles, furo, _ ->
+                invokeStableShanten(invoker, tiles, furo, false)
+            }
+
+        private fun resolveShantenStrategy(
+            calculator: (
+                tiles: List<Tile>,
+                furo: List<mahjongutils.models.Furo>,
+                bestShantenOnly: Boolean
+            ) -> UnionShantenResult
+        ): ShantenStrategy {
+            val primaryBest = runCatching { calculator(strategyProbeTiles, strategyProbeFuro, true) }
+            if (primaryBest.isSuccess) {
+                return ShantenStrategy("primary-best-only") { tiles, furo, bestOnly ->
+                    calculator(tiles, furo, bestOnly)
+                }
+            }
+            val primaryBestError = primaryBest.exceptionOrNull()
+            if (primaryBestError != null && isNoSuchElementFailure(primaryBestError)) {
+                val primaryFull = runCatching { calculator(strategyProbeTiles, strategyProbeFuro, false) }
+                if (primaryFull.isSuccess) {
+                    LOGGER.log(Level.INFO, "Shanten strategy selected: primary-full-scan")
+                    return primaryFullScanStrategy(calculator)
+                }
+                val primaryFullError = primaryFull.exceptionOrNull()
+                if (primaryFullError != null && isNoSuchElementFailure(primaryFullError)) {
+                    val stableInvoker = stableUtilShantenInvoker
+                    if (stableInvoker != null) {
+                        val stableFull = runCatching {
+                            invokeStableShanten(stableInvoker, strategyProbeTiles, strategyProbeFuro, false)
+                        }
+                        if (stableFull.isSuccess) {
+                            LOGGER.log(Level.INFO, "Shanten strategy selected: stable-full-scan")
+                            return stableFullScanStrategy(stableInvoker)
+                        }
+                        val stableError = stableFull.exceptionOrNull()
+                        if (stableError != null) {
+                            LOGGER.log(shantenFailureLogLevel(stableError), "Shanten stable strategy probe failed", stableError)
+                        }
+                    }
+                }
+                if (primaryFullError != null) {
+                    LOGGER.log(shantenFailureLogLevel(primaryFullError), "Shanten full-scan strategy probe failed", primaryFullError)
+                }
+            }
+            if (primaryBestError != null) {
+                LOGGER.log(shantenFailureLogLevel(primaryBestError), "Shanten best-only strategy probe failed", primaryBestError)
+            }
+            return ShantenStrategy("primary-best-only") { tiles, furo, bestOnly ->
+                calculator(tiles, furo, bestOnly)
+            }
+        }
+
+        private fun invokeStableShanten(
+            invoker: StableUtilShantenInvoker,
+            tiles: List<Tile>,
+            furo: List<mahjongutils.models.Furo>,
+            bestShantenOnly: Boolean
+        ): UnionShantenResult {
+            val args = invoker.internalArgsConstructor.newInstance(
+                tiles,
+                furo,
+                true,
+                false,
+                bestShantenOnly,
+                true,
+                true
+            )
+            val result = invoker.shantenMethod.invoke(null, CalcContext(), args)
+            return result as? UnionShantenResult
+                ?: throw IllegalStateException(
+                    "mahjongutils internal shanten returned unexpected result type: ${result?.javaClass?.name}"
+                )
+        }
+
+        private fun shantenFailureLogLevel(error: Throwable): Level =
+            if (error is IllegalArgumentException) Level.FINE else Level.WARNING
+
+        private fun fallbackShantenStrategies(
+            failedStrategy: ShantenStrategy,
+            calculator: (
+                tiles: List<Tile>,
+                furo: List<mahjongutils.models.Furo>,
+                bestShantenOnly: Boolean
+            ) -> UnionShantenResult
+        ): List<ShantenStrategy> = buildList {
+            if (failedStrategy.name != "primary-full-scan") {
+                add(primaryFullScanStrategy(calculator))
+            }
+            val stableInvoker = stableUtilShantenInvoker
+            if (stableInvoker != null && failedStrategy.name != "stable-full-scan") {
+                add(stableFullScanStrategy(stableInvoker))
+            }
+        }
+
+        private fun isNoSuchElementFailure(error: Throwable): Boolean {
+            var current: Throwable? = error
+            repeat(8) {
+                if (current == null) {
+                    return false
+                }
+                if (current is kotlin.NoSuchElementException || current is java.util.NoSuchElementException) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
         }
     }
 
@@ -864,121 +1024,54 @@ open class RiichiPlayerState(
     ): UnionShantenResult? {
         val tiles = toUtilsTilesCached(hands)
         val furo = toUtilsFuroList(fuuroList)
-        val primary = runCatching {
-            shantenCalculator(tiles, furo, bestShantenOnly)
+        val strategy = shantenStrategy
+        val result = runCatching {
+            strategy.evaluate(tiles, furo, bestShantenOnly)
         }
-        if (primary.isSuccess) {
-            return primary.getOrNull()
+        if (result.isSuccess) {
+            return result.getOrNull()
         }
-        val primaryError = primary.exceptionOrNull() ?: return null
-        if (bestShantenOnly && primaryError.isNoSuchElementFailure()) {
-            val fallback = runCatching {
-                shantenCalculator(tiles, furo, false)
-            }
-            if (fallback.isSuccess) {
-                LOGGER.log(
-                    Level.FINE,
-                    "Shanten best-only analysis failed; fallback succeeded (hands=${hands.size}, fuuro=${fuuroList.size})",
-                    primaryError
-                )
-                return fallback.getOrNull()
-            }
-            val fallbackError = fallback.exceptionOrNull() ?: return null
-            if (fallbackError.isNoSuchElementFailure()) {
-                val stableFallback = runCatching {
-                    shantenWithUtilStableArgs(tiles, furo, false)
+        val error = result.exceptionOrNull() ?: return null
+        if (isNoSuchElementFailure(error)) {
+            for (fallback in fallbackShantenStrategies(strategy, shantenCalculator)) {
+                val fallbackResult = runCatching {
+                    fallback.evaluate(tiles, furo, bestShantenOnly)
                 }
-                if (stableFallback.isSuccess) {
+                if (fallbackResult.isSuccess) {
+                    if (strategy.name != fallback.name) {
+                        LOGGER.log(Level.INFO, "Shanten strategy promoted: ${strategy.name} -> ${fallback.name}")
+                        shantenStrategy = fallback
+                    }
+                    return fallbackResult.getOrNull()
+                }
+                fallbackResult.exceptionOrNull()?.let { fallbackError ->
                     LOGGER.log(
-                        Level.FINE,
-                        "Shanten fallback recovered via util stable args (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
+                        shantenFailureLogLevel(fallbackError),
+                        "Shanten fallback failed strategy=${fallback.name} hands=${hands.size} fuuro=${fuuroList.size} bestOnly=$bestShantenOnly",
                         fallbackError
                     )
-                    return stableFallback.getOrNull()
                 }
-                val stableFallbackError = stableFallback.exceptionOrNull() ?: return null
-                LOGGER.log(
-                    shantenFailureLogLevel(stableFallbackError),
-                    "Shanten stable fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
-                    stableFallbackError
-                )
-                return null
             }
-            val fallbackLevel = shantenFailureLogLevel(fallbackError)
-            LOGGER.log(
-                fallbackLevel,
-                "Shanten analysis fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
-                fallbackError
-            )
-            return null
         }
-        if (!bestShantenOnly && primaryError.isNoSuchElementFailure()) {
-            val stableFallback = runCatching {
-                shantenWithUtilStableArgs(tiles, furo, false)
-            }
-            if (stableFallback.isSuccess) {
-                LOGGER.log(
-                    Level.FINE,
-                    "Shanten recovered via util stable args (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
-                    primaryError
-                )
-                return stableFallback.getOrNull()
-            }
-            val stableFallbackError = stableFallback.exceptionOrNull() ?: return null
-            LOGGER.log(
-                shantenFailureLogLevel(stableFallbackError),
-                "Shanten stable fallback failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=false)",
-                stableFallbackError
+        val handled = if (error is IllegalArgumentException) {
+            MahjongBusinessException(
+                MahjongErrorCode.SHANTEN_ANALYSIS_FAILED,
+                MahjongErrorCode.SHANTEN_ANALYSIS_FAILED.publicMessage(),
+                error
             )
-            return null
+        } else {
+            MahjongInfrastructureException(
+                MahjongErrorCode.SHANTEN_ANALYSIS_FAILED,
+                MahjongErrorCode.SHANTEN_ANALYSIS_FAILED.publicMessage(),
+                error
+            )
         }
-        val level = shantenFailureLogLevel(primaryError)
         LOGGER.log(
-            level,
-            "Shanten analysis failed (hands=${hands.size}, fuuro=${fuuroList.size}, bestOnly=$bestShantenOnly)",
-            primaryError
+            handled.logLevel(),
+            "${handled.code().name} strategy=${strategy.name} hands=${hands.size} fuuro=${fuuroList.size} bestOnly=$bestShantenOnly",
+            error
         )
         return null
-    }
-
-    private fun shantenWithUtilStableArgs(
-        tiles: List<Tile>,
-        furo: List<mahjongutils.models.Furo>,
-        bestShantenOnly: Boolean
-    ): UnionShantenResult {
-        val invoker = stableUtilShantenInvoker
-            ?: throw IllegalStateException("mahjongutils internal shanten API is unavailable")
-        val args = invoker.internalArgsConstructor.newInstance(
-            tiles,
-            furo,
-            true,
-            false,
-            bestShantenOnly,
-            true,
-            true
-        )
-        val result = invoker.shantenMethod.invoke(null, CalcContext(), args)
-        return result as? UnionShantenResult
-            ?: throw IllegalStateException(
-                "mahjongutils internal shanten returned unexpected result type: ${result?.javaClass?.name}"
-            )
-    }
-
-    private fun shantenFailureLogLevel(error: Throwable): Level =
-        if (error is IllegalArgumentException) Level.FINE else Level.WARNING
-
-    private fun Throwable.isNoSuchElementFailure(): Boolean {
-        var current: Throwable? = this
-        repeat(8) {
-            if (current == null) {
-                return false
-            }
-            if (current is kotlin.NoSuchElementException || current is java.util.NoSuchElementException) {
-                return true
-            }
-            current = current.cause
-        }
-        return false
     }
 
     private fun shantenWithoutGot(

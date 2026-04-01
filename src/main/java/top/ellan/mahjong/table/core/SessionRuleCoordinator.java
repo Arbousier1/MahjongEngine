@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Locale;
 
 final class SessionRuleCoordinator {
-    private final MahjongTableSession session;
+    private final SessionState session;
 
-    SessionRuleCoordinator(MahjongTableSession session) {
+    SessionRuleCoordinator(SessionState session) {
         this.session = session;
     }
 

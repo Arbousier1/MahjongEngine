@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionRoundActionCoordinator {
-    private final MahjongTableSession session;
+    private final SessionState session;
 
-    SessionRoundActionCoordinator(MahjongTableSession session) {
+    SessionRoundActionCoordinator(SessionState session) {
         this.session = session;
     }
 

@@ -76,5 +76,39 @@ class PluginSettingsTest {
         assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.GB))
         assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.SICHUAN))
     }
+
+    @Test
+    fun `from exposes grouped strong typed snapshots`() {
+        val config = YamlConfiguration()
+        config.set("debug.enabled", true)
+        config.set("debug.categories", listOf("database", "render"))
+        config.set("database.connection.type", "mariadb")
+        config.set("database.connection.host", "db.local")
+        config.set("database.connection.port", 3307)
+        config.set("database.connection.name", "mahjong")
+        config.set("database.credentials.username", "mahjong")
+        config.set("database.credentials.password", "secret")
+        config.set("tables.persistence.enabled", false)
+        config.set("tables.persistence.file", "persist.yml")
+        config.set("integrations.craftengine.bundle.folder", "pack-a")
+        config.set("integrations.craftengine.compatibility.injectAntiCheatPacketEventsMappings", false)
+        config.set("integrations.craftengine.furniture.preferHitboxInteraction", false)
+
+        val settings = PluginSettings.from(config)
+
+        assertTrue(settings.debug().enabled())
+        assertEquals(listOf("database", "render"), settings.debug().categories())
+        assertEquals("mariadb", settings.database().type())
+        assertEquals("db.local", settings.database().connection().host())
+        assertEquals(3307, settings.database().connection().port())
+        assertEquals("mahjong", settings.database().connection().name())
+        assertEquals("mahjong", settings.database().credentials().username())
+        assertEquals("secret", settings.database().credentials().password())
+        assertFalse(settings.tables().persistence().enabled())
+        assertEquals("persist.yml", settings.tables().persistence().file())
+        assertEquals("pack-a", settings.craftEngine().bundleFolder())
+        assertFalse(settings.craftEngine().injectAntiCheatPacketEventsMappings())
+        assertFalse(settings.craftEngine().furniture().preferHitboxInteraction())
+    }
 }
 

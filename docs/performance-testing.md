@@ -55,6 +55,11 @@ As of the current `dev` branch, the benchmark suite covers:
 - `riichi.round_engine.start_round`
 - `gb.round_controller.start_round`
 - `gb.bot.suggest_discard.duplicate_hand`
+- `gb.native_gateway.ting_cache.hit`
+
+In addition to the `perf` suite, JNI startup now logs a one-time first-call benchmark
+(`GbNativeWarmupService`) for `fan/ting/win` first-call vs warm-call latency.
+Use those startup numbers as the baseline before considering JNI "call pool" designs.
 
 ## Reading Results
 

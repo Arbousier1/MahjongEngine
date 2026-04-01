@@ -11,6 +11,7 @@ import top.ellan.mahjong.riichi.model.PersonalSituation
 import top.ellan.mahjong.riichi.model.TileInstance
 import top.ellan.mahjong.riichi.model.Wind
 import java.lang.reflect.Field
+import java.util.NoSuchElementException
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -19,8 +20,25 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class RiichiPlayerStateTest {
+    private val probeTiles: List<mahjongutils.models.Tile> = listOf(
+        MahjongTile.M2,
+        MahjongTile.M3,
+        MahjongTile.M4,
+        MahjongTile.M3,
+        MahjongTile.M4,
+        MahjongTile.M5,
+        MahjongTile.P4,
+        MahjongTile.P5,
+        MahjongTile.P6,
+        MahjongTile.S6,
+        MahjongTile.S7,
+        MahjongTile.S8,
+        MahjongTile.P6,
+        MahjongTile.M9
+    ).map { it.utilsTile }
+
     @Test
-    fun `best-only shanten crash falls back to full analysis when Java no such element is thrown`() {
+    fun `best-only shanten probe switches strategy to primary full scan`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -58,16 +76,124 @@ class RiichiPlayerStateTest {
 
             val suggestions = player.discardSuggestions()
 
+            assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(suggestions.isNotEmpty())
             assertEquals(1, bestOnlyCalls)
-            assertEquals(1, fullCalls)
+            assertTrue(fullCalls > 1)
         } finally {
             RiichiPlayerState.shantenCalculator = originalCalculator
         }
     }
 
     @Test
-    fun `shanten no such element in both attempts recovers via util stable args`() {
+    fun `runtime shanten failure promotes primary strategy to full scan`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.P4,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.S4,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.WHITE_DRAGON
+        )
+
+        val runtimeHand = player.hands.map { it.mahjongTile.utilsTile }
+        val originalCalculator = RiichiPlayerState.shantenCalculator
+        var bestOnlyCalls = 0
+        var fullCalls = 0
+        try {
+            RiichiPlayerState.shantenCalculator = { tiles, furo, bestShantenOnly ->
+                if (tiles == runtimeHand && bestShantenOnly) {
+                    bestOnlyCalls++
+                    throw NoSuchElementException("forced runtime best-only failure")
+                }
+                if (!bestShantenOnly) {
+                    fullCalls++
+                }
+                shanten(
+                    tiles = tiles,
+                    furo = furo,
+                    bestShantenOnly = bestShantenOnly
+                )
+            }
+
+            val suggestions = player.discardSuggestions()
+
+            assertTrue(suggestions.isNotEmpty())
+            assertEquals(1, bestOnlyCalls)
+            assertTrue(fullCalls >= 1)
+            assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
+        } finally {
+            RiichiPlayerState.shantenCalculator = originalCalculator
+        }
+    }
+
+    @Test
+    fun `runtime shanten failure promotes to stable util when primary full scan also fails`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands += tiles(
+            MahjongTile.M1,
+            MahjongTile.M2,
+            MahjongTile.M3,
+            MahjongTile.P2,
+            MahjongTile.P3,
+            MahjongTile.P4,
+            MahjongTile.S2,
+            MahjongTile.S3,
+            MahjongTile.S4,
+            MahjongTile.EAST,
+            MahjongTile.EAST,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.WHITE_DRAGON,
+            MahjongTile.WHITE_DRAGON
+        )
+
+        val runtimeHand = player.hands.map { it.mahjongTile.utilsTile }
+        val originalCalculator = RiichiPlayerState.shantenCalculator
+        var probeCalls = 0
+        var runtimeCalls = 0
+        try {
+            RiichiPlayerState.shantenCalculator = { tiles, furo, bestShantenOnly ->
+                if (tiles == probeTiles) {
+                    probeCalls++
+                    shanten(
+                        tiles = tiles,
+                        furo = furo,
+                        bestShantenOnly = bestShantenOnly
+                    )
+                } else if (tiles == runtimeHand) {
+                    runtimeCalls++
+                    throw NoSuchElementException("forced runtime failure for all primary strategies")
+                } else {
+                    shanten(
+                        tiles = tiles,
+                        furo = furo,
+                        bestShantenOnly = bestShantenOnly
+                    )
+                }
+            }
+
+            val suggestions = player.discardSuggestions()
+
+            assertTrue(suggestions.isNotEmpty())
+            assertTrue(probeCalls >= 1)
+            assertTrue(runtimeCalls >= 2)
+            assertEquals("stable-full-scan", RiichiPlayerState.activeShantenStrategyName)
+        } finally {
+            RiichiPlayerState.shantenCalculator = originalCalculator
+        }
+    }
+
+    @Test
+    fun `strategy switches to stable util when primary probe fails twice`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -96,6 +222,7 @@ class RiichiPlayerStateTest {
 
             val suggestions = player.discardSuggestions()
 
+            assertEquals("stable-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(suggestions.isNotEmpty())
             assertEquals(2, calculatorCalls)
         } finally {
@@ -104,7 +231,7 @@ class RiichiPlayerStateTest {
     }
 
     @Test
-    fun `can win pre-check reuses shanten fallback chain`() {
+    fun `can win pre-check uses selected full-scan strategy`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -147,9 +274,10 @@ class RiichiPlayerStateTest {
                 personalSituation = defaultPersonalSituation()
             )
 
+            assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(canWin)
             assertEquals(1, bestOnlyCalls)
-            assertEquals(1, fullCalls)
+            assertTrue(fullCalls >= 2)
         } finally {
             RiichiPlayerState.shantenCalculator = originalCalculator
         }

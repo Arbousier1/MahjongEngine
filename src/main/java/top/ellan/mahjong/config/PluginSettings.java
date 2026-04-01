@@ -5,157 +5,256 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public final class PluginSettings {
-    private final ConfigurationSection debugSection;
-    private final ConfigurationSection databaseSection;
-    private final ConfigurationSection craftEngineSection;
-    private final boolean databaseFailOnError;
-    private final boolean tablePersistenceEnabled;
-    private final String tablePersistenceFile;
-    private final int tableStartupRebuildBatchSize;
-    private final boolean tableFreeMoveDuringRound;
-    private final String craftEngineSharedTileItemIdPrefix;
-    private final String craftEngineRiichiTileItemIdPrefix;
-    private final String craftEngineGbTileItemIdPrefix;
-    private final String craftEngineTableFurnitureId;
-    private final String craftEngineSeatFurnitureId;
-    private final boolean rankingEnabled;
-    private final String rankingEastRoom;
-    private final String rankingSouthRoom;
+    private final DebugSettings debug;
+    private final DatabaseSettings database;
+    private final TablesSettings tables;
+    private final RankingSettings ranking;
+    private final CraftEngineSettings craftEngine;
 
     private PluginSettings(
-        ConfigurationSection debugSection,
-        ConfigurationSection databaseSection,
-        ConfigurationSection craftEngineSection,
-        boolean databaseFailOnError,
-        boolean tablePersistenceEnabled,
-        String tablePersistenceFile,
-        int tableStartupRebuildBatchSize,
-        boolean tableFreeMoveDuringRound,
-        String craftEngineSharedTileItemIdPrefix,
-        String craftEngineRiichiTileItemIdPrefix,
-        String craftEngineGbTileItemIdPrefix,
-        String craftEngineTableFurnitureId,
-        String craftEngineSeatFurnitureId,
-        boolean rankingEnabled,
-        String rankingEastRoom,
-        String rankingSouthRoom
+        DebugSettings debug,
+        DatabaseSettings database,
+        TablesSettings tables,
+        RankingSettings ranking,
+        CraftEngineSettings craftEngine
     ) {
-        this.debugSection = debugSection;
-        this.databaseSection = databaseSection;
-        this.craftEngineSection = craftEngineSection;
-        this.databaseFailOnError = databaseFailOnError;
-        this.tablePersistenceEnabled = tablePersistenceEnabled;
-        this.tablePersistenceFile = tablePersistenceFile;
-        this.tableStartupRebuildBatchSize = tableStartupRebuildBatchSize;
-        this.tableFreeMoveDuringRound = tableFreeMoveDuringRound;
-        this.craftEngineSharedTileItemIdPrefix = craftEngineSharedTileItemIdPrefix;
-        this.craftEngineRiichiTileItemIdPrefix = craftEngineRiichiTileItemIdPrefix;
-        this.craftEngineGbTileItemIdPrefix = craftEngineGbTileItemIdPrefix;
-        this.craftEngineTableFurnitureId = craftEngineTableFurnitureId;
-        this.craftEngineSeatFurnitureId = craftEngineSeatFurnitureId;
-        this.rankingEnabled = rankingEnabled;
-        this.rankingEastRoom = rankingEastRoom;
-        this.rankingSouthRoom = rankingSouthRoom;
+        this.debug = debug;
+        this.database = database;
+        this.tables = tables;
+        this.ranking = ranking;
+        this.craftEngine = craftEngine;
     }
 
     public static PluginSettings from(FileConfiguration config) {
-        ConfigurationSection tablesSection = ConfigAccess.firstSection(config, "tables");
+        ConfigurationSection debugSection = ConfigAccess.firstSection(config, "debug");
         ConfigurationSection databaseSection = ConfigAccess.firstSection(config, "database");
+        ConfigurationSection connectionSection = ConfigAccess.firstSection(config, "database.connection", "database");
+        ConfigurationSection credentialsSection = ConfigAccess.firstSection(config, "database.credentials", "database");
+        ConfigurationSection h2Section = ConfigAccess.firstSection(config, "database.h2");
+        ConfigurationSection poolSection = ConfigAccess.firstSection(config, "database.pool");
+        ConfigurationSection tablesSection = ConfigAccess.firstSection(config, "tables");
+        ConfigurationSection tablePersistenceSection = ConfigAccess.firstSection(config, "tables.persistence", "tablePersistence");
         ConfigurationSection rankingSection = ConfigAccess.firstSection(config, "ranking");
         ConfigurationSection craftEngineSection = ConfigAccess.firstSection(config, "integrations.craftengine", "craftengine");
         ConfigurationSection craftEngineItemsSection = ConfigAccess.firstSection(config, "integrations.craftengine.items", "craftengine.items");
         ConfigurationSection craftEngineFurnitureSection = ConfigAccess.firstSection(config, "integrations.craftengine.furniture", "craftengine.furniture");
-        ConfigurationSection tablePersistenceSection = ConfigAccess.firstSection(config, "tables.persistence", "tablePersistence");
+        ConfigurationSection craftEngineCompatibilitySection = ConfigAccess.firstSection(
+            config,
+            "integrations.craftengine.compatibility",
+            "craftengine.compatibility"
+        );
+        ConfigurationSection craftEngineBundleSection = ConfigAccess.firstSection(config, "integrations.craftengine.bundle", "craftengine.bundle");
+
         String sharedTileItemIdPrefix = ConfigAccess.string(craftEngineItemsSection, "mahjongpaper:", "tileItemIdPrefix", "tile-item-id-prefix");
-        return new PluginSettings(
-            ConfigAccess.firstSection(config, "debug"),
-            databaseSection,
-            craftEngineSection,
+        DebugSettings debug = new DebugSettings(
+            ConfigAccess.bool(debugSection, false, "enabled"),
+            ConfigAccess.stringList(debugSection, "categories")
+        );
+        DatabaseSettings database = new DatabaseSettings(
+            ConfigAccess.bool(databaseSection, true, "enabled"),
             ConfigAccess.bool(databaseSection, false, "failOnError"),
-            ConfigAccess.bool(tablePersistenceSection, true, "enabled"),
-            ConfigAccess.string(tablePersistenceSection, "tables.yml", "file"),
+            ConfigAccess.string(connectionSection, "h2", "type", "connection.type").trim().toLowerCase(java.util.Locale.ROOT),
+            new DatabaseConnectionSettings(
+                ConfigAccess.string(connectionSection, "127.0.0.1", "host", "connection.host"),
+                ConfigAccess.integer(connectionSection, 3306, "port", "connection.port"),
+                ConfigAccess.string(connectionSection, "mahjongpaper", "name", "connection.name"),
+                ConfigAccess.string(connectionSection, "useUnicode=true&characterEncoding=utf8&useSsl=false", "parameters", "connection.parameters")
+            ),
+            new DatabaseCredentialsSettings(
+                ConfigAccess.string(credentialsSection, "root", "username"),
+                ConfigAccess.string(credentialsSection, "change_me", "password")
+            ),
+            new DatabaseH2Settings(
+                ConfigAccess.string(h2Section, "data/mahjongpaper", "path"),
+                ConfigAccess.string(h2Section, "sa", "username"),
+                ConfigAccess.string(h2Section, "", "password"),
+                ConfigAccess.string(h2Section, "MODE=MariaDB;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH", "parameters")
+            ),
+            new DatabasePoolSettings(
+                ConfigAccess.integer(poolSection, 10, "maxSize", "maximumPoolSize"),
+                ConfigAccess.integer(poolSection, 2, "minIdle", "minimumIdle"),
+                ConfigAccess.longValue(poolSection, 10000L, "connectionTimeoutMillis")
+            )
+        );
+        TablesSettings tables = new TablesSettings(
             Math.max(1, ConfigAccess.integer(tablesSection, 3, "startupRebuildBatchSize", "startup-rebuild-batch-size")),
             ConfigAccess.bool(tablesSection, false, "allowFreeMoveDuringRound", "allow-free-move-during-round"),
-            sharedTileItemIdPrefix,
-            ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "riichiTileItemIdPrefix", "riichi-tile-item-id-prefix"),
-            ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "gbTileItemIdPrefix", "gb-tile-item-id-prefix"),
-            ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:table_visual", "tableFurnitureId", "table-furniture-id"),
-            ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id"),
+            new TablePersistenceSettings(
+                ConfigAccess.bool(tablePersistenceSection, true, "enabled"),
+                ConfigAccess.string(tablePersistenceSection, "tables.yml", "file")
+            )
+        );
+        RankingSettings ranking = new RankingSettings(
             ConfigAccess.bool(rankingSection, true, "enabled"),
             ConfigAccess.string(rankingSection, "SILVER", "eastRoom"),
             ConfigAccess.string(rankingSection, "GOLD", "southRoom")
         );
+        CraftEngineSettings craftEngine = new CraftEngineSettings(
+            ConfigAccess.bool(craftEngineSection, true, "exportBundleOnEnable", "bundle.exportOnEnable"),
+            ConfigAccess.string(craftEngineBundleSection, "mahjongpaper", "folder", "bundleFolder"),
+            ConfigAccess.bool(
+                craftEngineCompatibilitySection,
+                true,
+                "injectAntiCheatPacketEventsMappings",
+                "compatibility.injectAntiCheatPacketEventsMappings"
+            ),
+            new CraftEngineItemsSettings(
+                ConfigAccess.bool(craftEngineItemsSection, true, "preferCustomItems", "items.preferCustomItems"),
+                sharedTileItemIdPrefix,
+                ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "riichiTileItemIdPrefix", "riichi-tile-item-id-prefix"),
+                ConfigAccess.string(craftEngineItemsSection, sharedTileItemIdPrefix, "gbTileItemIdPrefix", "gb-tile-item-id-prefix")
+            ),
+            new CraftEngineFurnitureSettings(
+                ConfigAccess.bool(craftEngineFurnitureSection, true, "preferHitboxInteraction", "furniture.preferHitboxInteraction"),
+                ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:table_visual", "tableFurnitureId", "table-furniture-id"),
+                ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id")
+            )
+        );
+        return new PluginSettings(debug, database, tables, ranking, craftEngine);
     }
 
-    public ConfigurationSection debugSection() {
-        return this.debugSection;
+    public DebugSettings debug() {
+        return this.debug;
     }
 
-    public ConfigurationSection databaseSection() {
-        return this.databaseSection;
+    public DatabaseSettings database() {
+        return this.database;
     }
 
-    public ConfigurationSection craftEngineSection() {
-        return this.craftEngineSection;
+    public TablesSettings tables() {
+        return this.tables;
+    }
+
+    public RankingSettings ranking() {
+        return this.ranking;
+    }
+
+    public CraftEngineSettings craftEngine() {
+        return this.craftEngine;
     }
 
     public boolean databaseFailOnError() {
-        return this.databaseFailOnError;
+        return this.database.failOnError();
     }
 
     public boolean tablePersistenceEnabled() {
-        return this.tablePersistenceEnabled;
+        return this.tables.persistence().enabled();
     }
 
     public String tablePersistenceFile() {
-        return this.tablePersistenceFile;
+        return this.tables.persistence().file();
     }
 
     public int tableStartupRebuildBatchSize() {
-        return this.tableStartupRebuildBatchSize;
+        return this.tables.startupRebuildBatchSize();
     }
 
     public boolean tableFreeMoveDuringRound() {
-        return this.tableFreeMoveDuringRound;
+        return this.tables.allowFreeMoveDuringRound();
     }
 
     public String craftEngineTileItemIdPrefix() {
-        return this.craftEngineSharedTileItemIdPrefix;
+        return this.craftEngine.items().tileItemIdPrefix();
     }
 
     public String craftEngineRiichiTileItemIdPrefix() {
-        return this.craftEngineRiichiTileItemIdPrefix;
+        return this.craftEngine.items().riichiTileItemIdPrefix();
     }
 
     public String craftEngineGbTileItemIdPrefix() {
-        return this.craftEngineGbTileItemIdPrefix;
+        return this.craftEngine.items().gbTileItemIdPrefix();
     }
 
     public String craftEngineTileItemIdPrefix(MahjongVariant variant) {
         if (variant != MahjongVariant.RIICHI) {
-            return this.craftEngineGbTileItemIdPrefix;
+            return this.craftEngine.items().gbTileItemIdPrefix();
         }
-        return this.craftEngineRiichiTileItemIdPrefix;
+        return this.craftEngine.items().riichiTileItemIdPrefix();
     }
 
     public String craftEngineTableFurnitureId() {
-        return this.craftEngineTableFurnitureId;
+        return this.craftEngine.furniture().tableFurnitureId();
     }
 
     public String craftEngineSeatFurnitureId() {
-        return this.craftEngineSeatFurnitureId;
+        return this.craftEngine.furniture().seatFurnitureId();
     }
 
     public boolean rankingEnabled() {
-        return this.rankingEnabled;
+        return this.ranking.enabled();
     }
 
     public String rankingEastRoom() {
-        return this.rankingEastRoom;
+        return this.ranking.eastRoom();
     }
 
     public String rankingSouthRoom() {
-        return this.rankingSouthRoom;
+        return this.ranking.southRoom();
+    }
+
+    public record DebugSettings(boolean enabled, java.util.List<String> categories) {
+        public DebugSettings {
+            categories = categories == null ? java.util.List.of() : java.util.List.copyOf(categories);
+        }
+    }
+
+    public record DatabaseSettings(
+        boolean enabled,
+        boolean failOnError,
+        String type,
+        DatabaseConnectionSettings connection,
+        DatabaseCredentialsSettings credentials,
+        DatabaseH2Settings h2,
+        DatabasePoolSettings pool
+    ) {
+    }
+
+    public record DatabaseConnectionSettings(String host, int port, String name, String parameters) {
+    }
+
+    public record DatabaseCredentialsSettings(String username, String password) {
+    }
+
+    public record DatabaseH2Settings(String path, String username, String password, String parameters) {
+    }
+
+    public record DatabasePoolSettings(int maxSize, int minIdle, long connectionTimeoutMillis) {
+    }
+
+    public record TablesSettings(
+        int startupRebuildBatchSize,
+        boolean allowFreeMoveDuringRound,
+        TablePersistenceSettings persistence
+    ) {
+    }
+
+    public record TablePersistenceSettings(boolean enabled, String file) {
+    }
+
+    public record RankingSettings(boolean enabled, String eastRoom, String southRoom) {
+    }
+
+    public record CraftEngineSettings(
+        boolean exportBundleOnEnable,
+        String bundleFolder,
+        boolean injectAntiCheatPacketEventsMappings,
+        CraftEngineItemsSettings items,
+        CraftEngineFurnitureSettings furniture
+    ) {
+    }
+
+    public record CraftEngineItemsSettings(
+        boolean preferCustomItems,
+        String tileItemIdPrefix,
+        String riichiTileItemIdPrefix,
+        String gbTileItemIdPrefix
+    ) {
+    }
+
+    public record CraftEngineFurnitureSettings(
+        boolean preferHitboxInteraction,
+        String tableFurnitureId,
+        String seatFurnitureId
+    ) {
     }
 }
-

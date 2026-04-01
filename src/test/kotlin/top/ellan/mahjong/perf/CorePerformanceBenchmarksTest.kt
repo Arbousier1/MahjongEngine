@@ -303,7 +303,7 @@ class CorePerformanceBenchmarksTest {
             seats,
             names,
             object : GbNativeRulesGateway() {
-                override fun evaluateTing(request: top.ellan.mahjong.gb.jni.GbTingRequest): top.ellan.mahjong.gb.jni.GbTingResponse {
+                override fun evaluateTingNative(request: top.ellan.mahjong.gb.jni.GbTingRequest): top.ellan.mahjong.gb.jni.GbTingResponse {
                     var score = 0
                     repeat(512) {
                         request.handTiles.forEachIndexed { index, tile ->

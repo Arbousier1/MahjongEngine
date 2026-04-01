@@ -1,7 +1,6 @@
 package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.TableRenderSnapshot;
@@ -16,8 +15,8 @@ public final class TableRegionFingerprintService {
     private static final String REGION_DORA = "dora";
     private static final String REGION_CENTER = "center";
 
-    public Map<String, String> precomputeRegionFingerprints(MahjongTableSession session, TableRenderSnapshot snapshot) {
-        Map<String, String> fingerprints = new HashMap<>();
+    public Map<String, Long> precomputeRegionFingerprints(MahjongTableSession session, TableRenderSnapshot snapshot) {
+        Map<String, Long> fingerprints = new HashMap<>();
         fingerprints.put(REGION_TABLE, this.tableFingerprint(session, snapshot));
         fingerprints.put(REGION_WALL, this.wallFingerprint(snapshot));
         fingerprints.put(REGION_DORA, this.doraFingerprint(snapshot));
@@ -32,7 +31,7 @@ public final class TableRegionFingerprintService {
         return Map.copyOf(fingerprints);
     }
 
-    public String handPrivateTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
+    public long handPrivateTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int tileIndex) {
         TableRenderLayout.Point point = plan.privateHandPoints().get(tileIndex);
         return fingerprintBuilder(160)
             .field("hand-private-tile")
@@ -46,10 +45,10 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(point.y()))
             .field(Double.doubleToLongBits(point.z()))
             .field(seat.hand().get(tileIndex).name())
-            .toString();
+            .value();
     }
 
-    public String handPublicTileFingerprint(
+    public long handPublicTileFingerprint(
         TableRenderSnapshot snapshot,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
@@ -70,10 +69,10 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(point.y()))
             .field(Double.doubleToLongBits(point.z()))
             .field(concealHand ? "unknown" : seat.hand().get(tileIndex).name())
-            .toString();
+            .value();
     }
 
-    public String discardTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int discardIndex) {
+    public long discardTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int discardIndex) {
         TableRenderLayout.TilePlacement placement = plan.discardPlacements().get(discardIndex);
         return fingerprintBuilder(160)
             .field("discard-tile")
@@ -87,16 +86,16 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(placement.point().z()))
             .field(placement.tile().name())
             .field(placement.pose().name())
-            .toString();
+            .value();
     }
 
-    String wallTileFingerprint(TableRenderLayout.LayoutPlan plan, int wallIndex) {
+    long wallTileFingerprint(TableRenderLayout.LayoutPlan plan, int wallIndex) {
         TableRenderLayout.TilePlacement placement = plan.wallTiles().get(wallIndex);
         if (placement == null) {
             return fingerprintBuilder(32)
                 .field("wall-empty")
                 .field(wallIndex)
-                .toString();
+                .value();
         }
         return fingerprintBuilder(160)
             .field("wall-tile")
@@ -107,22 +106,32 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(placement.point().z()))
             .field(placement.tile().name())
             .field(placement.pose().name())
-            .toString();
+            .value();
     }
 
-    private String wallFingerprint(TableRenderSnapshot snapshot) {
+    public long opaqueFingerprint(String value) {
+        return fingerprintBuilder(64)
+            .field("opaque")
+            .field(value)
+            .value();
+    }
+
+    private long wallFingerprint(TableRenderSnapshot snapshot) {
         if (!snapshot.started()) {
-            return "waiting";
+            return fingerprintBuilder(24)
+                .field("wall")
+                .field("waiting")
+                .value();
         }
         return fingerprintBuilder(32)
             .field("wall")
             .field(snapshot.started())
             .field(snapshot.gameFinished())
             .field(snapshot.remainingWallCount())
-            .toString();
+            .value();
     }
 
-    private String tableFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot) {
+    private long tableFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot) {
         return fingerprintBuilder(48)
             .field("table")
             .field(snapshot.worldName())
@@ -130,32 +139,35 @@ public final class TableRegionFingerprintService {
             .field((int) Math.floor(snapshot.centerY()))
             .field((int) Math.floor(snapshot.centerZ()))
             .field(Objects.toString(session.plugin().settings().craftEngineTableFurnitureId(), ""))
-            .toString();
+            .value();
     }
 
-    private String doraFingerprint(TableRenderSnapshot snapshot) {
+    private long doraFingerprint(TableRenderSnapshot snapshot) {
         if (!snapshot.started()) {
-            return "dora:waiting";
+            return fingerprintBuilder(24)
+                .field("dora")
+                .field("waiting")
+                .value();
         }
         FingerprintBuilder builder = fingerprintBuilder(64)
             .field("dora")
             .field(snapshot.started())
             .field(snapshot.doraIndicators().size());
-        snapshot.doraIndicators().forEach(tile -> builder.raw(tile.name()).raw(','));
-        return builder.toString();
+        snapshot.doraIndicators().forEach(tile -> builder.field(tile.name()));
+        return builder.value();
     }
 
-    private String centerFingerprint(TableRenderSnapshot snapshot) {
+    private long centerFingerprint(TableRenderSnapshot snapshot) {
         return fingerprintBuilder(192)
             .field("center")
             .field(snapshot.started() ? "started" : "waiting")
             .field(snapshot.publicCenterText())
             .field(snapshot.lastPublicDiscardPlayerId())
             .field(snapshot.lastPublicDiscardTile())
-            .toString();
+            .value();
     }
 
-    private String seatLabelFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
+    private long seatLabelFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         return fingerprintBuilder(128)
             .field("labels")
             .field("depth-v2")
@@ -169,35 +181,35 @@ public final class TableRegionFingerprintService {
             .field(seat.riichi())
             .field(seat.ready())
             .field(seat.queuedToLeave())
-            .toString();
+            .value();
     }
 
-    private String seatVisualFingerprint(MahjongTableSession session, SeatWind wind) {
+    private long seatVisualFingerprint(MahjongTableSession session, SeatWind wind) {
         return fingerprintBuilder(96)
             .field("visual")
             .field("chair-stable-v2")
             .field(wind.name())
             .field(Objects.toString(session.plugin().settings().craftEngineSeatFurnitureId(), ""))
-            .toString();
+            .value();
     }
 
-    private String handPublicFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
+    private long handPublicFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         FingerprintBuilder builder = fingerprintBuilder(256)
             .field("hand-public")
             .field(seat.wind().name())
             .field(Objects.toString(seat.playerId(), "empty"));
         if (seat.playerId() == null) {
-            return builder.toString();
+            return builder.value();
         }
         builder.field(snapshot.started())
             .field(seat.online())
             .field(seat.viewerMembershipSignature())
             .field(seat.stickLayoutCount());
         seat.hand().forEach(tile -> builder.field(tile.name()));
-        return builder.toString();
+        return builder.value();
     }
 
-    public String meldTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int meldIndex) {
+    public long meldTileFingerprint(TableSeatRenderSnapshot seat, TableRenderLayout.SeatLayoutPlan plan, int meldIndex) {
         TableRenderLayout.TilePlacement placement = plan.meldPlacements().get(meldIndex);
         return fingerprintBuilder(160)
             .field("meld-tile")
@@ -210,10 +222,10 @@ public final class TableRegionFingerprintService {
             .field(Double.doubleToLongBits(placement.point().z()))
             .field(placement.tile().name())
             .field(placement.pose().name())
-            .toString();
+            .value();
     }
 
-    private String stickFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
+    private long stickFingerprint(TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         FingerprintBuilder builder = fingerprintBuilder(128)
             .field("sticks")
             .field(seat.wind().name())
@@ -221,12 +233,12 @@ public final class TableRegionFingerprintService {
             .field(snapshot.honbaCount())
             .field(snapshot.dealerSeat().name());
         if (seat.playerId() == null) {
-            return builder.toString();
+            return builder.value();
         }
         builder.field(seat.riichi());
         seat.scoringSticks().forEach(stick -> builder.field(stick.name()));
         seat.cornerSticks().forEach(stick -> builder.field(stick.name()));
-        return builder.toString();
+        return builder.value();
     }
 
     private String seatRegionKey(String region, SeatWind wind) {
@@ -234,37 +246,35 @@ public final class TableRegionFingerprintService {
     }
 
     private static FingerprintBuilder fingerprintBuilder(int capacity) {
-        return new FingerprintBuilder(capacity);
+        return new FingerprintBuilder();
     }
 
     private static final class FingerprintBuilder {
-        private final StringBuilder delegate;
-        private boolean needsSeparator;
+        private static final long FNV_OFFSET_BASIS = 0xcbf29ce484222325L;
+        private static final long FNV_PRIME = 0x100000001b3L;
 
-        private FingerprintBuilder(int capacity) {
-            this.delegate = new StringBuilder(capacity);
-        }
+        private long hash = FNV_OFFSET_BASIS;
+        private boolean needsSeparator;
 
         private FingerprintBuilder field(Object value) {
             if (this.needsSeparator) {
-                this.delegate.append(':');
+                this.mix(':');
             }
-            this.delegate.append(Objects.toString(value, ""));
+            String text = Objects.toString(value, "");
+            for (int index = 0; index < text.length(); index++) {
+                this.mix(text.charAt(index));
+            }
             this.needsSeparator = true;
             return this;
         }
 
-        private FingerprintBuilder raw(Object value) {
-            this.delegate.append(value);
-            return this;
+        private long value() {
+            return this.hash;
         }
 
-        @Override
-        public String toString() {
-            return this.delegate.toString();
+        private void mix(char value) {
+            this.hash ^= value;
+            this.hash *= FNV_PRIME;
         }
     }
 }
-
-
-

@@ -2,6 +2,7 @@ package top.ellan.mahjong.compat;
 
 import top.ellan.mahjong.config.ConfigAccess;
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
@@ -108,6 +109,24 @@ public final class CraftEngineService {
             "compatibility.injectAntiCheatPacketEventsMappings"
         );
         this.bundleFolderName = ConfigAccess.string(section, "mahjongpaper", "bundleFolder", "bundle.folder");
+    }
+
+    public CraftEngineService(MahjongPaperPlugin plugin, PluginSettings.CraftEngineSettings settings) {
+        this.plugin = plugin;
+        PluginSettings.CraftEngineSettings safe = settings == null
+            ? new PluginSettings.CraftEngineSettings(
+                true,
+                "mahjongpaper",
+                true,
+                new PluginSettings.CraftEngineItemsSettings(true, "mahjongpaper:", "mahjongpaper:", "mahjongpaper:"),
+                new PluginSettings.CraftEngineFurnitureSettings(true, "mahjongpaper:table_visual", "mahjongpaper:seat_chair")
+            )
+            : settings;
+        this.exportBundleOnEnable = safe.exportBundleOnEnable();
+        this.preferCustomItems = safe.items() == null || safe.items().preferCustomItems();
+        this.preferFurnitureHitbox = safe.furniture() == null || safe.furniture().preferHitboxInteraction();
+        this.injectAntiCheatPacketEventsMappings = safe.injectAntiCheatPacketEventsMappings();
+        this.bundleFolderName = safe.bundleFolder() == null || safe.bundleFolder().isBlank() ? "mahjongpaper" : safe.bundleFolder();
     }
 
     public void initializeAfterStartup() {

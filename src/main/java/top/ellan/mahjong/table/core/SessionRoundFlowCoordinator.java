@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionRoundFlowCoordinator {
-    private final MahjongTableSession session;
+    private final SessionState session;
 
-    SessionRoundFlowCoordinator(MahjongTableSession session) {
+    SessionRoundFlowCoordinator(SessionState session) {
         this.session = session;
     }
 
@@ -94,9 +94,7 @@ final class SessionRoundFlowCoordinator {
             return;
         }
         this.session.removeQueuedLeavesInternal(new ArrayList<>(removed.keySet()));
-        if (this.session.plugin().tableManager() != null) {
-            this.session.plugin().tableManager().finalizeDeferredLeaves(this.session, removed);
-        }
+        this.session.finalizeDeferredLeaves(removed);
     }
 
     private void handleBotMatchAutoNextRound() {
