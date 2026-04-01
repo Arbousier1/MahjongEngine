@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.8.0-beta.1 - 2026-04-01
+
+Test release for post-0.7.5 architecture and gameplay fixes.
+
+Version list after `0.7.5`:
+
+- `0.8.0-beta.1` (this release)
+- No other tagged versions were published between `0.7.5` and this beta.
+
+中文更新日志（简体）:
+
+- 会话状态架构重构：引入 `SessionState` 抽象，统一会话生命周期、规则切换、渲染刷新、轮转控制与延迟离桌处理，降低 `MahjongTableSession` 的耦合复杂度。
+- 机器人策略分层：新增 `BotStrategy` / `BotStrategyFactory`，将立直与国标 AI 行为拆分为 `RiichiBotStrategy` 与 `GbBotStrategy`，便于后续扩展四川规则与变体特化策略。
+- 跨规则回合防卡死：修复机器人出牌重试逻辑，针对“不可选手牌位”“出牌失败后仍在当前回合”等边界场景添加恢复路径，避免回合卡住。
+- 国标出牌可选性联动：新增 `canSelectHandTile(...)` 对外校验通道，机器人不再盲打非法索引，确保与 UI/规则限制一致。
+- 听牌计算稳定性增强：`RiichiPlayerState` 增加 `shanten` 失败降级策略，在主策略抛出 `NoSuchElement` 等异常时自动回退到稳定全量扫描策略，减少异常中断。
+- JNI 桥接与文档同步：调整国标 JNI 相关包结构与文档，统一本地规则网关、预热与调用边界，提升维护可读性。
+- 数据与性能测试补强：补充/强化 H2 与 MariaDB 跨方言一致性测试、GB 原生网关与预热服务测试、渲染协调器指标与性能基准测试。
+- 加杠渲染修复（重点）：加杠牌不再“抬高叠放”，改为“与目标牌同平面并向桌心内移”，修复牌面突出桌边的视觉问题。
+- 渲染回归用例更新：`TableRendererTest` 从“高度差断言”改为“同平面 + 距桌心更近断言”，并补齐距离计算辅助函数，确保 `dev` 分支可编译通过。
+
+English Release Notes:
+
+- Session-state architecture refactor: introduced `SessionState` to centralize lifecycle, rule mutation, render refresh, round-flow control, and deferred-leave handling with lower `MahjongTableSession` coupling.
+- Bot strategy layering: added `BotStrategy` and `BotStrategyFactory`, splitting variant logic into `RiichiBotStrategy` and `GbBotStrategy` for cleaner extension toward Sichuan/variant-specific AI.
+- Cross-variant turn-stall prevention: fixed bot turn retry/recovery paths for edge cases like non-selectable discard slots and failed discard retries while the bot is still the current actor.
+- GB discard legality alignment: exposed `canSelectHandTile(...)` so bot discards obey the same hand-index legality constraints as player UI/rule validation.
+- Shanten stability improvements: `RiichiPlayerState` now promotes to fallback full-scan strategies when primary shanten evaluation fails (notably `NoSuchElement` class failures), reducing runtime interruption risk.
+- JNI bridge and docs alignment: updated GB JNI package/layout boundaries and documentation for clearer warmup, gateway, and native invocation responsibilities.
+- Test and reliability coverage expansion: added/updated cross-dialect DB consistency tests, GB native warmup/gateway tests, and render coordinator/performance benchmark coverage.
+- Added-kan render fix (key): `kakan` tile placement is now planar and shifted inward toward table center, instead of being raised/stacked above the claimed tile.
+- Render regression assertions updated: tests now validate same-plane placement plus center-inward movement, and include the helper needed for stable `dev` branch compilation.
+
 ## 0.7.5 - 2026-03-31
 
 Riichi declaration behavior and rule-alignment release.
