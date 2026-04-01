@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -84,6 +85,7 @@ public final class MahjongTableSession {
     private final SessionMessaging sessionMessaging;
     private final SessionViewerIndex viewerIndex;
     private final SessionRoundLifecycle roundLifecycle;
+    private final SessionState coordinatorState;
     private final SessionRuleCoordinator ruleCoordinator;
     private final SessionRoundActionCoordinator roundActionCoordinator;
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
@@ -133,10 +135,11 @@ public final class MahjongTableSession {
         this.sessionMessaging = new SessionMessaging(this);
         this.viewerIndex = new SessionViewerIndex(this);
         this.roundLifecycle = new SessionRoundLifecycle();
-        this.ruleCoordinator = new SessionRuleCoordinator(this);
-        this.roundActionCoordinator = new SessionRoundActionCoordinator(this);
-        this.handSelectionCoordinator = new SessionHandSelectionCoordinator(this);
-        this.roundFlowCoordinator = new SessionRoundFlowCoordinator(this);
+        this.coordinatorState = new SessionStateView();
+        this.ruleCoordinator = new SessionRuleCoordinator(this.coordinatorState);
+        this.roundActionCoordinator = new SessionRoundActionCoordinator(this.coordinatorState);
+        this.handSelectionCoordinator = new SessionHandSelectionCoordinator(this.coordinatorState);
+        this.roundFlowCoordinator = new SessionRoundFlowCoordinator(this.coordinatorState);
     }
 
     public MahjongPaperPlugin plugin() {
@@ -509,13 +512,10 @@ public final class MahjongTableSession {
         if (this.participants.isBot(playerId)) {
             return this.botDisplayName(playerId, locale);
         }
-        if (this.engine() != null) {
-            RiichiPlayerState seatPlayer = this.engine().seatPlayer(playerId.toString());
-            if (seatPlayer != null) {
-                return seatPlayer.getDisplayName();
-            }
-        }
-        return this.plugin.messages().plain(locale, "common.offline");
+        return this.riichiEngine()
+            .map(engine -> engine.seatPlayer(playerId.toString()))
+            .map(RiichiPlayerState::getDisplayName)
+            .orElse(this.plugin.messages().plain(locale, "common.offline"));
     }
 
     public boolean isBot(UUID playerId) {
@@ -623,16 +623,17 @@ public final class MahjongTableSession {
     }
 
     public int riichiDiscardIndex(UUID playerId) {
-        if (this.engine() == null) {
-            return -1;
-        }
         if (playerId == null) {
             return -1;
         }
-        RiichiPlayerState player = this.engine().seatPlayer(playerId.toString());
-        if (player == null || player.getRiichiSengenTile() == null) {
-            return -1;
-        }
+        return this.riichiEngine()
+            .map(engine -> engine.seatPlayer(playerId.toString()))
+            .filter(player -> player.getRiichiSengenTile() != null)
+            .map(MahjongTableSession::resolveRiichiDiscardIndex)
+            .orElse(-1);
+    }
+
+    private static int resolveRiichiDiscardIndex(RiichiPlayerState player) {
         int displayIndex = player.getDiscardedTilesForDisplay().indexOf(player.getRiichiSengenTile());
         if (displayIndex >= 0) {
             return displayIndex;
@@ -669,10 +670,9 @@ public final class MahjongTableSession {
     }
 
     public int riichiPoolCount() {
-        if (this.engine() == null) {
-            return 0;
-        }
-        return this.engine().getSeats().stream().mapToInt(RiichiPlayerState::getRiichiStickAmount).sum();
+        return this.riichiEngine()
+            .map(engine -> engine.getSeats().stream().mapToInt(RiichiPlayerState::getRiichiStickAmount).sum())
+            .orElse(0);
     }
 
     public List<ScoringStick> cornerSticks(SeatWind wind) {
@@ -765,8 +765,22 @@ public final class MahjongTableSession {
         return this.roundStartInProgress;
     }
 
-    public RiichiRoundEngine engine() {
-        return this.roundController == null ? null : this.roundController.asRiichiEngine();
+    public Optional<RiichiRoundEngine> riichiEngine() {
+        if (this.roundController == null) {
+            return Optional.empty();
+        }
+        Optional<RiichiRoundEngine> engine = this.roundController.accept(new TableRoundController.VariantVisitor<>() {
+            @Override
+            public Optional<RiichiRoundEngine> visitRiichi(RiichiTableRoundController controller) {
+                return Optional.of(controller.roundEngine());
+            }
+
+            @Override
+            public Optional<RiichiRoundEngine> visitGb(GbTableRoundController controller) {
+                return Optional.empty();
+            }
+        });
+        return engine == null ? Optional.empty() : engine;
     }
 
     public boolean hasRoundController() {
@@ -1220,7 +1234,8 @@ public final class MahjongTableSession {
         if (this.roundController == null || !this.roundController.gameFinished()) {
             return List.of();
         }
-        if (this.currentVariant() != MahjongVariant.RIICHI || this.engine() == null) {
+        Optional<RiichiRoundEngine> riichiEngine = this.riichiEngine();
+        if (this.currentVariant() != MahjongVariant.RIICHI || riichiEngine.isEmpty()) {
             List<TableFinalStanding> standings = new ArrayList<>();
             for (UUID playerId : this.players()) {
                 standings.add(new TableFinalStanding(
@@ -1246,8 +1261,7 @@ public final class MahjongTableSession {
             }
             return List.copyOf(ranked);
         }
-        RiichiRoundEngine engine = this.engine();
-        List<RiichiPlayerState> ranked = new ArrayList<>(engine.placementOrder());
+        List<RiichiPlayerState> ranked = new ArrayList<>(riichiEngine.get().placementOrder());
 
         List<TableFinalStanding> standings = new ArrayList<>(ranked.size());
         for (int i = 0; i < ranked.size(); i++) {
@@ -1370,6 +1384,240 @@ public final class MahjongTableSession {
 
     public boolean hasStaleDisplayRegions() {
         return this.regionDisplayCoordinator.hasStaleDisplayRegions();
+    }
+
+    private final class SessionStateView implements SessionState {
+        @Override
+        public MahjongPaperPlugin plugin() {
+            return MahjongTableSession.this.plugin();
+        }
+
+        @Override
+        public MahjongVariant currentVariant() {
+            return MahjongTableSession.this.currentVariant();
+        }
+
+        @Override
+        public boolean isStarted() {
+            return MahjongTableSession.this.isStarted();
+        }
+
+        @Override
+        public int size() {
+            return MahjongTableSession.this.size();
+        }
+
+        @Override
+        public boolean isReady(UUID playerId) {
+            return MahjongTableSession.this.isReady(playerId);
+        }
+
+        @Override
+        public UUID playerAt(SeatWind wind) {
+            return MahjongTableSession.this.playerAt(wind);
+        }
+
+        @Override
+        public SeatWind seatOf(UUID playerId) {
+            return MahjongTableSession.this.seatOf(playerId);
+        }
+
+        @Override
+        public boolean removePlayer(UUID playerId) {
+            return MahjongTableSession.this.removePlayer(playerId);
+        }
+
+        @Override
+        public int botCount() {
+            return MahjongTableSession.this.botCount();
+        }
+
+        @Override
+        public boolean isBotMatchRoom() {
+            return MahjongTableSession.this.isBotMatchRoom();
+        }
+
+        @Override
+        public void render() {
+            MahjongTableSession.this.render();
+        }
+
+        @Override
+        public boolean discard(UUID playerId, int tileIndex) {
+            return MahjongTableSession.this.discard(playerId, tileIndex);
+        }
+
+        @Override
+        public boolean canSelectHandTileInternal(UUID playerId, int tileIndex) {
+            return MahjongTableSession.this.canSelectHandTileInternal(playerId, tileIndex);
+        }
+
+        @Override
+        public void refreshSelectedHandTileViewInternal(UUID playerId) {
+            MahjongTableSession.this.refreshSelectedHandTileViewInternal(playerId);
+        }
+
+        @Override
+        public top.ellan.mahjong.model.MahjongTile handTileAtInternal(UUID playerId, int tileIndex) {
+            return MahjongTableSession.this.handTileAtInternal(playerId, tileIndex);
+        }
+
+        @Override
+        public void clearSelectedHandTilesInternal() {
+            MahjongTableSession.this.clearSelectedHandTilesInternal();
+        }
+
+        @Override
+        public void clearLastPublicDiscardInternal() {
+            MahjongTableSession.this.clearLastPublicDiscardInternal();
+        }
+
+        @Override
+        public void clearLastPublicActionInternal() {
+            MahjongTableSession.this.clearLastPublicActionInternal();
+        }
+
+        @Override
+        public void rememberPublicDiscardInternal(UUID playerId, top.ellan.mahjong.model.MahjongTile discardedTile) {
+            MahjongTableSession.this.rememberPublicDiscardInternal(playerId, discardedTile);
+        }
+
+        @Override
+        public void rememberPublicActionInternal(UUID playerId, String actionKey) {
+            MahjongTableSession.this.rememberPublicActionInternal(playerId, actionKey);
+        }
+
+        @Override
+        public void playReactionSoundInternal(ReactionResponse response) {
+            MahjongTableSession.this.playReactionSoundInternal(response);
+        }
+
+        @Override
+        public MahjongRule configuredRuleInternal() {
+            return MahjongTableSession.this.configuredRuleInternal();
+        }
+
+        @Override
+        public void setConfiguredRuleInternal(MahjongRule configuredRule) {
+            MahjongTableSession.this.setConfiguredRuleInternal(configuredRule);
+        }
+
+        @Override
+        public void setConfiguredVariantInternal(MahjongVariant configuredVariant) {
+            MahjongTableSession.this.setConfiguredVariantInternal(configuredVariant);
+        }
+
+        @Override
+        public void persistRoomMetadataIfNeededInternal() {
+            MahjongTableSession.this.persistRoomMetadataIfNeededInternal();
+        }
+
+        @Override
+        public TableRoundController roundControllerInternal() {
+            return MahjongTableSession.this.roundControllerInternal();
+        }
+
+        @Override
+        public boolean seatAssignmentsMatchControllerInternal(TableRoundController controller) {
+            return MahjongTableSession.this.seatAssignmentsMatchControllerInternal(controller);
+        }
+
+        @Override
+        public void setRoundControllerInternal(TableRoundController roundController) {
+            MahjongTableSession.this.setRoundControllerInternal(roundController);
+        }
+
+        @Override
+        public TableRoundController createRoundControllerInternal() {
+            return MahjongTableSession.this.createRoundControllerInternal();
+        }
+
+        @Override
+        public boolean isRoundStartInProgress() {
+            return MahjongTableSession.this.isRoundStartInProgress();
+        }
+
+        @Override
+        public void setRoundStartInProgressInternal(boolean roundStartInProgress) {
+            MahjongTableSession.this.setRoundStartInProgressInternal(roundStartInProgress);
+        }
+
+        @Override
+        public void resetRoundPresentationForStartInternal() {
+            MahjongTableSession.this.resetRoundPresentationForStartInternal();
+        }
+
+        @Override
+        public boolean shouldAnimateOpeningDiceInternal() {
+            return MahjongTableSession.this.shouldAnimateOpeningDiceInternal();
+        }
+
+        @Override
+        public void startOpeningDiceAnimationInternal(OpeningDiceRoll diceRoll, Runnable completion) {
+            MahjongTableSession.this.startOpeningDiceAnimationInternal(diceRoll, completion);
+        }
+
+        @Override
+        public void completeRoundStartInternal() {
+            MahjongTableSession.this.completeRoundStartInternal();
+        }
+
+        @Override
+        public void playRoundStartSoundInternal() {
+            MahjongTableSession.this.playRoundStartSoundInternal();
+        }
+
+        @Override
+        public void restoreDisplaysIfNeededInternal() {
+            MahjongTableSession.this.restoreDisplaysIfNeededInternal();
+        }
+
+        @Override
+        public void flushViewerPresentationIfNeededInternal() {
+            MahjongTableSession.this.flushViewerPresentationIfNeededInternal();
+        }
+
+        @Override
+        public boolean hasQueuedLeavesInternal() {
+            return MahjongTableSession.this.hasQueuedLeavesInternal();
+        }
+
+        @Override
+        public Set<UUID> queuedLeavePlayersInternal() {
+            return MahjongTableSession.this.queuedLeavePlayersInternal();
+        }
+
+        @Override
+        public void removeQueuedLeavesInternal(List<UUID> removedPlayerIds) {
+            MahjongTableSession.this.removeQueuedLeavesInternal(removedPlayerIds);
+        }
+
+        @Override
+        public void finalizeDeferredLeaves(Map<UUID, SeatWind> removed) {
+            if (MahjongTableSession.this.plugin().tableManager() != null) {
+                MahjongTableSession.this.plugin().tableManager().finalizeDeferredLeaves(MahjongTableSession.this, removed);
+            }
+        }
+
+        @Override
+        public void scheduleNextRoundCountdownInternal() {
+            MahjongTableSession.this.scheduleNextRoundCountdownInternal();
+        }
+
+        @Override
+        public boolean hasNextRoundCountdownInternal() {
+            return MahjongTableSession.this.hasNextRoundCountdownInternal();
+        }
+
+        @Override
+        public void cancelNextRoundCountdownInternal() {
+            MahjongTableSession.this.cancelNextRoundCountdownInternal();
+        }
+
+        @Override
+        public long nextRoundSecondsRemainingInternal() {
+            return MahjongTableSession.this.nextRoundSecondsRemainingInternal();
+        }
     }
 
     private static FingerprintBuilder fingerprintBuilder(int capacity) {

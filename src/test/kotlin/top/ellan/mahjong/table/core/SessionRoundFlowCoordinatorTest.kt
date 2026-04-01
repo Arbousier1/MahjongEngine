@@ -13,7 +13,7 @@ import kotlin.test.Test
 class SessionRoundFlowCoordinatorTest {
     @Test
     fun `startRound recreates controller when seat assignments changed`() {
-        val session = mock(MahjongTableSession::class.java)
+        val session = mock(SessionState::class.java)
         val existing = mock(TableRoundController::class.java)
         val replacement = mock(TableRoundController::class.java)
         val coordinator = SessionRoundFlowCoordinator(session)

@@ -58,7 +58,6 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, List<MahjongTile>> flowers = new HashMap<>();
     private final Map<UUID, Boolean> hasDrawnTile = new HashMap<>();
     private final Map<UUID, List<GbMeldState>> melds = new HashMap<>();
-    private final Map<UUID, GbTingResponse> tingCache = new HashMap<>();
     private List<MahjongTile> wall = List.of();
     private boolean started;
     private boolean gameFinished;
@@ -99,13 +98,17 @@ public final class GbTableRoundController implements TableRoundController {
             this.flowers.put(playerId, new ArrayList<>());
             this.hasDrawnTile.put(playerId, false);
             this.melds.put(playerId, new ArrayList<>());
-            this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Round has not started yet."));
         }
     }
 
     @Override
     public MahjongVariant variant() {
         return MahjongVariant.GB;
+    }
+
+    @Override
+    public <T> T accept(VariantVisitor<T> visitor) {
+        return visitor.visitGb(this);
     }
 
     @Override
@@ -155,7 +158,6 @@ public final class GbTableRoundController implements TableRoundController {
             }
         }
         this.drawTile(this.currentPlayerId(), false, false, true);
-        this.refreshAllTing();
     }
 
     @Override
@@ -172,7 +174,6 @@ public final class GbTableRoundController implements TableRoundController {
         if (this.pendingReactionWindow == null) {
             this.advanceAfterDiscard();
         }
-        this.refreshAllTing();
         return true;
     }
 
@@ -257,7 +258,6 @@ public final class GbTableRoundController implements TableRoundController {
             this.melds.get(playerId).add(GbMeldState.ankan(target));
             this.kanCount++;
             boolean drew = this.drawReplacementTileOrFinish(playerId);
-            this.refreshAllTing();
             return drew;
         }
         for (int i = 0; i < this.melds.get(playerId).size(); i++) {
@@ -268,7 +268,6 @@ public final class GbTableRoundController implements TableRoundController {
                 GbReactionResolver.PendingReactionWindow robbingKongWindow = this.buildRobbingKongWindow(playerId, target, i);
                 if (robbingKongWindow != null) {
                     this.pendingReactionWindow = robbingKongWindow;
-                    this.refreshAllTing();
                     return true;
                 }
                 this.finishAddedKong(playerId, target, i);
@@ -636,7 +635,10 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     public GbTingResponse tingOptions(UUID playerId) {
-        return this.tingCache.getOrDefault(playerId, new GbTingResponse(false, List.of(), "No ting data."));
+        if (playerId == null || !this.started || !this.hands.containsKey(playerId)) {
+            return new GbTingResponse(false, List.of(), "Round has not started yet.");
+        }
+        return this.evaluateTing(playerId, this.currentConcealedHand(playerId), this.melds.getOrDefault(playerId, List.of()));
     }
 
     public boolean canWinByTsumo(UUID playerId) {
@@ -699,7 +701,6 @@ public final class GbTableRoundController implements TableRoundController {
             } else if (claim.response().getType() == ReactionType.CHII) {
                 this.claimChow(claim.playerId(), pending.tile(), discarderSeat, claim.response().getChiiPair());
             }
-            this.refreshAllTing();
             return true;
         }
         if (resolution.advanceAfterDiscard()) {
@@ -969,7 +970,6 @@ public final class GbTableRoundController implements TableRoundController {
         if (!this.drawTile(current, false, false, true)) {
             this.finishExhaustiveDraw();
         }
-        this.refreshAllTing();
     }
 
     private boolean drawReplacementTileOrFinish(UUID playerId) {
@@ -1069,7 +1069,6 @@ public final class GbTableRoundController implements TableRoundController {
         this.melds.get(playerId).set(meldIndex, meld.toAddedKong(target));
         this.kanCount++;
         this.drawReplacementTileOrFinish(playerId);
-        this.refreshAllTing();
     }
 
     private List<String> selfDrawFlags(UUID playerId, MahjongTile winningTile) {
@@ -1153,15 +1152,6 @@ public final class GbTableRoundController implements TableRoundController {
                 river.remove(i);
                 return;
             }
-        }
-    }
-
-    private void refreshAllTing() {
-        for (UUID playerId : this.seats.values()) {
-            if (playerId == null) {
-                continue;
-            }
-            this.tingCache.put(playerId, this.evaluateTing(playerId, this.currentConcealedHand(playerId), this.melds.getOrDefault(playerId, List.of())));
         }
     }
 

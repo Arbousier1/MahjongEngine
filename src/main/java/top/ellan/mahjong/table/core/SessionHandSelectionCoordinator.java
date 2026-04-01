@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionHandSelectionCoordinator {
-    private final MahjongTableSession session;
+    private final SessionState session;
     private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
 
-    SessionHandSelectionCoordinator(MahjongTableSession session) {
+    SessionHandSelectionCoordinator(SessionState session) {
         this.session = session;
     }
 

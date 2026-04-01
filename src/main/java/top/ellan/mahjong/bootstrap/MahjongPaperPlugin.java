@@ -4,9 +4,13 @@ import top.ellan.mahjong.command.MahjongCommand;
 import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.config.LocalizedConfigResource;
 import top.ellan.mahjong.config.PluginSettings;
+import top.ellan.mahjong.config.PluginSettingsListener;
 import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.db.DatabaseService;
+import top.ellan.mahjong.gb.jni.GbNativeWarmupService;
 import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.metrics.InMemoryMetricsCollector;
+import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
 import top.ellan.mahjong.runtime.AsyncService;
@@ -14,12 +18,16 @@ import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MahjongPaperPlugin extends JavaPlugin {
     private final MessageService messages = new MessageService();
-    private PluginSettings settings;
+    private final MetricsCollector metrics = new InMemoryMetricsCollector();
+    private final Set<PluginSettingsListener> settingsListeners = ConcurrentHashMap.newKeySet();
+    private volatile PluginSettings settings;
     private DebugService debug;
     private AsyncService async;
     private ServerScheduler scheduler;
@@ -43,6 +51,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this.getLogger().info("Database enabled: " + this.database.databaseType());
             this.debug.log("database", "Database service initialized with type=" + this.database.databaseType());
         }
+        this.async.execute("gb-native-warmup", () -> GbNativeWarmupService.warmupOnce(this.getLogger()));
 
         this.tableManager = new MahjongTableManager(this);
         this.craftEngine.enableFurnitureInteractionBridge(this.tableManager);
@@ -107,13 +116,14 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     public String reloadMahjongConfiguration() {
         this.reloadConfig();
 
+        PluginSettings previousSettings = this.settings;
         PluginSettings reloadedSettings = PluginSettings.from(this.getConfig());
-        DebugService reloadedDebug = new DebugService(this.getLogger(), reloadedSettings.debugSection());
-        CraftEngineService reloadedCraftEngine = new CraftEngineService(this, reloadedSettings.craftEngineSection());
+        DebugService reloadedDebug = new DebugService(this.getLogger(), reloadedSettings.debug());
+        CraftEngineService reloadedCraftEngine = new CraftEngineService(this, reloadedSettings.craftEngine());
         DatabaseService reloadedDatabase = null;
-        if (DatabaseService.isEnabled(reloadedSettings.databaseSection())) {
+        if (DatabaseService.isEnabled(reloadedSettings.database())) {
             try {
-                reloadedDatabase = new DatabaseService(this, reloadedSettings.databaseSection());
+                reloadedDatabase = new DatabaseService(this, reloadedSettings.database());
             } catch (DatabaseService.InitializationException ex) {
                 this.handleDatabaseStartupFailure(ex);
                 if (reloadedSettings.databaseFailOnError()) {
@@ -137,6 +147,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.database = reloadedDatabase;
         this.craftEngine = reloadedCraftEngine;
         this.debug.log("lifecycle", "Debug logging enabled.");
+        this.notifySettingsListeners(previousSettings, reloadedSettings);
 
         if (this.tableManager != null) {
             this.craftEngine.enableFurnitureInteractionBridge(this.tableManager);
@@ -150,8 +161,37 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         return null;
     }
 
+    public void addSettingsListener(PluginSettingsListener listener) {
+        if (listener != null) {
+            this.settingsListeners.add(listener);
+        }
+    }
+
+    public void removeSettingsListener(PluginSettingsListener listener) {
+        if (listener != null) {
+            this.settingsListeners.remove(listener);
+        }
+    }
+
+    private void notifySettingsListeners(PluginSettings previousSettings, PluginSettings currentSettings) {
+        if (previousSettings == null) {
+            return;
+        }
+        for (PluginSettingsListener listener : this.settingsListeners) {
+            try {
+                listener.onSettingsChanged(previousSettings, currentSettings);
+            } catch (RuntimeException exception) {
+                this.getLogger().log(Level.WARNING, "A PluginSettingsListener callback failed.", exception);
+            }
+        }
+    }
+
     public MessageService messages() {
         return this.messages;
+    }
+
+    public MetricsCollector metrics() {
+        return this.metrics;
     }
 
     public PluginSettings settings() {

@@ -13,6 +13,7 @@ import top.ellan.mahjong.riichi.model.ScoreItem
 import top.ellan.mahjong.riichi.model.ScoreSettlement
 import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.runtime.AsyncService
+import top.ellan.mahjong.table.core.MahjongVariant
 import top.ellan.mahjong.table.core.MahjongTableSession
 import top.ellan.mahjong.table.core.TableFinalStanding
 import org.bukkit.configuration.file.YamlConfiguration
@@ -51,11 +52,11 @@ class DatabaseIntegrationTest {
         `when`(settings.rankingSouthRoom()).thenReturn("GOLD")
 
         val config = YamlConfiguration()
-        config.set("pool.maxSize", 2)
-        config.set("pool.minIdle", 1)
-        config.set("connection.type", "h2")
-        config.set("h2.path", "data/test-db")
-        service = DatabaseService(plugin, config)
+        config.set("database.pool.maxSize", 2)
+        config.set("database.pool.minIdle", 1)
+        config.set("database.connection.type", "h2")
+        config.set("database.h2.path", "data/test-db")
+        service = DatabaseService(plugin, PluginSettings.from(config).database())
     }
 
     @AfterEach
@@ -163,6 +164,60 @@ class DatabaseIntegrationTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `replace and load persistent tables round-trips through database`() {
+        val rule = MahjongRule().apply {
+            length = MahjongRule.GameLength.SOUTH
+            thinkingTime = MahjongRule.ThinkingTime.LONG
+            startingPoints = 30000
+            minPointsToWin = 35000
+            minimumHan = MahjongRule.MinimumHan.TWO
+            spectate = false
+            redFive = MahjongRule.RedFive.FOUR
+            openTanyao = true
+            localYaku = true
+            ronMode = MahjongRule.RonMode.MULTI_RON
+            riichiProfile = MahjongRule.RiichiProfile.TOURNAMENT
+        }
+        service.replacePersistentTables(
+            listOf(
+                DatabaseService.PersistentTableRecord(
+                    "TABLE88",
+                    "world",
+                    100.5,
+                    64.0,
+                    -22.25,
+                    MahjongVariant.GB,
+                    rule,
+                    true
+                )
+            )
+        )
+
+        val loaded = service.loadPersistentTables()
+
+        assertEquals(1, loaded.size)
+        val table = loaded.single()
+        assertEquals("TABLE88", table.id())
+        assertEquals("world", table.worldName())
+        assertEquals(100.5, table.x())
+        assertEquals(64.0, table.y())
+        assertEquals(-22.25, table.z())
+        assertEquals(MahjongVariant.GB, table.variant())
+        assertTrue(table.botMatch())
+        assertEquals(MahjongRule.GameLength.SOUTH, table.rule().length)
+        assertEquals(MahjongRule.ThinkingTime.LONG, table.rule().thinkingTime)
+        assertEquals(30000, table.rule().startingPoints)
+        assertEquals(35000, table.rule().minPointsToWin)
+        assertEquals(MahjongRule.MinimumHan.TWO, table.rule().minimumHan)
+        assertEquals(false, table.rule().spectate)
+        assertEquals(MahjongRule.RedFive.FOUR, table.rule().redFive)
+        assertEquals(true, table.rule().openTanyao)
+        assertEquals(true, table.rule().localYaku)
+        assertEquals(MahjongRule.RonMode.MULTI_RON, table.rule().ronMode)
+        assertEquals(MahjongRule.RiichiProfile.TOURNAMENT, table.rule().riichiProfile)
     }
 
     private fun withConnection(service: DatabaseService, block: (java.sql.Connection) -> Unit) {

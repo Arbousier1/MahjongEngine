@@ -22,6 +22,15 @@ public final class RiichiTableRoundController implements TableRoundController {
         this.engine = engine;
     }
 
+    public RiichiRoundEngine roundEngine() {
+        return this.engine;
+    }
+
+    @Override
+    public <T> T accept(VariantVisitor<T> visitor) {
+        return visitor.visitRiichi(this);
+    }
+
     @Override
     public MahjongVariant variant() {
         return MahjongVariant.RIICHI;
@@ -420,11 +429,6 @@ public final class RiichiTableRoundController implements TableRoundController {
         }
         return List.copyOf(player.discardSuggestions());
     }
-    @Override
-    public RiichiRoundEngine asRiichiEngine() {
-        return this.engine;
-    }
-
     private RiichiPlayerState seatPlayer(UUID playerId) {
         return playerId == null ? null : this.engine.seatPlayer(playerId.toString());
     }

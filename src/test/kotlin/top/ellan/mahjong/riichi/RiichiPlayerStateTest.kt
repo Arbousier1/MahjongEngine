@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 
 class RiichiPlayerStateTest {
     @Test
-    fun `best-only shanten crash falls back to full analysis when Java no such element is thrown`() {
+    fun `best-only shanten probe switches strategy to primary full scan`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -58,16 +58,17 @@ class RiichiPlayerStateTest {
 
             val suggestions = player.discardSuggestions()
 
+            assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(suggestions.isNotEmpty())
             assertEquals(1, bestOnlyCalls)
-            assertEquals(1, fullCalls)
+            assertTrue(fullCalls > 1)
         } finally {
             RiichiPlayerState.shantenCalculator = originalCalculator
         }
     }
 
     @Test
-    fun `shanten no such element in both attempts recovers via util stable args`() {
+    fun `strategy switches to stable util when primary probe fails twice`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -96,6 +97,7 @@ class RiichiPlayerStateTest {
 
             val suggestions = player.discardSuggestions()
 
+            assertEquals("stable-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(suggestions.isNotEmpty())
             assertEquals(2, calculatorCalls)
         } finally {
@@ -104,7 +106,7 @@ class RiichiPlayerStateTest {
     }
 
     @Test
-    fun `can win pre-check reuses shanten fallback chain`() {
+    fun `can win pre-check uses selected full-scan strategy`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.hands += tiles(
             MahjongTile.M2,
@@ -147,9 +149,10 @@ class RiichiPlayerStateTest {
                 personalSituation = defaultPersonalSituation()
             )
 
+            assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(canWin)
             assertEquals(1, bestOnlyCalls)
-            assertEquals(1, fullCalls)
+            assertTrue(fullCalls >= 2)
         } finally {
             RiichiPlayerState.shantenCalculator = originalCalculator
         }

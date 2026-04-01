@@ -7,7 +7,6 @@ import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RoundResolution;
-import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.table.core.MahjongVariant;
@@ -15,6 +14,14 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TableRoundController {
+    interface VariantVisitor<T> {
+        T visitRiichi(RiichiTableRoundController controller);
+
+        T visitGb(GbTableRoundController controller);
+    }
+
+    <T> T accept(VariantVisitor<T> visitor);
+
     MahjongVariant variant();
 
     MahjongRule rule();
@@ -162,10 +169,6 @@ public interface TableRoundController {
 
     default List<RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
         return List.of();
-    }
-
-    default RiichiRoundEngine asRiichiEngine() {
-        return null;
     }
 }
 

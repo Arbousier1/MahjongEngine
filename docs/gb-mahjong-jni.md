@@ -23,6 +23,7 @@ Main entry points:
 
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeLibrary.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeBridge.java`
+- `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbNativeWarmupService.java`
 - `src/main/java/doublemoon/mahjongcraft/paper/gb/runtime/GbNativeRulesGateway.java`
 - `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
 
@@ -33,6 +34,16 @@ Responsibilities:
 - expose availability checks and diagnostic detail
 - encode requests into JSON and decode JSON responses back into typed models
 - shield the rest of the plugin from JNI failures by converting them into invalid `fan`, `ting`, or `win` responses
+
+### Startup Warmup And First-Call Benchmark
+
+At plugin startup, MahjongPaper now runs a one-time async JNI warmup (`GbNativeWarmupService.warmupOnce(...)`):
+
+- checks bridge availability
+- probes `libraryVersion()` and `ping()`
+- benchmarks first and warm calls for `evaluateFan`, `evaluateTing`, and `evaluateWin`
+
+This produces startup log lines with nanosecond timings for first call vs warm call, so JNI call-pool ideas can be evaluated using data instead of assumptions.
 
 ### Library Loading Order
 
