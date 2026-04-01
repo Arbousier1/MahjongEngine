@@ -196,7 +196,7 @@ class TableRendererTest {
     }
 
     @Test
-    fun `kakan tile is stacked above claimed tile`() {
+    fun `kakan tile stays on table plane and moves inward`() {
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
         val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
         seats[SeatWind.EAST] = seatSnapshot(
@@ -246,7 +246,8 @@ class TableRendererTest {
         val claimTile = meldPlacements[1]
         val addedKanTile = meldPlacements[3]
         assertEquals(MahjongTile.M5, addedKanTile.tile())
-        assertTrue(addedKanTile.point().y() > claimTile.point().y())
+        assertEquals(claimTile.point().y(), addedKanTile.point().y(), 1e-9)
+        assertTrue(centerDistanceSquared(addedKanTile.point(), 0.0, 0.0) <= centerDistanceSquared(claimTile.point(), 0.0, 0.0) + 1e-9)
     }
 
     @Test

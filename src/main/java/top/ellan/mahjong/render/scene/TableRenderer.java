@@ -82,8 +82,6 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    // Keep kakan near table height and use only a tiny lift to avoid z-fighting.
-    private static final double KAKAN_STACK_Y_OFFSET = 0.001D;
     private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
     private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
@@ -894,7 +892,6 @@ public final class TableRenderer {
             Location kakanStackBase = null;
             float kakanStackYaw = yaw;
             Location firstTileBase = null;
-            Offset kakanPlanarOffset = new Offset(0.0D, 0.0D);
             boolean concealedKan = meld.tiles().size() == 4 && meld.faceDownAt(0) && meld.faceDownAt(meld.tiles().size() - 1);
             if (concealedKan) {
                 for (int i = 0; i < meld.tiles().size(); i++) {
@@ -946,7 +943,6 @@ public final class TableRenderer {
                 if (isClaimTile) {
                     kakanStackBase = baseLocation.clone();
                     kakanStackYaw = tileYaw;
-                    kakanPlanarOffset = kakanAdjacentOffset(wind, meld.claimYawOffset());
                 }
                 lastTileWasHorizontal = isClaimTile;
                 placedTileCount++;
@@ -959,7 +955,7 @@ public final class TableRenderer {
             if (meld.hasAddedKanTile() && kakanStackBase != null) {
                 spawned.add(spawnPublicTile(
                     session,
-                    add(kakanStackBase, kakanPlanarOffset).add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    add(kakanStackBase, offsetTowardTableCenter(wind, TILE_WIDTH + TILE_PADDING)).add(0.0D, FLAT_TILE_Y, 0.0D),
                     kakanStackYaw,
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
@@ -1960,12 +1956,6 @@ public final class TableRenderer {
             case WEST -> new Offset(-amount, 0.0D);
             case NORTH -> new Offset(0.0D, -amount);
         };
-    }
-
-    private static Offset kakanAdjacentOffset(SeatWind wind, int claimYawOffset) {
-        int direction = claimYawOffset == 0 ? 1 : Integer.signum(claimYawOffset);
-        double amount = TILE_WIDTH + TILE_PADDING;
-        return offsetTowardTableCenter(wind, amount * direction);
     }
 
     private static Offset offsetTowardTableCenter(SeatWind wind, double amount) {
