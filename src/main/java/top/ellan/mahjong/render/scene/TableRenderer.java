@@ -82,8 +82,6 @@ public final class TableRenderer {
     private static final double WALL_TILE_STEP = TILE_WIDTH + TILE_PADDING;
     private static final double UPRIGHT_TILE_Y = TILE_HEIGHT / 2.0D;
     private static final double FLAT_TILE_Y = TILE_DEPTH / 2.0D;
-    // Keep kakan near table height and use only a tiny lift to avoid z-fighting.
-    private static final double KAKAN_STACK_Y_OFFSET = 0.001D;
     private static final float HAND_INTERACTION_WIDTH = (float) TILE_WIDTH;
     private static final float HAND_INTERACTION_HEIGHT = (float) TILE_HEIGHT;
     private static final float SEAT_LABEL_INTERACTION_WIDTH = 1.2F;
@@ -957,7 +955,7 @@ public final class TableRenderer {
             if (meld.hasAddedKanTile() && kakanStackBase != null) {
                 spawned.add(spawnPublicTile(
                     session,
-                    kakanStackBase.clone().add(0.0D, FLAT_TILE_Y + KAKAN_STACK_Y_OFFSET, 0.0D),
+                    add(kakanStackBase, offsetTowardTableCenter(wind, TILE_WIDTH + TILE_PADDING)).add(0.0D, FLAT_TILE_Y, 0.0D),
                     kakanStackYaw,
                     meld.addedKanTile(),
                     DisplayEntities.TileRenderPose.FLAT_FACE_UP
