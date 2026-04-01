@@ -132,3 +132,14 @@ The bundled resource pack lives in [resourcepack](./resourcepack).
 - `CraftEngine`: <https://github.com/Xiao-MoMi/craft-engine>
 - `GB-Mahjong`: <https://github.com/zheng-fan/GB-Mahjong>
 - `mahjong_graphic`: <https://github.com/lietxia/mahjong_graphic>
+
+## Community
+
+- Contributing guide: [.github/CONTRIBUTING.md](./.github/CONTRIBUTING.md)
+- Code of conduct: [.github/CODE_OF_CONDUCT.md](./.github/CODE_OF_CONDUCT.md)
+- Security policy: [.github/SECURITY.md](./.github/SECURITY.md)
+- Support: [.github/SUPPORT.md](./.github/SUPPORT.md)
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
