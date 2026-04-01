@@ -72,6 +72,14 @@ public final class TableRenderLayout {
         );
     }
 
+    public static SeatLayoutPlan precomputeSeatOnly(TableRenderSnapshot snapshot, SeatWind wind) {
+        if (snapshot == null || wind == null) {
+            throw new IllegalArgumentException("snapshot and wind are required");
+        }
+        Point displayCenter = new Point(snapshot.centerX(), snapshot.centerY() + DISPLAY_CENTER_Y_OFFSET, snapshot.centerZ());
+        return precomputeSeat(displayCenter, snapshot, snapshot.seat(wind));
+    }
+
     private static SeatLayoutPlan precomputeSeat(
         Point displayCenter,
         TableRenderSnapshot snapshot,

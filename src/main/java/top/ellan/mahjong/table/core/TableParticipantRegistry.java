@@ -131,7 +131,7 @@ final class TableParticipantRegistry {
     }
 
     Set<UUID> spectators() {
-        return Set.copyOf(this.spectators);
+        return Collections.unmodifiableSet(new LinkedHashSet<>(this.spectators));
     }
 
     UUID owner() {

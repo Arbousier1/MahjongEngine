@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Comparator;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -22,6 +23,7 @@ public final class TableRenderSnapshotFactory {
         List<UUID> onlineViewerIds = session.viewers().stream()
             .map(Player::getUniqueId)
             .distinct()
+            .sorted(Comparator.comparing(UUID::toString))
             .toList();
         Set<UUID> onlineViewerIdSet = new HashSet<>(onlineViewerIds);
         Map<UUID, String> viewerMembershipSignatures = new HashMap<>();

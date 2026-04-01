@@ -797,6 +797,7 @@ public final class TableRenderer {
 
         List<Entity> spawned = new ArrayList<>(seat.hand().size());
         boolean concealHand = snapshot.started();
+        List<UUID> ownerHidden = List.of(seat.playerId());
         for (int i = 0; i < seat.hand().size(); i++) {
             spawned.add(DisplayEntities.spawnTileDisplay(
                 session.plugin(),
@@ -808,7 +809,7 @@ public final class TableRenderer {
                 null,
                 true,
                 null,
-                List.of(seat.playerId())
+                ownerHidden
             ));
         }
         return spawned;
@@ -826,6 +827,7 @@ public final class TableRenderer {
         }
 
         boolean concealHand = snapshot.started();
+        List<UUID> ownerHidden = List.of(seat.playerId());
         return List.of(DisplayEntities.spawnTileDisplay(
             session.plugin(),
             toLocation(session, plan.publicHandPoints().get(tileIndex)),
@@ -836,7 +838,7 @@ public final class TableRenderer {
             null,
             true,
             null,
-            List.of(seat.playerId())
+            ownerHidden
         ));
     }
 
@@ -852,6 +854,7 @@ public final class TableRenderer {
         }
 
         boolean concealHand = snapshot.started();
+        List<UUID> ownerHidden = List.of(seat.playerId());
         return List.of(DisplayEntities.tileDisplaySpec(
             toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
@@ -861,7 +864,7 @@ public final class TableRenderer {
             null,
             true,
             null,
-            List.of(seat.playerId())
+            ownerHidden
         ));
     }
 
@@ -991,6 +994,7 @@ public final class TableRenderer {
             return List.of();
         }
 
+        List<UUID> ownerOnly = List.of(seat.playerId());
         Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
         DisplayEntities.EntitySpec tileSpec = DisplayEntities.tileDisplaySpec(
             tileLocation,
@@ -1000,7 +1004,7 @@ public final class TableRenderer {
             DisplayEntities.TileRenderPose.STANDING,
             null,
             true,
-            List.of(seat.playerId()),
+            ownerOnly,
             1.0F,
             null,
             null,
@@ -1013,7 +1017,7 @@ public final class TableRenderer {
                 HAND_INTERACTION_WIDTH,
                 HAND_INTERACTION_HEIGHT,
                 DisplayClickAction.handTile(session.id(), seat.playerId(), tileIndex),
-                List.of(seat.playerId())
+                ownerOnly
             )
         );
     }

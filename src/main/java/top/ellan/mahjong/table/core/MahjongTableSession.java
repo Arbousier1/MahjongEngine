@@ -967,8 +967,7 @@ public final class MahjongTableSession {
         if (seat == null || seat.playerId() == null) {
             return;
         }
-        TableRenderLayout.LayoutPlan plan = TableRenderLayout.precompute(snapshot);
-        TableRenderLayout.SeatLayoutPlan seatPlan = plan.seat(wind);
+        TableRenderLayout.SeatLayoutPlan seatPlan = TableRenderLayout.precomputeSeatOnly(snapshot, wind);
         if (seatPlan == null) {
             return;
         }
