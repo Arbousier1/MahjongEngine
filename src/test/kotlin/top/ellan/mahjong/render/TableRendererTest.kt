@@ -415,6 +415,12 @@ class TableRendererTest {
             SeatWind.WEST -> 90.0f
             SeatWind.NORTH -> 0.0f
         }
+
+    private fun centerDistanceSquared(point: TableRenderLayout.Point, centerX: Double, centerZ: Double): Double {
+        val dx = point.x() - centerX
+        val dz = point.z() - centerZ
+        return dx * dx + dz * dz
+    }
 }
 
 
