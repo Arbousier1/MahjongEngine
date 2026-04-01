@@ -21,11 +21,11 @@ The plugin does not try to embed C++ logic directly into gameplay flow. Instead,
 
 Main entry points:
 
-- `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeLibrary.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeBridge.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/gb/jni/GbNativeWarmupService.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/gb/runtime/GbNativeRulesGateway.java`
-- `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
+- `src/main/java/top/ellan/mahjong/gb/jni/GbMahjongNativeLibrary.java`
+- `src/main/java/top/ellan/mahjong/gb/jni/GbMahjongNativeBridge.java`
+- `src/main/java/top/ellan/mahjong/gb/jni/GbNativeWarmupService.java`
+- `src/main/java/top/ellan/mahjong/gb/runtime/GbNativeRulesGateway.java`
+- `src/main/kotlin/top/ellan/mahjong/gb/jni/GbMahjongNativeModels.kt`
 
 Responsibilities:
 

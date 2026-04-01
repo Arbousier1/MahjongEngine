@@ -921,17 +921,17 @@ std::string fromJString(JNIEnv* env, jstring value) {
 } // namespace
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeLibraryVersion(JNIEnv* env, jclass) {
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeLibraryVersion(JNIEnv* env, jclass) {
     return newString(env, "mahjongpaper-gb-jni/0.2.0");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativePing(JNIEnv* env, jclass) {
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativePing(JNIEnv* env, jclass) {
     return newString(env, "mahjongpaper-gb-native-ready");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeEvaluateFan(JNIEnv* env, jclass, jstring requestJson) {
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateFan(JNIEnv* env, jclass, jstring requestJson) {
     try {
         return newString(env, evaluateFanJson(parseFanRequest(fromJString(env, requestJson))));
     } catch (const std::exception& exception) {
@@ -940,7 +940,7 @@ Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeEvaluateFa
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeEvaluateTing(JNIEnv* env, jclass, jstring requestJson) {
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateTing(JNIEnv* env, jclass, jstring requestJson) {
     try {
         return newString(env, evaluateTingJson(parseTingRequest(fromJString(env, requestJson))));
     } catch (const std::exception& exception) {
@@ -949,7 +949,7 @@ Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeEvaluateTi
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_doublemoon_mahjongcraft_paper_gb_jni_GbMahjongNativeBridge_nativeEvaluateWin(JNIEnv* env, jclass, jstring requestJson) {
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateWin(JNIEnv* env, jclass, jstring requestJson) {
     try {
         return newString(env, evaluateWinJson(parseWinRequest(fromJString(env, requestJson))));
     } catch (const std::exception& exception) {
