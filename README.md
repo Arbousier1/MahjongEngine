@@ -71,25 +71,27 @@ Admin targeting details:
 
 - Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
 
-## Sichuan Rules (Bilingual + Code Mapping)
+## Sichuan Rules (Blood Battle, Chengdu-style)
 
-The following items describe what is already implemented for `SICHUAN` mode, with Chinese/English pairing and direct code references.
+The current `SICHUAN` mode implements mainstream Chengdu blood-battle flow and settlement:
 
-- `规则档位` / `Rule profile`: Sichuan uses a dedicated profile with suited tiles only, no flowers/honors, and no `chii`.
+- `Rule profile`: suited tiles only (`M/P/S`), no honors/flowers, and no `chii`.
   Code: [GbRuleProfile.java](./src/main/java/top/ellan/mahjong/table/core/round/GbRuleProfile.java)
-- `定缺（当前为自动）` / `Missing suit (currently auto-selected)`: at round start, each player gets an auto-selected missing suit (fewest tiles, tie-break `M > P > S`).
-  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`assignSichuanMissingSuits`, `autoSelectSichuanMissingSuit`)
-- `强制定缺出牌` / `Forced missing-suit discard`: while the hand still contains missing-suit tiles, players can only discard that suit.
-  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`canSelectHandTile`, `canDiscardBySichuanMissingSuit`)
-- `胡牌需缺一门 + 清空定缺` / `Win must be missing one suit + chosen missing suit cleared`: Sichuan win checks enforce both restrictions in fan/win/ting paths.
-  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`satisfiesSichuanWinRestrictions`, `evaluateFanResponse`, `evaluateTing`)
-- `血战到底骨架` / `Blood battle skeleton`: winner settles and leaves active turn order until enough winners end the hand.
-  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`usesSichuanBloodBattle`, `recordSichuanWins`, `finishSichuanBloodBattle`)
+- `Auto dingque + forced discard`: each player gets an auto-selected missing suit; while missing-suit tiles remain, only that suit can be discarded.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`assignSichuanMissingSuits`, `canDiscardBySichuanMissingSuit`)
+- `Blood battle to the end`: winners leave active turn order; the hand ends when only one active player remains or the wall exhausts.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`recordSichuanWins`, `activeSichuanPlayerCount`, `finishSichuanBloodBattle`)
+- `Sichuan fan engine`: `ping hu / dui dui hu / qing yi se / qi dui / long qi dui / qing dui / jiang dui / gen`, plus `gang shang hua`, `gang shang pao`, and `qiang gang hu`.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`evaluateSichuanFanResponse`)
+- `Gang economy`: immediate gang settlement for concealed/open/added kong, plus call-transfer (`hu jiao zhuan yi`) on post-kong discard ron.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`applySichuanKanSettlement`, `applySichuanGangTransferOnRon`)
+- `Exhaustive draw penalties`: hua-zhu penalty, cha-jiao style noten-to-tenpai settlement, and gang-tax refund for noten players.
+  Code: [GbTableRoundController.java](./src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java) (`resolveSichuanExhaustiveDraw`)
 
 Validation tests:
 
 - [GbTableRoundControllerTest.kt](./src/test/kotlin/top/ellan/mahjong/table/core/round/GbTableRoundControllerTest.kt)
-  Cases include `sichuan profile disables chii reactions`, `sichuan discard must follow selected missing suit`, and Sichuan tsumo/blood-battle coverage.
+  Includes Sichuan checks for dingque enforcement, blood-battle progression, gang scoring, call transfer, and exhaustive-draw hua-zhu handling.
 
 ## Build
 

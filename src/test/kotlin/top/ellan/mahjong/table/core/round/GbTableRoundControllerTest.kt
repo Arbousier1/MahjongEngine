@@ -461,6 +461,94 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `sichuan concealed kan settles immediate gang score`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "S1", "S2", "S3", "S4", "S5"))
+
+        assertTrue(controller.declareKan(east, "m1"))
+        assertEquals(25006, controller.points(east))
+        assertEquals(24998, controller.points(south))
+        assertEquals(24998, controller.points(west))
+        assertEquals(24998, controller.points(north))
+    }
+
+    @Test
+    fun `sichuan gang shang pao triggers call transfer`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "S9", "M2", "M3", "M4", "M5", "M6", "S2", "S3", "S4", "S5"))
+        forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "S2", "S3", "S4", "S9"))
+        forceSichuanMissingSuit(controller, east, "P")
+        forceSichuanMissingSuit(controller, south, "P")
+        forceWall(controller, listOf("S8", "S7", "S6", "S5"))
+
+        assertTrue(controller.declareKan(east, "m1"))
+        val discardIndex = controller.hand(east).indexOfFirst { it == MahjongTile.S9 }
+        assertTrue(discardIndex >= 0)
+        assertTrue(controller.discard(east, discardIndex))
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.RON, null)))
+        if (controller.availableReactions(west) != null) {
+            assertTrue(controller.react(west, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(north) != null) {
+            assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
+        }
+
+        assertEquals(25008, controller.points(south))
+        assertEquals(24992, controller.points(east))
+        assertEquals(25000, controller.points(west))
+        assertEquals(25000, controller.points(north))
+    }
+
+    @Test
+    fun `sichuan exhaustive draw applies huazhu penalty`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "S4", "S5"))
+        forceHand(controller, south, listOf("M1", "M1", "M2", "M2", "M3", "M3", "P1", "P1", "P2", "P2", "P3", "P3", "EAST"))
+        forceHand(controller, west, listOf("M1", "M1", "M2", "M2", "M3", "M3", "P1", "P1", "P2", "P2", "P3", "P3", "SOUTH"))
+        forceHand(controller, north, listOf("M1", "M1", "M2", "M2", "M3", "M3", "P1", "P1", "P2", "P2", "P3", "P3", "WEST"))
+        forceSichuanMissingSuit(controller, east, "M")
+        forceSichuanMissingSuit(controller, south, "S")
+        forceSichuanMissingSuit(controller, west, "S")
+        forceSichuanMissingSuit(controller, north, "S")
+        forceWall(controller, emptyList())
+
+        assertTrue(controller.discard(east, 0))
+        if (controller.availableReactions(south) != null) {
+            assertTrue(controller.react(south, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(west) != null) {
+            assertTrue(controller.react(west, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        if (controller.availableReactions(north) != null) {
+            assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
+        }
+        assertFalse(controller.started())
+        assertEquals("DRAW", controller.lastResolution()?.title)
+        assertEquals(-48, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
+        assertEquals(16, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == south.toString() }?.scoreChange)
+        assertEquals(16, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == west.toString() }?.scoreChange)
+        assertEquals(16, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == north.toString() }?.scoreChange)
+    }
+
+    @Test
     fun `gb round advances dealer between hands and keeps east round wind`() {
         val controller = controller()
         controller.startRound()
