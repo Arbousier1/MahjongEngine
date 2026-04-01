@@ -359,6 +359,7 @@ class GbTableRoundControllerTest {
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
         val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
 
         forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
         forceHand(controller, south, listOf("M2", "M3", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1", "P2"))
@@ -371,6 +372,9 @@ class GbTableRoundControllerTest {
 
         assertTrue(controller.react(south, ReactionResponse(ReactionType.CHII, chiiPair)))
         assertTrue(controller.react(west, ReactionResponse(ReactionType.MINKAN, null)))
+        if (controller.availableReactions(north) != null) {
+            assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
+        }
 
         assertEquals(SeatWind.WEST, controller.currentSeat())
         val southMelds = controller.fuuro(south).filter { it.claimTileIndex() >= 0 }

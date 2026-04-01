@@ -12,6 +12,7 @@ import top.ellan.mahjong.riichi.model.ScoreSettlement
 import top.ellan.mahjong.riichi.model.SettlementPayment
 import top.ellan.mahjong.riichi.model.SettlementPaymentType
 import top.ellan.mahjong.riichi.model.YakuSettlement
+import top.ellan.mahjong.table.core.MahjongVariant
 import top.ellan.mahjong.table.core.MahjongTableSession
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.mockito.Mockito.mock
@@ -116,6 +117,7 @@ class SettlementUiIntegrationTest {
         `when`(session.plugin()).thenReturn(plugin)
         `when`(session.roundDisplay(Locale.ENGLISH)).thenReturn("East 2")
         `when`(session.dealerName(Locale.ENGLISH)).thenReturn("Alice")
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.RIICHI)
         `when`(session.finalStandings()).thenReturn(emptyList())
         return session
     }
