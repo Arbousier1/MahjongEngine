@@ -15,7 +15,7 @@ group = "top.ellan"
 version = "0.8.0-beta.1"
 
 val kotlinRuntimeVersion = "2.3.20"
-val kotlinSerializationVersion = "1.10.0"
+val kotlinSerializationVersion = "1.11.0"
 val mahjongUtilsVersion = "0.7.7"
 val mariadbVersion = "3.5.8"
 val mysqlVersion = "9.6.0"
