@@ -6,19 +6,19 @@ import java.util.Properties
 plugins {
     java
     jacoco
-    kotlin("jvm") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.20"
+    kotlin("jvm") version "2.3.21"
+    kotlin("plugin.serialization") version "2.3.21"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
 group = "top.ellan"
 version = "0.8.0-beta.1"
 
-val kotlinRuntimeVersion = "2.3.20"
+val kotlinRuntimeVersion = "2.3.21"
 val kotlinSerializationVersion = "1.11.0"
 val mahjongUtilsVersion = "0.7.7"
 val mariadbVersion = "3.5.8"
-val mysqlVersion = "9.6.0"
+val mysqlVersion = "9.7.0"
 val h2Version = "2.4.240"
 val hikariVersion = "7.0.2"
 val adventureVersion = "4.26.1"
