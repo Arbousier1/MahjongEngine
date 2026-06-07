@@ -6,15 +6,15 @@ import java.util.Properties
 plugins {
     java
     jacoco
-    kotlin("jvm") version "2.3.21"
-    kotlin("plugin.serialization") version "2.3.21"
+    kotlin("jvm") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
 group = "top.ellan"
 version = "0.8.0-beta.1"
 
-val kotlinRuntimeVersion = "2.3.21"
+val kotlinRuntimeVersion = "2.4.0"
 val kotlinSerializationVersion = "1.11.0"
 val mahjongUtilsVersion = "0.7.7"
 val mariadbVersion = "3.5.8"
