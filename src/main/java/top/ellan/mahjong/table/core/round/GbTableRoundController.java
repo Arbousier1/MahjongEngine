@@ -239,7 +239,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean declareKan(UUID playerId, String tileName) {
-        if (playerId == null || tileName == null || tileName.isBlank() || !this.isCurrentPlayer(playerId) || this.hasPendingReaction()) {
+        if (playerId == null || tileName == null || tileName.isBlank() || !this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return false;
         }
         MahjongTile target;
@@ -467,7 +467,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareConcealedKan(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return false;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
@@ -481,7 +481,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean canDeclareAddedKan(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return false;
         }
         List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
@@ -495,7 +495,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedKanTiles(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -510,7 +510,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedConcealedKanTiles(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -526,7 +526,7 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<String> suggestedAddedKanTiles(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return List.of();
         }
         List<String> suggestions = new ArrayList<>();
@@ -571,7 +571,7 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     public String suggestedBotKanTile(UUID playerId) {
-        if (!this.canOperateOnCurrentTurn(playerId)) {
+        if (!this.canDeclareSelfKanOnCurrentTurn(playerId)) {
             return null;
         }
         return this.botDecisionService.suggestedKanTile(
@@ -1108,6 +1108,10 @@ public final class GbTableRoundController implements TableRoundController {
 
     private boolean canOperateOnCurrentTurn(UUID playerId) {
         return playerId != null && this.isCurrentPlayer(playerId) && !this.hasPendingReaction();
+    }
+
+    private boolean canDeclareSelfKanOnCurrentTurn(UUID playerId) {
+        return this.canOperateOnCurrentTurn(playerId) && this.hasDrawnTile(playerId);
     }
 }
 

@@ -251,6 +251,29 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `gb claimant cannot declare self kan before discarding after pon`() {
+        val controller = controller()
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
+        forceHand(controller, south, listOf("M1", "M1", "P2", "P2", "P2", "P2", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON"))
+
+        assertTrue(controller.discard(east, 0))
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.PON, null)))
+        assertTrue(controller.react(west, ReactionResponse(ReactionType.SKIP, null)))
+        assertTrue(controller.react(north, ReactionResponse(ReactionType.SKIP, null)))
+
+        assertEquals(SeatWind.SOUTH, controller.currentSeat())
+        assertFalse(controller.canDeclareKan(south))
+        assertTrue(controller.suggestedKanTiles(south).isEmpty())
+        assertFalse(controller.declareKan(south, "p2"))
+    }
+
+    @Test
     fun `chii removes claimed discard from river`() {
         val controller = controller()
         controller.startRound()
