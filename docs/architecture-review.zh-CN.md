@@ -71,26 +71,26 @@ flowchart TD
 
 ## 规模与热点
 
-主源码约 108 个 Java/Kotlin 文件、约 2.26 万行。代码量主要集中在这些区域：
+主源码约 120 个 Java/Kotlin 文件、约 2.27 万行。代码量主要集中在这些区域：
 
-- `table`: 56 文件，约 1.00 万行，是核心域和协调层
+- `table`: 60 文件，约 1.01 万行，是核心域和协调层
 - `render`: 10 文件，约 3895 行，是显示实体和布局实现
 - `riichi`: 6 文件，约 3045 行，是日麻规则核心
-- `compat`: 2 文件，约 1289 行，主要是 CraftEngine 反射桥
+- `compat`: 8 文件，约 1340 行，主要是 CraftEngine facade 和反射桥
+- `command`: 38 文件，约 1280 行，是命令入口、公共上下文和子命令实现
 - `db`: 4 文件，约 1118 行，集中管理 SQL 和段位持久化
 
 单文件热点：
 
 - `TableRenderer.java`: 1936 行
 - `MahjongTableSession.java`: 1461 行
-- `GbTableRoundController.java`: 1367 行
 - `RiichiPlayerState.kt`: 1310 行
-- `CraftEngineService.java`: 1276 行
 - `DisplayEntities.java`: 1030 行
 - `RiichiRoundEngine.kt`: 977 行
 - `DatabaseService.java`: 776 行
 - `MahjongTableManager.java`: 708 行
-- `MahjongCommand.java`: 703 行
+- `GbTableRoundController.java`: 878 行
+- `CraftEngineFurnitureBridge.java`: 580 行
 
 这些文件多数不是“坏味道”本身，而是已经成为业务复杂度聚集点。后续优化应优先降低修改这些文件时的认知负担和回归风险。
 
@@ -174,37 +174,36 @@ flowchart TD
 
 `CraftEngineService` 保留为 facade 和配置入口。
 
-### 6. 命令入口偏手写路由
+### 6. 命令入口已拆出子命令，后续重点是边界收紧
 
-`MahjongCommand` 用一个大 switch 处理所有子命令，短期直接，长期容易造成权限、参数、提示、本地化和变体能力判断散落。
+`MahjongCommand` 已改为注册、分发和根补全入口，具体 handler 位于 `top.ellan.mahjong.command.subcommand`，公共上下文集中在 `MahjongCommandContext`。
 
-建议方向：引入轻量 `MahjongSubcommand` 注册表，每个命令类只关心自己的参数和执行。先迁移 admin 命令或只读命令，避免一次性改完。
+建议方向：继续让子命令只依赖窄上下文；如果命令数量继续增长，可以按 admin、table、round action 分组注册。
 
-### 7. 文档有少量路径漂移
+### 7. 文档路径需要持续跟随拆分
 
-部分文档仍引用旧包名路径，实际源码已经在 `top.ellan.mahjong` 下。建议作为低风险整理项修正，避免后续维护者按旧路径找代码。
+源码包名已经统一在 `top.ellan.mahjong` 下，但热点文档需要随 `command/subcommand`、`compat` bridge 和 GB helper 拆分持续更新，避免后续维护者按旧聚合类找代码。
 
 ## 优化路线
 
 ### 第一阶段：不改行为的整理
 
-- 修正文档中的旧包名路径。
+- 修正文档中的旧包名路径和拆分后热点路径。
 - 增加一份“模块边界约定”，明确 `table`、`render`、`riichi`、`gb`、`compat` 的依赖方向。
 - 在测试里补一两个“架构哨兵”：例如禁止 `riichi` 依赖 Bukkit/Paper，限制 `render` 直接依赖 `db`。
 - 把 `build.gradle.kts` 中资源生成/native 构建逻辑迁移到 `buildSrc` 或 convention plugin，降低根构建脚本体量。
 
 ### 第二阶段：低风险拆分
 
-- 从 `GbTableRoundController` 拆出 `GbBotDecisionService`。
-- 从 `GbTableRoundController` 拆出 `GbNativeRequestFactory`。
+- 继续收紧 `GbBotDecisionService`、`GbNativeRequestFactory` 与 `GbTableRoundController` 的边界。
 - 从 `TableRenderer` 拆出 seat/hand/discard/meld/overlay renderer，保持输出 spec 不变。
-- 从 `MahjongCommand` 拆出 admin 子命令和只读子命令。
+- 按主题整理 `command/subcommand` 注册清单，必要时拆分注册表构建。
 
 ### 第三阶段：边界收紧
 
 - 把 `MahjongTableSession` 改为更薄的 facade，coordinator 依赖窄接口而不是完整 session。
 - 拆分 `TableRoundController` 能力接口，让日麻/国标/未来变体只实现自己需要的能力。
-- 把 `CraftEngineService` 收缩为 facade，反射桥按主题分文件。
+- 继续保持 `CraftEngineService` 作为 facade，反射桥按主题分文件演进。
 - 把 `DatabaseService` 中 schema、SQL dialect、rank profile、round history 分离，降低数据库变更影响面。
 
 ### 第四阶段：性能与运行时优化

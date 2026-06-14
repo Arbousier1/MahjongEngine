@@ -42,8 +42,11 @@ When changing GB behavior, these files are usually the highest-signal places to 
 
 - `src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java`
 - `src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java`
+- `src/main/java/top/ellan/mahjong/table/core/round/GbBotDecisionService.java`
+- `src/main/java/top/ellan/mahjong/table/core/round/GbNativeRequestFactory.java`
 - `src/main/java/top/ellan/mahjong/table/core/round/TableRoundController.java`
-- `src/main/java/top/ellan/mahjong/command/MahjongCommand.java`
+- `src/main/java/top/ellan/mahjong/command/MahjongCommandContext.java`
+- `src/main/java/top/ellan/mahjong/command/subcommand/`
 - `src/main/java/top/ellan/mahjong/ui/SettlementUi.java`
 - `src/main/java/top/ellan/mahjong/gb/runtime/GbNativeRulesGateway.java`
 - `src/main/kotlin/top/ellan/mahjong/gb/jni/GbMahjongNativeModels.kt`
