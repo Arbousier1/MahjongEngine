@@ -1,0 +1,358 @@
+package top.ellan.mahjong.command;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import kotlin.Pair;
+import net.kyori.adventure.text.Component;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.db.MahjongSoulRankProfile;
+import top.ellan.mahjong.db.MahjongSoulRankRules;
+import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.layout.TableRenderLayout;
+import top.ellan.mahjong.riichi.ReactionOptions;
+import top.ellan.mahjong.riichi.ReactionResponses;
+import top.ellan.mahjong.riichi.ReactionType;
+import top.ellan.mahjong.riichi.model.MahjongTile;
+import top.ellan.mahjong.table.core.MahjongTableManager;
+import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
+import top.ellan.mahjong.table.core.TableRenderSnapshot;
+import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+
+public final class MahjongCommandContext {
+    public static final String ADMIN_PERMISSION = "mahjongpaper.admin";
+    private static final String[] HELP_KEYS = {
+        "command.help.create",
+        "command.help.botmatch",
+        "command.help.mode",
+        "command.help.join",
+        "command.help.leave",
+        "command.help.list",
+        "command.help.spectate",
+        "command.help.unspectate",
+        "command.help.addbot",
+        "command.help.removebot",
+        "command.help.rule",
+        "command.help.start",
+        "command.help.state",
+        "command.help.riichi",
+        "command.help.tsumo",
+        "command.help.ron",
+        "command.help.pon",
+        "command.help.minkan",
+        "command.help.chii",
+        "command.help.kan",
+        "command.help.skip",
+        "command.help.kyuushu",
+        "command.help.settlement",
+        "command.help.rank",
+        "command.help.render",
+        "command.help.inspect",
+        "command.help.clear",
+        "command.help.forceend",
+        "command.help.deletetable",
+        "command.help.reload"
+    };
+    private static final Set<String> ADMIN_HELP_KEYS = Set.of(
+        "command.help.create",
+        "command.help.botmatch",
+        "command.help.list",
+        "command.help.render",
+        "command.help.inspect",
+        "command.help.clear",
+        "command.help.forceend",
+        "command.help.deletetable",
+        "command.help.reload"
+    );
+    private final MahjongPaperPlugin plugin;
+    private final MessageService messages;
+    private final MahjongTableManager tableManager;
+
+    public MahjongCommandContext(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
+        this.plugin = plugin;
+        this.messages = plugin.messages();
+        this.tableManager = tableManager;
+    }
+
+    public MahjongPaperPlugin plugin() {
+        return this.plugin;
+    }
+
+    public MessageService messages() {
+        return this.messages;
+    }
+
+    public MahjongTableManager tableManager() {
+        return this.tableManager;
+    }
+
+    public MahjongTableSession requireTable(Player player) {
+        MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+        if (table == null) {
+            this.messages.send(player, "command.not_in_table");
+        }
+        return table;
+    }
+
+    public MahjongTableSession requireViewedTable(Player player) {
+        MahjongTableSession table = this.tableManager.sessionForViewer(player.getUniqueId());
+        if (table == null) {
+            this.messages.send(player, "command.not_in_table");
+        }
+        return table;
+    }
+
+    public void sendHelp(Player player) {
+        Locale locale = this.messages.resolveLocale(player);
+        this.messages.send(player, "command.usage");
+        for (String key : HELP_KEYS) {
+            if (ADMIN_HELP_KEYS.contains(key) && !player.hasPermission(ADMIN_PERMISSION)) {
+                continue;
+            }
+            player.sendMessage(this.messages.render(locale, key));
+        }
+    }
+
+    public void sendReaction(Player player, ReactionType type, Pair<MahjongTile, MahjongTile> pair, String actionKey) {
+        MahjongTableSession table = this.requireTable(player);
+        if (table == null) {
+            return;
+        }
+        boolean ok = table.react(player.getUniqueId(), ReactionResponses.of(type, pair));
+        Locale locale = this.messages.resolveLocale(player);
+        String action = this.messages.plain(locale, actionKey);
+        this.messages.send(
+            player,
+            ok ? "command.reaction_submitted" : "command.reaction_failed",
+            this.messages.tag("action", action)
+        );
+    }
+
+    public boolean requireAdmin(CommandSender sender) {
+        if (sender.hasPermission(ADMIN_PERMISSION)) {
+            return true;
+        }
+        this.messages.send(sender, "command.admin_required");
+        return false;
+    }
+
+    public void handleReload(CommandSender sender) {
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            this.messages.send(sender, "command.admin_required");
+            return;
+        }
+        String failure = this.plugin.reloadMahjongConfiguration();
+        if (failure == null) {
+            this.messages.send(sender, "command.reload_success");
+            return;
+        }
+        this.messages.send(sender, "command.reload_failed", this.messages.tag("reason", failure));
+    }
+
+    public MahjongTableSession resolveAdminTable(Player player, String[] args) {
+        if (args.length >= 2) {
+            for (MahjongTableSession table : this.tableManager.tables()) {
+                if (table.id().equalsIgnoreCase(args[1])) {
+                    return table;
+                }
+            }
+            this.messages.send(player, "command.table_not_found", this.messages.tag("table_id", args[1]));
+            return null;
+        }
+
+        MahjongTableSession table = this.tableManager.sessionForViewer(player.getUniqueId());
+        if (table == null) {
+            table = this.tableManager.nearestTable(player.getLocation());
+        }
+        if (table == null) {
+            this.messages.send(player, "command.admin_table_required");
+        }
+        return table;
+    }
+
+    public java.util.OptionalInt parseIndex(String raw) {
+        try {
+            return java.util.OptionalInt.of(Integer.parseInt(raw));
+        } catch (NumberFormatException ex) {
+            return java.util.OptionalInt.empty();
+        }
+    }
+
+    public List<String> suggestedRiichiIndices(Player player) {
+        MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+        return table == null
+            ? List.of()
+            : table.suggestedRiichiIndices(player.getUniqueId()).stream().map(String::valueOf).toList();
+    }
+
+    public List<String> suggestedKanTiles(Player player) {
+        MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+        return table == null ? List.of() : table.suggestedKanTiles(player.getUniqueId());
+    }
+
+    public List<String> suggestedChiiFirstTiles(Player player) {
+        ReactionOptions options = this.currentReactionOptions(player);
+        if (options == null || options.getChiiPairs().isEmpty()) {
+            return List.of();
+        }
+        Set<String> firstTiles = new LinkedHashSet<>();
+        options.getChiiPairs().forEach(pair -> firstTiles.add(pair.getFirst().name().toLowerCase(Locale.ROOT)));
+        return List.copyOf(firstTiles);
+    }
+
+    public List<String> suggestedChiiSecondTiles(Player player, String firstArg) {
+        ReactionOptions options = this.currentReactionOptions(player);
+        if (options == null || options.getChiiPairs().isEmpty()) {
+            return List.of();
+        }
+        String normalizedFirst = firstArg.toUpperCase(Locale.ROOT);
+        Set<String> secondTiles = new LinkedHashSet<>();
+        options.getChiiPairs().forEach(pair -> {
+            if (pair.getFirst().name().equals(normalizedFirst)) {
+                secondTiles.add(pair.getSecond().name().toLowerCase(Locale.ROOT));
+            }
+        });
+        return List.copyOf(secondTiles);
+    }
+
+    public ReactionOptions currentReactionOptions(Player player) {
+        MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
+        return table == null ? null : table.availableReactions(player.getUniqueId());
+    }
+
+    public List<String> matchPrefix(String raw, Collection<String> values) {
+        String prefix = raw.toLowerCase(Locale.ROOT);
+        List<String> matches = new ArrayList<>();
+        for (String value : values) {
+            if (value.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                matches.add(value);
+            }
+        }
+        return matches;
+    }
+
+    public void showRank(Player player) {
+        if (this.plugin.database() == null || !this.plugin.database().rankingEnabled()) {
+            this.messages.send(player, "command.rank_unavailable");
+            return;
+        }
+        this.messages.send(player, "command.rank_loading");
+        this.plugin.async().execute("load-rank-" + player.getUniqueId(), () -> {
+            try {
+                MahjongSoulRankProfile profile = this.plugin.database().loadRankProfile(player.getUniqueId(), player.getName());
+                this.plugin.scheduler().runEntity(player, () -> {
+                    if (!player.isOnline()) {
+                        return;
+                    }
+                    Locale locale = this.messages.resolveLocale(player);
+                    this.messages.send(
+                        player,
+                        "command.rank_summary",
+                        this.messages.tag("rank", this.rankLabel(locale, profile)),
+                        this.messages.tag("points", MahjongSoulRankRules.formatPoints(profile)),
+                        this.messages.number(locale, "matches", profile.totalMatches()),
+                        this.messages.number(locale, "first", profile.firstPlaces()),
+                        this.messages.number(locale, "second", profile.secondPlaces()),
+                        this.messages.number(locale, "third", profile.thirdPlaces()),
+                        this.messages.number(locale, "fourth", profile.fourthPlaces())
+                    );
+                });
+            } catch (java.sql.SQLException ex) {
+                this.plugin.scheduler().runEntity(player, () -> {
+                    if (player.isOnline()) {
+                        this.messages.send(player, "command.rank_failed");
+                    }
+                });
+            }
+        });
+    }
+
+    public void sendMeldLayoutDebug(Player player, MahjongTableSession table, String[] args) {
+        TableRenderSnapshot snapshot = table.captureRenderSnapshot(System.nanoTime(), 0L);
+        TableRenderPrecomputeResult precompute = table.precomputeRender(snapshot);
+        TableRenderLayout.LayoutPlan layout = precompute.layout();
+
+        List<SeatWind> targets = this.debugTargetWinds(player, table, args);
+        if (targets.isEmpty()) {
+            player.sendMessage(Component.text("[MahjongDebug] no target seat found"));
+            return;
+        }
+
+        player.sendMessage(Component.text("[MahjongDebug] table=" + table.id() + " seats=" + targets));
+        for (SeatWind wind : targets) {
+            TableSeatRenderSnapshot seatSnapshot = snapshot.seat(wind);
+            TableRenderLayout.SeatLayoutPlan seatPlan = layout.seat(wind);
+            if (seatSnapshot == null || seatPlan == null) {
+                player.sendMessage(Component.text("[MahjongDebug] " + wind.name() + " snapshot/plan missing"));
+                continue;
+            }
+            String nameLoc = this.formatPoint(seatPlan.playerNameLocation());
+            String labelLoc = this.formatPoint(seatPlan.statusLabelLocation());
+            player.sendMessage(Component.text(
+                "[MahjongDebug] " + wind.name()
+                    + " name=" + seatSnapshot.displayName()
+                    + " plate=" + nameLoc
+                    + " status=" + labelLoc
+                    + " melds=" + seatSnapshot.melds().size()
+                    + " placements=" + seatPlan.meldPlacements().size()
+            ));
+
+            List<TableRenderLayout.TilePlacement> placements = seatPlan.meldPlacements();
+            for (int i = 0; i < placements.size(); i++) {
+                TableRenderLayout.TilePlacement placement = placements.get(i);
+                player.sendMessage(Component.text(
+                    "[MahjongDebug] "
+                        + wind.name()
+                        + " meld#" + i
+                        + " tile=" + placement.tile().name()
+                        + " pose=" + placement.pose().name()
+                        + " yaw=" + this.formatDecimal(placement.yaw())
+                        + " at=" + this.formatPoint(placement.point())
+                ));
+            }
+        }
+    }
+
+    private String rankLabel(Locale locale, MahjongSoulRankProfile profile) {
+        String tierKey = switch (profile.tier()) {
+            case NOVICE -> "rank.tier.novice";
+            case ADEPT -> "rank.tier.adept";
+            case EXPERT -> "rank.tier.expert";
+            case MASTER -> "rank.tier.master";
+            case SAINT -> "rank.tier.saint";
+            case CELESTIAL -> "rank.tier.celestial";
+        };
+        return this.messages.plain(locale, tierKey) + " " + profile.level();
+    }
+
+    private List<SeatWind> debugTargetWinds(Player player, MahjongTableSession table, String[] args) {
+        if (args.length >= 2) {
+            String raw = args[1].toUpperCase(Locale.ROOT);
+            if ("ALL".equals(raw)) {
+                return List.of(SeatWind.values());
+            }
+            try {
+                return List.of(SeatWind.valueOf(raw));
+            } catch (IllegalArgumentException ignored) {
+                return List.of();
+            }
+        }
+        SeatWind self = table.seatOf(player.getUniqueId());
+        return self == null ? List.of(SeatWind.values()) : List.of(self);
+    }
+
+    private String formatPoint(TableRenderLayout.Point point) {
+        return this.formatDecimal(point.x()) + "," + this.formatDecimal(point.y()) + "," + this.formatDecimal(point.z());
+    }
+
+    private String formatDecimal(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
+    }
+}
