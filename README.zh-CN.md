@@ -12,7 +12,7 @@
 
 ## 当前功能
 
-当前分支已经具备可游玩的立直麻将基础流程：
+当前分支以雀魂风格立直麻将为主要玩法，同时保留可选的国标麻将流程：
 
 - 可持久化的大堂式牌桌，重启后可恢复
 - 空桌创建、东南西北固定座位、点击入座、点击准备
@@ -20,7 +20,9 @@
 - 可补 Bot，且 Bot 默认视为已准备
 - 开局前可直接离桌；开局后会在当前一局结束后离桌
 - 发牌、摸牌、打牌、立直、自摸、荣和、吃、碰、明杠、暗杠、加杠
-- 通过 `mahjong-utils` 进行和牌与结算
+- 雀魂风格默认规则：半庄、25000 起始点、30000 返回点、三赤、食断、多人荣和、雀魂杠宝牌揭示时机
+- 通过 `mahjong-utils` 进行立直麻将和牌与结算
+- 国标麻将可通过 `GB` 模式启用，规则判定走 bundled JNI bridge 与 vendored `GB-Mahjong` 源码
 - 观战、私有手牌显示、HUD 覆盖层和本地化提示
 - 基于 CraftEngine 的座位 / 牌桌交互与 bundle 导出
 - 默认使用 H2 持久化对局历史，可选 MariaDB
@@ -30,7 +32,7 @@
 - `/mahjong help`：显示游戏内帮助
 - `/mahjong create`：在当前位置创建一个空牌桌
 - `/mahjong botmatch [hanchan|tonpuu]`：创建一桌 4 Bot 测试对局并进入观战
-- `/mahjong mode <tonpuu|hanchan>`：在下一局开始前应用预设规则
+- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB>`：在下一局开始前应用预设规则；默认玩法以 `MAJSOUL_HANCHAN` 为主
 - `/mahjong join <tableId>`：加入牌桌
 - `/mahjong leave`：开局前直接离开；开局后标记为本局结束后离开
 - `/mahjong list`：查看活动牌桌及位置
@@ -40,7 +42,7 @@
 - `/mahjong addbot`、`/mahjong removebot`：在开局前增减 Bot
 - `/mahjong rule [key] [value]`：查看或修改下一局生效的规则
 - `/mahjong state`：查看当前牌桌摘要
-- `/mahjong riichi <index>`、`/mahjong tsumo`、`/mahjong ron`、`/mahjong pon`、`/mahjong minkan`、`/mahjong chii <tileA> <tileB>`、`/mahjong kan <tile>`、`/mahjong skip`、`/mahjong kyuushu`：对局中的动作指令
+- `/mahjong riichi <index>`、`/mahjong tsumo`、`/mahjong ron`、`/mahjong pon`、`/mahjong minkan`、`/mahjong chii <tileA> <tileB>`、`/mahjong kan <tile>`、`/mahjong skip`、`/mahjong kyuushu`：对局中的动作指令，其中 `riichi` 与 `kyuushu` 仅用于立直麻将
 - `/mahjong settlement`：重新打开最近一次结算界面
 - `/mahjong render`、`/mahjong clear`、`/mahjong inspect`：渲染维护与调试
 - `/mahjong forceend [tableId]`：管理员强制结束当前对局
@@ -59,6 +61,19 @@
 - 同一套悬浮字交互也用于开局前切换准备状态
 - 只有 4 个座位坐满且全部准备后，才会自动开始
 - 一局结束或整场结束后，都需要再次准备，才会开始下一局
+
+## 玩法规则
+
+- 默认新建牌桌使用雀魂风格半庄立直规则。
+- `/mahjong mode MAJSOUL_TONPUU` 切换为雀魂风格东风战，`/mahjong mode MAJSOUL_HANCHAN` 切回半庄。
+- 默认开启三赤、食断和多人荣和，使用雀魂 profile 的杠宝牌揭示时机。
+- 立直后只能打出刚摸入的牌；最后一张牌后只允许荣和反应，不能吃、碰、明杠。
+- 国标麻将是额外可选模式，使用 `/mahjong mode GB` 切换；它不改变项目“以雀魂立直为主”的默认玩法定位。
+
+## 规则参考
+
+- 立直回合流程规则：[docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
+- 国标麻将规则来源：[docs/gb-mahjong-rules.md](./docs/gb-mahjong-rules.md)
 
 ## 构建
 

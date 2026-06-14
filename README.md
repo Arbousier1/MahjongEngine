@@ -1,4 +1,4 @@
-# MahjongPaper
+﻿# MahjongPaper
 
 > This project was created entirely by AI.
 
@@ -70,6 +70,13 @@ Admin targeting details:
 ## Rule References
 
 - Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
+- GB Mahjong rule source: [docs/gb-mahjong-rules.md](./docs/gb-mahjong-rules.md)
+
+## Gameplay Positioning
+
+- Newly created tables default to Mahjong Soul-style Riichi hanchan rules.
+- `MAJSOUL_TONPUU` and `MAJSOUL_HANCHAN` are the primary presets; both use three red fives, open tanyao, multi-ron, and the Mahjong Soul kan-dora reveal profile.
+- `GB` remains available as an optional ruleset, backed by the vendored `GB-Mahjong` native bridge.
 
 ## Build
 

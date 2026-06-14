@@ -5,7 +5,7 @@ version: ${version}
 api-version: "1.21.11"
 folia-supported: true
 website: top.ellan
-description: Riichi Mahjong Paper plugin rewrite built around display entities, item_model and CraftEngine.
+description: Mahjong Soul-style Riichi Mahjong Paper plugin with optional GB rules, display entities, item_model and CraftEngine.
 authors:
   - openai
   - ellan
