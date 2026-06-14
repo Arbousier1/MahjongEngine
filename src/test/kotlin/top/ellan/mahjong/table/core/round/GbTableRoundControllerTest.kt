@@ -836,14 +836,13 @@ class GbTableRoundControllerTest {
         val meldsField = GbTableRoundController::class.java.getDeclaredField("melds")
         meldsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
-        val melds = meldsField.get(controller) as MutableMap<UUID, MutableList<GbMeldState>>
-        melds.getValue(playerId).add(
+        val melds = meldsField.get(controller) as MutableMap<UUID, List<GbMeldState>>
+        melds[playerId] = melds.getValue(playerId) +
             GbMeldState.pung(
                 MahjongTile.valueOf(tile),
                 SeatWind.SOUTH,
                 selfSeat
             )
-        )
     }
 
     private fun forceWall(controller: GbTableRoundController, tiles: List<String>) {
