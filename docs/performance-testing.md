@@ -6,12 +6,12 @@ MahjongPaper includes benchmark-style tests under the `perf` JUnit tag. They are
 
 Benchmark helpers live in:
 
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/PerformanceBenchmarkSupport.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/PerformanceBenchmarkSupport.kt`
 
 Current benchmark entry points live in:
 
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/CorePerformanceBenchmarksTest.kt`
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/GbBotSuggestionBenchmarkTest.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/CorePerformanceBenchmarksTest.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/GbBotSuggestionBenchmarkTest.kt`
 
 The helper writes aggregated reports after each benchmark run to:
 

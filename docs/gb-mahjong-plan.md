@@ -40,13 +40,13 @@ That means future work is more about hardening, coverage, and compatibility than
 
 When changing GB behavior, these files are usually the highest-signal places to inspect first:
 
-- `src/main/java/doublemoon/mahjongcraft/paper/table/core/MahjongTableSession.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/table/core/round/GbTableRoundController.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/table/core/round/TableRoundController.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/command/MahjongCommand.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/ui/SettlementUi.java`
-- `src/main/java/doublemoon/mahjongcraft/paper/gb/runtime/GbNativeRulesGateway.java`
-- `src/main/kotlin/doublemoon/mahjongcraft/paper/gb/jni/GbMahjongNativeModels.kt`
+- `src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java`
+- `src/main/java/top/ellan/mahjong/table/core/round/GbTableRoundController.java`
+- `src/main/java/top/ellan/mahjong/table/core/round/TableRoundController.java`
+- `src/main/java/top/ellan/mahjong/command/MahjongCommand.java`
+- `src/main/java/top/ellan/mahjong/ui/SettlementUi.java`
+- `src/main/java/top/ellan/mahjong/gb/runtime/GbNativeRulesGateway.java`
+- `src/main/kotlin/top/ellan/mahjong/gb/jni/GbMahjongNativeModels.kt`
 
 ## Remaining Roadmap
 

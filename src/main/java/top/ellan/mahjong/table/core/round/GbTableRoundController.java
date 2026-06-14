@@ -3,16 +3,12 @@ package top.ellan.mahjong.table.core.round;
 import top.ellan.mahjong.gb.jni.GbFanEntry;
 import top.ellan.mahjong.gb.jni.GbFanRequest;
 import top.ellan.mahjong.gb.jni.GbFanResponse;
-import top.ellan.mahjong.gb.jni.GbMeldInput;
 import top.ellan.mahjong.gb.jni.GbScoreDelta;
-import top.ellan.mahjong.gb.jni.GbSeatPointsInput;
-import top.ellan.mahjong.gb.jni.GbTingCandidate;
 import top.ellan.mahjong.gb.jni.GbTingRequest;
 import top.ellan.mahjong.gb.jni.GbTingResponse;
 import top.ellan.mahjong.gb.jni.GbWinRequest;
 import top.ellan.mahjong.gb.jni.GbWinResponse;
 import top.ellan.mahjong.gb.runtime.GbNativeRulesGateway;
-import top.ellan.mahjong.gb.runtime.GbTileEncoding;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.scene.MeldView;
@@ -55,6 +51,8 @@ public final class GbTableRoundController implements TableRoundController {
     private final IntSupplier dicePointsSupplier;
     private final Supplier<List<MahjongTile>> wallSupplier;
     private final MahjongRound round;
+    private final GbNativeRequestFactory nativeRequestFactory = new GbNativeRequestFactory();
+    private final GbBotDecisionService botDecisionService = new GbBotDecisionService();
     private final Map<UUID, Integer> points = new HashMap<>();
     private final Map<UUID, List<MahjongTile>> hands = new HashMap<>();
     private final Map<UUID, List<MahjongTile>> discards = new HashMap<>();
@@ -548,12 +546,11 @@ public final class GbTableRoundController implements TableRoundController {
         if (!this.canOperateOnCurrentTurn(playerId)) {
             return -1;
         }
-        List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
-        if (hand.isEmpty()) {
-            return -1;
-        }
-        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, this.melds.getOrDefault(playerId, List.of()));
-        return best == null ? hand.size() - 1 : best.index();
+        return this.botDecisionService.suggestedDiscardIndex(
+            this.hands.getOrDefault(playerId, List.of()),
+            this.melds.getOrDefault(playerId, List.of()),
+            (hand, melds) -> this.evaluateTing(playerId, hand, melds)
+        );
     }
 
     public ReactionResponse suggestedBotReaction(UUID playerId) {
@@ -561,68 +558,28 @@ public final class GbTableRoundController implements TableRoundController {
         if (playerId == null || options == null || this.pendingReactionWindow == null) {
             return ReactionResponses.SKIP;
         }
-        if (options.getCanRon()) {
-            return ReactionResponses.RON;
-        }
-        long skipReadyScore = botReadyScore(this.tingOptions(playerId));
-        GbBotReactionChoice best = new GbBotReactionChoice(ReactionResponses.SKIP, skipReadyScore, 0);
-        MahjongTile claimedTile = this.pendingReactionWindow.tile();
-        SeatWind fromSeat = this.seatOf(this.pendingReactionWindow.discarderId());
-        if (options.getCanPon()) {
-            GbBotReactionChoice candidate = this.evaluateBotPung(playerId, claimedTile, fromSeat);
-            if (candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
-        if (options.getCanMinkan()) {
-            GbBotReactionChoice candidate = this.evaluateBotOpenKong(playerId, claimedTile, fromSeat);
-            if (candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
-        for (Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair : options.getChiiPairs()) {
-            GbBotReactionChoice candidate = this.evaluateBotChow(playerId, claimedTile, fromSeat, pair);
-            if (candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
-        return best.readyScore() > skipReadyScore ? best.response() : ReactionResponses.SKIP;
+        return this.botDecisionService.suggestedReaction(
+            options,
+            this.tingOptions(playerId),
+            this.pendingReactionWindow.tile(),
+            this.seatOf(this.pendingReactionWindow.discarderId()),
+            this.seatOf(playerId),
+            this.hands.getOrDefault(playerId, List.of()),
+            this.melds.getOrDefault(playerId, List.of()),
+            (hand, melds) -> this.evaluateTing(playerId, hand, melds)
+        );
     }
 
     public String suggestedBotKanTile(UUID playerId) {
         if (!this.canOperateOnCurrentTurn(playerId)) {
             return null;
         }
-        List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
-        if (hand.isEmpty()) {
-            return null;
-        }
-        long baselineReadyScore = botReadyScoreForBestDiscard(playerId, hand, this.melds.getOrDefault(playerId, List.of()));
-        if (baselineReadyScore > 0) {
-            return null;
-        }
-        GbBotKanChoice best = null;
-        for (String tileName : this.suggestedKanTiles(playerId)) {
-            MahjongTile target;
-            try {
-                target = MahjongTile.valueOf(tileName.toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
-                continue;
-            }
-            GbBotState simulated = this.simulateBotKan(playerId, target);
-            if (simulated == null) {
-                continue;
-            }
-            long readyScore = botReadyScore(this.evaluateTing(playerId, simulated.hand(), simulated.melds()));
-            if (readyScore <= 0) {
-                continue;
-            }
-            GbBotKanChoice candidate = new GbBotKanChoice(tileName, readyScore);
-            if (best == null || candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
-        return best == null ? null : best.tileName();
+        return this.botDecisionService.suggestedKanTile(
+            this.hands.getOrDefault(playerId, List.of()),
+            this.melds.getOrDefault(playerId, List.of()),
+            this.suggestedKanTiles(playerId),
+            (hand, melds) -> this.evaluateTing(playerId, hand, melds)
+        );
     }
 
     public GbTingResponse tingOptions(UUID playerId) {
@@ -753,95 +710,54 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private GbFanRequest buildFanRequest(UUID playerId, MahjongTile winningTile, String winType, SeatWind discarderSeat, List<String> flags) {
-        List<MahjongTile> concealed = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        if ("SELF_DRAW".equals(winType) && this.hasDrawnTile(playerId) && !concealed.isEmpty()) {
-            concealed.remove(concealed.size() - 1);
-        }
-        List<String> encodedHand = concealed.stream().map(GbTileEncoding::encode).toList();
-        return new GbFanRequest(
-            "GB_MAHJONG",
-            encodedHand,
-            this.toNativeMelds(playerId),
-            GbTileEncoding.encode(winningTile),
+        return this.nativeRequestFactory.buildFanRequest(
+            this.hands.getOrDefault(playerId, List.of()),
+            this.hasDrawnTile(playerId),
+            this.melds.getOrDefault(playerId, List.of()),
+            winningTile,
             winType,
-            GbTileEncoding.encodeWind(this.seatOf(playerId)),
-            GbTileEncoding.encodeWind(this.roundWind()),
-            this.encodedFlowers(playerId),
+            this.seatOf(playerId),
+            this.roundWind(),
+            this.flowers.getOrDefault(playerId, List.of()),
             flags
         );
     }
 
-    private GbTingRequest buildTingRequest(UUID playerId) {
-        List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
-        List<MahjongTile> concealed = hand.stream()
-            .limit(this.hasDrawnTile(playerId) && !hand.isEmpty() ? hand.size() - 1L : hand.size())
-            .toList();
-        return this.buildTingRequest(playerId, concealed, this.melds.getOrDefault(playerId, List.of()));
-    }
-
     private GbTingRequest buildTingRequest(UUID playerId, List<MahjongTile> concealedHand, List<GbMeldState> meldStates) {
-        List<String> encodedHand = concealedHand.stream().map(GbTileEncoding::encode).toList();
-        return new GbTingRequest(
-            "GB_MAHJONG",
-            encodedHand,
-            this.toNativeMelds(playerId, meldStates),
-            GbTileEncoding.encodeWind(this.seatOf(playerId)),
-            GbTileEncoding.encodeWind(this.roundWind()),
-            this.encodedFlowers(playerId),
-            List.of()
+        return this.nativeRequestFactory.buildTingRequest(
+            concealedHand,
+            meldStates,
+            this.seatOf(playerId),
+            this.roundWind(),
+            this.flowers.getOrDefault(playerId, List.of())
         );
     }
 
     private GbWinRequest buildWinRequest(UUID winnerId, UUID discarderId, MahjongTile winningTile, String winType, List<String> flags) {
-        List<MahjongTile> concealed = new ArrayList<>(this.hands.getOrDefault(winnerId, List.of()));
-        if ("SELF_DRAW".equals(winType) && this.hasDrawnTile(winnerId) && !concealed.isEmpty()) {
-            concealed.remove(concealed.size() - 1);
-        }
-        List<String> encodedHand = concealed.stream().map(GbTileEncoding::encode).toList();
-        List<GbSeatPointsInput> seatPoints = new ArrayList<>(SeatWind.values().length);
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId != null) {
-                seatPoints.add(new GbSeatPointsInput(GbTileEncoding.encodeWind(wind), this.points(playerId)));
-            }
-        }
-        return new GbWinRequest(
-            "GB_MAHJONG",
-            encodedHand,
-            this.toNativeMelds(winnerId),
-            GbTileEncoding.encode(winningTile),
+        return this.nativeRequestFactory.buildWinRequest(
+            this.hands.getOrDefault(winnerId, List.of()),
+            this.hasDrawnTile(winnerId),
+            this.melds.getOrDefault(winnerId, List.of()),
+            winningTile,
             winType,
-            GbTileEncoding.encodeWind(this.seatOf(winnerId)),
-            discarderId == null ? null : GbTileEncoding.encodeWind(this.seatOf(discarderId)),
-            GbTileEncoding.encodeWind(this.seatOf(winnerId)),
-            GbTileEncoding.encodeWind(this.roundWind()),
-            seatPoints,
-            this.encodedFlowers(winnerId),
+            this.seatOf(winnerId),
+            discarderId == null ? null : this.seatOf(discarderId),
+            this.roundWind(),
+            this.seatPoints(),
+            this.flowers.getOrDefault(winnerId, List.of()),
             flags
         );
     }
 
-    private List<String> encodedFlowers(UUID playerId) {
-        return this.flowers.getOrDefault(playerId, List.of()).stream().map(GbTileEncoding::encode).toList();
-    }
-
-    private List<GbMeldInput> toNativeMelds(UUID playerId) {
-        return this.toNativeMelds(playerId, this.melds.getOrDefault(playerId, List.of()));
-    }
-
-    private List<GbMeldInput> toNativeMelds(UUID playerId, List<GbMeldState> playerMelds) {
-        List<GbMeldInput> inputs = new ArrayList<>(playerMelds.size());
-        for (GbMeldState meld : playerMelds) {
-            List<String> tiles = meld.tiles().stream().map(GbTileEncoding::encode).toList();
-            inputs.add(new GbMeldInput(
-                meld.nativeType(),
-                tiles,
-                meld.claimedTile() == null ? null : GbTileEncoding.encode(meld.claimedTile()),
-                meld.fromSeat() == null ? null : GbRoundSupport.relationLabel(this.seatOf(playerId), meld.fromSeat()),
-                meld.open()
-            ));
+    private List<GbNativeRequestFactory.SeatPointsView> seatPoints() {
+        List<GbNativeRequestFactory.SeatPointsView> seatPoints = new ArrayList<>(SeatWind.values().length);
+        for (SeatWind wind : SeatWind.values()) {
+            UUID playerId = this.playerAt(wind);
+            if (playerId != null) {
+                seatPoints.add(new GbNativeRequestFactory.SeatPointsView(wind, this.points(playerId)));
+            }
         }
-        return List.copyOf(inputs);
+        return List.copyOf(seatPoints);
     }
 
     private void finishWins(List<GbReactionResolver.ResolvedGbWin> winners) {
@@ -1168,177 +1084,6 @@ public final class GbTableRoundController implements TableRoundController {
         return List.copyOf(hand.subList(0, hand.size() - 1));
     }
 
-    private GbBotReactionChoice evaluateBotPung(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
-        List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        GbRoundSupport.removeTiles(hand, claimedTile, 2);
-        List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        meldStates.add(GbMeldState.pung(claimedTile, fromSeat, this.seatOf(playerId)));
-        return this.bestBotClaimDiscard(playerId, hand, meldStates, ReactionResponses.PON);
-    }
-
-    private GbBotReactionChoice evaluateBotOpenKong(UUID playerId, MahjongTile claimedTile, SeatWind fromSeat) {
-        List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        GbRoundSupport.removeTiles(hand, claimedTile, 3);
-        List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        meldStates.add(GbMeldState.openKong(claimedTile, fromSeat, this.seatOf(playerId)));
-        long readyScore = botReadyScore(this.evaluateTing(playerId, hand, meldStates));
-        return new GbBotReactionChoice(ReactionResponses.MINKAN, readyScore, 0);
-    }
-
-    private GbBotReactionChoice evaluateBotChow(
-        UUID playerId,
-        MahjongTile claimedTile,
-        SeatWind fromSeat,
-        Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair
-    ) {
-        List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        MahjongTile first = MahjongTile.valueOf(pair.getFirst().name());
-        MahjongTile second = MahjongTile.valueOf(pair.getSecond().name());
-        GbRoundSupport.removeTiles(hand, first, 1);
-        GbRoundSupport.removeTiles(hand, second, 1);
-        List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        meldStates.add(GbMeldState.chow(claimedTile, first, second, fromSeat));
-        return this.bestBotClaimDiscard(playerId, hand, meldStates, ReactionResponses.chii(pair));
-    }
-
-    private GbBotReactionChoice bestBotClaimDiscard(
-        UUID playerId,
-        List<MahjongTile> hand,
-        List<GbMeldState> meldStates,
-        ReactionResponse response
-    ) {
-        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, meldStates);
-        return best == null ? new GbBotReactionChoice(response, 0, 0) : new GbBotReactionChoice(response, best.readyScore(), best.discardPreference());
-    }
-
-    private long botReadyScoreForBestDiscard(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
-        GbBotDiscardChoice best = this.bestBotDiscardChoice(playerId, hand, meldStates);
-        return best == null ? 0 : best.readyScore();
-    }
-
-    private GbBotDiscardChoice bestBotDiscardChoice(UUID playerId, List<MahjongTile> hand, List<GbMeldState> meldStates) {
-        if (hand.isEmpty()) {
-            return null;
-        }
-        GbBotDiscardChoice best = null;
-        EnumMap<MahjongTile, GbTingResponse> tingMemo = new EnumMap<>(MahjongTile.class);
-        for (int i = 0; i < hand.size(); i++) {
-            MahjongTile discarded = hand.get(i);
-            List<MahjongTile> remaining = new ArrayList<>(hand);
-            remaining.remove(i);
-            GbTingResponse ting = tingMemo.computeIfAbsent(discarded, ignored -> this.evaluateTing(playerId, remaining, meldStates));
-            GbBotDiscardChoice candidate = new GbBotDiscardChoice(i, botReadyScore(ting), botDiscardPreference(hand, discarded));
-            if (best == null || candidate.compareTo(best) > 0) {
-                best = candidate;
-            }
-        }
-        return best;
-    }
-
-    private GbBotState simulateBotKan(UUID playerId, MahjongTile target) {
-        List<MahjongTile> hand = new ArrayList<>(this.hands.getOrDefault(playerId, List.of()));
-        List<GbMeldState> meldStates = new ArrayList<>(this.melds.getOrDefault(playerId, List.of()));
-        if (GbRoundSupport.countMatchingTiles(hand, target) >= 4) {
-            GbRoundSupport.removeTiles(hand, target, 4);
-            meldStates.add(GbMeldState.ankan(target));
-            return new GbBotState(List.copyOf(hand), List.copyOf(meldStates));
-        }
-        for (int i = 0; i < meldStates.size(); i++) {
-            GbMeldState meld = meldStates.get(i);
-            if (meld.type() == GbMeldType.PUNG
-                && GbRoundSupport.sameKind(meld.baseTile(), target)
-                && GbRoundSupport.countMatchingTiles(hand, target) >= 1) {
-                GbRoundSupport.removeTiles(hand, target, 1);
-                meldStates.set(i, meld.toAddedKong(target));
-                return new GbBotState(List.copyOf(hand), List.copyOf(meldStates));
-            }
-        }
-        return null;
-    }
-
-    private static long botReadyScore(GbTingResponse response) {
-        if (response == null || !response.getValid() || response.getWaits().isEmpty()) {
-            return 0;
-        }
-        long qualifiedWaits = 0;
-        long bestFan = 0;
-        long totalFan = 0;
-        for (GbTingCandidate candidate : response.getWaits()) {
-            int candidateFan = candidateTotalFan(candidate);
-            if (candidateFan < MIN_GB_FAN) {
-                continue;
-            }
-            qualifiedWaits++;
-            bestFan = Math.max(bestFan, candidateFan);
-            totalFan += candidateFan;
-        }
-        if (qualifiedWaits == 0) {
-            return 0;
-        }
-        return 1_000_000L + bestFan * 10_000L + qualifiedWaits * 100L + totalFan;
-    }
-
-    private static int candidateTotalFan(GbTingCandidate candidate) {
-        if (candidate.getTotalFan() != null) {
-            return candidate.getTotalFan();
-        }
-        int total = 0;
-        for (GbFanEntry fan : candidate.getFans()) {
-            total += fan.getFan() * fan.getCount();
-        }
-        return total;
-    }
-
-    private static int botDiscardPreference(List<MahjongTile> hand, MahjongTile tile) {
-        int duplicates = 0;
-        boolean hasPrev = false;
-        boolean hasNext = false;
-        boolean hasPrevPrev = false;
-        boolean hasNextNext = false;
-        for (MahjongTile candidate : hand) {
-            if (candidate == tile) {
-                duplicates++;
-                continue;
-            }
-            if (GbRoundSupport.isHonor(candidate) || GbRoundSupport.isHonor(tile) || candidate.name().charAt(0) != tile.name().charAt(0)) {
-                continue;
-            }
-            int delta = GbRoundSupport.tileNumber(candidate) - GbRoundSupport.tileNumber(tile);
-            if (delta == -2) {
-                hasPrevPrev = true;
-            }
-            if (delta == -1) {
-                hasPrev = true;
-            }
-            if (delta == 1) {
-                hasNext = true;
-            }
-            if (delta == 2) {
-                hasNextNext = true;
-            }
-        }
-        int score = 0;
-        if (GbRoundSupport.isHonor(tile) || GbRoundSupport.tileNumber(tile) == 1 || GbRoundSupport.tileNumber(tile) == 9) {
-            score += 3;
-        }
-        if (duplicates >= 2) {
-            score -= 4;
-        }
-        if (hasPrev) {
-            score -= 2;
-        }
-        if (hasNext) {
-            score -= 2;
-        }
-        if (hasPrevPrev) {
-            score -= 1;
-        }
-        if (hasNextNext) {
-            score -= 1;
-        }
-        return score;
-    }
-
     private SeatWind roundWindSeat() {
         return switch (this.round.getWind()) {
             case EAST -> SeatWind.EAST;
@@ -1363,130 +1108,6 @@ public final class GbTableRoundController implements TableRoundController {
 
     private boolean canOperateOnCurrentTurn(UUID playerId) {
         return playerId != null && this.isCurrentPlayer(playerId) && !this.hasPendingReaction();
-    }
-
-    private record GbBotState(List<MahjongTile> hand, List<GbMeldState> melds) {
-    }
-
-    private record GbBotDiscardChoice(int index, long readyScore, int discardPreference) implements Comparable<GbBotDiscardChoice> {
-        @Override
-        public int compareTo(GbBotDiscardChoice other) {
-            int readyComparison = Long.compare(this.readyScore, other.readyScore);
-            if (readyComparison != 0) {
-                return readyComparison;
-            }
-            return Integer.compare(this.discardPreference, other.discardPreference);
-        }
-    }
-
-    private record GbBotReactionChoice(ReactionResponse response, long readyScore, int detailScore) implements Comparable<GbBotReactionChoice> {
-        @Override
-        public int compareTo(GbBotReactionChoice other) {
-            int readyComparison = Long.compare(this.readyScore, other.readyScore);
-            if (readyComparison != 0) {
-                return readyComparison;
-            }
-            return Integer.compare(this.detailScore, other.detailScore);
-        }
-    }
-
-    private record GbBotKanChoice(String tileName, long readyScore) implements Comparable<GbBotKanChoice> {
-        @Override
-        public int compareTo(GbBotKanChoice other) {
-            return Long.compare(this.readyScore, other.readyScore);
-        }
-    }
-
-    private enum GbMeldType {
-        CHOW,
-        PUNG,
-        OPEN_KONG,
-        CONCEALED_KONG,
-        ADDED_KONG
-    }
-
-    private record GbMeldState(
-        GbMeldType type,
-        List<MahjongTile> tiles,
-        MahjongTile baseTile,
-        MahjongTile claimedTile,
-        SeatWind fromSeat,
-        boolean open,
-        int claimTileIndex,
-        int claimYawOffset,
-        MahjongTile addedKanTile
-    ) {
-        private static GbMeldState chow(MahjongTile claim, MahjongTile first, MahjongTile second, SeatWind fromSeat) {
-            List<MahjongTile> ordered = new ArrayList<>(List.of(claim, first, second));
-            ordered.sort((left, right) -> Integer.compare(tileSort(left), tileSort(right)));
-            int claimIndex = ordered.indexOf(claim);
-            return new GbMeldState(GbMeldType.CHOW, List.copyOf(ordered), claim, claim, fromSeat, true, claimIndex, 90, null);
-        }
-
-        private static GbMeldState pung(MahjongTile claim, SeatWind fromSeat, SeatWind selfSeat) {
-            List<MahjongTile> ordered = List.of(claim, claim, claim);
-            int claimIndex = claimTileIndex(fromSeat, selfSeat);
-            return new GbMeldState(GbMeldType.PUNG, ordered, claim, claim, fromSeat, true, claimIndex, claimYaw(claimIndex), null);
-        }
-
-        private static GbMeldState openKong(MahjongTile claim, SeatWind fromSeat, SeatWind selfSeat) {
-            List<MahjongTile> ordered = List.of(claim, claim, claim, claim);
-            int claimIndex = claimTileIndex(fromSeat, selfSeat);
-            return new GbMeldState(GbMeldType.OPEN_KONG, ordered, claim, claim, fromSeat, true, claimIndex, claimYaw(claimIndex), null);
-        }
-
-        private static GbMeldState ankan(MahjongTile tile) {
-            List<MahjongTile> ordered = List.of(tile, tile, tile, tile);
-            return new GbMeldState(GbMeldType.CONCEALED_KONG, ordered, tile, null, null, false, -1, 0, null);
-        }
-
-        private GbMeldState toAddedKong(MahjongTile tile) {
-            List<MahjongTile> ordered = new ArrayList<>(this.tiles);
-            ordered.add(tile);
-            return new GbMeldState(GbMeldType.ADDED_KONG, List.copyOf(ordered), this.baseTile, this.claimedTile, this.fromSeat, true, this.claimTileIndex, this.claimYawOffset, tile);
-        }
-
-        private String nativeType() {
-            return switch (this.type) {
-                case CHOW -> "CHOW";
-                case PUNG -> "PUNG";
-                case OPEN_KONG -> "OPEN_KONG";
-                case CONCEALED_KONG -> "CONCEALED_KONG";
-                case ADDED_KONG -> "ADDED_KONG";
-            };
-        }
-
-        private static int claimTileIndex(SeatWind fromSeat, SeatWind selfSeat) {
-            if (fromSeat == null || selfSeat == null) {
-                return 1;
-            }
-            int diff = Math.floorMod(selfSeat.index() - fromSeat.index(), SeatWind.values().length);
-            return switch (diff) {
-                case 1 -> 0; // Left source -> left slot
-                case 2 -> 1; // Across source -> middle slot
-                case 3 -> 2; // Right source -> right slot
-                default -> 1;
-            };
-        }
-
-        private static int claimYaw(int claimTileIndex) {
-            return claimTileIndex == 0 ? -90 : 90;
-        }
-
-        private static int tileSort(MahjongTile tile) {
-            return switch (tile) {
-                case M1, P1, S1 -> 1;
-                case M2, P2, S2 -> 2;
-                case M3, P3, S3 -> 3;
-                case M4, P4, S4 -> 4;
-                case M5, P5, S5, M5_RED, P5_RED, S5_RED -> 5;
-                case M6, P6, S6 -> 6;
-                case M7, P7, S7 -> 7;
-                case M8, P8, S8 -> 8;
-                case M9, P9, S9 -> 9;
-                default -> 100 + tile.ordinal();
-            };
-        }
     }
 }
 

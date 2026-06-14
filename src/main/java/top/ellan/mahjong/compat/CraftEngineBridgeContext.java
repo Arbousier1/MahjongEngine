@@ -1,0 +1,63 @@
+package top.ellan.mahjong.compat;
+
+import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.plugin.Plugin;
+
+final class CraftEngineBridgeContext {
+    private static final String CRAFT_ENGINE_PLUGIN_NAME = "CraftEngine";
+
+    private final MahjongPaperPlugin plugin;
+    private final Map<String, Object> craftEngineKeyCache = new ConcurrentHashMap<>();
+    private volatile Plugin craftEnginePlugin;
+
+    CraftEngineBridgeContext(MahjongPaperPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    MahjongPaperPlugin plugin() {
+        return this.plugin;
+    }
+
+    Plugin craftEnginePlugin() {
+        Plugin cached = this.craftEnginePlugin;
+        if (cached != null) {
+            return cached;
+        }
+        Plugin exact = this.findCraftEnginePlugin();
+        if (exact != null) {
+            this.craftEnginePlugin = exact;
+        }
+        return exact;
+    }
+
+    Object craftEngineKey(String key, Method keyOfMethod) throws ReflectiveOperationException {
+        Object cached = this.craftEngineKeyCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        Object resolved = keyOfMethod.invoke(null, key);
+        Object previous = this.craftEngineKeyCache.putIfAbsent(key, resolved);
+        return previous == null ? resolved : previous;
+    }
+
+    boolean isPluginEnabled(String pluginName) {
+        Plugin candidate = this.plugin.getServer().getPluginManager().getPlugin(pluginName);
+        return candidate != null && candidate.isEnabled();
+    }
+
+    private Plugin findCraftEnginePlugin() {
+        Plugin exact = this.plugin.getServer().getPluginManager().getPlugin(CRAFT_ENGINE_PLUGIN_NAME);
+        if (exact != null) {
+            return exact;
+        }
+        for (Plugin candidate : this.plugin.getServer().getPluginManager().getPlugins()) {
+            if (candidate.getName().equalsIgnoreCase(CRAFT_ENGINE_PLUGIN_NAME)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+}

@@ -10,14 +10,15 @@ import java.lang.reflect.Method
 
 class CraftEngineServiceBuildMethodTest {
     @Test
-    fun `lookup prefers legacy buildItemStack when available`() {
+    fun `lookup prefers current no-arg buildBukkitItem when available`() {
         val service = CraftEngineService(mock(MahjongPaperPlugin::class.java), MemoryConfiguration())
 
-        val method = lookupBuildMethod(service, LegacyCustomItem::class.java)
+        val method = lookupBuildMethod(service, CurrentCustomItem::class.java)
 
-        assertEquals("buildItemStack", method.name)
-        val built = invokeBuildMethod(service, LegacyCustomItem(), method)
-        assertEquals("legacy", built)
+        assertEquals("buildBukkitItem", method.name)
+        assertEquals(0, method.parameterCount)
+        val built = invokeBuildMethod(service, CurrentCustomItem(), method)
+        assertEquals("current", built)
     }
 
     @Test
@@ -54,8 +55,8 @@ class CraftEngineServiceBuildMethodTest {
         return invoke.invoke(service, target, buildMethod)
     }
 
-    private class LegacyCustomItem {
-        fun buildItemStack(): String = "legacy"
+    private class CurrentCustomItem {
+        fun buildBukkitItem(): String = "current"
     }
 
     private class DevCustomItemWithCount {
