@@ -735,6 +735,10 @@ val packageGbMahjongNative = tasks.register("packageGbMahjongNative") {
 
 dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
+    implementation(enforcedPlatform("net.kyori:adventure-bom:$adventureVersion"))
+    implementation("net.kyori:adventure-api:$adventureVersion")
+    implementation("net.kyori:adventure-text-minimessage:$adventureVersion")
+    implementation("net.kyori:adventure-text-serializer-plain:$adventureVersion")
     implementation("io.github.ssttkkl:mahjong-utils-jvm:$mahjongUtilsVersion")
     implementation("org.mariadb.jdbc:mariadb-java-client:$mariadbVersion")
     implementation("com.mysql:mysql-connector-j:$mysqlVersion")
