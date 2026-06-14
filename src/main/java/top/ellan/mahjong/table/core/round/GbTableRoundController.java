@@ -149,6 +149,11 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     @Override
+    public <T> T accept(VariantVisitor<T> visitor) {
+        return visitor.visitGb(this);
+    }
+
+    @Override
     public MahjongVariant variant() {
         return this.ruleProfile.variant();
     }
