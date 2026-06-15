@@ -11,3 +11,5 @@
 /*.iml
 Thumbs.db
 .DS_Store
+.narrafork/
+.worktrees/
