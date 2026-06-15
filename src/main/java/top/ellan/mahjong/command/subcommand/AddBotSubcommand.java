@@ -12,6 +12,7 @@ public final class AddBotSubcommand extends AbstractMahjongSubcommand {
     @Override protected void execute(CommandSender sender, Player player, String[] args) {
         MahjongTableSession table = this.context.requireTable(player);
         if (table == null) { return; }
+        if (!this.context.requireTableManager(player, table)) { return; }
         this.context.messages().send(player, table.addBot() ? "command.bot_added" : "command.bot_add_failed");
     }
 }

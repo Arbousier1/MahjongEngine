@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import kotlin.Pair;
 import net.kyori.adventure.text.Component;
@@ -22,6 +23,7 @@ import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.riichi.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.MahjongVariant;
 import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
 import top.ellan.mahjong.table.core.TableRenderSnapshot;
 import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
@@ -37,6 +39,7 @@ public final class MahjongCommandContext {
         "command.help.list",
         "command.help.spectate",
         "command.help.unspectate",
+        "command.help.table",
         "command.help.addbot",
         "command.help.removebot",
         "command.help.rule",
@@ -53,6 +56,7 @@ public final class MahjongCommandContext {
         "command.help.kyuushu",
         "command.help.settlement",
         "command.help.rank",
+        "command.help.leaderboard",
         "command.help.render",
         "command.help.inspect",
         "command.help.clear",
@@ -141,6 +145,38 @@ public final class MahjongCommandContext {
         }
         this.messages.send(sender, "command.admin_required");
         return false;
+    }
+
+    public boolean requireTableManager(Player player, MahjongTableSession table) {
+        if (player == null || table == null) {
+            return false;
+        }
+        if (player.hasPermission(ADMIN_PERMISSION) || table.isOwner(player.getUniqueId())) {
+            return true;
+        }
+        this.messages.send(player, "command.table_owner_required");
+        return false;
+    }
+
+    public MahjongTableSession resolvePlayerVisibleTable(Player player, String[] args) {
+        if (args.length >= 2) {
+            for (MahjongTableSession table : this.tableManager.tables()) {
+                if (table.id().equalsIgnoreCase(args[1])) {
+                    return table;
+                }
+            }
+            this.messages.send(player, "command.table_not_found", this.messages.tag("table_id", args[1]));
+            return null;
+        }
+
+        MahjongTableSession table = this.tableManager.sessionForViewer(player.getUniqueId());
+        if (table == null) {
+            table = this.tableManager.nearestTable(player.getLocation());
+        }
+        if (table == null) {
+            this.messages.send(player, "command.table_panel_no_table");
+        }
+        return table;
     }
 
     public void handleReload(CommandSender sender) {
@@ -246,23 +282,32 @@ public final class MahjongCommandContext {
         this.messages.send(player, "command.rank_loading");
         this.plugin.async().execute("load-rank-" + player.getUniqueId(), () -> {
             try {
-                MahjongSoulRankProfile profile = this.plugin.database().loadRankProfile(player.getUniqueId(), player.getName());
+                Map<MahjongVariant, MahjongSoulRankProfile> profiles = this.plugin.database().loadRankProfiles(player.getUniqueId(), player.getName());
                 this.plugin.scheduler().runEntity(player, () -> {
                     if (!player.isOnline()) {
                         return;
                     }
                     Locale locale = this.messages.resolveLocale(player);
-                    this.messages.send(
-                        player,
-                        "command.rank_summary",
-                        this.messages.tag("rank", this.rankLabel(locale, profile)),
-                        this.messages.tag("points", MahjongSoulRankRules.formatPoints(profile)),
-                        this.messages.number(locale, "matches", profile.totalMatches()),
-                        this.messages.number(locale, "first", profile.firstPlaces()),
-                        this.messages.number(locale, "second", profile.secondPlaces()),
-                        this.messages.number(locale, "third", profile.thirdPlaces()),
-                        this.messages.number(locale, "fourth", profile.fourthPlaces())
-                    );
+                    for (MahjongVariant mode : MahjongVariant.values()) {
+                        MahjongSoulRankProfile profile = profiles.get(mode);
+                        this.messages.send(
+                            player,
+                            "command.rank_summary",
+                            this.messages.tag("mode", this.modeLabel(locale, mode)),
+                            this.messages.tag("rank", this.rankLabel(locale, profile)),
+                            this.messages.tag("points", MahjongSoulRankRules.formatPoints(profile)),
+                            this.messages.number(locale, "matches", profile.totalMatches()),
+                            this.messages.number(locale, "first", profile.firstPlaces()),
+                            this.messages.number(locale, "second", profile.secondPlaces()),
+                            this.messages.number(locale, "third", profile.thirdPlaces()),
+                            this.messages.number(locale, "fourth", profile.fourthPlaces()),
+                            this.messages.tag("avg_place", MahjongSoulRankRules.formatAveragePlace(profile)),
+                            this.messages.tag("first_rate", MahjongSoulRankRules.formatFirstRate(profile)),
+                            this.messages.tag("top_two_rate", MahjongSoulRankRules.formatTopTwoRate(profile)),
+                            this.messages.tag("fourth_rate", MahjongSoulRankRules.formatFourthRate(profile)),
+                            this.messages.tag("progress", this.rankProgressLabel(locale, profile))
+                        );
+                    }
                 });
             } catch (java.sql.SQLException ex) {
                 this.plugin.scheduler().runEntity(player, () -> {
@@ -330,6 +375,85 @@ public final class MahjongCommandContext {
             case CELESTIAL -> "rank.tier.celestial";
         };
         return this.messages.plain(locale, tierKey) + " " + profile.level();
+    }
+
+    public void showLeaderboard(Player player, MahjongVariant requestedMode) {
+        if (this.plugin.database() == null || !this.plugin.database().rankingEnabled()) {
+            this.messages.send(player, "command.rank_unavailable");
+            return;
+        }
+        MahjongVariant mode = requestedMode == null ? MahjongVariant.RIICHI : requestedMode;
+        this.messages.send(player, "command.leaderboard_loading");
+        this.plugin.async().execute("load-leaderboard-" + player.getUniqueId(), () -> {
+            try {
+                List<top.ellan.mahjong.db.DatabaseService.LeaderboardEntry> entries = this.plugin.database().loadLeaderboard(mode, 10);
+                this.plugin.scheduler().runEntity(player, () -> {
+                    if (!player.isOnline()) {
+                        return;
+                    }
+                    Locale locale = this.messages.resolveLocale(player);
+                    this.messages.send(player, "command.leaderboard_header", this.messages.tag("mode", this.modeLabel(locale, mode)));
+                    if (entries.isEmpty()) {
+                        this.messages.send(player, "command.leaderboard_empty", this.messages.tag("mode", this.modeLabel(locale, mode)));
+                        return;
+                    }
+                    for (top.ellan.mahjong.db.DatabaseService.LeaderboardEntry entry : entries) {
+                        this.messages.send(
+                            player,
+                            "command.leaderboard_entry",
+                            this.messages.number(locale, "position", entry.position()),
+                            this.messages.tag("player", entry.profile().displayName()),
+                            this.messages.tag("rank", this.rankLabel(locale, entry.profile())),
+                            this.messages.tag("points", MahjongSoulRankRules.formatPoints(entry.profile())),
+                            this.messages.number(locale, "matches", entry.profile().totalMatches()),
+                            this.messages.tag("avg_place", MahjongSoulRankRules.formatAveragePlace(entry.profile())),
+                            this.messages.tag("first_rate", MahjongSoulRankRules.formatFirstRate(entry.profile()))
+                        );
+                    }
+                });
+            } catch (java.sql.SQLException ex) {
+                this.plugin.scheduler().runEntity(player, () -> {
+                    if (player.isOnline()) {
+                        this.messages.send(player, "command.leaderboard_failed");
+                    }
+                });
+            }
+        });
+    }
+
+    public MahjongVariant parseMode(String rawMode) {
+        if (rawMode == null || rawMode.isBlank()) {
+            return null;
+        }
+        try {
+            return MahjongVariant.valueOf(rawMode.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    public List<String> suggestModes(String rawPrefix) {
+        return this.matchPrefix(rawPrefix, java.util.Arrays.stream(MahjongVariant.values()).map(Enum::name).toList());
+    }
+
+    private String modeLabel(Locale locale, MahjongVariant mode) {
+        MahjongVariant safeMode = mode == null ? MahjongVariant.RIICHI : mode;
+        return this.messages.plain(locale, safeMode.translationKey());
+    }
+
+    private String rankProgressLabel(Locale locale, MahjongSoulRankProfile profile) {
+        if (profile.isCelestial()) {
+            return this.messages.plain(
+                locale,
+                "command.rank_progress_celestial",
+                this.messages.tag("remaining", String.format(Locale.ROOT, "%.1f", MahjongSoulRankRules.promotionRemaining(profile) / 10.0D))
+            );
+        }
+        return this.messages.plain(
+            locale,
+            "command.rank_progress",
+            this.messages.number(locale, "remaining", MahjongSoulRankRules.promotionRemaining(profile))
+        );
     }
 
     private List<SeatWind> debugTargetWinds(Player player, MahjongTableSession table, String[] args) {

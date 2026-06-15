@@ -14,6 +14,7 @@ public final class ModeSubcommand extends AbstractMahjongSubcommand {
     @Override protected void execute(CommandSender sender, Player player, String[] args) {
         MahjongTableSession table = this.context.requireTable(player);
         if (table == null) { return; }
+        if (!this.context.requireTableManager(player, table)) { return; }
         if (args.length < 2) { this.context.messages().send(player, "command.mode_usage"); return; }
         boolean updated = table.applyRulePreset(args[1]);
         Locale locale = this.context.messages().resolveLocale(player);

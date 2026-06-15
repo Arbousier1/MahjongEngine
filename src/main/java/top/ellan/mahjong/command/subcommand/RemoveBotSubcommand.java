@@ -12,6 +12,7 @@ public final class RemoveBotSubcommand extends AbstractMahjongSubcommand {
     @Override protected void execute(CommandSender sender, Player player, String[] args) {
         MahjongTableSession table = this.context.requireTable(player);
         if (table == null) { return; }
+        if (!this.context.requireTableManager(player, table)) { return; }
         this.context.messages().send(player, table.removeBot() ? "command.bot_removed" : "command.bot_remove_failed");
     }
 }

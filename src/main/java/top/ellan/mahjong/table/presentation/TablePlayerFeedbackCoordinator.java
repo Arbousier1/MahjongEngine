@@ -92,6 +92,7 @@ public final class TablePlayerFeedbackCoordinator {
         }
         this.session.plugin().database().persistMatchRanksAsync(
             this.session.id(),
+            this.session.currentVariant(),
             this.session.configuredRuleSnapshot().getLength(),
             standings
         );

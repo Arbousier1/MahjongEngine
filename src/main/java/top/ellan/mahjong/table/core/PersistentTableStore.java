@@ -53,6 +53,7 @@ final class PersistentTableStore {
                 loaded.add(new LoadedTable(
                     row.id().toUpperCase(),
                     new Location(world, row.x(), row.y(), row.z()),
+                    row.ownerId(),
                     row.variant(),
                     copyRule(row.rule()),
                     row.botMatch()
@@ -121,7 +122,8 @@ final class PersistentTableStore {
                 center.getZ(),
                 session.configuredVariant(),
                 session.configuredRuleSnapshot(),
-                session.isBotMatchRoom()
+                session.isBotMatchRoom(),
+                session.owner()
             ));
         }
         return List.copyOf(snapshots);
@@ -141,6 +143,7 @@ final class PersistentTableStore {
                     snapshot.x(),
                     snapshot.y(),
                     snapshot.z(),
+                    snapshot.ownerId(),
                     snapshot.variant(),
                     copyRule(snapshot.rule()),
                     snapshot.botMatch()
@@ -177,7 +180,7 @@ final class PersistentTableStore {
         );
     }
 
-    record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
+    record LoadedTable(String id, Location center, java.util.UUID ownerId, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
     }
 
     private record TableSnapshot(
@@ -188,7 +191,8 @@ final class PersistentTableStore {
         double z,
         MahjongVariant variant,
         MahjongRule rule,
-        boolean botMatch
+        boolean botMatch,
+        java.util.UUID ownerId
     ) {
     }
 }

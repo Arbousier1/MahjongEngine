@@ -143,6 +143,15 @@ final class TableParticipantRegistry {
         return null;
     }
 
+    UUID firstHumanPlayer() {
+        for (UUID playerId : this.seats) {
+            if (playerId != null && !this.botNames.containsKey(playerId)) {
+                return playerId;
+            }
+        }
+        return null;
+    }
+
     boolean isReady(UUID playerId) {
         return playerId != null && (this.botNames.containsKey(playerId) || this.readyPlayers.contains(playerId));
     }

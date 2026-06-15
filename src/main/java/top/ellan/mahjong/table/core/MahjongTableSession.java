@@ -97,6 +97,7 @@ public final class MahjongTableSession {
     private final Map<UUID, String> viewerActionMenuStates = new HashMap<>();
     private final Map<UUID, PluginTask> viewerActionMenuTransitions = new HashMap<>();
     private MahjongVariant configuredVariant;
+    private UUID ownerId;
 
     public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
         this(
@@ -106,7 +107,8 @@ public final class MahjongTableSession {
             MahjongVariant.RIICHI,
             SessionRulePresetResolver.majsoulRule(MahjongRule.GameLength.TWO_WIND),
             persistentRoom,
-            false
+            false,
+            null
         );
     }
 
@@ -119,6 +121,19 @@ public final class MahjongTableSession {
         boolean persistentRoom,
         boolean botMatchRoom
     ) {
+        this(plugin, id, center, configuredVariant, configuredRule, persistentRoom, botMatchRoom, null);
+    }
+
+    public MahjongTableSession(
+        MahjongPaperPlugin plugin,
+        String id,
+        Location center,
+        MahjongVariant configuredVariant,
+        MahjongRule configuredRule,
+        boolean persistentRoom,
+        boolean botMatchRoom,
+        UUID ownerId
+    ) {
         this.plugin = plugin;
         this.id = id;
         this.center = normalizedTableCenter(center);
@@ -126,6 +141,7 @@ public final class MahjongTableSession {
         this.configuredRule = copyRule(configuredRule);
         this.persistentRoom = persistentRoom;
         this.botMatchRoom = botMatchRoom;
+        this.ownerId = ownerId;
         this.renderCoordinator = new TableRenderCoordinator(this);
         this.viewerPresentation = new TableViewerPresentationCoordinator(this);
         this.regionDisplayCoordinator = new TableRegionDisplayCoordinator(this, this.regionFingerprintService);
@@ -192,7 +208,11 @@ public final class MahjongTableSession {
     }
 
     public boolean addPlayer(Player player, SeatWind wind) {
-        return this.participants.addPlayer(player.getUniqueId(), wind);
+        boolean added = this.participants.addPlayer(player.getUniqueId(), wind);
+        if (added) {
+            this.assignOwnerIfAbsent(player.getUniqueId());
+        }
+        return added;
     }
 
     public boolean addSpectator(Player player) {
@@ -231,6 +251,7 @@ public final class MahjongTableSession {
         if (!this.participants.replaceBotWithPlayer(playerId, wind)) {
             return false;
         }
+        this.assignOwnerIfAbsent(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(botId);
         this.handSelectionCoordinator.clearPlayer(botId);
         return true;
@@ -259,7 +280,11 @@ public final class MahjongTableSession {
         this.viewerActionMenuStates.remove(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
         this.handSelectionCoordinator.clearPlayer(playerId);
-        return this.participants.removePlayer(playerId);
+        boolean removed = this.participants.removePlayer(playerId);
+        if (removed && Objects.equals(this.ownerId, playerId)) {
+            this.reassignOwnerFromSeats();
+        }
+        return removed;
     }
 
     public boolean contains(UUID playerId) {
@@ -291,7 +316,29 @@ public final class MahjongTableSession {
     }
 
     public UUID owner() {
-        return this.participants.owner();
+        return this.ownerId == null ? this.participants.firstHumanPlayer() : this.ownerId;
+    }
+
+    public boolean isOwner(UUID playerId) {
+        return playerId != null && playerId.equals(this.owner());
+    }
+
+    public void setOwner(UUID ownerId) {
+        this.ownerId = ownerId;
+        this.persistRoomMetadataIfNeededInternal();
+    }
+
+    private void assignOwnerIfAbsent(UUID playerId) {
+        if (this.ownerId != null || playerId == null || this.participants.isBot(playerId)) {
+            return;
+        }
+        this.ownerId = playerId;
+        this.persistRoomMetadataIfNeededInternal();
+    }
+
+    private void reassignOwnerFromSeats() {
+        this.ownerId = this.participants.firstHumanPlayer();
+        this.persistRoomMetadataIfNeededInternal();
     }
 
     public SeatWind seatOf(UUID playerId) {
@@ -453,6 +500,9 @@ public final class MahjongTableSession {
 
     public void clearSeatAssignmentsForLifecycle() {
         this.participants.clearSeats();
+        if (this.ownerId != null && this.isBot(this.ownerId)) {
+            this.ownerId = null;
+        }
     }
 
     public void clearEngineForLifecycle() {
