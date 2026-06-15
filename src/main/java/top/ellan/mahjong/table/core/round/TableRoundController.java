@@ -18,6 +18,16 @@ public interface TableRoundController {
         T visitRiichi(RiichiTableRoundController controller);
 
         T visitGb(GbTableRoundController controller);
+
+        /**
+         * Visit a controller running the Sichuan variant. Sichuan reuses {@link GbTableRoundController}
+         * for the round flow but has its own scoring rules; visitors that care about the distinction
+         * should override this. The default delegates to {@link #visitGb(GbTableRoundController)} so
+         * existing visitors that only handle GB still compile and behave the same.
+         */
+        default T visitSichuan(GbTableRoundController controller) {
+            return this.visitGb(controller);
+        }
     }
 
     <T> T accept(VariantVisitor<T> visitor);

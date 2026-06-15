@@ -141,6 +141,11 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public <T> T accept(VariantVisitor<T> visitor) {
+        // Sichuan reuses this controller class but is a distinct variant; route the visitor accordingly
+        // so callers can disambiguate without re-checking variant() after the dispatch.
+        if (this.variant() == MahjongVariant.SICHUAN) {
+            return visitor.visitSichuan(this);
+        }
         return visitor.visitGb(this);
     }
 
