@@ -2,7 +2,6 @@ package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.model.MahjongVariant;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.gb.runtime.GbNativeRulesGateway;
@@ -65,10 +64,11 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 public final class MahjongTableSession implements TableSessionMutator {
     private static final long PUBLIC_ACTION_DISPLAY_TICKS = 40L;
-    private final MahjongPaperPlugin plugin;
+    private final TableRuntimeServices plugin;
     private final String id;
     private final Location center;
     private final boolean persistentRoom;
@@ -110,7 +110,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     private MahjongVariant configuredVariant;
     private UUID ownerId;
 
-    public MahjongTableSession(MahjongPaperPlugin plugin, String id, Location center, boolean persistentRoom) {
+    public MahjongTableSession(TableRuntimeServices plugin, String id, Location center, boolean persistentRoom) {
         this(
             plugin,
             id,
@@ -124,7 +124,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public MahjongTableSession(
-        MahjongPaperPlugin plugin,
+        TableRuntimeServices plugin,
         String id,
         Location center,
         MahjongVariant configuredVariant,
@@ -136,7 +136,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public MahjongTableSession(
-        MahjongPaperPlugin plugin,
+        TableRuntimeServices plugin,
         String id,
         Location center,
         MahjongVariant configuredVariant,
@@ -174,8 +174,13 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.roundFlowCoordinator = new SessionRoundFlowCoordinator(this.sessionMutator);
     }
 
-    public MahjongPaperPlugin plugin() {
+    public TableRuntimeServices plugin() {
         return this.plugin;
+    }
+
+    @Override
+    public Plugin bukkitPlugin() {
+        return this.plugin.bukkitPlugin();
     }
 
     @Override

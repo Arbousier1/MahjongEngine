@@ -2,7 +2,6 @@ package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.model.MahjongVariant;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
@@ -59,7 +58,7 @@ public final class MahjongTableManager implements Listener {
     private static final int TABLE_CREATE_CLEARANCE_RADIUS_BLOCKS = 3;
     private static final int TABLE_CREATE_CLEARANCE_HEIGHT_BLOCKS = 4;
     private static final int PERSISTED_TABLE_CLEANUP_REMOVALS_PER_TICK = 8;
-    private final MahjongPaperPlugin plugin;
+    private final TableRuntimeServices plugin;
     private final PersistentTableStore persistentTableStore;
     private final TableDirectory directory = new TableDirectory();
     private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new ConcurrentHashMap<>();
@@ -69,11 +68,22 @@ public final class MahjongTableManager implements Listener {
     private final TableMembershipCoordinator membershipCoordinator;
     private final PluginTask tableTickTask;
 
-    public MahjongTableManager(MahjongPaperPlugin plugin) {
+    public MahjongTableManager(TableRuntimeServices plugin) {
         this.plugin = plugin;
-        this.persistentTableStore = new PersistentTableStore(plugin);
-        this.seatCoordinator = new TableSeatCoordinator(plugin, this);
-        this.refreshCoordinator = new TableRefreshCoordinator(plugin, this, this.seatCoordinator, plugin.settings().tableStartupRebuildBatchSize());
+        this.persistentTableStore = new PersistentTableStore(
+            plugin::database,
+            plugin.async(),
+            plugin.bukkitPlugin().getLogger(),
+            plugin.settings().tablePersistenceEnabled()
+        );
+        this.seatCoordinator = new TableSeatCoordinator(plugin::craftEngine, plugin.scheduler(), this);
+        this.refreshCoordinator = new TableRefreshCoordinator(
+            plugin.debug(),
+            plugin.scheduler(),
+            this,
+            this.seatCoordinator,
+            plugin.settings().tableStartupRebuildBatchSize()
+        );
         this.eventCoordinator = new TableEventCoordinator(this);
         this.membershipCoordinator = new TableMembershipCoordinator(this);
         this.registerSeatVehicleEvents();
@@ -96,7 +106,7 @@ public final class MahjongTableManager implements Listener {
             @SuppressWarnings("unchecked")
             Class<? extends Event> eventClass = (Class<? extends Event>) rawEventClass;
             EventExecutor executor = (listener, event) -> handler.accept(event);
-            this.plugin.getServer().getPluginManager().registerEvent(eventClass, this, priority, executor, this.plugin, true);
+            this.plugin.bukkitPlugin().getServer().getPluginManager().registerEvent(eventClass, this, priority, executor, this.plugin.bukkitPlugin(), true);
         } catch (ClassNotFoundException exception) {
             // The mount/dismount event package changed across Paper versions; the other package may be present.
         }
@@ -191,7 +201,7 @@ public final class MahjongTableManager implements Listener {
         return this.directory.sessionForViewer(playerId);
     }
 
-    MahjongPaperPlugin pluginRef() {
+    TableRuntimeServices pluginRef() {
         return this.plugin;
     }
 
@@ -257,7 +267,7 @@ public final class MahjongTableManager implements Listener {
         for (PersistentTableStore.LoadedTable loadedTable : this.persistentTableStore.load()) {
             String id = loadedTable.id().toUpperCase(Locale.ROOT);
             if (this.directory.containsTableId(id)) {
-                this.plugin.getLogger().warning("Persistent table id " + id + " already exists in memory, deleting it before startup rebuild.");
+                this.plugin.bukkitPlugin().getLogger().warning("Persistent table id " + id + " already exists in memory, deleting it before startup rebuild.");
                 this.deleteTable(id);
             }
             this.createPersistentTable(loadedTable.id(), loadedTable.center(), loadedTable.ownerId(), loadedTable.variant(), loadedTable.rule(), loadedTable.botMatch());
@@ -653,7 +663,7 @@ public final class MahjongTableManager implements Listener {
         int scheduledFallbackRemovals = 0;
         CraftEngineService craftEngine = this.plugin.craftEngine();
         for (Entity entity : world.getNearbyEntities(center, PERSISTED_TABLE_CLEANUP_RADIUS_XZ, PERSISTED_TABLE_CLEANUP_RADIUS_Y, PERSISTED_TABLE_CLEANUP_RADIUS_XZ)) {
-            boolean managedDisplay = DisplayEntities.isManagedEntity(this.plugin, entity);
+            boolean managedDisplay = DisplayEntities.isManagedEntity(this.plugin.bukkitPlugin(), entity);
             boolean managedCraftEngineFurniture = craftEngine != null && craftEngine.isManagedFurnitureEntity(entity);
             boolean mahjongCraftEngineFurniture = craftEngine != null && craftEngine.isMahjongFurnitureEntity(entity);
             boolean craftEngineCleanupCandidate = managedCraftEngineFurniture || mahjongCraftEngineFurniture;

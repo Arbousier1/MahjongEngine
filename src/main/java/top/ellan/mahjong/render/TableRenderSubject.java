@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 public interface TableRenderSubject {
-    Plugin plugin();
+    Plugin bukkitPlugin();
 
     CraftEngineService craftEngine();
 

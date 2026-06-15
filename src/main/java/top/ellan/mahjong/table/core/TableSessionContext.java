@@ -1,6 +1,5 @@
 package top.ellan.mahjong.table.core;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.gb.jni.GbTingResponse;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.MahjongVariant;
@@ -23,10 +22,13 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 public interface TableSessionContext extends TableRenderSubject {
+    TableRuntimeServices plugin();
+
     @Override
-    MahjongPaperPlugin plugin();
+    Plugin bukkitPlugin();
 
     TableRenderer renderer();
 

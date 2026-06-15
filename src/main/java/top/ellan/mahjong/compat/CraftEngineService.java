@@ -1,13 +1,21 @@
 package top.ellan.mahjong.compat;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.config.ConfigAccess;
 import top.ellan.mahjong.config.PluginSettings;
+import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.render.display.DisplayClickAction;
+import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.model.MahjongVariant;
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.logging.Logger;
+import org.bukkit.Server;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
@@ -24,9 +32,17 @@ public final class CraftEngineService {
     private final CraftEngineCullingBridge cullingBridge;
     private final CraftEngineBundleExporter bundleExporter;
 
-    public CraftEngineService(MahjongPaperPlugin plugin, ConfigurationSection section) {
+    public CraftEngineService(
+        Plugin ownerPlugin,
+        ServerScheduler scheduler,
+        AsyncService async,
+        DebugService debug,
+        MessageService messages,
+        Supplier<PluginSettings> settings,
+        ConfigurationSection section
+    ) {
         this(
-            plugin,
+            runtimeServices(ownerPlugin, scheduler, async, debug, messages, settings),
             ConfigAccess.bool(section, true, "exportBundleOnEnable", "bundle.exportOnEnable"),
             ConfigAccess.bool(section, true, "preferCustomItems", "items.preferCustomItems"),
             ConfigAccess.bool(section, true, "preferFurnitureHitbox", "furniture.preferHitboxInteraction"),
@@ -35,26 +51,34 @@ public final class CraftEngineService {
         );
     }
 
-    public CraftEngineService(MahjongPaperPlugin plugin, PluginSettings.CraftEngineSettings settings) {
+    public CraftEngineService(
+        Plugin ownerPlugin,
+        ServerScheduler scheduler,
+        AsyncService async,
+        DebugService debug,
+        MessageService messages,
+        Supplier<PluginSettings> settings,
+        PluginSettings.CraftEngineSettings craftEngineSettings
+    ) {
         this(
-            plugin,
-            exportBundleOnEnable(settings),
-            preferCustomItems(settings),
-            preferFurnitureHitbox(settings),
-            injectAntiCheatPacketEventsMappings(settings),
-            bundleFolderName(settings)
+            runtimeServices(ownerPlugin, scheduler, async, debug, messages, settings),
+            exportBundleOnEnable(craftEngineSettings),
+            preferCustomItems(craftEngineSettings),
+            preferFurnitureHitbox(craftEngineSettings),
+            injectAntiCheatPacketEventsMappings(craftEngineSettings),
+            bundleFolderName(craftEngineSettings)
         );
     }
 
     private CraftEngineService(
-        MahjongPaperPlugin plugin,
+        CraftEngineBridgeContext.Services services,
         boolean exportBundleOnEnable,
         boolean preferCustomItems,
         boolean preferFurnitureHitbox,
         boolean injectAntiCheatPacketEventsMappings,
         String bundleFolderName
     ) {
-        this.context = new CraftEngineBridgeContext(plugin);
+        this.context = new CraftEngineBridgeContext(services);
         this.exportBundleOnEnable = exportBundleOnEnable;
         this.itemBridge = new CraftEngineItemBridge(this.context, preferCustomItems);
         this.furnitureBridge = new CraftEngineFurnitureBridge(this.context, preferFurnitureHitbox);
@@ -225,5 +249,57 @@ public final class CraftEngineService {
                 new PluginSettings.CraftEngineFurnitureSettings(true, "mahjongpaper:table_visual", "mahjongpaper:seat_chair")
             )
             : settings;
+    }
+
+    private static CraftEngineBridgeContext.Services runtimeServices(
+        Plugin ownerPlugin,
+        ServerScheduler scheduler,
+        AsyncService async,
+        DebugService debug,
+        MessageService messages,
+        Supplier<PluginSettings> settings
+    ) {
+        return new RuntimeServices(
+            Objects.requireNonNull(ownerPlugin, "ownerPlugin"),
+            Objects.requireNonNull(scheduler, "scheduler"),
+            Objects.requireNonNull(async, "async"),
+            Objects.requireNonNull(debug, "debug"),
+            Objects.requireNonNull(messages, "messages"),
+            Objects.requireNonNull(settings, "settings")
+        );
+    }
+
+    private record RuntimeServices(
+        Plugin bukkitPlugin,
+        ServerScheduler scheduler,
+        AsyncService async,
+        DebugService debug,
+        MessageService messages,
+        Supplier<PluginSettings> settingsSupplier
+    ) implements CraftEngineBridgeContext.Services {
+        @Override
+        public Server getServer() {
+            return this.bukkitPlugin.getServer();
+        }
+
+        @Override
+        public Logger getLogger() {
+            return this.bukkitPlugin.getLogger();
+        }
+
+        @Override
+        public InputStream getResource(String path) {
+            return this.bukkitPlugin.getResource(path);
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return this.bukkitPlugin.isEnabled();
+        }
+
+        @Override
+        public PluginSettings settings() {
+            return this.settingsSupplier.get();
+        }
     }
 }

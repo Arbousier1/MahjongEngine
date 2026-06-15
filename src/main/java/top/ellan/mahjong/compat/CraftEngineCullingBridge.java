@@ -187,13 +187,13 @@ final class CraftEngineCullingBridge {
                 return;
             }
             if (!DisplayVisibilityRegistry.canView(entityId, viewer.getUniqueId())) {
-                viewer.hideEntity(this.context.plugin(), entity);
+                viewer.hideEntity(this.context.bukkitPlugin(), entity);
                 return;
             }
             if (visible) {
-                viewer.showEntity(this.context.plugin(), entity);
+                viewer.showEntity(this.context.bukkitPlugin(), entity);
             } else {
-                viewer.hideEntity(this.context.plugin(), entity);
+                viewer.hideEntity(this.context.bukkitPlugin(), entity);
             }
         });
     }

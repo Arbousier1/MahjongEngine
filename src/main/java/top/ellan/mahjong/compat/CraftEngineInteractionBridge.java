@@ -81,7 +81,7 @@ final class CraftEngineInteractionBridge {
                 listener,
                 EventPriority.NORMAL,
                 interactExecutor,
-                this.context.plugin(),
+                this.context.bukkitPlugin(),
                 true
             );
             this.context.plugin().getServer().getPluginManager().registerEvent(
@@ -89,7 +89,7 @@ final class CraftEngineInteractionBridge {
                 listener,
                 EventPriority.HIGHEST,
                 breakProtectionExecutor,
-                this.context.plugin(),
+                this.context.bukkitPlugin(),
                 true
             );
             this.context.plugin().getServer().getPluginManager().registerEvent(
@@ -97,7 +97,7 @@ final class CraftEngineInteractionBridge {
                 listener,
                 EventPriority.HIGHEST,
                 hitProtectionExecutor,
-                this.context.plugin(),
+                this.context.bukkitPlugin(),
                 true
             );
             this.furnitureInteractListener = listener;

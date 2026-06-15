@@ -1,6 +1,5 @@
 package top.ellan.mahjong.table.runtime
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 import top.ellan.mahjong.compat.CraftEngineService
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.runtime.PluginTask
@@ -23,15 +22,13 @@ import kotlin.test.assertTrue
 class TableSeatCoordinatorTest {
     @Test
     fun `starting seat watchdog no longer depends on Bukkit current tick`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
         val tableManager = mock(MahjongTableManager::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val session = mock(MahjongTableSession::class.java)
-        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val coordinator = TableSeatCoordinator({ null }, scheduler, tableManager)
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000301")
 
-        `when`(plugin.scheduler()).thenReturn(scheduler)
         `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
         `when`(task.isCancelled()).thenReturn(false)
         `when`(session.id()).thenReturn("TABLE01")
@@ -48,16 +45,14 @@ class TableSeatCoordinatorTest {
 
     @Test
     fun `seat watchdog expires after configured logical duration without Bukkit tick access`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
         val tableManager = mock(MahjongTableManager::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val session = mock(MahjongTableSession::class.java)
         val player = mock(Player::class.java)
-        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val coordinator = TableSeatCoordinator({ null }, scheduler, tableManager)
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000302")
 
-        `when`(plugin.scheduler()).thenReturn(scheduler)
         `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
         `when`(task.isCancelled()).thenReturn(false)
         `when`(session.id()).thenReturn("TABLE02")
@@ -83,16 +78,14 @@ class TableSeatCoordinatorTest {
 
     @Test
     fun `seat watchdog inspects players on entity scheduler instead of global thread`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
         val tableManager = mock(MahjongTableManager::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val session = mock(MahjongTableSession::class.java)
         val player = mock(Player::class.java)
-        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val coordinator = TableSeatCoordinator({ null }, scheduler, tableManager)
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000303")
 
-        `when`(plugin.scheduler()).thenReturn(scheduler)
         `when`(scheduler.runGlobalTimer(Mockito.any(Runnable::class.java), Mockito.anyLong(), Mockito.anyLong())).thenReturn(task)
         `when`(scheduler.runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))).thenReturn(task)
         `when`(task.isCancelled()).thenReturn(false)
@@ -114,17 +107,14 @@ class TableSeatCoordinatorTest {
 
     @Test
     fun `seat restore is scheduled on player entity thread`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
         val tableManager = mock(MahjongTableManager::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val session = mock(MahjongTableSession::class.java)
         val player = mock(Player::class.java)
         val craftEngine = mock(CraftEngineService::class.java)
-        val coordinator = TableSeatCoordinator(plugin, tableManager)
+        val coordinator = TableSeatCoordinator({ craftEngine }, scheduler, tableManager)
 
-        `when`(plugin.scheduler()).thenReturn(scheduler)
-        `when`(plugin.craftEngine()).thenReturn(craftEngine)
         `when`(scheduler.runEntity(Mockito.eq(player), Mockito.any(Runnable::class.java))).thenReturn(task)
         `when`(player.uniqueId).thenReturn(UUID.fromString("00000000-0000-0000-0000-000000000304"))
 

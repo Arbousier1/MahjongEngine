@@ -4,14 +4,12 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.junit.jupiter.api.AfterAll
 import org.testcontainers.DockerClientFactory
 import org.testcontainers.containers.MariaDBContainer
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 import top.ellan.mahjong.config.PluginSettings
 import top.ellan.mahjong.debug.DebugService
 import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.runtime.AsyncService
 import top.ellan.mahjong.model.MahjongVariant
 import top.ellan.mahjong.table.core.TableFinalStanding
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import java.nio.file.Files
 import java.sql.Connection
@@ -173,19 +171,8 @@ class DatabaseCrossDialectIntegrationTest {
 
     private fun withDialect(dialect: Dialect, block: (Dialect, DatabaseService) -> Unit) {
         val tempDir = Files.createTempDirectory("mahjongpaper-db-${dialect.name.lowercase()}-")
-        val plugin = mock(MahjongPaperPlugin::class.java)
-        val settings = mock(PluginSettings::class.java)
         val async = AsyncService(Logger.getLogger("DatabaseCrossDialect-${dialect.name}-Async"))
         val logger = Logger.getLogger("DatabaseCrossDialect-${dialect.name}")
-
-        `when`(plugin.getDataFolder()).thenReturn(tempDir.toFile())
-        `when`(plugin.getLogger()).thenReturn(logger)
-        `when`(plugin.settings()).thenReturn(settings)
-        `when`(plugin.debug()).thenReturn(mock(DebugService::class.java))
-        `when`(plugin.async()).thenReturn(async)
-        `when`(settings.rankingEnabled()).thenReturn(true)
-        `when`(settings.rankingEastRoom()).thenReturn("SILVER")
-        `when`(settings.rankingSouthRoom()).thenReturn("GOLD")
 
         val config = YamlConfiguration()
         config.set("database.pool.maxSize", 2)
@@ -209,7 +196,16 @@ class DatabaseCrossDialectIntegrationTest {
             }
         }
 
-        val service = DatabaseService(plugin, PluginSettings.from(config).database())
+        val service = DatabaseService(
+            PluginSettings.from(config).database(),
+            mock(DebugService::class.java),
+            async,
+            logger,
+            tempDir,
+            true,
+            "SILVER",
+            "GOLD"
+        )
         try {
             block(dialect, service)
         } finally {

@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.presentation
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.table.core.MahjongTableSession
 import org.bukkit.Bukkit
@@ -17,7 +17,7 @@ class TablePlayerFeedbackCoordinatorTest {
     @Test
     fun `settlement ui only opens for seated human players`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val messages = mock(MessageService::class.java)
         val coordinator = TablePlayerFeedbackCoordinator(session)
 

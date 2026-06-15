@@ -1,24 +1,35 @@
 package top.ellan.mahjong.compat;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.config.PluginSettings;
+import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.runtime.ServerScheduler;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.Server;
 import org.bukkit.plugin.Plugin;
 
 final class CraftEngineBridgeContext {
     private static final String CRAFT_ENGINE_PLUGIN_NAME = "CraftEngine";
 
-    private final MahjongPaperPlugin plugin;
+    private final Services plugin;
     private final Map<String, Object> craftEngineKeyCache = new ConcurrentHashMap<>();
     private volatile Plugin craftEnginePlugin;
 
-    CraftEngineBridgeContext(MahjongPaperPlugin plugin) {
+    CraftEngineBridgeContext(Services plugin) {
         this.plugin = plugin;
     }
 
-    MahjongPaperPlugin plugin() {
+    Services plugin() {
         return this.plugin;
+    }
+
+    Plugin bukkitPlugin() {
+        return this.plugin.bukkitPlugin();
     }
 
     Plugin craftEnginePlugin() {
@@ -59,5 +70,27 @@ final class CraftEngineBridgeContext {
             }
         }
         return null;
+    }
+
+    interface Services {
+        Plugin bukkitPlugin();
+
+        Server getServer();
+
+        Logger getLogger();
+
+        InputStream getResource(String path);
+
+        boolean isEnabled();
+
+        ServerScheduler scheduler();
+
+        AsyncService async();
+
+        DebugService debug();
+
+        MessageService messages();
+
+        PluginSettings settings();
     }
 }

@@ -15,6 +15,7 @@ import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
 import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.runtime.ServerScheduler;
+import top.ellan.mahjong.table.core.DefaultTableRuntimeServices;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import java.util.Locale;
 import java.util.Objects;
@@ -54,12 +55,31 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         }
         this.async.execute("gb-native-warmup", () -> GbNativeWarmupService.warmupOnce(this.getLogger()));
 
-        this.tableManager = new MahjongTableManager(this);
+        this.tableManager = new MahjongTableManager(new DefaultTableRuntimeServices(
+            this,
+            this.messages,
+            this.debug,
+            this.scheduler,
+            this.async,
+            () -> this.settings,
+            () -> this.craftEngine,
+            () -> this.database,
+            this.metrics,
+            () -> this.tableManager
+        ));
         this.craftEngine.enableFurnitureInteractionBridge(this.tableManager);
         this.scheduler.runGlobal(this.craftEngine::cleanupMahjongFurniture);
         this.tableManager.loadPersistentTables();
 
-        MahjongCommand mahjongCommand = new MahjongCommand(this, this.tableManager);
+        MahjongCommand mahjongCommand = new MahjongCommand(
+            this.messages,
+            this.tableManager,
+            this.debug,
+            this.async,
+            this.scheduler,
+            this::database,
+            this::reloadMahjongConfiguration
+        );
         PluginCommand command = this.getCommand("mahjong");
         if (command == null) {
             this.getLogger().severe("MahjongPaper command is missing from plugin.yml; disabling plugin.");
@@ -123,11 +143,28 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         PluginSettings previousSettings = this.settings;
         PluginSettings reloadedSettings = PluginSettings.from(this.getConfig());
         DebugService reloadedDebug = new DebugService(this.getLogger(), reloadedSettings.debug());
-        CraftEngineService reloadedCraftEngine = new CraftEngineService(this, reloadedSettings.craftEngine());
+        CraftEngineService reloadedCraftEngine = new CraftEngineService(
+            this,
+            this.scheduler,
+            this.async,
+            reloadedDebug,
+            this.messages,
+            () -> reloadedSettings,
+            reloadedSettings.craftEngine()
+        );
         DatabaseService reloadedDatabase = null;
         if (DatabaseService.isEnabled(reloadedSettings.database())) {
             try {
-                reloadedDatabase = new DatabaseService(this, reloadedSettings.database());
+                reloadedDatabase = new DatabaseService(
+                    reloadedSettings.database(),
+                    reloadedDebug,
+                    this.async,
+                    this.getLogger(),
+                    this.getDataFolder().toPath(),
+                    reloadedSettings.rankingEnabled(),
+                    reloadedSettings.rankingEastRoom(),
+                    reloadedSettings.rankingSouthRoom()
+                );
             } catch (DatabaseService.InitializationException ex) {
                 this.handleDatabaseStartupFailure(ex);
                 if (reloadedSettings.databaseFailOnError()) {

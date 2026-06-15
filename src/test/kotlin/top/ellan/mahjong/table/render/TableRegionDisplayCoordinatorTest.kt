@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.render
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.metrics.InMemoryMetricsCollector
 import top.ellan.mahjong.model.MahjongTile
 import top.ellan.mahjong.model.SeatWind
@@ -46,7 +46,7 @@ class TableRegionDisplayCoordinatorTest {
     @Test
     fun `applyRenderPrecompute prioritizes reaction and hand regions before turn and board regions`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val renderer = mock(TableRenderer::class.java)
         val fingerprintService = mock(TableRegionFingerprintService::class.java)
         val metrics = InMemoryMetricsCollector()

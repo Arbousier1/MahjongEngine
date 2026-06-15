@@ -166,7 +166,7 @@ final class TableEventCoordinator {
         if (entity == null) {
             return false;
         }
-        if (DisplayEntities.isManagedEntity(this.manager.pluginRef(), entity)) {
+        if (DisplayEntities.isManagedEntity(this.manager.pluginRef().bukkitPlugin(), entity)) {
             return true;
         }
         if (TableDisplayRegistry.get(entity.getEntityId()) != null || this.manager.seatCoordinatorRef().seatAction(entity) != null) {
@@ -228,7 +228,7 @@ final class TableEventCoordinator {
         if (!(entity instanceof org.bukkit.entity.Display)) {
             return false;
         }
-        if (!DisplayEntities.isManagedEntity(this.manager.pluginRef(), entity)) {
+        if (!DisplayEntities.isManagedEntity(this.manager.pluginRef().bukkitPlugin(), entity)) {
             return false;
         }
         int entityId = entity.getEntityId();

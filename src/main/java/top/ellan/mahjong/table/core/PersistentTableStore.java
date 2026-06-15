@@ -2,29 +2,36 @@ package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.model.MahjongVariant;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.riichi.model.MahjongRule;
+import top.ellan.mahjong.runtime.AsyncService;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 final class PersistentTableStore {
-    private final MahjongPaperPlugin plugin;
+    private final Supplier<DatabaseService> database;
+    private final AsyncService async;
+    private final Logger logger;
     private final boolean enabled;
     private final AtomicReference<List<TableSnapshot>> pendingSnapshot = new AtomicReference<>();
     private final AtomicBoolean asyncSaveScheduled = new AtomicBoolean();
     private final AtomicBoolean missingDatabaseWarningLogged = new AtomicBoolean();
 
-    PersistentTableStore(MahjongPaperPlugin plugin) {
-        this.plugin = plugin;
-        this.enabled = plugin.settings().tablePersistenceEnabled();
+    PersistentTableStore(Supplier<DatabaseService> database, AsyncService async, Logger logger, boolean enabled) {
+        this.database = Objects.requireNonNull(database, "database");
+        this.async = Objects.requireNonNull(async, "async");
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.enabled = enabled;
     }
 
     boolean isEnabled() {
@@ -35,7 +42,7 @@ final class PersistentTableStore {
         if (!this.enabled) {
             return List.of();
         }
-        DatabaseService database = this.plugin.database();
+        DatabaseService database = this.database();
         if (database == null) {
             this.warnMissingDatabase();
             return List.of();
@@ -44,12 +51,12 @@ final class PersistentTableStore {
             List<LoadedTable> loaded = new ArrayList<>();
             for (DatabaseService.PersistentTableRecord row : database.loadPersistentTables()) {
                 if (row.id() == null || row.id().isBlank()) {
-                    this.plugin.getLogger().warning("Skipping persisted table row with empty table_id.");
+                    this.logger.warning("Skipping persisted table row with empty table_id.");
                     continue;
                 }
                 World world = row.worldName() == null ? null : Bukkit.getWorld(row.worldName());
                 if (world == null) {
-                    this.plugin.getLogger().warning("Skipping persisted table " + row.id() + " because world '" + row.worldName() + "' is unavailable.");
+                    this.logger.warning("Skipping persisted table " + row.id() + " because world '" + row.worldName() + "' is unavailable.");
                     continue;
                 }
                 loaded.add(new LoadedTable(
@@ -63,7 +70,7 @@ final class PersistentTableStore {
             }
             return List.copyOf(loaded);
         } catch (SQLException ex) {
-            this.plugin.getLogger().warning("Failed to load persistent tables from " + database.databaseType() + ": " + ex.getMessage());
+            this.logger.warning("Failed to load persistent tables from " + database.databaseType() + ": " + ex.getMessage());
             return List.of();
         }
     }
@@ -89,7 +96,7 @@ final class PersistentTableStore {
         if (!this.asyncSaveScheduled.compareAndSet(false, true)) {
             return;
         }
-        this.plugin.async().execute("save-persistent-tables", this::drainPendingSaves);
+        this.async.execute("save-persistent-tables", this::drainPendingSaves);
     }
 
     private void drainPendingSaves() {
@@ -132,7 +139,7 @@ final class PersistentTableStore {
     }
 
     private void writeSnapshot(List<TableSnapshot> snapshots) {
-        DatabaseService database = this.plugin.database();
+        DatabaseService database = this.database();
         if (database == null) {
             this.warnMissingDatabase();
             return;
@@ -153,14 +160,18 @@ final class PersistentTableStore {
                 .toList();
             database.replacePersistentTables(rows);
         } catch (SQLException ex) {
-            this.plugin.getLogger().warning("Failed to save persistent tables to " + database.databaseType() + ": " + ex.getMessage());
+            this.logger.warning("Failed to save persistent tables to " + database.databaseType() + ": " + ex.getMessage());
         }
     }
 
     private void warnMissingDatabase() {
         if (this.missingDatabaseWarningLogged.compareAndSet(false, true)) {
-            this.plugin.getLogger().warning("Table persistence is enabled but database is unavailable; persistent tables are temporarily disabled.");
+            this.logger.warning("Table persistence is enabled but database is unavailable; persistent tables are temporarily disabled.");
         }
+    }
+
+    private DatabaseService database() {
+        return this.database.get();
     }
 
     private static MahjongRule copyRule(MahjongRule rule) {

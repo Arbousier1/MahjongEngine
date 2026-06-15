@@ -2,8 +2,8 @@ package top.ellan.mahjong.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.config.PluginSettings;
+import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.error.MahjongErrorCode;
 import top.ellan.mahjong.error.MahjongInfrastructureException;
 import top.ellan.mahjong.riichi.RoundResolution;
@@ -12,6 +12,7 @@ import top.ellan.mahjong.riichi.model.ScoreItem;
 import top.ellan.mahjong.riichi.model.ScoreSettlement;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
 import top.ellan.mahjong.model.MahjongVariant;
+import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.net.ConnectException;
@@ -31,18 +32,40 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.logging.Logger;
 
 public final class DatabaseService {
-    private final MahjongPaperPlugin plugin;
     private final PluginSettings.DatabaseSettings databaseSettings;
+    private final DebugService debug;
+    private final AsyncService async;
+    private final Logger logger;
+    private final Path dataFolder;
+    private final boolean rankingEnabled;
+    private final String rankingEastRoom;
+    private final String rankingSouthRoom;
     private final String databaseType;
     private final SqlDialect sqlDialect;
     private final RankProfileUpsertStrategy rankProfileUpsertStrategy;
     private final HikariDataSource dataSource;
 
-    public DatabaseService(MahjongPaperPlugin plugin, PluginSettings.DatabaseSettings settings) throws InitializationException {
-        this.plugin = plugin;
+    public DatabaseService(
+        PluginSettings.DatabaseSettings settings,
+        DebugService debug,
+        AsyncService async,
+        Logger logger,
+        Path dataFolder,
+        boolean rankingEnabled,
+        String rankingEastRoom,
+        String rankingSouthRoom
+    ) throws InitializationException {
         this.databaseSettings = settings;
+        this.debug = Objects.requireNonNull(debug, "debug");
+        this.async = Objects.requireNonNull(async, "async");
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.dataFolder = Objects.requireNonNull(dataFolder, "dataFolder");
+        this.rankingEnabled = rankingEnabled;
+        this.rankingEastRoom = rankingEastRoom;
+        this.rankingSouthRoom = rankingSouthRoom;
         this.databaseType = normalizedType(settings == null ? "h2" : settings.type());
         this.sqlDialect = SqlDialect.fromDatabaseType(this.databaseType);
         this.rankProfileUpsertStrategy = this.createRankProfileUpsertStrategy();
@@ -73,22 +96,22 @@ public final class DatabaseService {
     }
 
     public boolean rankingEnabled() {
-        return this.plugin.settings().rankingEnabled();
+        return this.rankingEnabled;
     }
 
     public void persistRoundResultAsync(TableSessionContext session, RoundResolution resolution) {
-        this.plugin.debug().log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
-        this.plugin.async().execute("persist-round-result", () -> {
+        this.debug.log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
+        this.async.execute("persist-round-result", () -> {
             try {
                 this.persistRoundResult(session, resolution);
-                this.plugin.debug().log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());
+                this.debug.log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());
             } catch (SQLException ex) {
                 MahjongInfrastructureException failure = new MahjongInfrastructureException(
                     MahjongErrorCode.DATABASE_OPERATION_FAILED,
                     MahjongErrorCode.DATABASE_OPERATION_FAILED.publicMessage(),
                     ex
                 );
-                this.plugin.getLogger().log(
+                this.logger.log(
                     failure.logLevel(),
                     failure.code().name() + " operation=persist-round-result databaseType=" + this.databaseType,
                     ex
@@ -102,18 +125,18 @@ public final class DatabaseService {
             return;
         }
         List<TableFinalStanding> snapshot = List.copyOf(standings);
-        this.plugin.debug().log("database", "Queueing rank persistence for table=" + tableId + " standings=" + snapshot.size());
-        this.plugin.async().execute("persist-match-ranks", () -> {
+        this.debug.log("database", "Queueing rank persistence for table=" + tableId + " standings=" + snapshot.size());
+        this.async.execute("persist-match-ranks", () -> {
             try {
                 this.persistMatchRanks(tableId, mode, length, snapshot);
-                this.plugin.debug().log("database", "Persisted match rank results for table=" + tableId);
+                this.debug.log("database", "Persisted match rank results for table=" + tableId);
             } catch (SQLException ex) {
                 MahjongInfrastructureException failure = new MahjongInfrastructureException(
                     MahjongErrorCode.DATABASE_OPERATION_FAILED,
                     MahjongErrorCode.DATABASE_OPERATION_FAILED.publicMessage(),
                     ex
                 );
-                this.plugin.getLogger().log(
+                this.logger.log(
                     failure.logLevel(),
                     failure.code().name() + " operation=persist-match-ranks databaseType=" + this.databaseType,
                     ex
@@ -280,7 +303,7 @@ public final class DatabaseService {
         if ("h2".equals(this.databaseType)) {
             PluginSettings.DatabaseH2Settings h2 = this.databaseSettings == null ? null : this.databaseSettings.h2();
             String rawPath = Objects.requireNonNull(h2 == null ? "data/mahjongpaper" : h2.path(), "database.h2.path");
-            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.dataFolder, rawPath);
             Path parent = resolvedPath.getParent();
             if (parent != null) {
                 parent.toFile().mkdirs();
@@ -605,15 +628,15 @@ public final class DatabaseService {
             .filter(standing -> !standing.bot())
             .toList();
         if (humanStandings.size() < 4) {
-            this.plugin.debug().log("database", "Skipping rank persistence for table=" + tableId + " mode=" + rankMode.name() + ": ranked matches require 4 human players");
+            this.debug.log("database", "Skipping rank persistence for table=" + tableId + " mode=" + rankMode.name() + ": ranked matches require 4 human players");
             return;
         }
 
         MahjongSoulRankRules.MatchLength matchLength = MahjongSoulRankRules.matchLength(gameLength);
         MahjongSoulRankRules.Room room = MahjongSoulRankRules.roomFor(
             matchLength,
-            this.plugin.settings().rankingEastRoom(),
-            this.plugin.settings().rankingSouthRoom()
+            this.rankingEastRoom,
+            this.rankingSouthRoom
         );
 
         try (Connection connection = this.dataSource.getConnection()) {
@@ -735,7 +758,7 @@ public final class DatabaseService {
         if ("h2".equals(this.databaseType)) {
             PluginSettings.DatabaseH2Settings h2 = this.databaseSettings == null ? null : this.databaseSettings.h2();
             String rawPath = h2 == null ? "data/mahjongpaper" : Objects.toString(h2.path(), "data/mahjongpaper");
-            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.dataFolder, rawPath);
             return "Could not open the H2 database file. Resolved path: " + resolvedPath
                 + ". Check database.h2.path and make sure the plugin folder is writable.";
         }
@@ -952,7 +975,7 @@ public final class DatabaseService {
         try {
             return java.util.UUID.fromString(rawValue.trim());
         } catch (IllegalArgumentException ex) {
-            this.plugin.getLogger().warning(
+            this.logger.warning(
                 "Invalid database value '" + rawValue + "' for " + columnName + ", ignoring it."
             );
             return null;
@@ -966,7 +989,7 @@ public final class DatabaseService {
         try {
             return Enum.valueOf(enumType, rawValue.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            this.plugin.getLogger().warning(
+            this.logger.warning(
                 "Invalid database value '" + rawValue + "' for " + columnName + ", using " + fallback.name() + " instead."
             );
             return fallback;

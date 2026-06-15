@@ -6,12 +6,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import kotlin.Pair;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.db.MahjongSoulRankProfile;
 import top.ellan.mahjong.db.MahjongSoulRankRules;
 import top.ellan.mahjong.i18n.MessageService;
@@ -27,6 +30,8 @@ import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
+import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.runtime.ServerScheduler;
 
 public final class MahjongCommandContext {
     public static final String ADMIN_PERMISSION = "mahjongpaper.admin";
@@ -75,22 +80,38 @@ public final class MahjongCommandContext {
         "command.help.deletetable",
         "command.help.reload"
     );
-    private final MahjongPaperPlugin plugin;
     private final MessageService messages;
     private final MahjongTableManager tableManager;
+    private final DebugService debug;
+    private final AsyncService async;
+    private final ServerScheduler scheduler;
+    private final Supplier<DatabaseService> database;
+    private final Supplier<String> reloadConfiguration;
 
-    public MahjongCommandContext(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
-        this.plugin = plugin;
-        this.messages = plugin.messages();
-        this.tableManager = tableManager;
-    }
-
-    public MahjongPaperPlugin plugin() {
-        return this.plugin;
+    public MahjongCommandContext(
+        MessageService messages,
+        MahjongTableManager tableManager,
+        DebugService debug,
+        AsyncService async,
+        ServerScheduler scheduler,
+        Supplier<DatabaseService> database,
+        Supplier<String> reloadConfiguration
+    ) {
+        this.messages = Objects.requireNonNull(messages, "messages");
+        this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
+        this.debug = Objects.requireNonNull(debug, "debug");
+        this.async = Objects.requireNonNull(async, "async");
+        this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.database = Objects.requireNonNull(database, "database");
+        this.reloadConfiguration = Objects.requireNonNull(reloadConfiguration, "reloadConfiguration");
     }
 
     public MessageService messages() {
         return this.messages;
+    }
+
+    public DebugService debug() {
+        return this.debug;
     }
 
     public MahjongTableManager tableManager() {
@@ -184,7 +205,7 @@ public final class MahjongCommandContext {
             this.messages.send(sender, "command.admin_required");
             return;
         }
-        String failure = this.plugin.reloadMahjongConfiguration();
+        String failure = this.reloadConfiguration.get();
         if (failure == null) {
             this.messages.send(sender, "command.reload_success");
             return;
@@ -275,15 +296,16 @@ public final class MahjongCommandContext {
     }
 
     public void showRank(Player player) {
-        if (this.plugin.database() == null || !this.plugin.database().rankingEnabled()) {
+        DatabaseService database = this.database();
+        if (database == null || !database.rankingEnabled()) {
             this.messages.send(player, "command.rank_unavailable");
             return;
         }
         this.messages.send(player, "command.rank_loading");
-        this.plugin.async().execute("load-rank-" + player.getUniqueId(), () -> {
+        this.async.execute("load-rank-" + player.getUniqueId(), () -> {
             try {
-                Map<MahjongVariant, MahjongSoulRankProfile> profiles = this.plugin.database().loadRankProfiles(player.getUniqueId(), player.getName());
-                this.plugin.scheduler().runEntity(player, () -> {
+                Map<MahjongVariant, MahjongSoulRankProfile> profiles = database.loadRankProfiles(player.getUniqueId(), player.getName());
+                this.scheduler.runEntity(player, () -> {
                     if (!player.isOnline()) {
                         return;
                     }
@@ -310,7 +332,7 @@ public final class MahjongCommandContext {
                     }
                 });
             } catch (java.sql.SQLException ex) {
-                this.plugin.scheduler().runEntity(player, () -> {
+                this.scheduler.runEntity(player, () -> {
                     if (player.isOnline()) {
                         this.messages.send(player, "command.rank_failed");
                     }
@@ -378,16 +400,17 @@ public final class MahjongCommandContext {
     }
 
     public void showLeaderboard(Player player, MahjongVariant requestedMode) {
-        if (this.plugin.database() == null || !this.plugin.database().rankingEnabled()) {
+        DatabaseService database = this.database();
+        if (database == null || !database.rankingEnabled()) {
             this.messages.send(player, "command.rank_unavailable");
             return;
         }
         MahjongVariant mode = requestedMode == null ? MahjongVariant.RIICHI : requestedMode;
         this.messages.send(player, "command.leaderboard_loading");
-        this.plugin.async().execute("load-leaderboard-" + player.getUniqueId(), () -> {
+        this.async.execute("load-leaderboard-" + player.getUniqueId(), () -> {
             try {
-                List<top.ellan.mahjong.db.DatabaseService.LeaderboardEntry> entries = this.plugin.database().loadLeaderboard(mode, 10);
-                this.plugin.scheduler().runEntity(player, () -> {
+                List<DatabaseService.LeaderboardEntry> entries = database.loadLeaderboard(mode, 10);
+                this.scheduler.runEntity(player, () -> {
                     if (!player.isOnline()) {
                         return;
                     }
@@ -397,7 +420,7 @@ public final class MahjongCommandContext {
                         this.messages.send(player, "command.leaderboard_empty", this.messages.tag("mode", this.modeLabel(locale, mode)));
                         return;
                     }
-                    for (top.ellan.mahjong.db.DatabaseService.LeaderboardEntry entry : entries) {
+                    for (DatabaseService.LeaderboardEntry entry : entries) {
                         this.messages.send(
                             player,
                             "command.leaderboard_entry",
@@ -412,7 +435,7 @@ public final class MahjongCommandContext {
                     }
                 });
             } catch (java.sql.SQLException ex) {
-                this.plugin.scheduler().runEntity(player, () -> {
+                this.scheduler.runEntity(player, () -> {
                     if (player.isOnline()) {
                         this.messages.send(player, "command.leaderboard_failed");
                     }
@@ -478,5 +501,9 @@ public final class MahjongCommandContext {
 
     private String formatDecimal(double value) {
         return String.format(Locale.ROOT, "%.3f", value);
+    }
+
+    private DatabaseService database() {
+        return this.database.get();
     }
 }

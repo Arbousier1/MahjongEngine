@@ -402,7 +402,7 @@ final class CraftEngineFurnitureBridge {
     }
 
     private NamespacedKey managedFurnitureKey() {
-        return new NamespacedKey(this.context.plugin(), MANAGED_FURNITURE_KEY);
+        return new NamespacedKey(this.context.bukkitPlugin(), MANAGED_FURNITURE_KEY);
     }
 
     private NamespacedKey resolveFurnitureDataKey(Plugin craftEngine) {

@@ -1,6 +1,5 @@
 package top.ellan.mahjong.db
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 import top.ellan.mahjong.config.PluginSettings
 import top.ellan.mahjong.debug.DebugService
 import top.ellan.mahjong.model.MahjongTile as DisplayMahjongTile
@@ -33,37 +32,35 @@ import kotlin.test.assertTrue
 
 class DatabaseIntegrationTest {
     private lateinit var tempDir: java.nio.file.Path
-    private lateinit var plugin: MahjongPaperPlugin
-    private lateinit var settings: PluginSettings
+    private lateinit var async: AsyncService
     private lateinit var service: DatabaseService
 
     @BeforeEach
     fun setUp() {
         tempDir = Files.createTempDirectory("mahjongpaper-db-test")
-        plugin = mock(MahjongPaperPlugin::class.java)
-        settings = mock(PluginSettings::class.java)
-
-        `when`(plugin.getDataFolder()).thenReturn(tempDir.toFile())
-        `when`(plugin.getLogger()).thenReturn(Logger.getLogger("DatabaseIntegrationTest"))
-        `when`(plugin.settings()).thenReturn(settings)
-        `when`(plugin.debug()).thenReturn(mock(DebugService::class.java))
-        `when`(plugin.async()).thenReturn(AsyncService(Logger.getLogger("DatabaseIntegrationTest-Async")))
-        `when`(settings.rankingEnabled()).thenReturn(true)
-        `when`(settings.rankingEastRoom()).thenReturn("SILVER")
-        `when`(settings.rankingSouthRoom()).thenReturn("GOLD")
+        async = AsyncService(Logger.getLogger("DatabaseIntegrationTest-Async"))
 
         val config = YamlConfiguration()
         config.set("database.pool.maxSize", 2)
         config.set("database.pool.minIdle", 1)
         config.set("database.connection.type", "h2")
         config.set("database.h2.path", "data/test-db")
-        service = DatabaseService(plugin, PluginSettings.from(config).database())
+        service = DatabaseService(
+            PluginSettings.from(config).database(),
+            mock(DebugService::class.java),
+            async,
+            Logger.getLogger("DatabaseIntegrationTest"),
+            tempDir,
+            true,
+            "SILVER",
+            "GOLD"
+        )
     }
 
     @AfterEach
     fun tearDown() {
         service.close()
-        plugin.async().close()
+        async.close()
         tempDir.toFile().deleteRecursively()
     }
 

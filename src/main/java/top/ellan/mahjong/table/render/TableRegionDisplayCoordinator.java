@@ -407,7 +407,7 @@ public final class TableRegionDisplayCoordinator {
         if (!budget.canConsumeEntitySpawns(specs.size())) {
             return false;
         }
-        if (currentEntities != null && DisplayEntities.reconcile(this.session.plugin(), currentEntities, specs)) {
+        if (currentEntities != null && DisplayEntities.reconcile(this.session.bukkitPlugin(), currentEntities, specs)) {
             budget.consumeRegionUpdate(1);
             this.regionFingerprints.put(regionKey, fingerprint);
             return true;
@@ -415,7 +415,7 @@ public final class TableRegionDisplayCoordinator {
         budget.consumeRegionUpdate(1);
         budget.consumeEntitySpawns(specs.size());
         this.removeRegionDisplays(regionKey);
-        List<Entity> entities = DisplayEntities.spawnAll(this.session.plugin(), specs);
+        List<Entity> entities = DisplayEntities.spawnAll(this.session.bukkitPlugin(), specs);
         if (!entities.isEmpty()) {
             this.regionDisplays.put(regionKey, entities);
         }

@@ -12,7 +12,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.command.subcommand.AddBotSubcommand;
 import top.ellan.mahjong.command.subcommand.BotMatchSubcommand;
 import top.ellan.mahjong.command.subcommand.ChiiSubcommand;
@@ -47,16 +46,30 @@ import top.ellan.mahjong.command.subcommand.StateSubcommand;
 import top.ellan.mahjong.command.subcommand.TableSubcommand;
 import top.ellan.mahjong.command.subcommand.TsumoSubcommand;
 import top.ellan.mahjong.command.subcommand.UnspectateSubcommand;
+import top.ellan.mahjong.db.DatabaseService;
+import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.model.MahjongVariant;
+import java.util.function.Supplier;
 
 public final class MahjongCommand implements CommandExecutor, TabCompleter {
     private final MahjongCommandContext context;
     private final Map<String, MahjongSubcommand> subcommands;
 
-    public MahjongCommand(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
-        this.context = new MahjongCommandContext(plugin, tableManager);
+    public MahjongCommand(
+        MessageService messages,
+        MahjongTableManager tableManager,
+        DebugService debug,
+        AsyncService async,
+        ServerScheduler scheduler,
+        Supplier<DatabaseService> database,
+        Supplier<String> reloadConfiguration
+    ) {
+        this.context = new MahjongCommandContext(messages, tableManager, debug, async, scheduler, database, reloadConfiguration);
         this.subcommands = this.createSubcommands();
     }
 
@@ -84,7 +97,7 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         MahjongSubcommand command = this.subcommands.get(sub);
         if (command == null) {
             if (sender instanceof Player player) {
-                this.context.plugin().debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
+                this.context.debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
                 this.context.sendHelp(player);
             } else {
                 this.context.messages().send(sender, "common.only_players");
@@ -100,7 +113,7 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         }
         Player player = sender instanceof Player playerSender ? playerSender : null;
         if (player != null && command.playerOnly()) {
-            this.context.plugin().debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
+            this.context.debug().log("command", player.getName() + " executed /mahjong " + String.join(" ", args));
         }
         command.executor().execute(sender, player, args);
     }

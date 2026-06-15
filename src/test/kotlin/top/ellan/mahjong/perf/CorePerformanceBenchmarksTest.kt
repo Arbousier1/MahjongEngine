@@ -1,6 +1,6 @@
 package top.ellan.mahjong.perf
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.config.PluginSettings
 import top.ellan.mahjong.gb.runtime.GbNativeRulesGateway
 import top.ellan.mahjong.model.MahjongTile
@@ -131,7 +131,7 @@ class CorePerformanceBenchmarksTest {
     }
 
     private fun fingerprintSession(): MahjongTableSession {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val settings = mock(PluginSettings::class.java)
         val session = mock(MahjongTableSession::class.java)
         `when`(plugin.settings()).thenReturn(settings)

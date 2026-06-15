@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.runtime
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.model.MahjongTile
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.table.core.MahjongTableSession
@@ -32,7 +32,7 @@ class BotActionSchedulerTest {
     @Test
     fun `non riichi variant uses gb style bot scheduling`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val center = mock(Location::class.java)
@@ -59,7 +59,7 @@ class BotActionSchedulerTest {
     @Test
     fun `gb bot turn falls back to selectable discard index`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val center = mock(Location::class.java)
@@ -99,7 +99,7 @@ class BotActionSchedulerTest {
     @Test
     fun `gb bot turn stops retrying after max attempts`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val center = mock(Location::class.java)
@@ -158,7 +158,7 @@ class BotActionSchedulerTest {
     @Test
     fun `gb bot turn retries reset on next scheduling cycle`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val task = mock(PluginTask::class.java)
         val center = mock(Location::class.java)

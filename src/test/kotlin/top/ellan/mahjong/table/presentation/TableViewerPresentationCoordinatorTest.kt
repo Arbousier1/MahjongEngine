@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.presentation
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.table.core.MahjongTableSession
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot
@@ -57,7 +57,7 @@ class TableViewerPresentationCoordinatorTest {
     @Test
     fun `hud refresh is throttled between periodic polls`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val messages = mock(MessageService::class.java)
         val coordinator = TableViewerPresentationCoordinator(session)
         setField(coordinator, "viewerOverlayDirty", false)

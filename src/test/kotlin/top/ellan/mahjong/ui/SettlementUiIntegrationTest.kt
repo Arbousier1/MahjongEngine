@@ -1,6 +1,6 @@
 package top.ellan.mahjong.ui
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.compat.CraftEngineService
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.riichi.RoundResolution
@@ -107,7 +107,7 @@ class SettlementUiIntegrationTest {
     }
 
     private fun mockSession(): MahjongTableSession {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = mock(MahjongTableSession::class.java)
         val craftEngine = mock(CraftEngineService::class.java)
         val messages = MessageService()

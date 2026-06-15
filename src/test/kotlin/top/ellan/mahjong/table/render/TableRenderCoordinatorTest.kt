@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.render
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.metrics.InMemoryMetricsCollector
 import top.ellan.mahjong.runtime.PluginTask
 import top.ellan.mahjong.runtime.ServerScheduler
@@ -19,7 +19,7 @@ class TableRenderCoordinatorTest {
     @Test
     fun `render coalesces duplicate requests and records request metrics`() {
         val session = mock(MahjongTableSession::class.java)
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val scheduler = mock(ServerScheduler::class.java)
         val center = mock(Location::class.java)
         val metrics = InMemoryMetricsCollector()

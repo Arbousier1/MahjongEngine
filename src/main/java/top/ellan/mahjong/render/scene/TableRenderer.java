@@ -121,7 +121,7 @@ public final class TableRenderer {
         }
 
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -1.0D, 0.0D), TABLE_BOTTOM_SIZE, TABLE_BOTTOM_HEIGHT, TABLE_BOTTOM_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_BOTTOM_SIZE,
@@ -129,7 +129,7 @@ public final class TableRenderer {
             (float) TABLE_BOTTOM_SIZE
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -(TABLE_TOP_THICKNESS + TABLE_PILLAR_HEIGHT), 0.0D), TABLE_PILLAR_SIZE, TABLE_PILLAR_HEIGHT, TABLE_PILLAR_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_PILLAR_SIZE,
@@ -137,7 +137,7 @@ public final class TableRenderer {
             (float) TABLE_PILLAR_SIZE
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, 0.0D), topWidth, TABLE_TOP_THICKNESS, topDepth),
             Material.SMOOTH_STONE,
             (float) topWidth,
@@ -145,7 +145,7 @@ public final class TableRenderer {
             (float) topDepth
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, -borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
             (float) borderSpanX,
@@ -153,7 +153,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
             (float) borderSpanX,
@@ -161,7 +161,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(-borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
@@ -169,7 +169,7 @@ public final class TableRenderer {
             (float) borderSpanZ
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
@@ -197,7 +197,7 @@ public final class TableRenderer {
         }
 
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -1.0D, 0.0D), TABLE_BOTTOM_SIZE, TABLE_BOTTOM_HEIGHT, TABLE_BOTTOM_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_BOTTOM_SIZE,
@@ -205,7 +205,7 @@ public final class TableRenderer {
             (float) TABLE_BOTTOM_SIZE
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -(TABLE_TOP_THICKNESS + TABLE_PILLAR_HEIGHT), 0.0D), TABLE_PILLAR_SIZE, TABLE_PILLAR_HEIGHT, TABLE_PILLAR_SIZE),
             Material.DARK_OAK_WOOD,
             (float) TABLE_PILLAR_SIZE,
@@ -213,7 +213,7 @@ public final class TableRenderer {
             (float) TABLE_PILLAR_SIZE
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, 0.0D), topWidth, TABLE_TOP_THICKNESS, topDepth),
             Material.SMOOTH_STONE,
             (float) topWidth,
@@ -221,7 +221,7 @@ public final class TableRenderer {
             (float) topDepth
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, -borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
             (float) borderSpanX,
@@ -229,7 +229,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(0.0D, -TABLE_TOP_THICKNESS, borderCenterOffsetZ), borderSpanX, TABLE_BORDER_HEIGHT, TABLE_BORDER_THICKNESS),
             Material.STRIPPED_OAK_WOOD,
             (float) borderSpanX,
@@ -237,7 +237,7 @@ public final class TableRenderer {
             (float) TABLE_BORDER_THICKNESS
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(-borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
@@ -245,7 +245,7 @@ public final class TableRenderer {
             (float) borderSpanZ
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(tableCenter.clone().add(borderCenterOffsetX, -TABLE_TOP_THICKNESS, 0.0D), TABLE_BORDER_THICKNESS, TABLE_BORDER_HEIGHT, borderSpanZ),
             Material.STRIPPED_OAK_WOOD,
             (float) TABLE_BORDER_THICKNESS,
@@ -325,7 +325,7 @@ public final class TableRenderer {
             ? Component.text(session.publicSeatStatus(wind))
             : Component.text(session.publicSeatStatus(wind) + "\n" + session.displayName(playerId, session.publicLocale()));
         spawned.add(DisplayEntities.spawnLabel(
-            session.plugin(),
+            session.bukkitPlugin(),
             statusLabelLocation,
             text,
             seatLabelColor(wind, active),
@@ -361,7 +361,7 @@ public final class TableRenderer {
             ? Component.text(seat.publicSeatStatus())
             : Component.text(seat.publicSeatStatus() + "\n" + seat.displayName());
         spawned.add(DisplayEntities.spawnLabel(
-            session.plugin(),
+            session.bukkitPlugin(),
             statusLabelLocation,
             text,
             seatLabelColor(seat.wind(), active),
@@ -549,7 +549,7 @@ public final class TableRenderer {
         Location center = displayCenter(session);
         List<Entity> spawned = new ArrayList<>(2);
         spawned.add(DisplayEntities.spawnLabel(
-            session.plugin(),
+            session.bukkitPlugin(),
             center.clone().add(0.0D, CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(session.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
@@ -568,7 +568,7 @@ public final class TableRenderer {
         Location center = toLocation(session, plan.displayCenter());
         List<Entity> spawned = new ArrayList<>(2);
         spawned.add(DisplayEntities.spawnLabel(
-            session.plugin(),
+            session.bukkitPlugin(),
             center.clone().add(0.0D, CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(snapshot.publicCenterText()),
             Color.fromARGB(112, 20, 80, 20)
@@ -615,7 +615,7 @@ public final class TableRenderer {
         List<Entity> spawned = new ArrayList<>(session.isSpectator(viewerId) ? 5 : 1);
         if (session.isStarted() || session.isSpectator(viewerId)) {
             spawned.add(DisplayEntities.spawnLabel(
-                session.plugin(),
+                session.bukkitPlugin(),
                 center.clone().add(0.0D, 0.9D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                 session.viewerOverlay(viewer),
                 Color.fromARGB(84, 12, 12, 12),
@@ -625,7 +625,7 @@ public final class TableRenderer {
         if (session.isSpectator(viewerId)) {
             for (SeatWind wind : SeatWind.values()) {
                 spawned.add(DisplayEntities.spawnLabel(
-                    session.plugin(),
+                    session.bukkitPlugin(),
                     add(handDirectionBase(center, wind), offsetAcrossSeat(wind, 0.42D)).add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                     session.spectatorSeatOverlay(viewer, wind),
                     Color.fromARGB(92, 14, 14, 18),
@@ -641,7 +641,7 @@ public final class TableRenderer {
         List<Entity> spawned = new ArrayList<>(snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size());
         if (session.isStarted() || snapshot.spectator()) {
             spawned.add(DisplayEntities.spawnLabel(
-                session.plugin(),
+                session.bukkitPlugin(),
                 center.clone().add(0.0D, 0.9D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                 snapshot.overlay(),
                 Color.fromARGB(84, 12, 12, 12),
@@ -651,7 +651,7 @@ public final class TableRenderer {
         if (snapshot.spectator()) {
             for (TableSpectatorSeatOverlaySnapshot seatOverlay : snapshot.spectatorSeatOverlays()) {
                 spawned.add(DisplayEntities.spawnLabel(
-                    session.plugin(),
+                    session.bukkitPlugin(),
                     add(handDirectionBase(center, seatOverlay.wind()), offsetAcrossSeat(seatOverlay.wind(), 0.42D)).add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
                     seatOverlay.overlay(),
                     Color.fromARGB(92, 14, 14, 18),
@@ -715,7 +715,7 @@ public final class TableRenderer {
         for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
             Location tileLocation = toLocation(session, plan.privateHandPoints().get(tileIndex));
             spawned.add(DisplayEntities.spawnTileDisplay(
-                session.plugin(),
+                session.bukkitPlugin(),
                 tileLocation,
                 plan.yaw(),
                 session.currentVariant(),
@@ -730,7 +730,7 @@ public final class TableRenderer {
                 true
             ));
             Entity clickHitbox = DisplayEntities.spawnInteraction(
-                session.plugin(),
+                session.bukkitPlugin(),
                 handInteractionLocation(tileLocation),
                 HAND_INTERACTION_WIDTH,
                 HAND_INTERACTION_HEIGHT,
@@ -758,7 +758,7 @@ public final class TableRenderer {
         UUID playerId = seat.playerId();
         List<Entity> spawned = new ArrayList<>(2);
         spawned.add(DisplayEntities.spawnTileDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             tileLocation,
             plan.yaw(),
             session.currentVariant(),
@@ -773,7 +773,7 @@ public final class TableRenderer {
             true
         ));
         Entity clickHitbox = DisplayEntities.spawnInteraction(
-            session.plugin(),
+            session.bukkitPlugin(),
             handInteractionLocation(tileLocation),
             HAND_INTERACTION_WIDTH,
             HAND_INTERACTION_HEIGHT,
@@ -801,7 +801,7 @@ public final class TableRenderer {
         List<UUID> ownerHidden = List.of(seat.playerId());
         for (int i = 0; i < seat.hand().size(); i++) {
             spawned.add(DisplayEntities.spawnTileDisplay(
-                session.plugin(),
+                session.bukkitPlugin(),
                 toLocation(session, plan.publicHandPoints().get(i)),
                 plan.yaw(),
                 session.currentVariant(),
@@ -830,7 +830,7 @@ public final class TableRenderer {
         boolean concealHand = snapshot.started();
         List<UUID> ownerHidden = List.of(seat.playerId());
         return List.of(DisplayEntities.spawnTileDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
             session.currentVariant(),
@@ -1101,7 +1101,7 @@ public final class TableRenderer {
         List<Entity> spawned = new ArrayList<>(3);
         Location seatBase = seatBaseLocation(handBase, wind);
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(seatBase.clone(), SEAT_BASE_WIDTH, SEAT_BASE_HEIGHT, SEAT_BASE_WIDTH),
             Material.SMOOTH_STONE,
             (float) SEAT_BASE_WIDTH,
@@ -1112,7 +1112,7 @@ public final class TableRenderer {
             action
         ));
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(
                 seatBase.clone().add(0.0D, SEAT_BASE_HEIGHT, 0.0D),
                 SEAT_BASE_WIDTH - SEAT_CARPET_INSET * 2.0D,
@@ -1130,7 +1130,7 @@ public final class TableRenderer {
 
         Offset backrestOffset = offsetTowardSeatFront(wind, -SEAT_BACKREST_OFFSET);
         spawned.add(DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(seatBase.clone().add(backrestOffset.x(), SEAT_BACKREST_HEIGHT / 2.0D, backrestOffset.z()), SEAT_BACKREST_WIDTH, SEAT_BACKREST_HEIGHT, SEAT_BACKREST_DEPTH),
             Material.STRIPPED_OAK_WOOD,
             (float) SEAT_BACKREST_WIDTH,
@@ -1517,7 +1517,7 @@ public final class TableRenderer {
         Collection<UUID> actionViewers = seatActionPrivateViewers(seatedPlayerId, action);
         Location actionLabelLocation = seatActionLabelLocation(handBase, wind, acrossOffset);
         spawned.add(DisplayEntities.spawnLabel(
-            session.plugin(),
+            session.bukkitPlugin(),
             actionLabelLocation,
             actionLabel,
             seatActionLabelColor(action),
@@ -1528,7 +1528,7 @@ public final class TableRenderer {
             true
         ));
         Entity interaction = DisplayEntities.spawnInteraction(
-            session.plugin(),
+            session.bukkitPlugin(),
             seatLabelInteractionLocation(actionLabelLocation),
             actionWidth,
             SEAT_ACTION_INTERACTION_HEIGHT,
@@ -1610,7 +1610,7 @@ public final class TableRenderer {
         // they keep the exact sub-block positioning Mahjong tables need and don't introduce
         // furniture-sized interaction volumes over the table surface.
         return DisplayEntities.spawnTileDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             location,
             yaw,
             session.currentVariant(),
@@ -1643,7 +1643,7 @@ public final class TableRenderer {
         MahjongTile tile
     ) {
         return DisplayEntities.spawnTileDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             center.clone().add(0.0D, CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
             0.0F,
             session.currentVariant(),
@@ -1814,7 +1814,7 @@ public final class TableRenderer {
         double width = longOnX ? STICK_WIDTH : STICK_DEPTH;
         double depth = longOnX ? STICK_DEPTH : STICK_WIDTH;
         return DisplayEntities.spawnBlockDisplay(
-            session.plugin(),
+            session.bukkitPlugin(),
             centeredCuboid(center, width, STICK_HEIGHT, depth),
             stickMaterial(stick),
             (float) width,
