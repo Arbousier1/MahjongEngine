@@ -24,7 +24,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run tests with coverage on Paper 1.20.1 baseline
-        run: ./gradlew test jacocoTestReport -PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT -PmahjongJavaToolchain=25 -PmahjongJavaTarget=17
+        run: ./gradlew test jacocoTestReport "-PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT" "-PmahjongJavaToolchain=25" "-PmahjongJavaTarget=17"
 
       - name: Upload test reports
         if: always()

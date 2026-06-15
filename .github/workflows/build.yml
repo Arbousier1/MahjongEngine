@@ -69,7 +69,8 @@ jobs:
       - name: Build platform plugin
         # Pin to the lowest supported Paper baseline so the released jar stays runtime-compatible
         # with Paper/Folia 1.20.1 -> 26.2. PaperCompatibility handles newer APIs at runtime.
-        run: ${{ matrix.gradle }} build -x test -PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT -PmahjongJavaTarget=17 -PmahjongJavaToolchain=25
+        # Quote each -P argument because PowerShell on Windows runners mis-parses `1.20.1-R0.1-SNAPSHOT`.
+        run: ${{ matrix.gradle }} build -x test "-PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT" "-PmahjongJavaTarget=17" "-PmahjongJavaToolchain=25"
 
       - name: Verify artifact compatibility (Linux only)
         if: runner.os == 'Linux'
