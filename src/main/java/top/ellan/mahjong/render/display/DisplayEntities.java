@@ -40,13 +40,20 @@ public final class DisplayEntities {
     private DisplayEntities() {
     }
 
+    private record BukkitDisplayEntityRuntime(Plugin bukkitPlugin) implements DisplayEntityRuntime {
+    }
+
     public static List<Entity> spawnAll(Plugin plugin, List<EntitySpec> specs) {
-        if (specs == null || specs.isEmpty()) {
+        return spawnAll(new BukkitDisplayEntityRuntime(plugin), specs);
+    }
+
+    public static List<Entity> spawnAll(DisplayEntityRuntime runtime, List<EntitySpec> specs) {
+        if (runtime == null || runtime.bukkitPlugin() == null || specs == null || specs.isEmpty()) {
             return List.of();
         }
         List<Entity> spawned = new java.util.ArrayList<>(specs.size());
         for (EntitySpec spec : specs) {
-            Entity entity = spec.spawn(plugin);
+            Entity entity = spec.spawn(runtime);
             if (entity != null) {
                 spawned.add(entity);
             }
@@ -55,21 +62,25 @@ public final class DisplayEntities {
     }
 
     public static boolean reconcile(Plugin plugin, List<Entity> entities, List<EntitySpec> specs) {
-        if (plugin == null || entities == null || specs == null || entities.size() != specs.size()) {
+        return reconcile(new BukkitDisplayEntityRuntime(plugin), entities, specs);
+    }
+
+    public static boolean reconcile(DisplayEntityRuntime runtime, List<Entity> entities, List<EntitySpec> specs) {
+        if (runtime == null || runtime.bukkitPlugin() == null || entities == null || specs == null || entities.size() != specs.size()) {
             return false;
         }
         for (int i = 0; i < specs.size(); i++) {
             Entity entity = entities.get(i);
             EntitySpec spec = specs.get(i);
-            if (entity == null || spec == null || !spec.canReuse(plugin, entity)) {
+            if (entity == null || spec == null || !spec.canReuse(runtime, entity)) {
                 return false;
             }
-            if (!spec.managesOwnReuse() && !isManagedEntity(plugin, entity)) {
+            if (!spec.managesOwnReuse() && !isManagedEntity(runtime.bukkitPlugin(), entity)) {
                 return false;
             }
         }
         for (int i = 0; i < specs.size(); i++) {
-            specs.get(i).apply(plugin, entities.get(i));
+            specs.get(i).apply(runtime, entities.get(i));
         }
         return true;
     }
@@ -232,11 +243,11 @@ public final class DisplayEntities {
     }
 
     public interface EntitySpec {
-        Entity spawn(Plugin plugin);
+        Entity spawn(DisplayEntityRuntime runtime);
 
-        boolean canReuse(Plugin plugin, Entity entity);
+        boolean canReuse(DisplayEntityRuntime runtime, Entity entity);
 
-        void apply(Plugin plugin, Entity entity);
+        void apply(DisplayEntityRuntime runtime, Entity entity);
 
         default boolean managesOwnReuse() {
             return false;
@@ -264,11 +275,12 @@ public final class DisplayEntities {
         }
 
         @Override
-        public Entity spawn(Plugin plugin) {
-            return spawnTileDisplay(
-                plugin,
+        public Entity spawn(DisplayEntityRuntime runtime) {
+            return spawnTileDisplayInternal(
+                runtime,
                 this.location,
                 this.yaw,
+                this.variant,
                 this.tile,
                 this.pose,
                 this.clickAction,
@@ -283,13 +295,13 @@ public final class DisplayEntities {
         }
 
         @Override
-        public boolean canReuse(Plugin plugin, Entity entity) {
+        public boolean canReuse(DisplayEntityRuntime runtime, Entity entity) {
             return entity instanceof ItemDisplay;
         }
 
         @Override
-        public void apply(Plugin plugin, Entity entity) {
-            applyTileDisplay(plugin, (ItemDisplay) entity, this);
+        public void apply(DisplayEntityRuntime runtime, Entity entity) {
+            applyTileDisplay(runtime, (ItemDisplay) entity, this);
         }
     }
 
@@ -308,18 +320,18 @@ public final class DisplayEntities {
         }
 
         @Override
-        public Entity spawn(Plugin plugin) {
-            return spawnLabel(plugin, this.location, this.text, this.color, this.privateViewers, this.billboard, this.yaw, this.pitch, this.shadowed);
+        public Entity spawn(DisplayEntityRuntime runtime) {
+            return spawnLabel(runtime, this.location, this.text, this.color, this.privateViewers, this.billboard, this.yaw, this.pitch, this.shadowed);
         }
 
         @Override
-        public boolean canReuse(Plugin plugin, Entity entity) {
+        public boolean canReuse(DisplayEntityRuntime runtime, Entity entity) {
             return entity instanceof TextDisplay;
         }
 
         @Override
-        public void apply(Plugin plugin, Entity entity) {
-            applyLabel(plugin, (TextDisplay) entity, this);
+        public void apply(DisplayEntityRuntime runtime, Entity entity) {
+            applyLabel(runtime, (TextDisplay) entity, this);
         }
     }
 
@@ -335,18 +347,18 @@ public final class DisplayEntities {
         }
 
         @Override
-        public Entity spawn(Plugin plugin) {
-            return spawnInteraction(plugin, this.location, this.width, this.height, this.clickAction, this.privateViewers);
+        public Entity spawn(DisplayEntityRuntime runtime) {
+            return spawnInteraction(runtime, this.location, this.width, this.height, this.clickAction, this.privateViewers);
         }
 
         @Override
-        public boolean canReuse(Plugin plugin, Entity entity) {
+        public boolean canReuse(DisplayEntityRuntime runtime, Entity entity) {
             return entity instanceof Interaction;
         }
 
         @Override
-        public void apply(Plugin plugin, Entity entity) {
-            applyInteraction(plugin, (Interaction) entity, this);
+        public void apply(DisplayEntityRuntime runtime, Entity entity) {
+            applyInteraction(runtime, (Interaction) entity, this);
         }
     }
 
@@ -583,7 +595,7 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return spawnTileDisplayInternal(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
+        return spawnTileDisplayInternal(new BukkitDisplayEntityRuntime(plugin), location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
     }
 
     public static ItemDisplay spawnTileDisplay(
@@ -618,11 +630,11 @@ public final class DisplayEntities {
         Display.Billboard billboard,
         boolean smoothMovement
     ) {
-        return spawnTileDisplayInternal(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
+        return spawnTileDisplayInternal(new BukkitDisplayEntityRuntime(plugin), location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
     }
 
     private static ItemDisplay spawnTileDisplayInternal(
-        Plugin plugin,
+        DisplayEntityRuntime runtime,
         Location location,
         float yaw,
         MahjongVariant variant,
@@ -645,7 +657,7 @@ public final class DisplayEntities {
         ItemDisplay display = world.spawn(location, ItemDisplay.class, spawned -> {
             boolean restrictedVisibility = privateViewers != null;
             spawned.setPersistent(false);
-            markManagedEntity(plugin, spawned);
+            markManagedEntity(runtime.bukkitPlugin(), spawned);
             spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
             spawned.setInterpolationDuration(smoothMovement ? 1 : 0);
             spawned.setInterpolationDelay(0);
@@ -671,7 +683,7 @@ public final class DisplayEntities {
                 new Vector3f(scale, scale, scale),
                 new AxisAngle4f()
             ));
-            spawned.setItemStack(tileItem(plugin, variant, tile, pose.faceDown()));
+            spawned.setItemStack(tileItem(runtime, variant, tile, pose.faceDown()));
         });
 
         if (clickAction != null) {
@@ -683,12 +695,12 @@ public final class DisplayEntities {
             } else {
                 DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
             }
-            syncPrivateVisibility(plugin, display, privateViewers);
+            syncPrivateVisibility(runtime, display, privateViewers);
         } else if (hiddenViewers != null && !hiddenViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerExcluded(display.getEntityId(), hiddenViewers);
-            syncExcludedVisibility(plugin, display, hiddenViewers, visibleByDefault);
+            syncExcludedVisibility(runtime, display, hiddenViewers, visibleByDefault);
         }
-        registerForCraftEngineCulling(plugin, display);
+        registerForCraftEngineCulling(runtime, display);
         return display;
     }
 
@@ -724,6 +736,20 @@ public final class DisplayEntities {
         float pitch,
         boolean shadowed
     ) {
+        return spawnLabel(new BukkitDisplayEntityRuntime(plugin), location, text, color, privateViewers, billboard, yaw, pitch, shadowed);
+    }
+
+    private static TextDisplay spawnLabel(
+        DisplayEntityRuntime runtime,
+        Location location,
+        Component text,
+        Color color,
+        Collection<UUID> privateViewers,
+        Display.Billboard billboard,
+        float yaw,
+        float pitch,
+        boolean shadowed
+    ) {
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -732,7 +758,7 @@ public final class DisplayEntities {
         TextDisplay display = world.spawn(location, TextDisplay.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
-            markManagedEntity(plugin, spawned);
+            markManagedEntity(runtime.bukkitPlugin(), spawned);
             spawned.text(text);
             spawned.setSeeThrough(false);
             spawned.setShadowed(shadowed);
@@ -747,9 +773,9 @@ public final class DisplayEntities {
         });
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
-            syncPrivateVisibility(plugin, display, privateViewers);
+            syncPrivateVisibility(runtime, display, privateViewers);
         }
-        registerForCraftEngineCulling(plugin, display);
+        registerForCraftEngineCulling(runtime, display);
         return display;
     }
 
@@ -770,6 +796,17 @@ public final class DisplayEntities {
         DisplayClickAction clickAction,
         Collection<UUID> privateViewers
     ) {
+        return spawnInteraction(new BukkitDisplayEntityRuntime(plugin), location, width, height, clickAction, privateViewers);
+    }
+
+    private static Interaction spawnInteraction(
+        DisplayEntityRuntime runtime,
+        Location location,
+        float width,
+        float height,
+        DisplayClickAction clickAction,
+        Collection<UUID> privateViewers
+    ) {
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -778,7 +815,7 @@ public final class DisplayEntities {
         Interaction interaction = world.spawn(location, Interaction.class, spawned -> {
             boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
             spawned.setPersistent(false);
-            markManagedEntity(plugin, spawned);
+            markManagedEntity(runtime.bukkitPlugin(), spawned);
             spawned.setResponsive(true);
             spawned.setInteractionWidth(width);
             spawned.setInteractionHeight(height);
@@ -789,9 +826,9 @@ public final class DisplayEntities {
         }
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(interaction.getEntityId(), privateViewers);
-            syncPrivateVisibility(plugin, interaction, privateViewers);
+            syncPrivateVisibility(runtime, interaction, privateViewers);
         }
-        registerForCraftEngineCulling(plugin, interaction);
+        registerForCraftEngineCulling(runtime, interaction);
         return interaction;
     }
 
@@ -823,6 +860,7 @@ public final class DisplayEntities {
         Collection<UUID> privateViewers,
         DisplayClickAction clickAction
     ) {
+        DisplayEntityRuntime runtime = new BukkitDisplayEntityRuntime(plugin);
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Location world is null");
@@ -856,14 +894,14 @@ public final class DisplayEntities {
         }
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
-            syncPrivateVisibility(plugin, display, privateViewers);
+            syncPrivateVisibility(runtime, display, privateViewers);
         }
-        registerForCraftEngineCulling(plugin, display);
+        registerForCraftEngineCulling(runtime, display);
         return display;
     }
 
-    private static void applyTileDisplay(Plugin plugin, ItemDisplay display, TileDisplaySpec spec) {
-        applyEntityLocation(plugin, display, spec.location(), spec.yaw(), 0.0F);
+    private static void applyTileDisplay(DisplayEntityRuntime runtime, ItemDisplay display, TileDisplaySpec spec) {
+        applyEntityLocation(runtime, display, spec.location(), spec.yaw(), 0.0F);
         display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
         display.setInterpolationDuration(spec.smoothMovement() ? 1 : 0);
         display.setInterpolationDelay(0);
@@ -889,13 +927,13 @@ public final class DisplayEntities {
             new Vector3f(spec.scale(), spec.scale(), spec.scale()),
             new AxisAngle4f()
         ));
-        display.setItemStack(tileItem(plugin, spec.variant(), spec.tile(), spec.pose().faceDown()));
+        display.setItemStack(tileItem(runtime, spec.variant(), spec.tile(), spec.pose().faceDown()));
         applyClickAction(display.getEntityId(), spec.clickAction());
-        applyTileVisibility(plugin, display, spec.privateViewers(), spec.hiddenViewers(), spec.visibleByDefault());
+        applyTileVisibility(runtime, display, spec.privateViewers(), spec.hiddenViewers(), spec.visibleByDefault());
     }
 
-    private static void applyLabel(Plugin plugin, TextDisplay display, LabelSpec spec) {
-        applyEntityLocation(plugin, display, spec.location(), spec.yaw(), spec.pitch());
+    private static void applyLabel(DisplayEntityRuntime runtime, TextDisplay display, LabelSpec spec) {
+        applyEntityLocation(runtime, display, spec.location(), spec.yaw(), spec.pitch());
         display.text(spec.text());
         display.setSeeThrough(false);
         display.setShadowed(spec.shadowed());
@@ -905,27 +943,23 @@ public final class DisplayEntities {
         display.setViewRange(LABEL_VIEW_RANGE);
         display.setBrightness(new Display.Brightness(15, 15));
         display.setBackgroundColor(spec.color());
-        applyPrivateVisibility(plugin, display, spec.privateViewers(), true);
+        applyPrivateVisibility(runtime, display, spec.privateViewers(), true);
     }
 
-    private static void applyInteraction(Plugin plugin, Interaction interaction, InteractionSpec spec) {
-        applyEntityLocation(plugin, interaction, spec.location(), interaction.getYaw(), interaction.getPitch());
+    private static void applyInteraction(DisplayEntityRuntime runtime, Interaction interaction, InteractionSpec spec) {
+        applyEntityLocation(runtime, interaction, spec.location(), interaction.getYaw(), interaction.getPitch());
         interaction.setResponsive(true);
         interaction.setInteractionWidth(spec.width());
         interaction.setInteractionHeight(spec.height());
         applyClickAction(interaction.getEntityId(), spec.clickAction());
-        applyPrivateVisibility(plugin, interaction, spec.privateViewers(), true);
+        applyPrivateVisibility(runtime, interaction, spec.privateViewers(), true);
     }
 
-    private static void applyEntityLocation(Plugin plugin, Entity entity, Location location, float yaw, float pitch) {
+    private static void applyEntityLocation(DisplayEntityRuntime runtime, Entity entity, Location location, float yaw, float pitch) {
         Location target = location.clone();
         target.setYaw(yaw);
         target.setPitch(pitch);
-        if (plugin instanceof top.ellan.mahjong.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            mahjongPlugin.scheduler().teleport(entity, target);
-            return;
-        }
-        entity.teleport(target);
+        runtime.teleport(entity, target);
     }
 
     private static void applyClickAction(int entityId, DisplayClickAction clickAction) {
@@ -937,7 +971,7 @@ public final class DisplayEntities {
     }
 
     private static void applyTileVisibility(
-        Plugin plugin,
+        DisplayEntityRuntime runtime,
         Entity entity,
         Collection<UUID> privateViewers,
         Collection<UUID> hiddenViewers,
@@ -950,79 +984,79 @@ public final class DisplayEntities {
         boolean hiddenSpecific = hiddenViewers != null && !hiddenViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
         if (privateViewers != null) {
-            if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
+            if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
                 return;
             }
             if (privateViewers.isEmpty()) {
                 DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
-                syncPrivateVisibility(plugin, entity, privateViewers);
+                syncPrivateVisibility(runtime, entity, privateViewers);
                 return;
             }
             DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
-            syncPrivateVisibility(plugin, entity, privateViewers);
+            syncPrivateVisibility(runtime, entity, privateViewers);
             return;
         }
         if (hiddenSpecific) {
-            if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesExcluded(entity.getEntityId(), hiddenViewers)) {
+            if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesExcluded(entity.getEntityId(), hiddenViewers)) {
                 return;
             }
             DisplayVisibilityRegistry.registerExcluded(entity.getEntityId(), hiddenViewers);
-            syncExcludedVisibility(plugin, entity, hiddenViewers, visibleByDefault);
+            syncExcludedVisibility(runtime, entity, hiddenViewers, visibleByDefault);
             return;
         }
         DisplayVisibilityRegistry.unregister(entity.getEntityId());
-        syncPublicVisibility(plugin, entity);
+        syncPublicVisibility(runtime, entity);
     }
 
-    private static void applyPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
+    private static void applyPrivateVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
         boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
-        if (!requiresVisibilityResync(plugin) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
+        if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
             return;
         }
         if (privateViewers == null) {
             DisplayVisibilityRegistry.unregister(entity.getEntityId());
-            syncPublicVisibility(plugin, entity);
+            syncPublicVisibility(runtime, entity);
             return;
         }
         if (privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
-            syncPrivateVisibility(plugin, entity, privateViewers);
+            syncPrivateVisibility(runtime, entity, privateViewers);
             return;
         }
         DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
-        syncPrivateVisibility(plugin, entity, privateViewers);
+        syncPrivateVisibility(runtime, entity, privateViewers);
     }
 
-    private static void syncExcludedVisibility(Plugin plugin, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
+    private static void syncExcludedVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
         for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
-            runForViewer(plugin, entity, player, () -> {
+            runForViewer(runtime, entity, player, () -> {
                 if (hiddenViewers.contains(player.getUniqueId())) {
-                    player.hideEntity(plugin, entity);
+                    player.hideEntity(runtime.bukkitPlugin(), entity);
                 } else if (visibleByDefault) {
-                    player.showEntity(plugin, entity);
+                    player.showEntity(runtime.bukkitPlugin(), entity);
                 } else {
-                    player.hideEntity(plugin, entity);
+                    player.hideEntity(runtime.bukkitPlugin(), entity);
                 }
             });
         }
     }
 
-    private static void syncPrivateVisibility(Plugin plugin, Entity entity, Collection<UUID> privateViewers) {
+    private static void syncPrivateVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> privateViewers) {
         for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
-            runForViewer(plugin, entity, player, () -> {
+            runForViewer(runtime, entity, player, () -> {
                 if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
-                    player.showEntity(plugin, entity);
+                    player.showEntity(runtime.bukkitPlugin(), entity);
                 } else {
-                    player.hideEntity(plugin, entity);
+                    player.hideEntity(runtime.bukkitPlugin(), entity);
                 }
             });
         }
     }
 
-    private static void syncPublicVisibility(Plugin plugin, Entity entity) {
+    private static void syncPublicVisibility(DisplayEntityRuntime runtime, Entity entity) {
         for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
-            runForViewer(plugin, entity, player, () -> player.showEntity(plugin, entity));
+            runForViewer(runtime, entity, player, () -> player.showEntity(runtime.bukkitPlugin(), entity));
         }
     }
 
@@ -1030,35 +1064,28 @@ public final class DisplayEntities {
         return List.copyOf(Bukkit.getOnlinePlayers());
     }
 
-    private static void runForViewer(Plugin plugin, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
-        if (plugin instanceof top.ellan.mahjong.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            mahjongPlugin.scheduler().runEntity(player, () -> {
-                if (!player.isOnline()) {
-                    return;
-                }
-                // Folia region safety: show/hide touches both viewer and target entity internals.
-                if (!PaperCompatibility.isOwnedByCurrentRegion(player) || !PaperCompatibility.isOwnedByCurrentRegion(entity)) {
-                    return;
-                }
-                if (!entity.isValid() || entity.isDead()) {
-                    return;
-                }
-                runnable.run();
-            });
-            return;
-        }
-        runnable.run();
+    private static void runForViewer(DisplayEntityRuntime runtime, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
+        runtime.runForViewer(player, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            // Folia region safety: show/hide touches both viewer and target entity internals.
+            if (!PaperCompatibility.isOwnedByCurrentRegion(player) || !PaperCompatibility.isOwnedByCurrentRegion(entity)) {
+                return;
+            }
+            if (!entity.isValid() || entity.isDead()) {
+                return;
+            }
+            runnable.run();
+        });
     }
 
-    private static void registerForCraftEngineCulling(Plugin plugin, org.bukkit.entity.Entity entity) {
-        if (plugin instanceof top.ellan.mahjong.bootstrap.MahjongPaperPlugin mahjongPlugin && mahjongPlugin.craftEngine() != null) {
-            mahjongPlugin.craftEngine().registerCullableEntity(entity);
-        }
+    private static void registerForCraftEngineCulling(DisplayEntityRuntime runtime, org.bukkit.entity.Entity entity) {
+        runtime.registerCullableEntity(entity);
     }
 
-    private static boolean requiresVisibilityResync(Plugin plugin) {
-        return plugin instanceof top.ellan.mahjong.bootstrap.MahjongPaperPlugin mahjongPlugin
-            && mahjongPlugin.craftEngine() != null;
+    private static boolean requiresVisibilityResync(DisplayEntityRuntime runtime) {
+        return runtime.requiresVisibilityResync();
     }
 
     public static boolean isManagedEntity(Plugin plugin, Entity entity) {
@@ -1076,12 +1103,10 @@ public final class DisplayEntities {
         return MANAGED_ENTITY_KEYS.computeIfAbsent(plugin, key -> new NamespacedKey(key, MANAGED_ENTITY_KEY));
     }
 
-    private static ItemStack tileItem(Plugin plugin, MahjongVariant variant, MahjongTile tile, boolean faceDown) {
-        if (plugin instanceof top.ellan.mahjong.bootstrap.MahjongPaperPlugin mahjongPlugin) {
-            ItemStack customItem = mahjongPlugin.craftEngine().resolveTileItem(variant == null ? MahjongVariant.RIICHI : variant, tile, faceDown);
-            if (customItem != null) {
-                return customItem;
-            }
+    private static ItemStack tileItem(DisplayEntityRuntime runtime, MahjongVariant variant, MahjongTile tile, boolean faceDown) {
+        ItemStack customItem = runtime.resolveTileItem(variant, tile, faceDown);
+        if (customItem != null) {
+            return customItem;
         }
         String path = faceDown ? "mahjong_tile/back" : tile.itemModelPath();
         return TILE_ITEM_CACHE.computeIfAbsent(path, key -> createTileItem(tile, key)).clone();

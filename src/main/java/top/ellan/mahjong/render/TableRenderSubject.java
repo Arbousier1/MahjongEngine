@@ -6,8 +6,10 @@ import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.display.DisplayEntityRuntime;
 import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.riichi.model.ScoringStick;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -16,10 +18,15 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-public interface TableRenderSubject {
+public interface TableRenderSubject extends DisplayEntityRuntime {
+    @Override
     Plugin bukkitPlugin();
 
+    @Override
     CraftEngineService craftEngine();
+
+    @Override
+    ServerScheduler scheduler();
 
     PluginSettings settings();
 

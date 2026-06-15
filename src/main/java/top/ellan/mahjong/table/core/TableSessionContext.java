@@ -6,6 +6,7 @@ import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.TableRenderSubject;
 import top.ellan.mahjong.render.scene.MeldView;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.render.scene.TableRenderer;
 import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
@@ -26,6 +27,11 @@ import org.bukkit.plugin.Plugin;
 
 public interface TableSessionContext extends TableRenderSubject {
     TableRuntimeServices plugin();
+
+    @Override
+    default ServerScheduler scheduler() {
+        return this.plugin().scheduler();
+    }
 
     @Override
     Plugin bukkitPlugin();

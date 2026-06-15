@@ -28,7 +28,7 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
-    fun `render package stays free of table dependencies`() {
+    fun `render package stays free of table and bootstrap dependencies`() {
         val violations = sourceFiles(
             "src/main/java/top/ellan/mahjong/render",
             "src/main/kotlin/top/ellan/mahjong/render"
@@ -42,7 +42,7 @@ class ArchitectureBoundaryTest {
 
         assertTrue(
             violations.isEmpty(),
-            "Render package should not depend on table internals:\n${violations.joinToString("\n")}"
+            "Render package should not depend on table internals or bootstrap services:\n${violations.joinToString("\n")}"
         )
     }
 
@@ -64,7 +64,8 @@ class ArchitectureBoundaryTest {
             "import top.ellan.mahjong.ui."
         )
         val forbiddenRenderReferences = listOf(
-            "top.ellan.mahjong.table."
+            "top.ellan.mahjong.table.",
+            "top.ellan.mahjong.bootstrap."
         )
 
         fun sourceFiles(vararg roots: String): List<Path> = roots.flatMap { root ->

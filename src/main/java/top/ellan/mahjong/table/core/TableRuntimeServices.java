@@ -6,12 +6,13 @@ import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.metrics.MetricsCollector;
+import top.ellan.mahjong.render.display.DisplayEntityRuntime;
 import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.runtime.ServerScheduler;
 import java.util.logging.Logger;
 import org.bukkit.plugin.Plugin;
 
-public interface TableRuntimeServices {
+public interface TableRuntimeServices extends DisplayEntityRuntime {
     Plugin bukkitPlugin();
 
     default Logger getLogger() {
