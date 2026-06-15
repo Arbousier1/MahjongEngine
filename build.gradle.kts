@@ -35,7 +35,7 @@ val mahjongUtilsVersion = "0.7.7"
 val mariadbVersion = "3.5.9"
 val mysqlVersion = "9.7.0"
 val h2Version = "2.4.240"
-val hikariVersion = "7.0.2"
+val hikariVersion = "7.1.0"
 // Paper 1.21.11 through 26.2 currently publish their API against Adventure 4.26.1.
 val adventureVersion = "4.26.1"
 val junitVersion = "6.1.0"
