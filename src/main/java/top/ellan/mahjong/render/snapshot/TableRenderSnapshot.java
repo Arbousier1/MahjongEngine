@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import top.ellan.mahjong.model.SeatWind;
 import java.util.EnumMap;
@@ -34,4 +34,3 @@ public record TableRenderSnapshot(
         return this.seats.get(wind);
     }
 }
-

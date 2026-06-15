@@ -3,8 +3,8 @@ package top.ellan.mahjong.table.presentation
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.TableViewerHudSnapshot
-import top.ellan.mahjong.table.core.TableViewerOverlaySnapshot
+import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot
+import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit

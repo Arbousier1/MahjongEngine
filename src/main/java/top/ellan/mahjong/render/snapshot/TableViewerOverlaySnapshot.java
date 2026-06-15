@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,4 +14,3 @@ public record TableViewerOverlaySnapshot(
     String fingerprint
 ) {
 }
-

@@ -2,8 +2,8 @@ package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.TableRenderSnapshot;
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;

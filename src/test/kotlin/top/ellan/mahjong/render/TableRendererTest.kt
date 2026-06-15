@@ -10,8 +10,8 @@ import top.ellan.mahjong.render.scene.MeldView
 import top.ellan.mahjong.render.scene.TableRenderer
 import top.ellan.mahjong.riichi.model.ScoringStick
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.TableRenderSnapshot
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot
 import java.util.EnumMap
 import java.util.UUID
 import kotlin.test.Test

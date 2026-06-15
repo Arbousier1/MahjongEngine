@@ -9,8 +9,8 @@ import top.ellan.mahjong.render.layout.TableRenderLayout
 import top.ellan.mahjong.render.scene.TableRenderer
 import top.ellan.mahjong.table.core.MahjongTableSession
 import top.ellan.mahjong.table.core.TableRenderPrecomputeResult
-import top.ellan.mahjong.table.core.TableRenderSnapshot
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot
 import org.bukkit.entity.Entity
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.eq

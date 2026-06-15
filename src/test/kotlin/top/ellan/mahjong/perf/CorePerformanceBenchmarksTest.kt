@@ -15,8 +15,8 @@ import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.riichi.model.ScoringStick
 import top.ellan.mahjong.riichi.model.TileInstance as RiichiTileInstance
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.TableRenderSnapshot
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot
 import top.ellan.mahjong.table.core.round.GbTableRoundController
 import top.ellan.mahjong.table.render.TableRenderSnapshotFactory
 import top.ellan.mahjong.table.render.TableRegionFingerprintService

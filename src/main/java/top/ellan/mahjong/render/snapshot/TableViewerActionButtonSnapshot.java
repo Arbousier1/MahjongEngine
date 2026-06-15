@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import net.kyori.adventure.text.format.NamedTextColor;
 

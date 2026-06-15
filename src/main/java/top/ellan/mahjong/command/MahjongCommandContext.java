@@ -25,8 +25,8 @@ import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.MahjongVariant;
 import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
-import top.ellan.mahjong.table.core.TableRenderSnapshot;
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 
 public final class MahjongCommandContext {
     public static final String ADMIN_PERMISSION = "mahjongpaper.admin";

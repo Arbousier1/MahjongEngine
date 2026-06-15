@@ -4,7 +4,7 @@ import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.metrics.NoopMetricsCollector;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
-import top.ellan.mahjong.table.core.TableRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import org.bukkit.Bukkit;
 
 public final class TableRenderCoordinator {

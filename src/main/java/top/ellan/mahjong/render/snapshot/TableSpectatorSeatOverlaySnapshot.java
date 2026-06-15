@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import top.ellan.mahjong.model.SeatWind;
 import net.kyori.adventure.text.Component;
@@ -9,4 +9,3 @@ public record TableSpectatorSeatOverlaySnapshot(
     String signature
 ) {
 }
-

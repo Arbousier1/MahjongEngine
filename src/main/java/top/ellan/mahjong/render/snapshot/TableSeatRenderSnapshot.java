@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.scene.MeldView;
@@ -28,4 +28,3 @@ public record TableSeatRenderSnapshot(
     List<ScoringStick> cornerSticks
 ) {
 }
-

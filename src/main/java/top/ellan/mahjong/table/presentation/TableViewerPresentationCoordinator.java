@@ -1,8 +1,8 @@
 package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.TableViewerHudSnapshot;
-import top.ellan.mahjong.table.core.TableViewerOverlaySnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
