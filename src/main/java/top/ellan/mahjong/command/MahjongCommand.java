@@ -73,6 +73,21 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         this.subcommands = this.createSubcommands();
     }
 
+    /**
+     * Test-only constructor for exercising the dispatch logic with synthetic
+     * subcommands. The {@code subcommands} list must be self-consistent (no
+     * duplicate names/aliases); see {@link #register(Map, MahjongSubcommand)}
+     * for the registration rules used in production.
+     */
+    MahjongCommand(MahjongCommandContext context, List<MahjongSubcommand> subcommands) {
+        this.context = context;
+        Map<String, MahjongSubcommand> registry = new LinkedHashMap<>();
+        for (MahjongSubcommand command : subcommands) {
+            this.register(registry, command);
+        }
+        this.subcommands = java.util.Collections.unmodifiableMap(registry);
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission(this.permission())) {
