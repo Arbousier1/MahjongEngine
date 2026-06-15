@@ -77,6 +77,11 @@ class SichuanRealWorldFanCoverageTest {
             setOf("HAI_DI"),
             evaluateSelfDraw(controllerWithHand(pingHuSelfDrawHand(), drawn = true), MahjongTile.P9, listOf("LAST_TILE"))
         )
+        assertFans(
+            "miracle hand",
+            setOf("MIAO_SHOU_HUI_CHUN"),
+            evaluateDiscard(controllerWithHand(pingHuDiscardHand()), winningTile = MahjongTile.P9, flags = listOf("LAST_TILE"))
+        )
 
         assertEquals(
             setOf(
@@ -88,7 +93,8 @@ class SichuanRealWorldFanCoverageTest {
                 "GANG_SHANG_HUA",
                 "GANG_SHANG_PAO",
                 "QIANG_GANG_HU",
-                "HAI_DI"
+                "HAI_DI",
+                "MIAO_SHOU_HUI_CHUN"
             ),
             exercised
         )

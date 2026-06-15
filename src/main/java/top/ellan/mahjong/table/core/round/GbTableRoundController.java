@@ -55,6 +55,7 @@ public final class GbTableRoundController implements TableRoundController {
     private static final String SICHUAN_GEN_FAN_NAME = "GEN";
     private static final String SICHUAN_JIN_GOU_DIAO_FAN_NAME = "JIN_GOU_DIAO";
     private static final String SICHUAN_HAI_DI_FAN_NAME = "HAI_DI";
+    private static final String SICHUAN_MIAO_SHOU_HUI_CHUN_FAN_NAME = "MIAO_SHOU_HUI_CHUN";
     private static final String SICHUAN_GANG_SHANG_HUA_FAN_NAME = "GANG_SHANG_HUA";
     private static final String SICHUAN_GANG_SHANG_PAO_FAN_NAME = "GANG_SHANG_PAO";
     private static final String SICHUAN_QIANG_GANG_HU_FAN_NAME = "QIANG_GANG_HU";
@@ -1224,8 +1225,11 @@ public final class GbTableRoundController implements TableRoundController {
         if (roots > 0) {
             fans.add(new GbFanEntry(SICHUAN_GEN_FAN_NAME, 1, roots));
         }
-        if (flags.contains("LAST_TILE")) {
+        if ("SELF_DRAW".equals(winType) && flags.contains("LAST_TILE")) {
             fans.add(new GbFanEntry(SICHUAN_HAI_DI_FAN_NAME, 1, 1));
+        }
+        if ("DISCARD".equals(winType) && flags.contains("LAST_TILE")) {
+            fans.add(new GbFanEntry(SICHUAN_MIAO_SHOU_HUI_CHUN_FAN_NAME, 1, 1));
         }
         if ("SELF_DRAW".equals(winType) && flags.contains("AFTER_KONG")) {
             fans.add(new GbFanEntry(SICHUAN_GANG_SHANG_HUA_FAN_NAME, 1, 1));
