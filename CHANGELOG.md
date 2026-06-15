@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.0.0 - 2026-06-15
+
+First stable release. MahjongPaper 1.0.0 covers Japanese riichi, Chinese national-standard (GB), and Sichuan blood-battle mahjong on a single plugin jar that runs on Paper/Folia 1.20.1 through 26.2.
+
+中文更新日志:
+
+- 全版本兼容：单 jar 同时面向 Paper/Folia 1.20.1 到 26.2，固定 Java 17 字节码与 `api-version: 1.20`，新版 API 通过 `PaperCompatibility` 反射在运行时解析。
+- 资源包同源：`pack.mcmeta` 使用 `supported_formats: [15, 75]`，同一份资源包覆盖 1.20 到当前最新 Minecraft 版本。
+- 测试基建：测试 classpath 不再锁定 Adventure 版本，跟随 paperDevBundle 自带 Adventure，1.20.1/1.20.4/1.21.1/1.21.4 等多版本测试均能跑通。
+- CI 流水线：构建/发布工作流统一在 1.20.1 baseline 编译，跨平台并行打包并合并为 universal jar，自动校验 `api-version` 与字节码 major 版本，避免兼容性回退。
+- 三种规则完整实现：日麻立直、国标麻将（含 JNI 加速规则引擎）与四川血战到底，包含番种本地化、机器人策略分层、跨规则回合恢复、加杠/七对/将对等正确性修正。
+- 桌面与渲染：CraftEngine 集成、自定义家具锚点、私有手牌交互、可见性同步性能优化、Folia 区域线程安全已稳定。
+- 数据与排行：H2/MySQL/MariaDB 跨方言一致性、HikariCP 连接池、麻将之魂风格段位与排行榜服务可用。
+- 命令与 UI：`/mahjong` 全套对局、旁观、立直、自摸/荣和、暗杠/明杠、跳过、九种九牌、结算、排行、调试、reload 等命令；MahjongPlay 风格的中央公共动作播报与浮空 UI。
+- 国际化：简体、繁体（台/港/澳）、英文配置注释模板与消息包覆盖全部规则术语。
+- 数据库：MySQL/MariaDB/H2 支持，结算、积分、段位与排行均使用同一套抽象。
+- 文档：CONTRIBUTING、README、玩家 wiki 与多模式玩法指南到位，CI/Release/手动 Test workflow 各司其职。
+
+English Release Notes:
+
+- Single-jar compatibility: one jar runs on Paper/Folia 1.20.1 through 26.2, with Java 17 bytecode and `api-version: 1.20`; newer APIs are dispatched at runtime through `PaperCompatibility`.
+- Resource pack: `pack.mcmeta` declares `supported_formats: [15, 75]` so the bundled pack works on Minecraft 1.20 through the current release.
+- Test infrastructure: the test classpath now follows whichever Adventure version paperDevBundle ships, so tests pass against 1.20.1, 1.20.4, 1.21.1, and 1.21.4 dev bundles.
+- CI pipeline: Build and Release workflows compile against the 1.20.1 baseline, build on Linux/Windows/macOS in parallel, merge into a universal jar, and verify both `api-version` and class-file major versions before publishing.
+- Three full rule sets: Japanese riichi, Chinese GB (with the JNI-accelerated rules engine), and Sichuan blood-battle, including localized fan names, layered bot strategies, cross-rule turn-stall recovery, and correctness fixes for kakan, seven pairs, and Jiang Dui.
+- Tables and rendering: CraftEngine integration, configurable furniture anchors, dedicated hand-tile interaction entities, visibility-sync performance, and Folia region-thread safety are all production-stable.
+- Data and ranking: cross-dialect storage on H2/MySQL/MariaDB through HikariCP, with Mahjong Soul-style tier/rank progression and leaderboards.
+- Commands and UI: full `/mahjong` command surface (table, spectate, riichi, tsumo/ron, kan, skip, kyuushu, settlement, leaderboard, debug, reload, …) plus MahjongPlay-style center action announcements and floating UI.
+- Localization: Simplified Chinese, Traditional Chinese (TW/HK/MO), and English bundles for all rule sets and config templates.
+- Documentation: CONTRIBUTING, README, the player wiki, and the gameplay guide for all three modes are in place; Build, Release, and manual Test workflows are clearly separated.
+
 ## 0.9.1-beta.1 - 2026-06-15
 
 Test release focused on Sichuan Mahjong scoring correctness, fan localization, and rules-engine consolidation.

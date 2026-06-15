@@ -198,6 +198,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+          # Need the full history so the fast-forward step can verify ancestry between main and the tag commit.
+          fetch-depth: 0
 
       - name: Resolve release tag
         id: tag
@@ -250,3 +252,26 @@ jobs:
           body_path: ${{ steps.notes.outputs.file }}
           prerelease: ${{ steps.tag.outputs.prerelease }}
           files: release-artifacts/*.jar
+
+      - name: Fast-forward main to released tag
+        if: steps.tag.outputs.prerelease == 'false'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          TAG_SHA="$(git rev-parse "$TAG"^{commit})"
+          echo "Tag $TAG resolves to commit $TAG_SHA"
+          git fetch origin main:refs/remotes/origin/main
+          MAIN_SHA="$(git rev-parse origin/main)"
+          if [[ "$MAIN_SHA" == "$TAG_SHA" ]]; then
+            echo "main is already at $TAG_SHA, nothing to do."
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "$MAIN_SHA" "$TAG_SHA"; then
+            echo "::warning::main ($MAIN_SHA) is not an ancestor of $TAG ($TAG_SHA); skipping fast-forward."
+            exit 0
+          fi
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$TAG_SHA:refs/heads/main"
+          echo "Fast-forwarded main to $TAG_SHA"
