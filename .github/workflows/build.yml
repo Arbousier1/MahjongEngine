@@ -11,16 +11,26 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - paper: "1.21.11"
+            dev_bundle: "1.21.11-R0.1-SNAPSHOT"
+            java_target: "21"
+          - paper: "26.2"
+            dev_bundle: "26.2-rc-2.build.9-alpha"
+            java_target: "25"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -28,8 +38,8 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run tests
-        run: ./gradlew test
+      - name: Run tests on Paper ${{ matrix.paper }}
+        run: ./gradlew test -PmahjongPaperDevBundle=${{ matrix.dev_bundle }} -PmahjongJavaToolchain=25 -PmahjongJavaTarget=${{ matrix.java_target }}
 
   build-platform:
     needs: test
@@ -76,11 +86,11 @@ jobs:
           "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -103,11 +113,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Download Linux jar
         uses: actions/download-artifact@v8

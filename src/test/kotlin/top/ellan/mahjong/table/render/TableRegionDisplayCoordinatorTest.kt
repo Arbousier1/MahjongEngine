@@ -25,6 +25,25 @@ import kotlin.test.assertTrue
 
 class TableRegionDisplayCoordinatorTest {
     @Test
+    fun `regionKeysWithPrefix returns only matching managed regions`() {
+        val session = mock(MahjongTableSession::class.java)
+        val coordinator = TableRegionDisplayCoordinator(session, mock(TableRegionFingerprintService::class.java))
+        val regionsField = TableRegionDisplayCoordinator::class.java.getDeclaredField("regionDisplays")
+        regionsField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val regions = regionsField.get(coordinator) as MutableMap<String, List<Entity>>
+
+        regions["viewer-overlay:viewer-a"] = emptyList()
+        regions["hand-public-0:EAST"] = emptyList()
+        regions["viewer-overlay:viewer-b"] = emptyList()
+
+        assertEquals(
+            listOf("viewer-overlay:viewer-a", "viewer-overlay:viewer-b"),
+            coordinator.regionKeysWithPrefix("viewer-overlay:")
+        )
+    }
+
+    @Test
     fun `applyRenderPrecompute prioritizes reaction and hand regions before turn and board regions`() {
         val session = mock(MahjongTableSession::class.java)
         val plugin = mock(MahjongPaperPlugin::class.java)

@@ -8,12 +8,27 @@ plugins {
     jacoco
     kotlin("jvm") version "2.4.0"
     kotlin("plugin.serialization") version "2.4.0"
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
+    id("io.papermc.paperweight.userdev") version "2.0.0-SNAPSHOT"
 }
 
 group = "top.ellan"
-version = "0.8.0-beta.1"
+version = "0.9.0-beta.1"
 
+val minimumPaperDevBundleVersion = "1.21.11-R0.1-SNAPSHOT"
+val latestPaperDevBundleVersion = "26.2-rc-2.build.9-alpha"
+val supportedPaperApiVersion = "1.21.11"
+val paperDevBundleVersion = providers.gradleProperty("mahjongPaperDevBundle")
+    .orElse(minimumPaperDevBundleVersion)
+    .get()
+// Keep plugin descriptors pinned to the lowest supported Paper API so one jar can load on newer Paper versions.
+val paperApiVersion = supportedPaperApiVersion
+val javaTargetVersion = providers.gradleProperty("mahjongJavaTarget")
+    .map(String::toInt)
+    .orElse(21)
+    .get()
+val toolchainJavaVersion = providers.gradleProperty("mahjongJavaToolchain")
+    .map(String::toInt)
+    .orElse(if (Runtime.version().feature() >= javaTargetVersion) Runtime.version().feature() else javaTargetVersion)
 val kotlinRuntimeVersion = "2.4.0"
 val kotlinSerializationVersion = "1.11.0"
 val mahjongUtilsVersion = "0.7.7"
@@ -21,7 +36,8 @@ val mariadbVersion = "3.5.9"
 val mysqlVersion = "9.7.0"
 val h2Version = "2.4.240"
 val hikariVersion = "7.0.2"
-val adventureVersion = "5.1.1"
+// Paper 1.21.11 through 26.2 currently publish their API against Adventure 4.26.1.
+val adventureVersion = "4.26.1"
 val junitVersion = "6.1.0"
 val testcontainersVersion = "1.21.4"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
@@ -734,11 +750,11 @@ val packageGbMahjongNative = tasks.register("packageGbMahjongNative") {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
-    implementation(enforcedPlatform("net.kyori:adventure-bom:$adventureVersion"))
-    implementation("net.kyori:adventure-api:$adventureVersion")
-    implementation("net.kyori:adventure-text-minimessage:$adventureVersion")
-    implementation("net.kyori:adventure-text-serializer-plain:$adventureVersion")
+    paperweight.paperDevBundle(paperDevBundleVersion)
+    compileOnly(platform("net.kyori:adventure-bom:$adventureVersion"))
+    compileOnly("net.kyori:adventure-api")
+    compileOnly("net.kyori:adventure-text-minimessage")
+    compileOnly("net.kyori:adventure-text-serializer-plain")
     implementation("io.github.ssttkkl:mahjong-utils-jvm:$mahjongUtilsVersion")
     implementation("org.mariadb.jdbc:mariadb-java-client:$mariadbVersion")
     implementation("com.mysql:mysql-connector-j:$mysqlVersion")
@@ -749,6 +765,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("org.mockito:mockito-core:5.23.0")
+    testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
@@ -759,33 +776,33 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    sourceCompatibility = JavaVersion.toVersion(javaTargetVersion)
+    targetCompatibility = JavaVersion.toVersion(javaTargetVersion)
+    toolchain.languageVersion.set(toolchainJavaVersion.map(JavaLanguageVersion::of))
     withSourcesJar()
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(toolchainJavaVersion.get())
 }
 
 paperweight {
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion.set(toolchainJavaVersion.map(JavaLanguageVersion::of))
     }
-    reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.REOBF_PRODUCTION
+    reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 }
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(javaTargetVersion.toString()))
         }
     }
 
     withType<JavaCompile>().configureEach {
         options.encoding = Charsets.UTF_8.name()
-        options.release.set(21)
+        options.release.set(javaTargetVersion)
     }
 
     processResources {
@@ -796,6 +813,7 @@ tasks {
         filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
             expand(
                 "version" to project.version,
+                "paperApiVersion" to paperApiVersion,
                 "mahjongUtilsVersion" to mahjongUtilsVersion,
                 "mariadbVersion" to mariadbVersion,
                 "h2Version" to h2Version,
@@ -811,6 +829,7 @@ tasks {
             excludeTags("perf")
         }
         jvmArgs("-Dnet.bytebuddy.experimental=true")
+        systemProperty("mahjong.test.expectedClassfileMajor", javaTargetVersion + 44)
         finalizedBy(jacocoTestReport)
     }
 
@@ -832,10 +851,6 @@ tasks {
             layout.buildDirectory.dir("reports/performance").get().asFile.absolutePath
         )
         shouldRunAfter(test)
-    }
-
-    assemble {
-        dependsOn(reobfJar)
     }
 
     jacocoTestReport {

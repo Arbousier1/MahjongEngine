@@ -6,16 +6,26 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - paper: "1.21.11"
+            dev_bundle: "1.21.11-R0.1-SNAPSHOT"
+            java_target: "21"
+          - paper: "26.2"
+            dev_bundle: "26.2-rc-2.build.9-alpha"
+            java_target: "25"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -23,14 +33,14 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run tests with coverage
-        run: ./gradlew test jacocoTestReport
+      - name: Run tests with coverage on Paper ${{ matrix.paper }}
+        run: ./gradlew test jacocoTestReport -PmahjongPaperDevBundle=${{ matrix.dev_bundle }} -PmahjongJavaToolchain=25 -PmahjongJavaTarget=${{ matrix.java_target }}
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mahjong-paper-test-reports
+          name: mahjong-paper-test-reports-${{ matrix.paper }}
           path: |
             build/reports/tests/test/**
             build/test-results/test/**
@@ -39,7 +49,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mahjong-paper-coverage-reports
+          name: mahjong-paper-coverage-reports-${{ matrix.paper }}
           path: |
             build/reports/jacoco/test/html/**
             build/reports/jacoco/test/jacocoTestReport.xml

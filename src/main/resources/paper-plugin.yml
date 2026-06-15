@@ -2,7 +2,7 @@ name: MahjongPaper
 main: top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 loader: top.ellan.mahjong.bootstrap.MahjongPaperLoader
 version: ${version}
-api-version: "1.21.11"
+api-version: "${paperApiVersion}"
 folia-supported: true
 website: top.ellan
 description: Mahjong Soul-style Riichi Mahjong Paper plugin with optional GB rules, display entities, item_model and CraftEngine.

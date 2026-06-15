@@ -1,7 +1,7 @@
 name: MahjongPaper
 main: top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 version: ${version}
-api-version: "1.21.11"
+api-version: "${paperApiVersion}"
 folia-supported: true
 author: openai and ellan
 website: top.ellan

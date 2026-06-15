@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.9.0-beta.1 - 2026-06-15
+
+Test release for single-jar Paper 1.21.11 through 26.2 compatibility, Sichuan flow validation, and render/network performance hardening.
+
+中文更新日志:
+
+- 单 jar 多版本兼容: 默认发布包固定为 Java 21 字节码与 `api-version: 1.21.11`, 用同一个 jar 面向 Paper 1.21.11 到 26.2, 避免为 26.x 单独打包。
+- Paper 兼容验证: 升级 paperweight 到 2.0.0-SNAPSHOT, 默认使用 Paper 1.21.11 开发包构建, CI 额外使用 Paper 26.2 开发包做源码/API 兼容测试。
+- 26.1.2 实服验证: 在 Paper 26.1.2 build 70 + CraftEngine 26.6.2 上完成启动冒烟测试, MahjongPaper 正常加载、初始化 H2 数据库、完成 GB 原生规则预热并导出 CraftEngine 资源包。
+- Adventure 兼容: Adventure 依赖改为 `compileOnly`, 并对齐 Paper 1.21.11 到 26.2 当前 API 使用的 Adventure 4.26.1, 避免插件 jar 内携带冲突的 Adventure 运行时。
+- 运行库更新: 更新 MariaDB、MySQL、H2、HikariCP、Kotlin 与 kotlinx-serialization 等运行依赖, 降低新 Paper/Java 环境下的兼容风险。
+- 性能与网络优化: 渲染区域刷新先检查预算再生成实体规格, 减少无效渲染计算、展示实体重刷和潜在发包压力。
+- 可见性同步优化: 减少私有/排除可见玩家集合比较时的临时集合分配, 降低高频展示实体同步的内存抖动。
+- 旁观者覆盖层优化: 只扫描 `viewer-overlay:` 区域, 不再每次复制并过滤全部渲染区域 key。
+- 区块刷新优化: 牌桌 3x3 区块加载检查改为直接查询 `World#isChunkLoaded`, 避免刷新循环中创建临时集合。
+- 四川麻将规则验证: 增加血战到底流程测试, 确认点炮胡后对局继续, 已胡玩家不再行动, 第三位玩家胡牌后结算整手牌。
+- 国标/四川测试稳定性: 修正暗杠补牌测试牌山、明杠优先级测试手牌和测试用碰牌状态注入方式, 避免测试误判。
+- 结算 UI 测试修复: 补充当前玩法变体 mock, 保持立直结算 UI 集成测试与多玩法接口一致。
+- 发布护栏: 新增单 jar 兼容测试, 自动检查打包后的 `plugin.yml` / `paper-plugin.yml` 固定最低 API, 并校验字节码目标。
+- 文档与 CI: 更新贡献文档中的 26.2 验证命令, CI 同时覆盖 1.21.11 默认发布目标和 26.2 高版本 API 兼容目标。
+
+English Release Notes:
+
+- Single-jar compatibility: release artifacts stay on Java 21 bytecode with `api-version: 1.21.11`, so one jar targets Paper 1.21.11 through 26.2.
+- Paper compatibility: upgraded paperweight to 2.0.0-SNAPSHOT, kept the default build on the 1.21.11 dev bundle, and added CI/API validation against the 26.2 dev bundle.
+- Server smoke test: verified startup on Paper 26.1.2 build 70 with CraftEngine 26.6.2; MahjongPaper enabled, initialized H2, warmed the GB native bridge, and exported its CraftEngine bundle.
+- Adventure alignment: Adventure dependencies are now compile-only and aligned to Paper's current 4.26.1 API line to avoid shipping conflicting Adventure runtime classes.
+- Runtime dependency refresh: updated database, pool, Kotlin, and serialization libraries for newer Paper/Java compatibility.
+- Render/network performance: render-region updates now check budgets before building entity specs, reducing unnecessary render work, display respawns, and packet pressure.
+- Visibility performance: reduced temporary set allocation while reconciling private/excluded display viewers.
+- Viewer overlay and chunk checks: overlay cleanup scans only viewer-overlay regions, and table-area chunk checks avoid temporary neighborhood sets.
+- Sichuan rules validation: added blood-battle flow coverage where discard win continues the hand and the hand settles after the third winner.
+- Test hardening: stabilized GB/Sichuan round tests, settlement UI variant mocks, and added single-jar descriptor/classfile compatibility checks.
+
 ## 0.8.0-beta.1 - 2026-04-01
 
 Test release for post-0.7.5 architecture and gameplay fixes.

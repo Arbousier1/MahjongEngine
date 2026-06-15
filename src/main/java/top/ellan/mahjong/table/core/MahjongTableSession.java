@@ -1305,7 +1305,7 @@ public final class MahjongTableSession {
     }
 
     public List<String> viewerOverlayRegionKeys() {
-        return this.regionDisplayCoordinator.regionKeys();
+        return this.regionDisplayCoordinator.regionKeysWithPrefix("viewer-overlay:");
     }
 
     public void removeManagedRegionDisplays(String regionKey) {

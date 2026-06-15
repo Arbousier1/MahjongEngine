@@ -331,10 +331,12 @@ class GbTableRoundControllerTest {
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
         val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
 
         forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5"))
         forceHand(controller, south, listOf("M2", "M3", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1", "P2"))
         forceHand(controller, west, listOf("M1", "M1", "M1", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1"))
+        forceHand(controller, north, listOf("M2", "M3", "M4", "M5", "M6", "M7", "P1", "P2", "P3", "P4", "P5", "S1", "S2"))
 
         assertTrue(controller.discard(east, 0))
         val chiiPair = controller.availableReactions(south)?.chiiPairs?.single()
@@ -412,6 +414,42 @@ class GbTableRoundControllerTest {
     }
 
     @Test
+    fun `sichuan discard win continues blood battle until third winner settles the hand`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("P9", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4"))
+        forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9"))
+        forceHand(controller, west, listOf("M1", "M2", "M4", "M5", "M7", "M8", "P1", "P3", "P5", "S1", "S3", "S5", "S7"))
+        forceHand(controller, north, listOf("M1", "M2", "M4", "M5", "M7", "M8", "P1", "P3", "P5", "S1", "S3", "S5", "S7"))
+
+        assertTrue(controller.discard(east, 0))
+        assertTrue(controller.availableReactions(south)?.canRon == true)
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.RON, null)))
+        assertTrue(controller.started())
+        assertEquals(SeatWind.WEST, controller.currentSeat())
+        assertFalse(controller.canSelectHandTile(south, 0))
+
+        val settledSouthPoints = controller.points(south)
+        forceHand(controller, west, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9", "P9"))
+        assertTrue(controller.declareTsumo(west))
+        assertEquals(settledSouthPoints, controller.points(south))
+        assertTrue(controller.started())
+        assertEquals(SeatWind.NORTH, controller.currentSeat())
+
+        forceHand(controller, north, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9", "P9"))
+        assertTrue(controller.declareTsumo(north))
+
+        assertFalse(controller.started())
+        assertEquals("TSUMO", controller.lastResolution()?.title)
+        assertEquals(listOf("SOUTH", "WEST", "NORTH"), controller.lastResolution()?.yakuSettlements?.map { it.displayName })
+    }
+
+    @Test
     fun `sichuan hand must be missing one suit to win`() {
         val controller = controller(profile = GbRuleProfile.SICHUAN)
         controller.startRound()
@@ -456,7 +494,7 @@ class GbTableRoundControllerTest {
         val east = player(SeatWind.EAST)
 
         forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P1", "P2", "P3", "P4"))
-        forceWall(controller, listOf("P5"))
+        forceWall(controller, listOf("P5", "P6", "P7", "P8", "P9"))
 
         assertTrue(controller.declareKan(east, "m1"))
         assertEquals(6, controller.points(east) - 25000)
@@ -836,13 +874,23 @@ class GbTableRoundControllerTest {
         val meldsField = GbTableRoundController::class.java.getDeclaredField("melds")
         meldsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
-        val melds = meldsField.get(controller) as MutableMap<UUID, List<GbMeldState>>
-        melds[playerId] = melds.getValue(playerId) +
-            GbMeldState.pung(
+        val melds = meldsField.get(controller) as MutableMap<UUID, MutableList<Any>>
+        val meldClass = Class.forName("${GbTableRoundController::class.java.name}\$GbMeldState")
+        val pung = meldClass.getDeclaredMethod(
+            "pung",
+            MahjongTile::class.java,
+            SeatWind::class.java,
+            SeatWind::class.java
+        )
+        pung.isAccessible = true
+        melds.getValue(playerId).add(
+            pung.invoke(
+                null,
                 MahjongTile.valueOf(tile),
                 SeatWind.SOUTH,
                 selfSeat
             )
+        )
     }
 
     private fun forceWall(controller: GbTableRoundController, tiles: List<String>) {

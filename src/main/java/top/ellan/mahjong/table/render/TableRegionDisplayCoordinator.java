@@ -157,6 +157,19 @@ public final class TableRegionDisplayCoordinator {
         return List.copyOf(this.regionDisplays.keySet());
     }
 
+    public List<String> regionKeysWithPrefix(String prefix) {
+        if (prefix == null || prefix.isEmpty()) {
+            return this.regionKeys();
+        }
+        List<String> keys = new ArrayList<>();
+        for (String regionKey : this.regionDisplays.keySet()) {
+            if (regionKey.startsWith(prefix)) {
+                keys.add(regionKey);
+            }
+        }
+        return List.copyOf(keys);
+    }
+
     public void removeManagedRegionDisplays(String regionKey) {
         this.removeRegionDisplays(regionKey);
     }
@@ -387,14 +400,20 @@ public final class TableRegionDisplayCoordinator {
         if (previousFingerprint != null && previousFingerprint == fingerprint && (currentEntities != null || this.regionFingerprints.containsKey(regionKey))) {
             return true;
         }
+        if (!budget.canConsumeRegionUpdate(1)) {
+            return false;
+        }
         List<DisplayEntities.EntitySpec> specs = renderer.render();
+        if (!budget.canConsumeEntitySpawns(specs.size())) {
+            return false;
+        }
         if (currentEntities != null && DisplayEntities.reconcile(this.session.plugin(), currentEntities, specs)) {
+            budget.consumeRegionUpdate(1);
             this.regionFingerprints.put(regionKey, fingerprint);
             return true;
         }
-        if (!budget.tryConsumeRegionUpdate(1) || !budget.tryConsumeEntitySpawns(specs.size())) {
-            return false;
-        }
+        budget.consumeRegionUpdate(1);
+        budget.consumeEntitySpawns(specs.size());
         this.removeRegionDisplays(regionKey);
         List<Entity> entities = DisplayEntities.spawnAll(this.session.plugin(), specs);
         if (!entities.isEmpty()) {
@@ -535,6 +554,22 @@ public final class TableRegionDisplayCoordinator {
             }
             this.remainingEntitySpawns -= amount;
             return true;
+        }
+
+        boolean canConsumeRegionUpdate(int amount) {
+            return this.remainingRegionUpdates >= amount;
+        }
+
+        boolean canConsumeEntitySpawns(int amount) {
+            return this.remainingEntitySpawns >= amount;
+        }
+
+        void consumeRegionUpdate(int amount) {
+            this.remainingRegionUpdates -= amount;
+        }
+
+        void consumeEntitySpawns(int amount) {
+            this.remainingEntitySpawns -= amount;
         }
     }
 

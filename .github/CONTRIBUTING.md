@@ -11,12 +11,20 @@ Thanks for helping improve MahjongEngine.
 ## Local Setup
 
 1. Fork and clone the repository.
-2. Use JDK 21+ (the project is tested with modern JDKs).
+2. Use JDK 21+ for the default build. The released jar is built with Java 21 bytecode and `api-version: 1.21.11`, then validated against newer Paper versions.
 3. Build the project:
 
 ```powershell
 .\gradlew.bat build
 ```
+
+To validate source/API compatibility against Paper 26.2:
+
+```powershell
+.\gradlew.bat test "-PmahjongPaperDevBundle=26.2-rc-2.build.9-alpha" -PmahjongJavaToolchain=25 -PmahjongJavaTarget=25
+```
+
+This command is only a compatibility check. Release artifacts should use the default build so the distributed jar remains compatible with the whole supported server range.
 
 ## Development Workflow
 

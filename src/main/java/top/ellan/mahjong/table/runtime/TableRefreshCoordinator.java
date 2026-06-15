@@ -196,13 +196,7 @@ public final class TableRefreshCoordinator {
         }
         int centerChunkX = center.getBlockX() >> 4;
         int centerChunkZ = center.getBlockZ() >> 4;
-        Set<ChunkNeighborhood.ChunkKey> loadedChunks = new HashSet<>();
-        for (ChunkNeighborhood.ChunkKey chunkKey : ChunkNeighborhood.around(world.getUID(), centerChunkX, centerChunkZ)) {
-            if (world.isChunkLoaded(chunkKey.chunkX(), chunkKey.chunkZ())) {
-                loadedChunks.add(chunkKey);
-            }
-        }
-        return TableAreaChunks.allLoaded(world.getUID(), centerChunkX, centerChunkZ, loadedChunks);
+        return TableAreaChunks.allLoaded(world, centerChunkX, centerChunkZ);
     }
 }
 
