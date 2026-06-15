@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionRoundActionCoordinator {
-    private final SessionState session;
+    private final TableSessionMutator session;
 
-    SessionRoundActionCoordinator(SessionState session) {
+    SessionRoundActionCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 

@@ -16,7 +16,7 @@ class SessionHandSelectionCoordinatorTest {
 
     @Test
     fun `first valid click selects hand tile without discarding`() {
-        val session = mock(SessionState::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val coordinator = SessionHandSelectionCoordinator(session)
 
         `when`(session.canSelectHandTileInternal(playerId, 3)).thenReturn(true)
@@ -30,7 +30,7 @@ class SessionHandSelectionCoordinatorTest {
 
     @Test
     fun `second click on selected hand tile confirms discard`() {
-        val session = mock(SessionState::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val coordinator = SessionHandSelectionCoordinator(session)
 
         `when`(session.canSelectHandTileInternal(playerId, 5)).thenReturn(true)
@@ -44,7 +44,7 @@ class SessionHandSelectionCoordinatorTest {
 
     @Test
     fun `sneak click on selected hand tile cancels selection`() {
-        val session = mock(SessionState::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val coordinator = SessionHandSelectionCoordinator(session)
 
         `when`(session.canSelectHandTileInternal(playerId, 2)).thenReturn(true)
@@ -59,7 +59,7 @@ class SessionHandSelectionCoordinatorTest {
 
     @Test
     fun `invalid click is rejected without changing selection`() {
-        val session = mock(SessionState::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val coordinator = SessionHandSelectionCoordinator(session)
 
         `when`(session.canSelectHandTileInternal(playerId, 1)).thenReturn(false)
@@ -73,7 +73,7 @@ class SessionHandSelectionCoordinatorTest {
 
     @Test
     fun `clicking a different valid hand tile moves selection`() {
-        val session = mock(SessionState::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val coordinator = SessionHandSelectionCoordinator(session)
 
         `when`(session.canSelectHandTileInternal(playerId, 1)).thenReturn(true)

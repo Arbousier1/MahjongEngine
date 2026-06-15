@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Locale;
 
 final class SessionRuleCoordinator {
-    private final SessionState session;
+    private final TableSessionMutator session;
 
-    SessionRuleCoordinator(SessionState session) {
+    SessionRuleCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 

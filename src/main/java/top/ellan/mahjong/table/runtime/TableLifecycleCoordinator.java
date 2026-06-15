@@ -1,11 +1,11 @@
 package top.ellan.mahjong.table.runtime;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 
 public final class TableLifecycleCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
 
-    public TableLifecycleCoordinator(MahjongTableSession session) {
+    public TableLifecycleCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 

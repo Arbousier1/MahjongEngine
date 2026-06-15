@@ -2,7 +2,7 @@ package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.runtime.PluginTask;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,7 @@ public final class TableDiceAnimationCoordinator {
     private static final double RESULT_LABEL_Y = 1.18D;
     private static final Map<Integer, ItemStack> DICE_ITEM_CACHE = new ConcurrentHashMap<>();
 
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
     private final Vector3f dieScaleVector = new Vector3f(DIE_SCALE, DIE_SCALE, DIE_SCALE);
     private final Vector3f zeroTranslation = new Vector3f();
     private final Quaternionf identityRotation = new Quaternionf();
@@ -50,7 +50,7 @@ public final class TableDiceAnimationCoordinator {
     private List<Player> audience = List.of();
     private long tick;
 
-    public TableDiceAnimationCoordinator(MahjongTableSession session) {
+    public TableDiceAnimationCoordinator(TableSessionContext session) {
         this.session = session;
     }
 

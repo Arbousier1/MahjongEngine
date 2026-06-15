@@ -7,7 +7,7 @@ import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
@@ -37,19 +37,19 @@ public final class TableRegionDisplayCoordinator {
     private static final int PRIORITY_BOARD = 160;
     private static final int PRIORITY_BACKGROUND = 80;
 
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
     private final TableRegionFingerprintService fingerprintService;
     private final int maxRegionUpdatesPerApply;
     private final int maxEntitySpawnsPerApply;
     private final Map<String, List<Entity>> regionDisplays = new LinkedHashMap<>();
     private final Map<String, Long> regionFingerprints = new HashMap<>();
 
-    public TableRegionDisplayCoordinator(MahjongTableSession session, TableRegionFingerprintService fingerprintService) {
+    public TableRegionDisplayCoordinator(TableSessionContext session, TableRegionFingerprintService fingerprintService) {
         this(session, fingerprintService, DEFAULT_MAX_REGION_UPDATES_PER_APPLY, DEFAULT_MAX_ENTITY_SPAWNS_PER_APPLY);
     }
 
     TableRegionDisplayCoordinator(
-        MahjongTableSession session,
+        TableSessionContext session,
         TableRegionFingerprintService fingerprintService,
         int maxRegionUpdatesPerApply,
         int maxEntitySpawnsPerApply

@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.presentation;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
 import java.util.HashMap;
@@ -19,7 +19,7 @@ public final class TableViewerPresentationCoordinator {
     private static final long OVERLAY_REFRESH_INTERVAL_TICKS = 20L;
     private static final long HUD_REFRESH_INTERVAL_TICKS = 20L;
 
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
     private boolean viewerOverlayDirty = true;
@@ -27,7 +27,7 @@ public final class TableViewerPresentationCoordinator {
     private long nextOverlayRefreshTick;
     private long nextHudRefreshTick;
 
-    public TableViewerPresentationCoordinator(MahjongTableSession session) {
+    public TableViewerPresentationCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
@@ -170,6 +170,5 @@ public final class TableViewerPresentationCoordinator {
         }
     }
 }
-
 
 

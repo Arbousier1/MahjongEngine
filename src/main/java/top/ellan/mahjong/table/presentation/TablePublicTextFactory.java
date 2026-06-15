@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.presentation;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.riichi.model.MahjongRule;
@@ -8,9 +8,9 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class TablePublicTextFactory {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    public TablePublicTextFactory(MahjongTableSession session) {
+    public TablePublicTextFactory(TableSessionContext session) {
         this.session = session;
     }
 

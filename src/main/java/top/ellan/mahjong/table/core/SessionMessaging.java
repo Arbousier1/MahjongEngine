@@ -8,9 +8,9 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 
 final class SessionMessaging {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    SessionMessaging(MahjongTableSession session) {
+    SessionMessaging(TableSessionContext session) {
         this.session = session;
     }
 

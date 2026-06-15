@@ -2,7 +2,7 @@ package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.metrics.NoopMetricsCollector;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import org.bukkit.Bukkit;
@@ -10,7 +10,7 @@ import org.bukkit.Bukkit;
 public final class TableRenderCoordinator {
     private static final long DISPLAY_RESTORE_CHECK_INTERVAL_TICKS = 60L;
 
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private long renderRequestVersion;
     private long renderCancellationNonce;
     private boolean renderPrecomputeRunning;
@@ -18,7 +18,7 @@ public final class TableRenderCoordinator {
     private long nextDisplayRestoreCheckTick;
     private TableRenderSnapshot pendingRenderSnapshot;
 
-    public TableRenderCoordinator(MahjongTableSession session) {
+    public TableRenderCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 

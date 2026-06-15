@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.render.scene.TableRenderer;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -13,9 +13,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class TableRenderInspectCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    public TableRenderInspectCoordinator(MahjongTableSession session) {
+    public TableRenderInspectCoordinator(TableSessionContext session) {
         this.session = session;
     }
 

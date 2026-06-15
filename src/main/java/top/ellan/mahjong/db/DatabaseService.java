@@ -12,7 +12,7 @@ import top.ellan.mahjong.riichi.model.ScoreItem;
 import top.ellan.mahjong.riichi.model.ScoreSettlement;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
 import top.ellan.mahjong.model.MahjongVariant;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.net.ConnectException;
 import java.nio.file.Path;
@@ -76,7 +76,7 @@ public final class DatabaseService {
         return this.plugin.settings().rankingEnabled();
     }
 
-    public void persistRoundResultAsync(MahjongTableSession session, RoundResolution resolution) {
+    public void persistRoundResultAsync(TableSessionContext session, RoundResolution resolution) {
         this.plugin.debug().log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
         this.plugin.async().execute("persist-round-result", () -> {
             try {
@@ -185,7 +185,7 @@ public final class DatabaseService {
         return List.copyOf(entries);
     }
 
-    void persistRoundResultSync(MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    void persistRoundResultSync(TableSessionContext session, RoundResolution resolution) throws SQLException {
         this.persistRoundResult(session, resolution);
     }
 
@@ -488,7 +488,7 @@ public final class DatabaseService {
         }
     }
 
-    private void persistRoundResult(MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    private void persistRoundResult(TableSessionContext session, RoundResolution resolution) throws SQLException {
         Map<String, ScoreItem> scoreItemsByUuid = this.scoreItemsByUuid(resolution.getScoreSettlement());
         Map<String, YakuSettlement> yakuByUuid = this.yakuSettlementsByUuid(resolution.getYakuSettlements());
 
@@ -509,7 +509,7 @@ public final class DatabaseService {
         }
     }
 
-    private long insertRoundHistory(Connection connection, MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    private long insertRoundHistory(Connection connection, TableSessionContext session, RoundResolution resolution) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
             INSERT INTO round_history (
                 table_id, resolution_title, round_display, dealer_name, draw_type,
@@ -540,7 +540,7 @@ public final class DatabaseService {
         Connection connection,
         long roundHistoryId,
         String uuid,
-        MahjongTableSession session,
+        TableSessionContext session,
         ScoreItem scoreItem,
         YakuSettlement yakuSettlement
     ) throws SQLException {

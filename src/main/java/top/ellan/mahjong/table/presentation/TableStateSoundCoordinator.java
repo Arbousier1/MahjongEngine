@@ -2,18 +2,18 @@ package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.ReactionType;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import java.util.Objects;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 public final class TableStateSoundCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
     private String lastTurnSoundFingerprint = "";
     private String lastRiichiSoundFingerprint = "";
     private String lastResolutionSoundFingerprint = "";
 
-    public TableStateSoundCoordinator(MahjongTableSession session) {
+    public TableStateSoundCoordinator(TableSessionContext session) {
         this.session = session;
     }
 

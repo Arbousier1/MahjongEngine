@@ -2,7 +2,7 @@ package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.render.snapshot.TableSpectatorSeatOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerActionButtonSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
@@ -19,9 +19,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 public final class TableViewerSnapshotFactory {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
 
-    public TableViewerSnapshotFactory(MahjongTableSession session) {
+    public TableViewerSnapshotFactory(TableSessionMutator session) {
         this.session = session;
     }
 
@@ -732,6 +732,5 @@ public final class TableViewerSnapshotFactory {
     }
 
 }
-
 
 

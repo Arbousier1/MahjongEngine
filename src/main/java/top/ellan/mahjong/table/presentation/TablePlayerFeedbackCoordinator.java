@@ -2,7 +2,7 @@ package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
@@ -19,13 +19,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public final class TablePlayerFeedbackCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private final Map<UUID, String> feedbackState = new HashMap<>();
     private String lastSettlementFingerprint = "";
     private String lastPersistedSettlementFingerprint = "";
     private String lastPersistedRankFingerprint = "";
 
-    public TablePlayerFeedbackCoordinator(MahjongTableSession session) {
+    public TablePlayerFeedbackCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 

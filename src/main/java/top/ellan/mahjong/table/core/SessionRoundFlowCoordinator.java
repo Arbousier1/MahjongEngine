@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionRoundFlowCoordinator {
-    private final SessionState session;
+    private final TableSessionMutator session;
 
-    SessionRoundFlowCoordinator(SessionState session) {
+    SessionRoundFlowCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
