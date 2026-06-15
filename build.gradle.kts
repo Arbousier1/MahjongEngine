@@ -769,10 +769,12 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
-    testImplementation(enforcedPlatform("net.kyori:adventure-bom:$adventureVersion"))
-    testImplementation("net.kyori:adventure-api:$adventureVersion")
-    testImplementation("net.kyori:adventure-text-minimessage:$adventureVersion")
-    testImplementation("net.kyori:adventure-text-serializer-plain:$adventureVersion")
+    // Tests follow whichever Adventure version the active paperDevBundle ships with so that
+    // paper-api's compiled-against interfaces (e.g. ComponentDecoder added in Adventure 4.16) resolve
+    // at runtime. Production code is still constrained to the older surface via the compileOnly BOM above.
+    testImplementation("net.kyori:adventure-api")
+    testImplementation("net.kyori:adventure-text-minimessage")
+    testImplementation("net.kyori:adventure-text-serializer-plain")
 }
 
 java {

@@ -20,6 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - paper: "1.20.1"
+            dev_bundle: "1.20.1-R0.1-SNAPSHOT"
+            java_target: "17"
           - paper: "1.21.11"
             dev_bundle: "1.21.11-R0.1-SNAPSHOT"
             java_target: "21"
