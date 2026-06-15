@@ -162,41 +162,54 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
 
     private Map<String, MahjongSubcommand> createSubcommands() {
         Map<String, MahjongSubcommand> registry = new LinkedHashMap<>();
-        this.register(registry, new HelpSubcommand(this.context).create());
-        this.register(registry, new CreateSubcommand(this.context).create());
-        this.register(registry, new BotMatchSubcommand(this.context).create());
-        this.register(registry, new ModeSubcommand(this.context).create());
-        this.register(registry, new JoinSubcommand(this.context).create());
-        this.register(registry, new LeaveSubcommand(this.context).create());
-        this.register(registry, new ListSubcommand(this.context).create());
-        this.register(registry, new SpectateSubcommand(this.context).create());
-        this.register(registry, new UnspectateSubcommand(this.context).create());
-        this.register(registry, new TableSubcommand(this.context).create());
-        this.register(registry, new AddBotSubcommand(this.context).create());
-        this.register(registry, new RemoveBotSubcommand(this.context).create());
-        this.register(registry, new RuleSubcommand(this.context).create());
-        this.register(registry, new StartSubcommand(this.context).create());
-        this.register(registry, new StateSubcommand(this.context).create());
-        this.register(registry, new RiichiSubcommand(this.context).create());
-        this.register(registry, new TsumoSubcommand(this.context).create());
-        this.register(registry, new RonSubcommand(this.context).create());
-        this.register(registry, new PonSubcommand(this.context).create());
-        this.register(registry, new MinkanSubcommand(this.context).create());
-        this.register(registry, new ChiiSubcommand(this.context).create());
-        this.register(registry, new KanSubcommand(this.context).create());
-        this.register(registry, new SkipSubcommand(this.context).create());
-        this.register(registry, new KyuushuSubcommand(this.context).create());
-        this.register(registry, new SettlementSubcommand(this.context).create());
-        this.register(registry, new RankSubcommand(this.context).create());
-        this.register(registry, new LeaderboardSubcommand(this.context).create());
-        this.register(registry, new RenderSubcommand(this.context).create());
-        this.register(registry, new InspectSubcommand(this.context).create());
-        this.register(registry, new DebugSubcommand(this.context).create());
-        this.register(registry, new ClearSubcommand(this.context).create());
-        this.register(registry, new ForceEndSubcommand(this.context).create());
-        this.register(registry, new DeleteTableSubcommand(this.context).create());
-        this.register(registry, new ReloadSubcommand(this.context).create());
+        for (MahjongSubcommand command : productionSubcommands(this.context)) {
+            this.register(registry, command);
+        }
         return java.util.Collections.unmodifiableMap(new LinkedHashMap<>(registry));
+    }
+
+    /**
+     * Returns the canonical, ordered list of subcommands wired into the production command.
+     * Exposed at package scope so structural tests can audit registration without re-listing
+     * subcommand classes by hand. The order matches the on-screen help order.
+     */
+    static List<MahjongSubcommand> productionSubcommands(MahjongCommandContext context) {
+        List<MahjongSubcommand> commands = new ArrayList<>();
+        commands.add(new HelpSubcommand(context).create());
+        commands.add(new CreateSubcommand(context).create());
+        commands.add(new BotMatchSubcommand(context).create());
+        commands.add(new ModeSubcommand(context).create());
+        commands.add(new JoinSubcommand(context).create());
+        commands.add(new LeaveSubcommand(context).create());
+        commands.add(new ListSubcommand(context).create());
+        commands.add(new SpectateSubcommand(context).create());
+        commands.add(new UnspectateSubcommand(context).create());
+        commands.add(new TableSubcommand(context).create());
+        commands.add(new AddBotSubcommand(context).create());
+        commands.add(new RemoveBotSubcommand(context).create());
+        commands.add(new RuleSubcommand(context).create());
+        commands.add(new StartSubcommand(context).create());
+        commands.add(new StateSubcommand(context).create());
+        commands.add(new RiichiSubcommand(context).create());
+        commands.add(new TsumoSubcommand(context).create());
+        commands.add(new RonSubcommand(context).create());
+        commands.add(new PonSubcommand(context).create());
+        commands.add(new MinkanSubcommand(context).create());
+        commands.add(new ChiiSubcommand(context).create());
+        commands.add(new KanSubcommand(context).create());
+        commands.add(new SkipSubcommand(context).create());
+        commands.add(new KyuushuSubcommand(context).create());
+        commands.add(new SettlementSubcommand(context).create());
+        commands.add(new RankSubcommand(context).create());
+        commands.add(new LeaderboardSubcommand(context).create());
+        commands.add(new RenderSubcommand(context).create());
+        commands.add(new InspectSubcommand(context).create());
+        commands.add(new DebugSubcommand(context).create());
+        commands.add(new ClearSubcommand(context).create());
+        commands.add(new ForceEndSubcommand(context).create());
+        commands.add(new DeleteTableSubcommand(context).create());
+        commands.add(new ReloadSubcommand(context).create());
+        return List.copyOf(commands);
     }
 
     private void register(Map<String, MahjongSubcommand> registry, MahjongSubcommand command) {

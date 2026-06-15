@@ -35,7 +35,7 @@ import top.ellan.mahjong.runtime.ServerScheduler;
 
 public final class MahjongCommandContext {
     public static final String ADMIN_PERMISSION = "mahjongpaper.admin";
-    private static final String[] HELP_KEYS = {
+    static final java.util.List<String> HELP_KEY_ORDER = java.util.List.of(
         "command.help.create",
         "command.help.botmatch",
         "command.help.mode",
@@ -68,8 +68,8 @@ public final class MahjongCommandContext {
         "command.help.forceend",
         "command.help.deletetable",
         "command.help.reload"
-    };
-    private static final Set<String> ADMIN_HELP_KEYS = Set.of(
+    );
+    static final java.util.Set<String> ADMIN_HELP_KEY_SET = java.util.Set.of(
         "command.help.create",
         "command.help.botmatch",
         "command.help.list",
@@ -80,6 +80,8 @@ public final class MahjongCommandContext {
         "command.help.deletetable",
         "command.help.reload"
     );
+    private static final String[] HELP_KEYS = HELP_KEY_ORDER.toArray(new String[0]);
+    private static final Set<String> ADMIN_HELP_KEYS = ADMIN_HELP_KEY_SET;
     private final MessageService messages;
     private final MahjongTableManager tableManager;
     private final DebugService debug;
