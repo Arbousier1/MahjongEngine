@@ -56,6 +56,98 @@ class MahjongSoulRankRulesTest {
     }
 
     @Test
+    fun `stronger competitive field increases rank reward`() {
+        val profile = MahjongSoulRankProfile(
+            playerId,
+            "Player",
+            MahjongSoulRankRules.Tier.ADEPT,
+            1,
+            300,
+            20,
+            5,
+            5,
+            5,
+            5
+        )
+        val field = listOf(
+            profile,
+            rankProfile("00000000-0000-0000-0000-000000000002", MahjongSoulRankRules.Tier.EXPERT, 1, 600),
+            rankProfile("00000000-0000-0000-0000-000000000003", MahjongSoulRankRules.Tier.EXPERT, 1, 600),
+            rankProfile("00000000-0000-0000-0000-000000000004", MahjongSoulRankRules.Tier.EXPERT, 1, 600)
+        )
+
+        val result = MahjongSoulRankRules.applyMatch(
+            profile,
+            MahjongSoulRankRules.Room.GOLD,
+            MahjongSoulRankRules.MatchLength.SOUTH,
+            1,
+            25000,
+            false,
+            field
+        )
+
+        assertEquals(113, result.rankPointChange())
+        assertEquals(413, result.updated().rankPoints())
+    }
+
+    @Test
+    fun `weaker competitive field reduces rank reward`() {
+        val profile = MahjongSoulRankProfile(
+            playerId,
+            "Player",
+            MahjongSoulRankRules.Tier.EXPERT,
+            1,
+            600,
+            20,
+            5,
+            5,
+            5,
+            5
+        )
+        val field = listOf(
+            profile,
+            rankProfile("00000000-0000-0000-0000-000000000002", MahjongSoulRankRules.Tier.ADEPT, 1, 300),
+            rankProfile("00000000-0000-0000-0000-000000000003", MahjongSoulRankRules.Tier.ADEPT, 1, 300),
+            rankProfile("00000000-0000-0000-0000-000000000004", MahjongSoulRankRules.Tier.ADEPT, 1, 300)
+        )
+
+        val result = MahjongSoulRankRules.applyMatch(
+            profile,
+            MahjongSoulRankRules.Room.GOLD,
+            MahjongSoulRankRules.MatchLength.SOUTH,
+            1,
+            25000,
+            false,
+            field
+        )
+
+        assertEquals(77, result.rankPointChange())
+        assertEquals(677, result.updated().rankPoints())
+    }
+
+    @Test
+    fun `rank profile formats competitive summary metrics`() {
+        val profile = MahjongSoulRankProfile(
+            playerId,
+            "Player",
+            MahjongSoulRankRules.Tier.EXPERT,
+            2,
+            650,
+            10,
+            3,
+            2,
+            4,
+            1
+        )
+
+        assertEquals("2.30", MahjongSoulRankRules.formatAveragePlace(profile))
+        assertEquals("30.0%", MahjongSoulRankRules.formatFirstRate(profile))
+        assertEquals("50.0%", MahjongSoulRankRules.formatTopTwoRate(profile))
+        assertEquals("10.0%", MahjongSoulRankRules.formatFourthRate(profile))
+        assertEquals(750, MahjongSoulRankRules.promotionRemaining(profile))
+    }
+
+    @Test
     fun `apply celestial match demotes saint 3 when points drop below zero at level one`() {
         val profile = MahjongSoulRankProfile(
             playerId,
@@ -95,6 +187,26 @@ class MahjongSoulRankRulesTest {
         assertFailsWith<IllegalArgumentException> {
             MahjongSoulRankRules.Room.parse("diamond")
         }
+    }
+
+    private fun rankProfile(
+        playerId: String,
+        tier: MahjongSoulRankRules.Tier,
+        level: Int,
+        rankPoints: Int
+    ): MahjongSoulRankProfile {
+        return MahjongSoulRankProfile(
+            UUID.fromString(playerId),
+            "Player",
+            tier,
+            level,
+            rankPoints,
+            20,
+            5,
+            5,
+            5,
+            5
+        )
     }
 }
 

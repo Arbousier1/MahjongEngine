@@ -28,13 +28,21 @@ class DatabaseCrossDialectIntegrationTest {
     @Test
     fun `persist match ranks stays consistent between h2 and mariadb`() {
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000031")
+        val secondId = UUID.fromString("00000000-0000-0000-0000-000000000032")
+        val thirdId = UUID.fromString("00000000-0000-0000-0000-000000000033")
+        val fourthId = UUID.fromString("00000000-0000-0000-0000-000000000034")
         val snapshots = mutableMapOf<Dialect, RankSnapshot>()
 
         forEachDialect { dialect, service ->
             service.persistMatchRanksSync(
                 "TABLE-CROSS",
                 MahjongRule.GameLength.TWO_WIND,
-                listOf(TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false))
+                listOf(
+                    TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false),
+                    TableFinalStanding(secondId, "Bob", 2, 30000, 10.0, false),
+                    TableFinalStanding(thirdId, "Carol", 3, 20000, -20.0, false),
+                    TableFinalStanding(fourthId, "Dave", 4, 8000, -47.0, false)
+                )
             )
 
             val profile = service.loadRankProfile(playerId, "Alice")
@@ -42,10 +50,11 @@ class DatabaseCrossDialectIntegrationTest {
             val history = withConnection(service) { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeQuery(
-                        "SELECT room_code, place, rank_point_change FROM rank_history WHERE player_uuid = '$playerId'"
+                        "SELECT mode_code, room_code, place, rank_point_change FROM rank_history WHERE player_uuid = '$playerId'"
                     ).use { result ->
                         assertTrue(result.next())
                         RankHistoryRow(
+                            modeCode = result.getString("mode_code"),
                             roomCode = result.getString("room_code"),
                             place = result.getInt("place"),
                             rankPointChange = result.getInt("rank_point_change")
@@ -58,6 +67,7 @@ class DatabaseCrossDialectIntegrationTest {
                 level = profile.level(),
                 rankPoints = profile.rankPoints(),
                 totalMatches = profile.totalMatches(),
+                modeCode = history.modeCode,
                 roomCode = history.roomCode,
                 place = history.place,
                 rankPointChange = history.rankPointChange
@@ -69,6 +79,7 @@ class DatabaseCrossDialectIntegrationTest {
         assertEquals(1, h2.level)
         assertEquals(392, h2.rankPoints)
         assertEquals(1, h2.totalMatches)
+        assertEquals("RIICHI", h2.modeCode)
         assertEquals("GOLD", h2.roomCode)
         assertEquals(1, h2.place)
         assertEquals(112, h2.rankPointChange)
@@ -104,6 +115,7 @@ class DatabaseCrossDialectIntegrationTest {
                         100.5,
                         64.0,
                         -22.25,
+                        UUID.fromString("00000000-0000-0000-0000-000000000099"),
                         MahjongVariant.GB,
                         rule,
                         true
@@ -120,6 +132,7 @@ class DatabaseCrossDialectIntegrationTest {
                 x = row.x(),
                 y = row.y(),
                 z = row.z(),
+                ownerId = row.ownerId().toString(),
                 variant = row.variant().name,
                 botMatch = row.botMatch(),
                 length = row.rule().length.name,
@@ -138,6 +151,7 @@ class DatabaseCrossDialectIntegrationTest {
 
         val h2 = snapshots.getValue(Dialect.H2)
         assertEquals("TABLE-GB", h2.id)
+        assertEquals("00000000-0000-0000-0000-000000000099", h2.ownerId)
         assertEquals("GB", h2.variant)
         assertTrue(h2.botMatch)
         assertEquals("SOUTH", h2.length)
@@ -244,12 +258,14 @@ class DatabaseCrossDialectIntegrationTest {
         val level: Int,
         val rankPoints: Int,
         val totalMatches: Int,
+        val modeCode: String,
         val roomCode: String,
         val place: Int,
         val rankPointChange: Int
     )
 
     private data class RankHistoryRow(
+        val modeCode: String,
         val roomCode: String,
         val place: Int,
         val rankPointChange: Int
@@ -261,6 +277,7 @@ class DatabaseCrossDialectIntegrationTest {
         val x: Double,
         val y: Double,
         val z: Double,
+        val ownerId: String,
         val variant: String,
         val botMatch: Boolean,
         val length: String,

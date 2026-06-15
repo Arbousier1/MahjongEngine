@@ -27,6 +27,7 @@ import java.util.logging.Logger
 import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -136,12 +137,18 @@ class DatabaseIntegrationTest {
     @Test
     fun `persist match ranks sync updates profile and writes history`() {
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000021")
+        val secondId = UUID.fromString("00000000-0000-0000-0000-000000000022")
+        val thirdId = UUID.fromString("00000000-0000-0000-0000-000000000023")
+        val fourthId = UUID.fromString("00000000-0000-0000-0000-000000000024")
 
         service.persistMatchRanksSync(
             "TABLE99",
             MahjongRule.GameLength.TWO_WIND,
             listOf(
-                TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false)
+                TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false),
+                TableFinalStanding(secondId, "Bob", 2, 30000, 10.0, false),
+                TableFinalStanding(thirdId, "Carol", 3, 20000, -20.0, false),
+                TableFinalStanding(fourthId, "Dave", 4, 8000, -47.0, false)
             )
         )
 
@@ -154,13 +161,129 @@ class DatabaseIntegrationTest {
 
         withConnection(service) { connection ->
             connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT table_id, room_code, match_length, place, rank_point_change FROM rank_history").use { result ->
+                statement.executeQuery("SELECT table_id, mode_code, room_code, match_length, place, rank_point_change FROM rank_history WHERE player_uuid = '$playerId'").use { result ->
                     assertTrue(result.next())
                     assertEquals("TABLE99", result.getString("table_id"))
+                    assertEquals("RIICHI", result.getString("mode_code"))
                     assertEquals("GOLD", result.getString("room_code"))
                     assertEquals("SOUTH", result.getString("match_length"))
                     assertEquals(1, result.getInt("place"))
                     assertEquals(112, result.getInt("rank_point_change"))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `persist match ranks keeps separate profiles per mode`() {
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000029")
+        val secondId = UUID.fromString("00000000-0000-0000-0000-000000000030")
+        val thirdId = UUID.fromString("00000000-0000-0000-0000-000000000031")
+        val fourthId = UUID.fromString("00000000-0000-0000-0000-000000000032")
+
+        service.persistMatchRanksSync(
+            "TABLE-RIICHI",
+            MahjongVariant.RIICHI,
+            MahjongRule.GameLength.TWO_WIND,
+            listOf(
+                TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false),
+                TableFinalStanding(secondId, "Bob", 2, 30000, 10.0, false),
+                TableFinalStanding(thirdId, "Carol", 3, 20000, -20.0, false),
+                TableFinalStanding(fourthId, "Dave", 4, 8000, -47.0, false)
+            )
+        )
+        service.persistMatchRanksSync(
+            "TABLE-GB",
+            MahjongVariant.GB,
+            MahjongRule.GameLength.TWO_WIND,
+            listOf(
+                TableFinalStanding(secondId, "Bob", 1, 42000, 57.0, false),
+                TableFinalStanding(thirdId, "Carol", 2, 30000, 10.0, false),
+                TableFinalStanding(fourthId, "Dave", 3, 20000, -20.0, false),
+                TableFinalStanding(playerId, "Alice", 4, 8000, -47.0, false)
+            )
+        )
+
+        val riichiProfile = service.loadRankProfile(playerId, "Alice", MahjongVariant.RIICHI)
+        val gbProfile = service.loadRankProfile(playerId, "Alice", MahjongVariant.GB)
+        val sichuanProfile = service.loadRankProfile(playerId, "Alice", MahjongVariant.SICHUAN)
+
+        assertEquals(1, riichiProfile.totalMatches())
+        assertEquals(1, riichiProfile.firstPlaces())
+        assertEquals(392, riichiProfile.rankPoints())
+        assertEquals(1, gbProfile.totalMatches())
+        assertEquals(1, gbProfile.fourthPlaces())
+        assertEquals(0, gbProfile.rankPoints())
+        assertEquals(0, sichuanProfile.totalMatches())
+        assertEquals(
+            setOf(MahjongVariant.RIICHI, MahjongVariant.GB, MahjongVariant.SICHUAN),
+            service.loadRankProfiles(playerId, "Alice").keys
+        )
+
+        withConnection(service) { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT mode_code, COUNT(*) AS rows FROM rank_history WHERE player_uuid = '$playerId' GROUP BY mode_code").use { result ->
+                    val counts = mutableMapOf<String, Int>()
+                    while (result.next()) {
+                        counts[result.getString("mode_code")] = result.getInt("rows")
+                    }
+                    assertEquals(1, counts["RIICHI"])
+                    assertEquals(1, counts["GB"])
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `leaderboard returns ranked profiles for requested mode`() {
+        val firstId = UUID.fromString("00000000-0000-0000-0000-000000000041")
+        val secondId = UUID.fromString("00000000-0000-0000-0000-000000000042")
+        val thirdId = UUID.fromString("00000000-0000-0000-0000-000000000043")
+        val fourthId = UUID.fromString("00000000-0000-0000-0000-000000000044")
+
+        service.persistMatchRanksSync(
+            "TABLE-LB",
+            MahjongVariant.RIICHI,
+            MahjongRule.GameLength.TWO_WIND,
+            listOf(
+                TableFinalStanding(firstId, "Alice", 1, 52000, 87.0, false),
+                TableFinalStanding(secondId, "Bob", 2, 30000, 10.0, false),
+                TableFinalStanding(thirdId, "Carol", 3, 18000, -22.0, false),
+                TableFinalStanding(fourthId, "Dave", 4, 0, -75.0, false)
+            )
+        )
+
+        val leaderboard = service.loadLeaderboard(MahjongVariant.RIICHI, 3)
+        val gbLeaderboard = service.loadLeaderboard(MahjongVariant.GB, 3)
+
+        assertEquals(3, leaderboard.size)
+        assertEquals(1, leaderboard[0].position())
+        assertEquals("Alice", leaderboard[0].profile().displayName())
+        assertEquals(firstId, leaderboard[0].profile().playerId())
+        assertEquals(0, gbLeaderboard.size)
+    }
+
+    @Test
+    fun `persist match ranks ignores incomplete human tables`() {
+        val playerId = UUID.fromString("00000000-0000-0000-0000-000000000025")
+
+        service.persistMatchRanksSync(
+            "TABLE-BOT",
+            MahjongRule.GameLength.TWO_WIND,
+            listOf(
+                TableFinalStanding(playerId, "Alice", 1, 42000, 57.0, false),
+                TableFinalStanding(UUID.fromString("00000000-0000-0000-0000-000000000026"), "Bot-1", 2, 30000, 10.0, true),
+                TableFinalStanding(UUID.fromString("00000000-0000-0000-0000-000000000027"), "Bot-2", 3, 20000, -20.0, true),
+                TableFinalStanding(UUID.fromString("00000000-0000-0000-0000-000000000028"), "Bot-3", 4, 8000, -47.0, true)
+            )
+        )
+
+        val profile = service.loadRankProfile(playerId, "Alice")
+        assertEquals(0, profile.totalMatches())
+        withConnection(service) { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT player_uuid FROM rank_history").use { result ->
+                    assertFalse(result.next())
                 }
             }
         }
@@ -189,6 +312,7 @@ class DatabaseIntegrationTest {
                     100.5,
                     64.0,
                     -22.25,
+                    UUID.fromString("00000000-0000-0000-0000-000000000088"),
                     MahjongVariant.GB,
                     rule,
                     true
@@ -205,6 +329,7 @@ class DatabaseIntegrationTest {
         assertEquals(100.5, table.x())
         assertEquals(64.0, table.y())
         assertEquals(-22.25, table.z())
+        assertEquals(UUID.fromString("00000000-0000-0000-0000-000000000088"), table.ownerId())
         assertEquals(MahjongVariant.GB, table.variant())
         assertTrue(table.botMatch())
         assertEquals(MahjongRule.GameLength.SOUTH, table.rule().length)

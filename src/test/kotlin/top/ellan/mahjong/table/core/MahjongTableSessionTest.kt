@@ -95,6 +95,24 @@ class MahjongTableSessionTest {
     }
 
     @Test
+    fun `table owner transfers to next human player when owner leaves`() {
+        val plugin = mock(MahjongPaperPlugin::class.java)
+        val session = MahjongTableSession(plugin, "TABLE04C", Location(null, 0.0, 64.0, 0.0), false)
+        val ownerId = UUID.fromString("00000000-0000-0000-0000-000000000041")
+        val nextOwnerId = UUID.fromString("00000000-0000-0000-0000-000000000042")
+
+        session.setOwner(ownerId)
+        session.addPlayer(mockPlayer(ownerId), SeatWind.EAST)
+        session.addPlayer(mockPlayer(nextOwnerId), SeatWind.SOUTH)
+
+        assertTrue(session.isOwner(ownerId))
+        removeParticipant(session, ownerId)
+        reassignOwnerFromSeats(session)
+        assertEquals(nextOwnerId, session.owner())
+        assertTrue(session.isOwner(nextOwnerId))
+    }
+
+    @Test
     fun `gb helpers stay inactive before a gb round is created`() {
         val plugin = mock(MahjongPaperPlugin::class.java)
         val session = MahjongTableSession(plugin, "TABLE05", Location(null, 0.0, 64.0, 0.0), false)
@@ -145,6 +163,12 @@ class MahjongTableSessionTest {
         val removePlayer = participants.javaClass.getDeclaredMethod("removePlayer", UUID::class.java)
         removePlayer.isAccessible = true
         removePlayer.invoke(participants, playerId)
+    }
+
+    private fun reassignOwnerFromSeats(session: MahjongTableSession) {
+        val reassignOwner = MahjongTableSession::class.java.getDeclaredMethod("reassignOwnerFromSeats")
+        reassignOwner.isAccessible = true
+        reassignOwner.invoke(session)
     }
 
     private fun addBotParticipant(session: MahjongTableSession, tableId: String): Boolean {
