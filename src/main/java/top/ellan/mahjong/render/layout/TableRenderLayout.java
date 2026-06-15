@@ -428,8 +428,9 @@ public final class TableRenderLayout {
             ));
         }
 
-        SeatWind direction = placements.getLast().face();
-        List<DeadWallPlacementMutable> reversed = placements.reversed();
+        SeatWind direction = placements.get(placements.size() - 1).face();
+        List<DeadWallPlacementMutable> reversed = new ArrayList<>(placements);
+        Collections.reverse(reversed);
         for (int index = 0; index < reversed.size(); index++) {
             DeadWallPlacementMutable placement = reversed.get(index);
             if (placement.face() == direction) {
@@ -444,7 +445,7 @@ public final class TableRenderLayout {
                 }
             }
 
-            Point base = reversed.getFirst().point();
+            Point base = reversed.get(0).point();
             double positionY = reversed.get(index % 2 == 0 ? 0 : 1).point().y();
             double offset = WALL_TILE_STEP * (index / 2);
             placement.setPoint(switch (displayDirection(direction)) {

@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MahjongPaperPlugin extends JavaPlugin {
@@ -59,11 +60,14 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.tableManager.loadPersistentTables();
 
         MahjongCommand mahjongCommand = new MahjongCommand(this, this.tableManager);
-        this.registerCommand(
-            "mahjong",
-            "Manage MahjongPaper tables and rounds. Use /mahjong help for command explanations.",
-            mahjongCommand
-        );
+        PluginCommand command = this.getCommand("mahjong");
+        if (command == null) {
+            this.getLogger().severe("MahjongPaper command is missing from plugin.yml; disabling plugin.");
+            this.getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        command.setExecutor(mahjongCommand);
+        command.setTabCompleter(mahjongCommand);
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
         this.scheduler.runGlobal(() -> {

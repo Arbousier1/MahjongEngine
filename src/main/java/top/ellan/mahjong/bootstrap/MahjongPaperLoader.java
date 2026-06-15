@@ -14,7 +14,7 @@ public final class MahjongPaperLoader implements PluginLoader {
         resolver.addRepository(new RemoteRepository.Builder(
             "central",
             "default",
-            MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR
+            "https://repo.maven.apache.org/maven2/"
         ).build());
 
         this.addDependency(resolver, "io.github.ssttkkl:mahjong-utils-jvm:0.7.7");

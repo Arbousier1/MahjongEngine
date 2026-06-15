@@ -17,6 +17,7 @@ import top.ellan.mahjong.table.core.TableViewerOverlaySnapshot;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
@@ -1737,8 +1738,9 @@ public final class TableRenderer {
             ));
         }
 
-        SeatWind direction = placements.getLast().face();
-        List<DeadWallPlacementMutable> reversed = placements.reversed();
+        SeatWind direction = placements.get(placements.size() - 1).face();
+        List<DeadWallPlacementMutable> reversed = new ArrayList<>(placements);
+        Collections.reverse(reversed);
         for (int index = 0; index < reversed.size(); index++) {
             DeadWallPlacementMutable placement = reversed.get(index);
             if (placement.face() == direction) {
@@ -1753,7 +1755,7 @@ public final class TableRenderer {
                 }
             }
 
-            Location base = reversed.getFirst().location();
+            Location base = reversed.get(0).location();
             double positionY = reversed.get(index % 2 == 0 ? 0 : 1).location().getY();
             double offset = WALL_TILE_STEP * (index / 2);
             placement.setLocation(switch (displayDirection(direction)) {

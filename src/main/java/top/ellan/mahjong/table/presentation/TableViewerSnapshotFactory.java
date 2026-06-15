@@ -450,7 +450,7 @@ public final class TableViewerSnapshotFactory {
         if (suggestions.isEmpty()) {
             return "";
         }
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         String labels = this.suggestedDiscardLabels(locale, suggestions);
         if (labels.isBlank()) {
             return "";
@@ -469,7 +469,7 @@ public final class TableViewerSnapshotFactory {
         Locale locale,
         List<top.ellan.mahjong.riichi.RiichiDiscardSuggestion> suggestions
     ) {
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         LinkedHashSet<String> labels = new LinkedHashSet<>();
         for (top.ellan.mahjong.riichi.RiichiDiscardSuggestion suggestion : suggestions) {
             if (!this.hasSameDiscardShape(best, suggestion) || labels.size() >= 3) {
@@ -584,7 +584,7 @@ public final class TableViewerSnapshotFactory {
             this.addButton(buttons, "reaction-minkan", this.session.plugin().messages().plain(locale, "table.action.minkan"), NamedTextColor.DARK_AQUA, "react:minkan");
         }
         if (options.getChiiPairs().size() == 1) {
-            kotlin.Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair = options.getChiiPairs().getFirst();
+            kotlin.Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair = options.getChiiPairs().get(0);
             String first = pair.getFirst().name().toLowerCase(Locale.ROOT);
             String second = pair.getSecond().name().toLowerCase(Locale.ROOT);
             String label = this.session.plugin().messages().plain(locale, "table.action.chii") + " "
@@ -629,7 +629,7 @@ public final class TableViewerSnapshotFactory {
             }
             this.addButton(buttons, "menu-back-turn-kan", this.session.plugin().messages().plain(locale, "table.action.back"), NamedTextColor.GRAY, "menu:back");
         } else if (kanButtons.size() == 1) {
-            String encoded = kanButtons.getFirst();
+            String encoded = kanButtons.get(0);
             int split = encoded.indexOf(':');
             String kind = split > -1 ? encoded.substring(0, split) : this.session.plugin().messages().plain(locale, "table.action.kan");
             String tile = split > -1 ? encoded.substring(split + 1) : "";
@@ -660,7 +660,7 @@ public final class TableViewerSnapshotFactory {
                 }
                 this.addButton(buttons, "menu-back-turn-riichi", this.session.plugin().messages().plain(locale, "table.action.back"), NamedTextColor.GRAY, "menu:back");
             } else if (riichiIndices.size() == 1) {
-                Integer riichiDiscardIndex = riichiIndices.getFirst();
+                Integer riichiDiscardIndex = riichiIndices.get(0);
                 String tileLabel = this.session.tileLabelForDisplay(locale, hand.get(riichiDiscardIndex).name());
                 String label = this.session.plugin().messages().plain(locale, "table.action.riichi") + " " + tileLabel;
                 this.addButton(buttons, "turn-riichi-single", label, NamedTextColor.LIGHT_PURPLE, "turn:riichi:" + riichiDiscardIndex);

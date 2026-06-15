@@ -7,8 +7,7 @@
 `MahjongPaper` 是 `MahjongCraft` 的 Paper 插件重写版本，当前主要基于：
 
 - Paper 显示实体
-- `ItemMeta#setItemModel(...)` 与配套资源包
-- CraftEngine 自定义物品、家具交互和实体剔除
+- CraftEngine 统一管理资源 bundle、自定义物品、家具交互和实体剔除
 
 ## 当前功能
 
@@ -219,9 +218,9 @@
 - tracked entity 剔除桥接
 - 牌桌交互事件路由
 
-## 资源包
+## CraftEngine 资源
 
-配套资源包位于 [resourcepack](./resourcepack)。
+[resourcepack](./resourcepack) 中的资源只作为 CraftEngine bundle 的源素材，由 CraftEngine 负责打包和下发。
 
 ## 上游参考
 

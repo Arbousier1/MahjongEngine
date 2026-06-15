@@ -276,7 +276,7 @@ public final class TablePlayerFeedbackCoordinator {
         if (suggestions.isEmpty()) {
             return "";
         }
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         String labels = this.suggestedDiscardLabels(locale, suggestions);
         if (labels.isBlank()) {
             return "";
@@ -295,7 +295,7 @@ public final class TablePlayerFeedbackCoordinator {
         Locale locale,
         List<top.ellan.mahjong.riichi.RiichiDiscardSuggestion> suggestions
     ) {
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         LinkedHashSet<String> labels = new LinkedHashSet<>();
         for (top.ellan.mahjong.riichi.RiichiDiscardSuggestion suggestion : suggestions) {
             if (!this.hasSameDiscardShape(best, suggestion) || labels.size() >= 3) {

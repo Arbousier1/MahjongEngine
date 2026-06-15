@@ -14,9 +14,9 @@ plugins {
 group = "top.ellan"
 version = "0.9.1-beta.1"
 
-val minimumPaperDevBundleVersion = "1.21.11-R0.1-SNAPSHOT"
+val minimumPaperDevBundleVersion = "1.20.1-R0.1-SNAPSHOT"
 val latestPaperDevBundleVersion = "26.2-rc-2.build.9-alpha"
-val supportedPaperApiVersion = "1.21.11"
+val supportedPaperApiVersion = "1.20"
 val paperDevBundleVersion = providers.gradleProperty("mahjongPaperDevBundle")
     .orElse(minimumPaperDevBundleVersion)
     .get()
@@ -24,7 +24,7 @@ val paperDevBundleVersion = providers.gradleProperty("mahjongPaperDevBundle")
 val paperApiVersion = supportedPaperApiVersion
 val javaTargetVersion = providers.gradleProperty("mahjongJavaTarget")
     .map(String::toInt)
-    .orElse(21)
+    .orElse(17)
     .get()
 val toolchainJavaVersion = providers.gradleProperty("mahjongJavaToolchain")
     .map(String::toInt)
@@ -36,8 +36,8 @@ val mariadbVersion = "3.5.9"
 val mysqlVersion = "9.7.0"
 val h2Version = "2.4.240"
 val hikariVersion = "7.1.0"
-// Paper 1.21.11 through 26.2 currently publish their API against Adventure 4.26.1.
-val adventureVersion = "4.26.1"
+// Keep explicit Adventure APIs on the Paper 1.20.1 line so the jar stays runtime-compatible with older servers.
+val adventureVersion = "4.14.0"
 val junitVersion = "6.1.0"
 val testcontainersVersion = "1.21.4"
 val generatedResourcesDir = layout.buildDirectory.dir("generated/resources/mahjong")
@@ -808,6 +808,14 @@ tasks {
     processResources {
         dependsOn(generateMessageIndex, generateLocalizedConfigs, verifyMahjongTileResources, generateCraftEngineBundle, packageGbMahjongNative)
         filteringCharset = Charsets.UTF_8.name()
+        inputs.property("pluginVersion", project.version.toString())
+        inputs.property("paperApiVersion", paperApiVersion)
+        inputs.property("mahjongUtilsVersion", mahjongUtilsVersion)
+        inputs.property("mariadbVersion", mariadbVersion)
+        inputs.property("h2Version", h2Version)
+        inputs.property("hikariVersion", hikariVersion)
+        inputs.property("kotlinRuntimeVersion", kotlinRuntimeVersion)
+        inputs.property("kotlinSerializationVersion", kotlinSerializationVersion)
         from(generatedResourcesDir)
         from(generatedNativeResourcesDir)
         filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {

@@ -1,5 +1,6 @@
 package top.ellan.mahjong.table.presentation;
 
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.runtime.PluginTask;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
@@ -219,7 +220,7 @@ public final class TableDiceAnimationCoordinator {
             spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
             spawned.setInterpolationDuration(1);
             spawned.setInterpolationDelay(0);
-            spawned.setTeleportDuration(1);
+            PaperCompatibility.setTeleportDuration(spawned, 1);
             spawned.setViewRange(20.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
@@ -294,7 +295,7 @@ public final class TableDiceAnimationCoordinator {
     private static ItemStack createDiceItem(int point) {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("mahjongcraft", "dice/" + point));
+        PaperCompatibility.applyItemModel(meta, new NamespacedKey("mahjongcraft", "dice/" + point));
         stack.setItemMeta(meta);
         return stack;
     }

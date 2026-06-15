@@ -8,8 +8,7 @@ Chinese gameplay and operations wiki: [docs/wiki.zh-CN.md](./docs/wiki.zh-CN.md)
 `MahjongPaper` is a Paper plugin rewrite of `MahjongCraft` built around:
 
 - Paper display entities
-- `ItemMeta#setItemModel(...)` plus the bundled resource pack
-- CraftEngine custom items, furniture hitboxes, and culling integration
+- CraftEngine-managed resource bundle, custom items, furniture hitboxes, and culling integration
 
 ## Current Scope
 
@@ -225,9 +224,9 @@ MahjongPaper currently uses CraftEngine for:
 - tracked entity culling integration
 - furniture interaction routing for table interaction
 
-## Resource Pack
+## Resource Assets
 
-The bundled resource pack lives in [resourcepack](./resourcepack).
+The assets in [resourcepack](./resourcepack) are packaged and delivered through the exported CraftEngine bundle.
 
 ## Upstream References
 

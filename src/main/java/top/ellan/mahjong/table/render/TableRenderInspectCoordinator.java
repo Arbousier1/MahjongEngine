@@ -138,7 +138,7 @@ public final class TableRenderInspectCoordinator {
 
     private void spawnMarker(Player viewer, Location location, Color color, int count) {
         viewer.spawnParticle(
-            Particle.DUST,
+            top.ellan.mahjong.compat.PaperCompatibility.dustParticle(),
             location,
             count,
             0.015D,

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -30,19 +31,19 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.Event;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDismountEvent;
-import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.plugin.EventExecutor;
 import top.ellan.mahjong.runtime.PluginTask;
 
 public final class MahjongTableManager implements Listener {
@@ -73,7 +74,30 @@ public final class MahjongTableManager implements Listener {
         this.refreshCoordinator = new TableRefreshCoordinator(plugin, this, this.seatCoordinator, plugin.settings().tableStartupRebuildBatchSize());
         this.eventCoordinator = new TableEventCoordinator(this);
         this.membershipCoordinator = new TableMembershipCoordinator(this);
+        this.registerSeatVehicleEvents();
         this.tableTickTask = plugin.scheduler().runGlobalTimer(this::dispatchTableTicks, 20L, 20L);
+    }
+
+    private void registerSeatVehicleEvents() {
+        this.registerSeatVehicleEvent("org.bukkit.event.entity.EntityMountEvent", EventPriority.NORMAL, this.eventCoordinator::onSeatMount);
+        this.registerSeatVehicleEvent("org.spigotmc.event.entity.EntityMountEvent", EventPriority.NORMAL, this.eventCoordinator::onSeatMount);
+        this.registerSeatVehicleEvent("org.bukkit.event.entity.EntityDismountEvent", EventPriority.HIGHEST, this.eventCoordinator::onSeatDismount);
+        this.registerSeatVehicleEvent("org.spigotmc.event.entity.EntityDismountEvent", EventPriority.HIGHEST, this.eventCoordinator::onSeatDismount);
+    }
+
+    private void registerSeatVehicleEvent(String className, EventPriority priority, Consumer<Event> handler) {
+        try {
+            Class<?> rawEventClass = Class.forName(className);
+            if (!Event.class.isAssignableFrom(rawEventClass)) {
+                return;
+            }
+            @SuppressWarnings("unchecked")
+            Class<? extends Event> eventClass = (Class<? extends Event>) rawEventClass;
+            EventExecutor executor = (listener, event) -> handler.accept(event);
+            this.plugin.getServer().getPluginManager().registerEvent(eventClass, this, priority, executor, this.plugin, true);
+        } catch (ClassNotFoundException exception) {
+            // The mount/dismount event package changed across Paper versions; the other package may be present.
+        }
     }
 
     public CreateTableResult createTable(Player owner) {
@@ -533,16 +557,6 @@ public final class MahjongTableManager implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         this.eventCoordinator.onJoin(event);
-    }
-
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onSeatMount(EntityMountEvent event) {
-        this.eventCoordinator.onSeatMount(event);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onSeatDismount(EntityDismountEvent event) {
-        this.eventCoordinator.onSeatDismount(event);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

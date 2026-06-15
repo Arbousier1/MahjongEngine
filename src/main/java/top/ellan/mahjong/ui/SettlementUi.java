@@ -1,6 +1,7 @@
 package top.ellan.mahjong.ui;
 
 import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.RankedScoreItem;
@@ -260,7 +261,7 @@ public final class SettlementUi {
         String path = faceDown ? "mahjong_tile/back" : tile.itemModelPath();
         ItemStack itemStack = new ItemStack(Material.PAPER);
         ItemMeta meta = itemStack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("mahjongcraft", path));
+        PaperCompatibility.applyItemModel(meta, new NamespacedKey("mahjongcraft", path));
         meta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));
         itemStack.setItemMeta(meta);
         return itemStack;

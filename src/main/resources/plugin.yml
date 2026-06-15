@@ -5,7 +5,7 @@ api-version: "${paperApiVersion}"
 folia-supported: true
 author: openai and ellan
 website: top.ellan
-description: Mahjong Soul-style Riichi Mahjong Paper plugin with optional GB rules, display entities, item_model and CraftEngine.
+description: Mahjong Soul-style Riichi Mahjong Paper plugin with optional GB rules, display entities, and CraftEngine-managed assets.
 depend:
   - CraftEngine
 commands:

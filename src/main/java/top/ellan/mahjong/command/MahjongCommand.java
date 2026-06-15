@@ -1,7 +1,5 @@
 package top.ellan.mahjong.command;
 
-import io.papermc.paper.command.brigadier.BasicCommand;
-import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -9,7 +7,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.command.subcommand.AddBotSubcommand;
@@ -50,7 +51,7 @@ import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.MahjongVariant;
 
-public final class MahjongCommand implements BasicCommand {
+public final class MahjongCommand implements CommandExecutor, TabCompleter {
     private final MahjongCommandContext context;
     private final Map<String, MahjongSubcommand> subcommands;
 
@@ -60,8 +61,13 @@ public final class MahjongCommand implements BasicCommand {
     }
 
     @Override
-    public void execute(CommandSourceStack stack, String[] args) {
-        this.handleCommand(stack.getSender(), args);
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission(this.permission())) {
+            this.context.messages().send(sender, "command.admin_required");
+            return true;
+        }
+        this.handleCommand(sender, args);
+        return true;
     }
 
     private void handleCommand(CommandSender sender, String[] args) {
@@ -100,8 +106,7 @@ public final class MahjongCommand implements BasicCommand {
     }
 
     @Override
-    public List<String> suggest(CommandSourceStack stack, String[] args) {
-        CommandSender sender = stack.getSender();
+    public List<String> onTabComplete(CommandSender sender, Command bukkitCommand, String alias, String[] args) {
         if (args.length == 0) {
             return this.visibleRootCommands(sender);
         }
@@ -109,22 +114,20 @@ public final class MahjongCommand implements BasicCommand {
         if (args.length == 1) {
             return this.context.matchPrefix(args[0], this.visibleRootCommands(sender));
         }
-        MahjongSubcommand command = this.subcommands.get(rootArg);
-        if (command == null || (command.adminOnly() && !sender.hasPermission(MahjongCommandContext.ADMIN_PERMISSION))) {
+        MahjongSubcommand subcommand = this.subcommands.get(rootArg);
+        if (subcommand == null || (subcommand.adminOnly() && !sender.hasPermission(MahjongCommandContext.ADMIN_PERMISSION))) {
             return List.of();
         }
         if (!(sender instanceof Player player)) {
             return List.of();
         }
-        return command.suggestions().suggest(player, args);
+        return subcommand.suggestions().suggest(player, args);
     }
 
-    @Override
     public boolean canUse(CommandSender sender) {
         return sender.hasPermission(this.permission());
     }
 
-    @Override
     public String permission() {
         return "mahjongpaper.command";
     }

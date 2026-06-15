@@ -111,7 +111,7 @@ final class RiichiBotStrategy implements BotStrategy {
         }
         java.util.List<Pair<MahjongTile, java.util.List<MahjongTile>>> riichiPairs = player.getTilePairsForRiichi();
         if (player.isMenzenchin() && !player.getRiichi() && !player.getDoubleRiichi() && player.getPoints() >= 1000 && !riichiPairs.isEmpty()) {
-            MahjongTile discardTile = riichiPairs.getFirst().getFirst();
+            MahjongTile discardTile = riichiPairs.get(0).getFirst();
             int discardIndex = findDiscardIndex(player, discardTile);
             if (discardIndex >= 0 && session.declareRiichi(playerId, discardIndex)) {
                 return;

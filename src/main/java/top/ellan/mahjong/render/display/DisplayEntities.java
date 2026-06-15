@@ -1,5 +1,6 @@
 package top.ellan.mahjong.render.display;
 
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongVariant;
 import net.kyori.adventure.text.Component;
@@ -648,7 +649,7 @@ public final class DisplayEntities {
             spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
             spawned.setInterpolationDuration(smoothMovement ? 1 : 0);
             spawned.setInterpolationDelay(0);
-            spawned.setTeleportDuration(smoothMovement ? 1 : 0);
+            PaperCompatibility.setTeleportDuration(spawned, smoothMovement ? 1 : 0);
             spawned.setViewRange(32.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
@@ -833,7 +834,7 @@ public final class DisplayEntities {
             markManagedEntity(plugin, spawned);
             spawned.setInterpolationDuration(1);
             spawned.setInterpolationDelay(0);
-            spawned.setTeleportDuration(1);
+            PaperCompatibility.setTeleportDuration(spawned, 1);
             spawned.setViewRange(48.0F);
             spawned.setShadowRadius(0.0F);
             spawned.setShadowStrength(0.0F);
@@ -866,7 +867,7 @@ public final class DisplayEntities {
         display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
         display.setInterpolationDuration(spec.smoothMovement() ? 1 : 0);
         display.setInterpolationDelay(0);
-        display.setTeleportDuration(spec.smoothMovement() ? 1 : 0);
+        PaperCompatibility.setTeleportDuration(display, spec.smoothMovement() ? 1 : 0);
         display.setViewRange(32.0F);
         display.setShadowRadius(0.0F);
         display.setShadowStrength(0.0F);
@@ -924,7 +925,7 @@ public final class DisplayEntities {
             mahjongPlugin.scheduler().teleport(entity, target);
             return;
         }
-        entity.teleportAsync(target);
+        entity.teleport(target);
     }
 
     private static void applyClickAction(int entityId, DisplayClickAction clickAction) {
@@ -1036,7 +1037,7 @@ public final class DisplayEntities {
                     return;
                 }
                 // Folia region safety: show/hide touches both viewer and target entity internals.
-                if (!Bukkit.isOwnedByCurrentRegion(player) || !Bukkit.isOwnedByCurrentRegion(entity)) {
+                if (!PaperCompatibility.isOwnedByCurrentRegion(player) || !PaperCompatibility.isOwnedByCurrentRegion(entity)) {
                     return;
                 }
                 if (!entity.isValid() || entity.isDead()) {
@@ -1089,7 +1090,7 @@ public final class DisplayEntities {
     private static ItemStack createTileItem(MahjongTile tile, String path) {
         ItemStack itemStack = new ItemStack(Material.PAPER);
         ItemMeta meta = itemStack.getItemMeta();
-        meta.setItemModel(new NamespacedKey(ITEM_MODEL_NAMESPACE, path));
+        PaperCompatibility.applyItemModel(meta, new NamespacedKey(ITEM_MODEL_NAMESPACE, path));
         meta.displayName(Component.text(tile.name()));
         itemStack.setItemMeta(meta);
         return itemStack;

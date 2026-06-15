@@ -1026,14 +1026,14 @@ public final class GbTableRoundController implements TableRoundController {
             this.pendingReactionWindow = null;
             this.afterKanTsumoPlayer = null;
             if (this.activeSichuanPlayerCount() <= 1) {
-                this.finishSichuanBloodBattle(winners.getLast().response().getTitle());
+                this.finishSichuanBloodBattle(winners.get(winners.size() - 1).response().getTitle());
                 return;
             }
             this.currentPlayerIndex = this.nextTurnPivotIndexAfterWins(winners);
             this.advanceAfterDiscard();
             return;
         }
-        this.finishRoundWithWinners(winners.getFirst().response().getTitle(), winners, pointsBeforeWin);
+        this.finishRoundWithWinners(winners.get(0).response().getTitle(), winners, pointsBeforeWin);
     }
 
     private void recordSichuanWins(List<GbReactionResolver.ResolvedGbWin> winners) {
@@ -1051,7 +1051,7 @@ public final class GbTableRoundController implements TableRoundController {
         if (winners.isEmpty()) {
             return this.currentPlayerIndex;
         }
-        GbReactionResolver.ResolvedGbWin first = winners.getFirst();
+        GbReactionResolver.ResolvedGbWin first = winners.get(0);
         if ("TSUMO".equals(first.response().getTitle())) {
             SeatWind winnerSeat = this.seatOf(first.winnerId());
             return winnerSeat == null ? this.currentPlayerIndex : winnerSeat.index();
