@@ -12,12 +12,13 @@
 
 ## 当前功能
 
-当前分支以雀魂风格立直麻将为主要玩法，同时保留可选的国标麻将流程：
+当前分支以雀魂风格立直麻将为主要玩法，同时保留可选的国标麻将和四川麻将流程：
 
 - 可持久化的大堂式牌桌，重启后可恢复
 - 空桌创建、东南西北固定座位、点击入座、点击准备
 - 4 个座位坐满且全部准备后自动开局
 - 可补 Bot，且 Bot 默认视为已准备
+- 桌主权限与牌桌控制 GUI，用于集中管理规则、Bot、开局、刷新和删除
 - 开局前可直接离桌；开局后会在当前一局结束后离桌
 - 发牌、摸牌、打牌、立直、自摸、荣和、吃、碰、明杠、暗杠、加杠
 - 雀魂风格默认规则：半庄、25000 起始点、30000 返回点、三赤、食断、多人荣和、雀魂杠宝牌揭示时机
@@ -25,25 +26,29 @@
 - 国标麻将可通过 `GB` 模式启用，规则判定走 bundled JNI bridge 与 vendored `GB-Mahjong` 源码
 - 观战、私有手牌显示、HUD 覆盖层和本地化提示
 - 基于 CraftEngine 的座位 / 牌桌交互与 bundle 导出
-- 默认使用 H2 持久化对局历史，可选 MariaDB
+- 默认使用 H2 持久化对局历史和段位，可选 MariaDB/MySQL
 
 ## 指令概览
 
 - `/mahjong help`：显示游戏内帮助
 - `/mahjong create`：在当前位置创建一个空牌桌
 - `/mahjong botmatch [hanchan|tonpuu]`：创建一桌 4 Bot 测试对局并进入观战
-- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`：在下一局开始前应用预设规则；默认玩法以 `MAJSOUL_HANCHAN` 为主
+- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`：桌主/管理员在下一局开始前应用预设规则；默认玩法以 `MAJSOUL_HANCHAN` 为主
 - `/mahjong join <tableId>`：加入牌桌
 - `/mahjong leave`：开局前直接离开；开局后标记为本局结束后离开
 - `/mahjong list`：查看活动牌桌及位置
 - `/mahjong start`：切换当前座位的准备状态
 - `/mahjong spectate <tableId>`：观战牌桌
 - `/mahjong unspectate`：结束观战
-- `/mahjong addbot`、`/mahjong removebot`：在开局前增减 Bot
-- `/mahjong rule [key] [value]`：查看或修改下一局生效的规则
+- `/mahjong table [tableId]`：打开牌桌控制面板
+- `/mahjong table owner <玩家名> [tableId]`：把桌主转让给已经入座的玩家
+- `/mahjong addbot`、`/mahjong removebot`：桌主/管理员在开局前增减 Bot
+- `/mahjong rule [key] [value]`：打开规则 GUI，或由桌主/管理员修改下一局生效的规则
 - `/mahjong state`：查看当前牌桌摘要
 - `/mahjong riichi <index>`、`/mahjong tsumo`、`/mahjong ron`、`/mahjong pon`、`/mahjong minkan`、`/mahjong chii <tileA> <tileB>`、`/mahjong kan <tile>`、`/mahjong skip`、`/mahjong kyuushu`：对局中的动作指令，其中 `riichi` 与 `kyuushu` 仅用于立直麻将
 - `/mahjong settlement`：重新打开最近一次结算界面
+- `/mahjong rank`：查看分模式段位
+- `/mahjong leaderboard [RIICHI|GB|SICHUAN]`：查看指定模式排行榜
 - `/mahjong render`、`/mahjong clear`、`/mahjong inspect`：渲染维护与调试
 - `/mahjong forceend [tableId]`：管理员强制结束当前对局
 - `/mahjong deletetable [tableId]`：管理员删除牌桌
@@ -57,6 +62,8 @@
 ## 大厅与准备流程
 
 - `/mahjong create` 只会创建空桌，不会自动把创建者加入牌局
+- 创建者会成为桌主，可通过 `/mahjong table` 管理规则、Bot、刷新、开局和删除
+- 桌主/管理员可用 `/mahjong table owner <玩家名> [tableId]` 把桌主转让给已经入座的在线玩家
 - 玩家通过东南西北悬浮字附近的交互加入固定风位
 - 同一套悬浮字交互也用于开局前切换准备状态
 - 只有 4 个座位坐满且全部准备后，才会自动开始
@@ -80,7 +87,7 @@
 
 1. `/mahjong create`：在你脚下创建一张空牌桌。
 2. 走到东/南/西/北四个悬浮座位牌前点击入座，或用 `/mahjong join <牌桌ID>`。
-3. 缺人时用 `/mahjong addbot` 补 Bot（Bot 默认视为已准备）。
+3. 缺人时由桌主/管理员用 `/mahjong table` 或 `/mahjong addbot` 补 Bot（Bot 默认视为已准备）。
 4. `/mahjong start` 切换准备状态；4 个座位都坐满且全部准备后自动开局。
 5. **打牌**：轮到你时，直接点击手牌中的某张牌把它打出去。
 6. **响应别人的牌**：别人打牌后会出现反应窗口，用命令宣告动作：

@@ -3,6 +3,7 @@
 > This project was created entirely by AI.
 
 Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
+Chinese gameplay and operations wiki: [docs/wiki.zh-CN.md](./docs/wiki.zh-CN.md)
 
 `MahjongPaper` is a Paper plugin rewrite of `MahjongCraft` built around:
 
@@ -12,19 +13,20 @@ Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 
 ## Current Scope
 
-The current branch already supports playable Riichi Mahjong and GB Mahjong flows on Paper/Folia:
+The current branch already supports playable Riichi Mahjong, GB Mahjong, and Sichuan Mahjong flows on Paper/Folia:
 
 - lobby-style tables that can persist across restart
 - empty-table creation, fixed east/south/west/north seats, click-to-join, and click-to-ready
 - automatic round start once 4 seats are filled and all seated players are ready
 - bots for unattended seats, with bots treated as ready by default
+- table-owner permissions plus a table control GUI for common lobby actions
 - leaving before the round starts, or deferred leave after the current hand ends
 - dealing, drawing, discarding, riichi, tsumo, ron, chii, pon, minkan, ankan, and kakan
 - opening dice roll animation and live public table state displays
 - Riichi scoring through `mahjong-utils`
 - GB Mahjong rule evaluation through the bundled JNI bridge and vendored `GB-Mahjong` source
 - spectator mode, private hand visibility, HUD overlays, and localized prompts
-- Mahjong Soul-style rank persistence when database-backed ranking is enabled
+- Mahjong Soul-style rank persistence and per-mode leaderboards when database-backed ranking is enabled
 - CraftEngine-backed seat/table interaction and CraftEngine bundle export
 - round history persistence through H2 by default, with optional MariaDB/MySQL
 
@@ -33,21 +35,24 @@ The current branch already supports playable Riichi Mahjong and GB Mahjong flows
 - `/mahjong help`: show in-game command help
 - `/mahjong create`: create a new empty table at your location
 - `/mahjong botmatch [hanchan|tonpuu]`: create a 4-bot test match and spectate it
-- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB>`: apply a preset before the next start
+- `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`: apply a preset before the next start
 - `/mahjong join <tableId>`: join a table as a player
 - `/mahjong leave`: leave immediately before the hand starts, or queue a leave after the current hand
 - `/mahjong list`: list active tables and their locations
 - `/mahjong start`: toggle ready status for your seat
 - `/mahjong spectate <tableId>`: spectate a table
 - `/mahjong unspectate`: stop spectating
-- `/mahjong addbot` and `/mahjong removebot`: manage bots before the round starts
-- `/mahjong rule [key] [value]`: view or change table rules before the next start
+- `/mahjong table [tableId]`: open the table control panel
+- `/mahjong table owner <player> [tableId]`: transfer table ownership to a seated player
+- `/mahjong addbot` and `/mahjong removebot`: table owner/admin commands to manage bots before the round starts
+- `/mahjong rule [key] [value]`: open the rule GUI, or let the table owner/admin change rules before the next start
 - Riichi multi-ron mode: `/mahjong rule ronMode <HEAD_BUMP|MULTI_RON>`
 - Riichi flow profile: `/mahjong rule riichiProfile <MAJSOUL|TOURNAMENT>`
 - `/mahjong state`: show the current table summary
 - `/mahjong riichi <index>`, `/mahjong tsumo`, `/mahjong ron`, `/mahjong pon`, `/mahjong minkan`, `/mahjong chii <tileA> <tileB>`, `/mahjong kan <tile>`, `/mahjong skip`, `/mahjong kyuushu`: round actions
 - `/mahjong settlement`: reopen the latest settlement UI
 - `/mahjong rank`: show your Mahjong Soul-style rank summary when ranking is enabled
+- `/mahjong leaderboard [RIICHI|GB|SICHUAN]`: show the ranked leaderboard for one mode
 - `/mahjong render`, `/mahjong clear`, `/mahjong inspect`: table render maintenance and diagnostics
 - `/mahjong forceend [tableId]`: admin command to stop a running match
 - `/mahjong deletetable [tableId]`: admin command to delete a table
@@ -62,6 +67,8 @@ Admin targeting details:
 ## Lobby Flow
 
 - `/mahjong create` creates an empty table only; it does not auto-seat the creator
+- the creator becomes the table owner and can manage rules, bots, refresh, start, and delete from `/mahjong table`
+- the table owner/admin can transfer ownership with `/mahjong table owner <player> [tableId]`
 - players join a fixed seat by interacting with that seat's floating label
 - the same seat label is used to toggle ready before the match starts
 - a round starts automatically only when all 4 seats are filled and all seated players are ready
@@ -71,12 +78,14 @@ Admin targeting details:
 
 - Riichi round flow rules: [docs/riichi-round-flow.md](./docs/riichi-round-flow.md)
 - GB Mahjong rule source: [docs/gb-mahjong-rules.md](./docs/gb-mahjong-rules.md)
+- Chinese gameplay and operations wiki: [docs/wiki.zh-CN.md](./docs/wiki.zh-CN.md)
 
 ## Gameplay Positioning
 
 - Newly created tables default to Mahjong Soul-style Riichi hanchan rules.
 - `MAJSOUL_TONPUU` and `MAJSOUL_HANCHAN` are the primary presets; both use three red fives, open tanyao, multi-ron, and the Mahjong Soul kan-dora reveal profile.
 - `GB` remains available as an optional ruleset, backed by the vendored `GB-Mahjong` native bridge.
+- `SICHUAN` is available as a suited-tile-only Bloody Battle ruleset.
 
 ## Game Modes Explained (with Examples)
 
