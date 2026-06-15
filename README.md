@@ -78,6 +78,96 @@ Admin targeting details:
 - `MAJSOUL_TONPUU` and `MAJSOUL_HANCHAN` are the primary presets; both use three red fives, open tanyao, multi-ron, and the Mahjong Soul kan-dora reveal profile.
 - `GB` remains available as an optional ruleset, backed by the vendored `GB-Mahjong` native bridge.
 
+## Game Modes Explained (with Examples)
+
+The plugin ships three independent rulesets. Switch between them before a hand starts with `/mahjong mode <MODE>`. Each is explained below with concrete tile examples.
+
+### Shared Round Flow
+
+Every mode uses the same play loop:
+
+1. `/mahjong create`: create an empty table at your feet.
+2. Click one of the east/south/west/north floating seat labels to sit down, or use `/mahjong join <tableId>`.
+3. Fill empty seats with `/mahjong addbot` (bots count as ready).
+4. `/mahjong start` toggles ready; the hand auto-starts once all 4 seats are filled and ready.
+5. **Discard**: on your turn, click a tile in your hand to discard it.
+6. **React to others**: after someone discards, a reaction window opens. Use commands to call:
+   - `/mahjong pon`, `/mahjong chii <tileA> <tileB>` (from the player to your left), `/mahjong minkan`
+   - `/mahjong ron` (win on a discard), `/mahjong skip` (pass)
+7. **On your own turn**: `/mahjong tsumo` (self-draw win), `/mahjong kan <tile>` (closed or added kan).
+8. A settlement screen pops up when the hand ends; reopen it with `/mahjong settlement`.
+
+> Riichi-only commands: `/mahjong riichi <handIndex>` (declare riichi and discard that tile) and `/mahjong kyuushu` (nine-terminals abortive draw on the first turn). Both work on Riichi tables only.
+
+### Mode 1: Mahjong Soul Riichi (default)
+
+The primary mode, aimed at players familiar with Japanese / Mahjong Soul rules.
+
+- **Match length**: `MAJSOUL_HANCHAN` is a half-game (East 1 through South 4, 8 hands); `MAJSOUL_TONPUU` is East-only (East 1 through East 4, 4 hands).
+- **Points**: everyone starts at 25,000 with a 30,000 return target; final placement is by score.
+- **Red fives**: one red 5 each in man/pin/sou (3 total), each worth one dora.
+- **Winning floor**: 1 han minimum, and you must have a yaku (open tanyao is enabled, so melded hands can still score).
+- **Riichi**: declare when closed and the wall still has draws left; you pay 1000 points and may only discard the tile you just drew.
+
+**Example**: you self-draw a red 5-man after declaring riichi.
+
+```
+Menzen tsumo (1 han) + Riichi (1 han) + your hand's yaku + red-five dora (1 han) ...
+```
+
+Stacking more yaku pushes the han higher; yakuman hands (kokushi, daisangen, etc.) pay a fixed large score. The appeal is betting on riichi, reading discards, and combining yaku.
+
+### Mode 2: GB Mahjong (Chinese Official)
+
+China's official competition rules, the richest in fan types and the highest barrier. Switch with `/mahjong mode GB`.
+
+- **Tiles**: man/pin/sou plus honor tiles (winds and dragons), with flower tiles (plum/orchid/bamboo/chrysanthemum) as bonus draws.
+- **Winning floor**: **8 fan minimum** — hands worth fewer than 8 fan cannot win. This is the biggest difference from the other modes.
+- **Scoring**: fan accumulate per the official fan table; more fan means more points.
+- **Evaluation**: fan are judged by the bundled `GB-Mahjong` native library, following the official interpretation strictly.
+
+**Example**: you build "Half Flush + All Triplets".
+
+```
+Half Flush (6 fan) + All Triplets (6 fan) = 12 fan >= 8 fan -> win allowed
+```
+
+With only "All Triplets (6 fan)" you fall short of 8 fan and **cannot win**, so you must keep building toward a bigger hand. GB pushes you toward complex, high-value hands — ideal for players who want depth.
+
+### Mode 3: Sichuan Mahjong (Bloody Battle)
+
+A fast, intense regional style. Switch with `/mahjong mode SICHUAN`.
+
+- **Suited tiles only**: man/pin/sou, **no honor tiles and no flowers**.
+- **Missing-a-suit (ding que)**: your winning hand must drop one entire suit (e.g. only man and pin, zero sou tiles).
+- **Bloody battle (xue zhan dao di)**: a win does **not** end the hand immediately. Winners step out and the rest keep playing until the third player also wins, then the whole hand settles. So a single hand can produce up to 3 winners.
+- **Any-fan win**: unlike GB's 8-fan floor, Sichuan lets you win once you complete a basic shape.
+- **Fan cap**: capped at 5 fan (32x scoring).
+
+**Main fan types**:
+
+| Fan | Value | Notes |
+| --- | --- | --- |
+| Chicken Hand | 1 | basic shape |
+| All Triplets | 1 | all triplets (pon/kan) |
+| Full Flush | 2 | one suit only |
+| Seven Pairs | 2 | seven pairs |
+| Dragon Seven Pairs | 3 | seven pairs with 1 "root" (four identical) |
+| Double Dragon Seven Pairs | 4 | seven pairs with 2 roots |
+| Deluxe Dragon Seven Pairs | 5 | seven pairs with 3 roots (cap) |
+| All 2-5-8 Pairs | +2 | every tile is 2/5/8 (stacks with all-triplets or seven pairs) |
+| Root | +1 each | each kong adds one fan |
+| Golden Hook | +1 | all-triplets waiting on a single pair tile |
+| Under the Sea / Kong Bloom / Robbing the Kong, etc. | +1 | special winning methods |
+
+**Example**: you drop sou, build a full-flush seven-pair hand, and one set is four pin tiles (1 root).
+
+```
+Full Flush (2 fan) + seven pairs upgraded to Dragon Seven Pairs (3 fan, includes 1 root) = 5 fan -> capped, scored at 32x
+```
+
+**Scoring**: fan map to a base of $2^{fan}$. On a self-draw the other three each pay a share; on a discard win only the discarder pays. That "one player pays for the deal-in" rule makes Sichuan especially tense.
+
 ## Build
 
 ```powershell
