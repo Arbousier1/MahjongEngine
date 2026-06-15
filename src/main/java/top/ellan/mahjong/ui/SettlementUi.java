@@ -235,7 +235,7 @@ public final class SettlementUi {
         if (settlement.getYakuList().isEmpty()) {
             lore.add(messages.render(locale, "ui.gb_no_fan_breakdown"));
         } else {
-            settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fan))));
+            settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fanLabel(session, locale, fan)))));
         }
         SettlementPaymentFormatter.appendBreakdown(lore, locale, session, settlement);
         return lore;
@@ -330,6 +330,18 @@ public final class SettlementUi {
 
     private static String yakuLabel(MahjongTableSession session, Locale locale, String yaku) {
         return translatedLabel(session, locale, "yaku", yaku);
+    }
+
+    private static String fanLabel(MahjongTableSession session, Locale locale, String fan) {
+        // GB/Sichuan fan entries may carry a multiplier suffix such as "GEN x2"; translate
+        // the fan name and re-attach the original count suffix when present.
+        int suffixIndex = fan.lastIndexOf(" x");
+        if (suffixIndex > 0 && fan.substring(suffixIndex + 2).chars().allMatch(Character::isDigit) && !fan.substring(suffixIndex + 2).isEmpty()) {
+            String name = fan.substring(0, suffixIndex);
+            String suffix = fan.substring(suffixIndex);
+            return translatedLabel(session, locale, "fan", name) + suffix;
+        }
+        return translatedLabel(session, locale, "fan", fan);
     }
 
     private static String yakumanLabel(MahjongTableSession session, Locale locale, String yaku) {

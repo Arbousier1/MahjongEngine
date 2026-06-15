@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish a release for (e.g. v0.9.1-beta.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - paper: "1.21.11"
+            dev_bundle: "1.21.11-R0.1-SNAPSHOT"
+            java_target: "21"
+          - paper: "26.2"
+            dev_bundle: "26.2-rc-2.build.9-alpha"
+            java_target: "25"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Run tests on Paper ${{ matrix.paper }}
+        run: ./gradlew test -PmahjongPaperDevBundle=${{ matrix.dev_bundle }} -PmahjongJavaToolchain=25 -PmahjongJavaTarget=${{ matrix.java_target }}
+
+  build-platform:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            artifact: linux
+            gradle: ./gradlew
+            needs_chmod: true
+          - os: windows-latest
+            platform: windows-x86_64
+            artifact: windows
+            gradle: .\gradlew.bat
+            needs_chmod: false
+          - os: macos-15-intel
+            platform: macos-x86_64
+            artifact: macos
+            gradle: ./gradlew
+            needs_chmod: true
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Windows native toolchain
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Add MSYS2 tools to PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle wrapper executable
+        if: matrix.needs_chmod
+        run: chmod +x ./gradlew
+
+      - name: Build platform plugin
+        run: ${{ matrix.gradle }} build -x test
+
+      - name: Upload platform jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: mahjong-paper-jar-${{ matrix.artifact }}
+          path: build/libs/*.jar
+
+  package-universal:
+    needs: build-platform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Download Linux jar
+        uses: actions/download-artifact@v8
+        with:
+          name: mahjong-paper-jar-linux
+          path: artifacts/linux
+
+      - name: Download Windows jar
+        uses: actions/download-artifact@v8
+        with:
+          name: mahjong-paper-jar-windows
+          path: artifacts/windows
+
+      - name: Download macOS jar
+        uses: actions/download-artifact@v8
+        with:
+          name: mahjong-paper-jar-macos
+          path: artifacts/macos
+
+      - name: Assemble universal plugin jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/universal extract/windows extract/macos
+          select_main_jar() {
+            find "$1" -name '*.jar' \
+              ! -name '*-sources.jar' \
+              ! -name '*-dev.jar' \
+              | sort \
+              | head -n 1
+          }
+
+          LINUX_JAR="$(select_main_jar artifacts/linux)"
+          WINDOWS_JAR="$(select_main_jar artifacts/windows)"
+          MACOS_JAR="$(select_main_jar artifacts/macos)"
+
+          if [[ -z "$LINUX_JAR" || -z "$WINDOWS_JAR" || -z "$MACOS_JAR" ]]; then
+            echo "Could not find all platform plugin jars"
+            exit 1
+          fi
+
+          UNIVERSAL_JAR="build/universal/$(basename "$LINUX_JAR" .jar)-universal.jar"
+
+          cp "$LINUX_JAR" "$UNIVERSAL_JAR"
+          (cd extract/windows && jar xf "$GITHUB_WORKSPACE/$WINDOWS_JAR" native)
+          (cd extract/macos && jar xf "$GITHUB_WORKSPACE/$MACOS_JAR" native)
+          jar uf "$UNIVERSAL_JAR" -C extract/windows native -C extract/macos native
+
+      - name: Upload universal jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: mahjong-paper-jars
+          path: build/universal/*.jar
+
+  release:
+    needs: package-universal
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-beta* || "$TAG" == *-alpha* || "$TAG" == *-rc* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract changelog notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          NOTES_FILE="release-notes.md"
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$VERSION" '
+              $0 ~ "^## " ver " " { capture=1; next }
+              capture && /^## / { exit }
+              capture { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+          fi
+          if [[ ! -s "$NOTES_FILE" ]]; then
+            echo "Release ${{ steps.tag.outputs.tag }}" > "$NOTES_FILE"
+          fi
+          echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Download universal jar
+        uses: actions/download-artifact@v8
+        with:
+          name: mahjong-paper-jars
+          path: release-artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body_path: ${{ steps.notes.outputs.file }}
+          prerelease: ${{ steps.tag.outputs.prerelease }}
+          files: release-artifacts/*.jar

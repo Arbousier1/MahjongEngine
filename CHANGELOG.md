@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.1-beta.1 - 2026-06-15
+
+Test release focused on Sichuan Mahjong scoring correctness, fan localization, and rules-engine consolidation.
+
+中文更新日志:
+
+- 四川算番修正: 参考 lonng/nanoserver 实现, 修复七对计分逻辑, 不再对带杠七对重复累加“根”。
+- 七对分层完善: 七对按“根”数量分为四档, 新增双龙七对(2根, 4番)与豪华龙七对(3根, 5番), 与七对(2番)、龙七对(1根, 3番)形成完整阶梯。
+- 将七对支持: 七对牌全部为 2/5/8 时叠加“将对”番, 与对对胡保持同一判定口径。
+- 规则引擎收敛: `GbTableRoundController` 的四川算番改为复用 `DefaultSichuanRulesEngine`, 移除重复的私有算番方法与未使用常量, 让算番口径单一来源。
+- 番名本地化: 结算界面的四川/国标番名接入 i18n, 原本直接显示的英文标签现按 `fan.*` 键翻译, 并保留 `xN` 计数后缀。
+- 翻译补全: 为简体、繁体(台/港/澳)与英文补齐全部四川番名翻译键, 覆盖新增的双龙七对与豪华龙七对。
+- 测试补强: 新增七对分层、将七对与“根不重复计分”的规则引擎单元测试, 通过 i18n 键一致性校验。
+
+English Release Notes:
+
+- Sichuan scoring fix: aligned with lonng/nanoserver so seven-pair hands no longer double-count "roots" when a kong is present.
+- Seven-pair tiers: layered seven pairs by root count, adding Double Dragon Seven Pairs (2 roots, 4 fan) and Deluxe Dragon Seven Pairs (3 roots, 5 fan) alongside Seven Pairs (2 fan) and Dragon Seven Pairs (1 root, 3 fan).
+- All-2/5/8 seven pairs: seven-pair hands made entirely of 2/5/8 tiles now add the "Jiang Dui" fan, matching the all-triplets check.
+- Rules-engine consolidation: `GbTableRoundController` now reuses `DefaultSichuanRulesEngine` for Sichuan scoring, removing the duplicated private scoring methods and unused constants so fan composition has a single source of truth.
+- Fan localization: settlement fan labels are now translated through i18n `fan.*` keys instead of rendering raw English identifiers, preserving any `xN` count suffix.
+- Translations: added every Sichuan fan key across Simplified, Traditional (TW/HK/MO), and English bundles, including the new double/deluxe dragon seven pairs.
+- Tests: added rules-engine unit coverage for seven-pair tiers, all-2/5/8 seven pairs, and root non-duplication; passes i18n key-consistency checks.
+
 ## 0.9.0-beta.1 - 2026-06-15
 
 Test release for single-jar Paper 1.21.11 through 26.2 compatibility, Sichuan flow validation, and render/network performance hardening.
