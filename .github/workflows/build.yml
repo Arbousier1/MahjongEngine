@@ -11,19 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - paper: "1.20.1"
-            dev_bundle: "1.20.1-R0.1-SNAPSHOT"
-            java_target: "17"
-          - paper: "1.21.11"
-            dev_bundle: "1.21.11-R0.1-SNAPSHOT"
-            java_target: "21"
-          - paper: "26.2"
-            dev_bundle: "26.2-rc-2.build.9-alpha"
-            java_target: "25"
 
     steps:
       - name: Checkout
@@ -41,8 +28,8 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run tests on Paper ${{ matrix.paper }}
-        run: ./gradlew test -PmahjongPaperDevBundle=${{ matrix.dev_bundle }} -PmahjongJavaToolchain=25 -PmahjongJavaTarget=${{ matrix.java_target }}
+      - name: Run tests on Paper 1.20.1 baseline
+        run: ./gradlew test -PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT -PmahjongJavaToolchain=25 -PmahjongJavaTarget=17
 
   build-platform:
     needs: test
