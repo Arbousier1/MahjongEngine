@@ -9,7 +9,7 @@ import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.riichi.model.ScoringStick;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.List;
 import java.util.UUID;
 

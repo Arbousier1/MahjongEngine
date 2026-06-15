@@ -1,7 +1,6 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.render.snapshot;
 
 import top.ellan.mahjong.render.layout.TableRenderLayout;
-import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import java.util.Map;
 
 public record TableRenderPrecomputeResult(
@@ -10,4 +9,3 @@ public record TableRenderPrecomputeResult(
     TableRenderLayout.LayoutPlan layout
 ) {
 }
-

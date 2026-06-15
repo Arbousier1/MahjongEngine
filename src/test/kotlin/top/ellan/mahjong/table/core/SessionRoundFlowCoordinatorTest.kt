@@ -1,5 +1,7 @@
 package top.ellan.mahjong.table.core
 
+import top.ellan.mahjong.model.MahjongVariant
+
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.table.core.round.TableRoundController
 import org.mockito.ArgumentMatchers.any

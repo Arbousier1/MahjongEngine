@@ -1,5 +1,7 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongVariant;
+
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.riichi.model.MahjongRule;

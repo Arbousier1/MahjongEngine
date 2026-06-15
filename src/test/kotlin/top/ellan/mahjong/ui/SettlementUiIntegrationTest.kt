@@ -13,7 +13,7 @@ import top.ellan.mahjong.riichi.model.SettlementPayment
 import top.ellan.mahjong.riichi.model.SettlementPaymentType
 import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.MahjongVariant
+import top.ellan.mahjong.model.MahjongVariant
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`

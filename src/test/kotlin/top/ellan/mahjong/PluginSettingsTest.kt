@@ -1,7 +1,7 @@
 package top.ellan.mahjong
 
 import top.ellan.mahjong.config.PluginSettings
-import top.ellan.mahjong.table.core.MahjongVariant
+import top.ellan.mahjong.model.MahjongVariant
 import org.bukkit.configuration.file.YamlConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals

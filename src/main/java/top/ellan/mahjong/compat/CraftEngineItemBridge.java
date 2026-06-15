@@ -1,7 +1,7 @@
 package top.ellan.mahjong.compat;
 
 import top.ellan.mahjong.model.MahjongTile;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;

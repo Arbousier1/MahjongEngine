@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.runtime;
 
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.EnumMap;
 import java.util.Map;
 

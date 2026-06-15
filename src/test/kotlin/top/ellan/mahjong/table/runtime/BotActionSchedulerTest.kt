@@ -4,7 +4,7 @@ import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
 import top.ellan.mahjong.model.MahjongTile
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.MahjongVariant
+import top.ellan.mahjong.model.MahjongVariant
 import top.ellan.mahjong.runtime.PluginTask
 import top.ellan.mahjong.runtime.ServerScheduler
 import org.bukkit.Location

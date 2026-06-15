@@ -190,7 +190,7 @@ public final class TablePlayerFeedbackCoordinator {
             if (this.session.canDeclareKyuushu(playerId)) {
                 actions.add(this.session.plugin().messages().plain(locale, "table.action.kyuushu"));
             }
-            if (this.session.currentVariant() != top.ellan.mahjong.table.core.MahjongVariant.RIICHI) {
+            if (this.session.currentVariant() != top.ellan.mahjong.model.MahjongVariant.RIICHI) {
                 top.ellan.mahjong.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
                 if (this.session.canDeclareTsumo(playerId)) {
                     actions.add(this.session.plugin().messages().plain(locale, "table.action.tsumo"));
@@ -258,7 +258,7 @@ public final class TablePlayerFeedbackCoordinator {
         if (!discardSuggestion.isBlank()) {
             return Component.text(discardSuggestion, NamedTextColor.GRAY);
         }
-        if (this.session.currentVariant() != top.ellan.mahjong.table.core.MahjongVariant.RIICHI) {
+        if (this.session.currentVariant() != top.ellan.mahjong.model.MahjongVariant.RIICHI) {
             top.ellan.mahjong.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
             if (ting.getValid()) {
                 return this.session.plugin().messages().render(

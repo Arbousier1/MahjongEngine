@@ -187,7 +187,7 @@ class TableRendererTest {
         val session = mock(MahjongTableSession::class.java)
 
         `when`(session.center()).thenReturn(Location(null, snapshot.centerX(), snapshot.centerY(), snapshot.centerZ()))
-        `when`(session.currentVariant()).thenReturn(top.ellan.mahjong.table.core.MahjongVariant.RIICHI)
+        `when`(session.currentVariant()).thenReturn(top.ellan.mahjong.model.MahjongVariant.RIICHI)
 
         val spec = renderer.renderHandPublicTileSpecs(session, snapshot, seat, plan, 0).single() as DisplayEntities.TileDisplaySpec
 

@@ -5,7 +5,6 @@ import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.riichi.model.ScoringStick;
-import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import java.util.ArrayList;

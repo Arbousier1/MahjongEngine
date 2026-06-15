@@ -49,7 +49,7 @@ import top.ellan.mahjong.command.subcommand.TsumoSubcommand;
 import top.ellan.mahjong.command.subcommand.UnspectateSubcommand;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 
 public final class MahjongCommand implements CommandExecutor, TabCompleter {
     private final MahjongCommandContext context;

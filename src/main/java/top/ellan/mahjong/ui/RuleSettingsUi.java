@@ -4,7 +4,7 @@ import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

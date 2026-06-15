@@ -9,7 +9,7 @@ import top.ellan.mahjong.config.PluginSettings
 import top.ellan.mahjong.debug.DebugService
 import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.runtime.AsyncService
-import top.ellan.mahjong.table.core.MahjongVariant
+import top.ellan.mahjong.model.MahjongVariant
 import top.ellan.mahjong.table.core.TableFinalStanding
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock

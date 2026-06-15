@@ -7,8 +7,8 @@ import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.layout.DiscardLayout;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.render.layout.WallLayout;
-import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.render.TableRenderSubject;
+import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerActionButtonSnapshot;
@@ -102,7 +102,7 @@ public final class TableRenderer {
     private static final String SEAT_VISUAL_FURNITURE_ID = "mahjongpaper:seat_chair";
     private static final String STICK_FURNITURE_PREFIX = "mahjongpaper:stick_";
 
-    public List<Entity> renderTableStructure(MahjongTableSession session) {
+    public List<Entity> renderTableStructure(TableRenderSubject session) {
         Location center = displayCenter(session);
         TableBounds bounds = tableBoundsFromTiles(center);
         List<Entity> spawned = new ArrayList<>(16);
@@ -180,7 +180,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderTableStructure(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+    public List<Entity> renderTableStructure(TableRenderSubject session, TableRenderLayout.LayoutPlan plan) {
         List<Entity> spawned = new ArrayList<>(16);
         Location tableCenter = toLocation(session, plan.tableCenter());
         double topWidth = plan.borderSpanX() - TABLE_BORDER_THICKNESS;
@@ -256,7 +256,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public TableDiagnostics inspectTable(MahjongTableSession session) {
+    public TableDiagnostics inspectTable(TableRenderSubject session) {
         Location center = displayCenter(session);
         TableBounds bounds = tableBoundsFromTiles(center);
         Location tableCenter = center.clone().set(bounds.centerX(), center.getY(), bounds.centerZ());
@@ -271,7 +271,7 @@ public final class TableRenderer {
         );
     }
 
-    public List<StickDiagnostics> inspectSticks(MahjongTableSession session) {
+    public List<StickDiagnostics> inspectSticks(TableRenderSubject session) {
         Location center = displayCenter(session);
         List<StickDiagnostics> diagnostics = new ArrayList<>();
         for (SeatWind wind : SeatWind.values()) {
@@ -309,7 +309,7 @@ public final class TableRenderer {
         return List.copyOf(diagnostics);
     }
 
-    public List<Entity> renderSeatLabels(MahjongTableSession session, SeatWind wind) {
+    public List<Entity> renderSeatLabels(TableRenderSubject session, SeatWind wind) {
         List<Entity> spawned = new ArrayList<>(4);
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
@@ -338,14 +338,14 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderSeatVisual(MahjongTableSession session, SeatWind wind) {
+    public List<Entity> renderSeatVisual(TableRenderSubject session, SeatWind wind) {
         Location center = displayCenter(session);
         Location handBase = handDirectionBase(center, wind);
         return renderSeatVisual(session, wind, handBase, seatChairAction(session, wind));
     }
 
     public List<Entity> renderSeatLabels(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -376,7 +376,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderSeatLabelSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -406,7 +406,7 @@ public final class TableRenderer {
         return List.copyOf(specs);
     }
 
-    public List<Entity> renderSticks(MahjongTableSession session, SeatWind wind) {
+    public List<Entity> renderSticks(TableRenderSubject session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
         if (playerId == null) {
@@ -424,7 +424,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderWall(MahjongTableSession session) {
+    public List<Entity> renderWall(TableRenderSubject session) {
         if (!session.isStarted()) {
             return List.of();
         }
@@ -463,7 +463,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderWall(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+    public List<Entity> renderWall(TableRenderSubject session, TableRenderLayout.LayoutPlan plan) {
         if (!session.isStarted()) {
             return List.of();
         }
@@ -476,7 +476,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderWallTile(MahjongTableSession session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
+    public List<Entity> renderWallTile(TableRenderSubject session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
         if (!session.isStarted() || wallIndex < 0 || wallIndex >= plan.wallTiles().size()) {
             return List.of();
         }
@@ -484,7 +484,7 @@ public final class TableRenderer {
         return placement == null ? List.of() : List.of(spawnPublicTile(session, placement));
     }
 
-    public List<DisplayEntities.EntitySpec> renderWallTileSpecs(MahjongTableSession session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
+    public List<DisplayEntities.EntitySpec> renderWallTileSpecs(TableRenderSubject session, TableRenderLayout.LayoutPlan plan, int wallIndex) {
         if (!session.isStarted() || wallIndex < 0 || wallIndex >= plan.wallTiles().size()) {
             return List.of();
         }
@@ -493,7 +493,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderSticks(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -507,7 +507,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderDora(MahjongTableSession session) {
+    public List<Entity> renderDora(TableRenderSubject session) {
         if (!session.isStarted()) {
             return List.of();
         }
@@ -523,7 +523,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderDora(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+    public List<Entity> renderDora(TableRenderSubject session, TableRenderLayout.LayoutPlan plan) {
         if (!session.isStarted()) {
             return List.of();
         }
@@ -534,7 +534,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<DisplayEntities.EntitySpec> renderDoraSpecs(MahjongTableSession session, TableRenderLayout.LayoutPlan plan) {
+    public List<DisplayEntities.EntitySpec> renderDoraSpecs(TableRenderSubject session, TableRenderLayout.LayoutPlan plan) {
         if (!session.isStarted()) {
             return List.of();
         }
@@ -545,7 +545,7 @@ public final class TableRenderer {
         return List.copyOf(specs);
     }
 
-    public List<Entity> renderCenterLabel(MahjongTableSession session) {
+    public List<Entity> renderCenterLabel(TableRenderSubject session) {
         Location center = displayCenter(session);
         List<Entity> spawned = new ArrayList<>(2);
         spawned.add(DisplayEntities.spawnLabel(
@@ -561,7 +561,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderCenterLabel(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableRenderSnapshot snapshot,
         TableRenderLayout.LayoutPlan plan
     ) {
@@ -580,7 +580,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderCenterLabelSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableRenderSnapshot snapshot,
         TableRenderLayout.LayoutPlan plan
     ) {
@@ -609,7 +609,7 @@ public final class TableRenderer {
         return List.copyOf(specs);
     }
 
-    public List<Entity> renderViewerOverlay(MahjongTableSession session, Player viewer) {
+    public List<Entity> renderViewerOverlay(TableRenderSubject session, Player viewer) {
         Location center = displayCenter(session);
         UUID viewerId = viewer.getUniqueId();
         List<Entity> spawned = new ArrayList<>(session.isSpectator(viewerId) ? 5 : 1);
@@ -636,7 +636,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<Entity> renderViewerOverlay(MahjongTableSession session, TableViewerOverlaySnapshot snapshot) {
+    public List<Entity> renderViewerOverlay(TableRenderSubject session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
         List<Entity> spawned = new ArrayList<>(snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size());
         if (session.isStarted() || snapshot.spectator()) {
@@ -663,7 +663,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderDiscards(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -678,7 +678,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderDiscardTile(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int discardIndex
@@ -690,7 +690,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderDiscardTileSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int discardIndex
@@ -702,7 +702,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderHandPrivate(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -745,7 +745,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderHandPrivateTile(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
@@ -787,7 +787,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderHandPublic(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableRenderSnapshot snapshot,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
@@ -817,7 +817,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderHandPublicTile(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableRenderSnapshot snapshot,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
@@ -844,7 +844,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderHandPublicTileSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableRenderSnapshot snapshot,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
@@ -869,7 +869,7 @@ public final class TableRenderer {
         ));
     }
 
-    public List<Entity> renderMelds(MahjongTableSession session, SeatWind wind) {
+    public List<Entity> renderMelds(TableRenderSubject session, SeatWind wind) {
         Location center = displayCenter(session);
         UUID playerId = session.playerAt(wind);
         if (playerId == null) {
@@ -971,7 +971,7 @@ public final class TableRenderer {
     }
 
     public List<Entity> renderMelds(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -986,7 +986,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderHandPrivateTileSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int tileIndex
@@ -1024,7 +1024,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderMeldSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan
     ) {
@@ -1039,7 +1039,7 @@ public final class TableRenderer {
     }
 
     public List<DisplayEntities.EntitySpec> renderMeldTileSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableSeatRenderSnapshot seat,
         TableRenderLayout.SeatLayoutPlan plan,
         int meldIndex
@@ -1050,7 +1050,7 @@ public final class TableRenderer {
         return List.of(publicTileSpec(session, plan.meldPlacements().get(meldIndex)));
     }
 
-    private static Location displayCenter(MahjongTableSession session) {
+    private static Location displayCenter(TableRenderSubject session) {
         return session.center().add(0.0D, DISPLAY_CENTER_Y_OFFSET, 0.0D);
     }
 
@@ -1058,7 +1058,7 @@ public final class TableRenderer {
         return tileLocation.clone().subtract(0.0D, UPRIGHT_TILE_Y, 0.0D);
     }
 
-    public Location seatAnchorLocation(MahjongTableSession session, SeatWind wind) {
+    public Location seatAnchorLocation(TableRenderSubject session, SeatWind wind) {
         return seatAnchorLocation(handDirectionBase(displayCenter(session), wind), wind);
     }
 
@@ -1085,7 +1085,7 @@ public final class TableRenderer {
     }
 
     private static List<Entity> renderSeatVisual(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         Location handBase,
         DisplayClickAction action
@@ -1143,7 +1143,7 @@ public final class TableRenderer {
         return spawned;
     }
 
-    public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(MahjongTableSession session, TableViewerOverlaySnapshot snapshot) {
+    public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(TableRenderSubject session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
         int actionButtonSpecCount = snapshot.actionButtons().size() * 2;
         List<DisplayEntities.EntitySpec> specs = new ArrayList<>(
@@ -1180,7 +1180,7 @@ public final class TableRenderer {
     }
 
     private void appendViewerActionButtonSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         TableViewerOverlaySnapshot snapshot,
         Location center,
         List<DisplayEntities.EntitySpec> specs
@@ -1265,16 +1265,16 @@ public final class TableRenderer {
     }
 
     private static Entity spawnSeatFurniture(
-        MahjongTableSession session,
+        TableRenderSubject session,
         Location location,
         SeatWind wind,
         String furnitureId,
         DisplayClickAction action
     ) {
-        if (session.plugin().craftEngine() == null || furnitureId == null || furnitureId.isBlank()) {
+        if (session.craftEngine() == null || furnitureId == null || furnitureId.isBlank()) {
             return null;
         }
-        return session.plugin().craftEngine().placeSeatFurniture(
+        return session.craftEngine().placeSeatFurniture(
             seatFurnitureAnchor(location, wind, furnitureId),
             furnitureId,
             action
@@ -1288,16 +1288,16 @@ public final class TableRenderer {
         return placed;
     }
 
-    private static String configuredTableFurnitureId(MahjongTableSession session) {
-        return configuredFurnitureId(session, session.plugin().settings().craftEngineTableFurnitureId());
+    private static String configuredTableFurnitureId(TableRenderSubject session) {
+        return configuredFurnitureId(session, session.settings().craftEngineTableFurnitureId());
     }
 
-    private static String configuredSeatFurnitureId(MahjongTableSession session) {
-        return configuredFurnitureId(session, session.plugin().settings().craftEngineSeatFurnitureId());
+    private static String configuredSeatFurnitureId(TableRenderSubject session) {
+        return configuredFurnitureId(session, session.settings().craftEngineSeatFurnitureId());
     }
 
-    private static String configuredFurnitureId(MahjongTableSession session, String configuredValue) {
-        if (session.plugin().craftEngine() == null) {
+    private static String configuredFurnitureId(TableRenderSubject session, String configuredValue) {
+        if (session.craftEngine() == null) {
             return null;
         }
         if (configuredValue == null) {
@@ -1307,20 +1307,20 @@ public final class TableRenderer {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private List<Entity> renderTableHitboxes(MahjongTableSession session, Location tableCenter, boolean usingFurnitureVisual) {
+    private List<Entity> renderTableHitboxes(TableRenderSubject session, Location tableCenter, boolean usingFurnitureVisual) {
         if (usingFurnitureVisual) {
             return List.of();
         }
-        Entity furnitureHitbox = session.plugin().craftEngine().placeTableHitbox(tableCenter.clone());
+        Entity furnitureHitbox = session.craftEngine().placeTableHitbox(tableCenter.clone());
         return furnitureHitbox == null ? List.of() : List.of(furnitureHitbox);
     }
 
-    private static Entity spawnTableVisual(MahjongTableSession session, Location tableCenter) {
+    private static Entity spawnTableVisual(TableRenderSubject session, Location tableCenter) {
         String tableFurnitureId = configuredTableFurnitureId(session);
         if (tableFurnitureId == null) {
             return null;
         }
-        return session.plugin().craftEngine().placeFurniture(tableFurnitureAnchor(tableCenter, tableFurnitureId), tableFurnitureId);
+        return session.craftEngine().placeFurniture(tableFurnitureAnchor(tableCenter, tableFurnitureId), tableFurnitureId);
     }
 
     private static Location tableVisualAnchor(Location tableCenter) {
@@ -1349,7 +1349,7 @@ public final class TableRenderer {
         return anchor.clone().subtract(0.0D, CUSTOM_FURNITURE_ORIGIN_Y_OFFSET, 0.0D);
     }
 
-    private static DisplayClickAction seatVisualAction(MahjongTableSession session, SeatWind wind) {
+    private static DisplayClickAction seatVisualAction(TableRenderSubject session, SeatWind wind) {
         if (session == null || wind == null) {
             return null;
         }
@@ -1363,24 +1363,24 @@ public final class TableRenderer {
         return DisplayClickAction.toggleReady(session.id(), wind);
     }
 
-    private static Component seatActionLabel(MahjongTableSession session, DisplayClickAction action, boolean ready) {
+    private static Component seatActionLabel(TableRenderSubject session, DisplayClickAction action, boolean ready) {
         if (action == null || session == null) {
             return Component.empty();
         }
         java.util.Locale locale = session.publicLocale();
         return switch (action.actionType()) {
             case JOIN_SEAT -> Component.text(
-                "[" + session.plugin().messages().plain(locale, "table.action.join_seat") + "]",
+                "[" + session.messages().plain(locale, "table.action.join_seat") + "]",
                 NamedTextColor.GREEN
             ).decorate(TextDecoration.BOLD);
             case TOGGLE_READY -> Component.text(
-                "[" + session.plugin().messages().plain(locale, ready ? "table.action.unready" : "table.action.ready") + "]",
+                "[" + session.messages().plain(locale, ready ? "table.action.unready" : "table.action.ready") + "]",
                 ready ? NamedTextColor.YELLOW : NamedTextColor.AQUA
             ).decorate(TextDecoration.BOLD);
             case PLAYER_COMMAND -> {
                 if ("lobby:leave".equalsIgnoreCase(action.command())) {
                     yield Component.text(
-                        "[" + session.plugin().messages().plain(locale, "table.action.leave") + "]",
+                        "[" + session.messages().plain(locale, "table.action.leave") + "]",
                         NamedTextColor.RED
                     ).decorate(TextDecoration.BOLD);
                 }
@@ -1424,7 +1424,7 @@ public final class TableRenderer {
     }
 
     private void appendSeatActionEntities(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         UUID seatedPlayerId,
         boolean ready,
@@ -1462,7 +1462,7 @@ public final class TableRenderer {
     }
 
     private void appendSeatActionSpecs(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         UUID seatedPlayerId,
         boolean ready,
@@ -1500,7 +1500,7 @@ public final class TableRenderer {
     }
 
     private void appendSeatActionEntity(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         UUID seatedPlayerId,
         Location handBase,
@@ -1541,7 +1541,7 @@ public final class TableRenderer {
     }
 
     private void appendSeatActionSpec(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         UUID seatedPlayerId,
         Location handBase,
@@ -1592,7 +1592,7 @@ public final class TableRenderer {
         return plain == null || plain.isBlank();
     }
 
-    private static DisplayClickAction seatChairAction(MahjongTableSession session, SeatWind wind) {
+    private static DisplayClickAction seatChairAction(TableRenderSubject session, SeatWind wind) {
         if (session == null || wind == null) {
             return null;
         }
@@ -1600,7 +1600,7 @@ public final class TableRenderer {
     }
 
     private static Entity spawnPublicTile(
-        MahjongTableSession session,
+        TableRenderSubject session,
         Location location,
         float yaw,
         MahjongTile tile,
@@ -1621,11 +1621,11 @@ public final class TableRenderer {
         );
     }
 
-    private static Entity spawnPublicTile(MahjongTableSession session, TableRenderLayout.TilePlacement placement) {
+    private static Entity spawnPublicTile(TableRenderSubject session, TableRenderLayout.TilePlacement placement) {
         return spawnPublicTile(session, toLocation(session, placement.point()), placement.yaw(), placement.tile(), placement.pose());
     }
 
-    private static DisplayEntities.TileDisplaySpec publicTileSpec(MahjongTableSession session, TableRenderLayout.TilePlacement placement) {
+    private static DisplayEntities.TileDisplaySpec publicTileSpec(TableRenderSubject session, TableRenderLayout.TilePlacement placement) {
         return DisplayEntities.tileDisplaySpec(
             toLocation(session, placement.point()),
             placement.yaw(),
@@ -1638,7 +1638,7 @@ public final class TableRenderer {
     }
 
     private static Entity spawnCenterLastDiscardTile(
-        MahjongTableSession session,
+        TableRenderSubject session,
         Location center,
         MahjongTile tile
     ) {
@@ -1658,7 +1658,7 @@ public final class TableRenderer {
         );
     }
 
-    private static Location toLocation(MahjongTableSession session, TableRenderLayout.Point point) {
+    private static Location toLocation(TableRenderSubject session, TableRenderLayout.Point point) {
         Location origin = session.center();
         return new Location(origin.getWorld(), point.x(), point.y(), point.z());
     }
@@ -1691,14 +1691,14 @@ public final class TableRenderer {
         throw new IllegalStateException("Missing meld start for display direction: " + direction);
     }
 
-    private static int wallBreakTileIndex(MahjongTableSession session) {
+    private static int wallBreakTileIndex(TableRenderSubject session) {
         int seatCount = SeatWind.values().length;
         int dicePoints = session.dicePoints();
         int directionIndex = 4 - (((dicePoints % seatCount) - 1 + session.roundIndex()) % seatCount);
         return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + dicePoints * 2, TOTAL_WALL_TILES);
     }
 
-    private static int deadWallAnchorSlot(MahjongTableSession session) {
+    private static int deadWallAnchorSlot(TableRenderSubject session) {
         return Math.floorMod(wallBreakTileIndex(session) - DEAD_WALL_SIZE, TOTAL_WALL_TILES);
     }
 
@@ -1724,7 +1724,7 @@ public final class TableRenderer {
         return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
     }
 
-    private static List<DeadWallPlacement> deadWallPlacements(Location center, MahjongTableSession session) {
+    private static List<DeadWallPlacement> deadWallPlacements(Location center, TableRenderSubject session) {
         int breakTileIndex = wallBreakTileIndex(session);
         List<DeadWallPlacementMutable> placements = new ArrayList<>(DEAD_WALL_SIZE);
         for (int i = 0; i < DEAD_WALL_SIZE; i++) {
@@ -1804,10 +1804,10 @@ public final class TableRenderer {
         return (index - (size - 1) / 2.0D) * step;
     }
 
-    private static Entity spawnStick(MahjongTableSession session, Location center, boolean longOnX, ScoringStick stick) {
-        Entity furniture = session.plugin().craftEngine() == null
+    private static Entity spawnStick(TableRenderSubject session, Location center, boolean longOnX, ScoringStick stick) {
+        Entity furniture = session.craftEngine() == null
             ? null
-            : session.plugin().craftEngine().placeFurniture(center, stickFurnitureId(longOnX, stick));
+            : session.craftEngine().placeFurniture(center, stickFurnitureId(longOnX, stick));
         if (furniture != null) {
             return furniture;
         }

@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core;
+package top.ellan.mahjong.model;
 
 import java.util.Locale;
 
@@ -11,4 +11,3 @@ public enum MahjongVariant {
         return "rule.variant." + this.name().toLowerCase(Locale.ROOT);
     }
 }
-

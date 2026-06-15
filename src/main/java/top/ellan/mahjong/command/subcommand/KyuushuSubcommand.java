@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 import top.ellan.mahjong.command.MahjongCommandContext;
 import top.ellan.mahjong.command.MahjongSubcommand;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 
 public final class KyuushuSubcommand extends AbstractMahjongSubcommand {
     public KyuushuSubcommand(MahjongCommandContext context) { super(context); }

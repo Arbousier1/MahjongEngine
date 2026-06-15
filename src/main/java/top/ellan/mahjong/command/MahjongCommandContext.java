@@ -23,8 +23,8 @@ import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.riichi.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
-import top.ellan.mahjong.table.core.TableRenderPrecomputeResult;
+import top.ellan.mahjong.model.MahjongVariant;
+import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 

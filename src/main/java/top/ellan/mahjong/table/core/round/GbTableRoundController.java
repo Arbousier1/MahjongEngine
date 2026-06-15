@@ -28,7 +28,7 @@ import top.ellan.mahjong.riichi.model.ScoreSettlement;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.riichi.model.Wind;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;

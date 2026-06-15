@@ -2,7 +2,7 @@ package top.ellan.mahjong.render.display;
 
 import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.model.MahjongTile;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import net.kyori.adventure.text.Component;
 import java.util.Collection;
 import java.util.List;

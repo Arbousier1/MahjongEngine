@@ -1,8 +1,8 @@
 package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.TableRenderSubject;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
-import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ public final class TableRegionFingerprintService {
     private static final String REGION_DORA = "dora";
     private static final String REGION_CENTER = "center";
 
-    public Map<String, Long> precomputeRegionFingerprints(MahjongTableSession session, TableRenderSnapshot snapshot) {
+    public Map<String, Long> precomputeRegionFingerprints(TableRenderSubject session, TableRenderSnapshot snapshot) {
         Map<String, Long> fingerprints = new HashMap<>();
         fingerprints.put(REGION_TABLE, this.tableFingerprint(session, snapshot));
         fingerprints.put(REGION_WALL, this.wallFingerprint(snapshot));
@@ -131,14 +131,14 @@ public final class TableRegionFingerprintService {
             .value();
     }
 
-    private long tableFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot) {
+    private long tableFingerprint(TableRenderSubject session, TableRenderSnapshot snapshot) {
         return fingerprintBuilder(48)
             .field("table")
             .field(snapshot.worldName())
             .field((int) Math.floor(snapshot.centerX()))
             .field((int) Math.floor(snapshot.centerY()))
             .field((int) Math.floor(snapshot.centerZ()))
-            .field(Objects.toString(session.plugin().settings().craftEngineTableFurnitureId(), ""))
+            .field(Objects.toString(session.settings().craftEngineTableFurnitureId(), ""))
             .value();
     }
 
@@ -167,7 +167,7 @@ public final class TableRegionFingerprintService {
             .value();
     }
 
-    private long seatLabelFingerprint(MahjongTableSession session, TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
+    private long seatLabelFingerprint(TableRenderSubject session, TableRenderSnapshot snapshot, TableSeatRenderSnapshot seat) {
         return fingerprintBuilder(128)
             .field("labels")
             .field("depth-v2")
@@ -184,12 +184,12 @@ public final class TableRegionFingerprintService {
             .value();
     }
 
-    private long seatVisualFingerprint(MahjongTableSession session, SeatWind wind) {
+    private long seatVisualFingerprint(TableRenderSubject session, SeatWind wind) {
         return fingerprintBuilder(96)
             .field("visual")
             .field("chair-stable-v2")
             .field(wind.name())
-            .field(Objects.toString(session.plugin().settings().craftEngineSeatFurnitureId(), ""))
+            .field(Objects.toString(session.settings().craftEngineSeatFurnitureId(), ""))
             .value();
     }
 

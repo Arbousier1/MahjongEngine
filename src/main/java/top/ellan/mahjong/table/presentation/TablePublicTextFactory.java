@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import java.util.Locale;

@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.render.TableRenderSubject;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import java.util.EnumMap;
@@ -17,7 +17,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 public final class TableRenderSnapshotFactory {
-    public TableRenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
+    public TableRenderSnapshot create(TableRenderSubject session, long version, long cancellationNonce) {
         Location tableCenter = session.center();
         boolean started = session.isStarted();
         List<UUID> onlineViewerIds = session.viewers().stream()
@@ -64,7 +64,7 @@ public final class TableRenderSnapshotFactory {
     }
 
     private TableSeatRenderSnapshot captureSeatSnapshot(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         Set<UUID> onlineViewerIdSet,
         Map<UUID, String> viewerMembershipSignatures,
@@ -111,6 +111,5 @@ public final class TableRenderSnapshotFactory {
             .toList();
     }
 }
-
 
 

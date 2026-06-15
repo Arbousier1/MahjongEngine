@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.core.round;
 
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 
 public enum GbRuleProfile {
     GB(MahjongVariant.GB, "GB_MAHJONG", 8, true, true, false),

@@ -1,5 +1,7 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongVariant;
+
 import top.ellan.mahjong.model.SeatWind;
 import java.util.Locale;
 import java.util.UUID;

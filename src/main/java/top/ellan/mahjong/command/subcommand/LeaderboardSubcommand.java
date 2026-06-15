@@ -5,7 +5,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import top.ellan.mahjong.command.MahjongCommandContext;
 import top.ellan.mahjong.command.MahjongSubcommand;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 
 public final class LeaderboardSubcommand extends AbstractMahjongSubcommand {
     public LeaderboardSubcommand(MahjongCommandContext context) { super(context); }

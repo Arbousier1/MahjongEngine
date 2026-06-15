@@ -6,7 +6,7 @@ import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.table.core.MahjongTableManager;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.lang.reflect.Method;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;

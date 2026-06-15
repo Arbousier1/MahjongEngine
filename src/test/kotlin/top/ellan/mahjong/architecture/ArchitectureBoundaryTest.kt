@@ -27,6 +27,25 @@ class ArchitectureBoundaryTest {
         )
     }
 
+    @Test
+    fun `render package stays free of table dependencies`() {
+        val violations = sourceFiles(
+            "src/main/java/top/ellan/mahjong/render",
+            "src/main/kotlin/top/ellan/mahjong/render"
+        ).flatMap { file ->
+            Files.readString(file).lineSequence()
+                .withIndex()
+                .filter { (_, line) -> forbiddenRenderReferences.any(line::contains) }
+                .map { (index, line) -> "${projectRoot.relativize(file)}:${index + 1}: $line" }
+                .toList()
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Render package should not depend on table internals:\n${violations.joinToString("\n")}"
+        )
+    }
+
     private companion object {
         val projectRoot: Path = Path.of("").toAbsolutePath()
         val forbiddenRuleImports = listOf(
@@ -43,6 +62,9 @@ class ArchitectureBoundaryTest {
             "import top.ellan.mahjong.render.",
             "import top.ellan.mahjong.runtime.",
             "import top.ellan.mahjong.ui."
+        )
+        val forbiddenRenderReferences = listOf(
+            "top.ellan.mahjong.table."
         )
 
         fun sourceFiles(vararg roots: String): List<Path> = roots.flatMap { root ->

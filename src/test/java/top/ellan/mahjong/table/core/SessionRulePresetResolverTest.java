@@ -1,5 +1,7 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongVariant;
+
 import org.junit.jupiter.api.Test;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 

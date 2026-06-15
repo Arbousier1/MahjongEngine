@@ -1,12 +1,19 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongVariant;
+
 import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.compat.CraftEngineService;
+import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.gb.runtime.GbNativeRulesGateway;
+import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.i18n.LocalizedMessages;
 import top.ellan.mahjong.model.SeatWind;
+import top.ellan.mahjong.render.TableRenderSubject;
 import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
 import top.ellan.mahjong.render.scene.TableRenderer;
+import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
@@ -60,7 +67,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-public final class MahjongTableSession {
+public final class MahjongTableSession implements TableRenderSubject {
     private static final long PUBLIC_ACTION_DISPLAY_TICKS = 40L;
     private final MahjongPaperPlugin plugin;
     private final String id;
@@ -168,6 +175,21 @@ public final class MahjongTableSession {
 
     public MahjongPaperPlugin plugin() {
         return this.plugin;
+    }
+
+    @Override
+    public CraftEngineService craftEngine() {
+        return this.plugin.craftEngine();
+    }
+
+    @Override
+    public PluginSettings settings() {
+        return this.plugin.settings();
+    }
+
+    @Override
+    public MessageService messages() {
+        return this.plugin.messages();
     }
 
     public String id() {
@@ -1811,7 +1833,6 @@ public final class MahjongTableSession {
     ) {
     }
 }
-
 
 
 
