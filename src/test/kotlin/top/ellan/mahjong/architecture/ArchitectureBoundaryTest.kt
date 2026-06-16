@@ -173,6 +173,35 @@ class ArchitectureBoundaryTest {
         )
     }
 
+    @Test
+    fun `World spawn callers do not use the removed Consumer overload`() {
+        // Paper 1.21+ removed the deprecated org.bukkit.util.Consumer overload of
+        // World.spawn(Location, Class, Consumer). Lambdas compiled against the 1.20
+        // dev bundle were silently bound to that removed overload, breaking every
+        // render tick on 1.21+ servers (see commit history around v1.1.1). To prevent
+        // a regression, reject any call site that supplies a third argument to
+        // World.spawn(Location, Class, ...). The portable two-argument form is fine.
+        val pattern = Regex("""\.spawn\s*\(\s*[^)]*\.class\s*,\s*[A-Za-z_]""")
+        val violations = mutableListOf<String>()
+        sourceFiles(
+            "src/main/java",
+            "src/main/kotlin"
+        ).forEach { file ->
+            val text = Files.readString(file)
+            // Slice line by line so the violation report points at the offending site.
+            text.lineSequence().forEachIndexed { index, line ->
+                if (pattern.containsMatchIn(line)) {
+                    violations += "${projectRoot.relativize(file)}:${index + 1}: $line"
+                }
+            }
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Use World.spawn(Location, Class) and configure the entity afterwards; the Consumer overload was removed in Paper 1.21:\n${violations.joinToString("\n")}"
+        )
+    }
+
     private companion object {
         data class LineBudget(val path: String, val maxLines: Int)
         data class PublicMethodBudget(val path: String, val maxPublicMembers: Int)

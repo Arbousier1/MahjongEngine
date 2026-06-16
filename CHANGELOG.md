@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.2 - 2026-06-16
+
+Follow-up hotfix to 1.1.1. The Paper 1.21+ `NoSuchMethodError` regression had two more call sites that were not migrated in 1.1.1.
+
+中文更新日志:
+
+- 漏修补全: 1.1.1 只迁移了 `DisplayEntities` 里的 4 处 `World.spawn(..., Consumer)`，但 `TableDiceAnimationCoordinator` 里另有 2 处（开局骰子动画的骰子实体和结果文本），它们仍然命中已被移除的 `org.bukkit.util.Consumer` 重载。在 Paper 1.21+ 上一执行 `/mahjong botmatch` 等会触发开局动画的命令就抛 `NoSuchMethodError`。本版本把这两处改为同样的 spawn-then-configure 模式。
+- 防回归门禁: 新增 `ArchitectureBoundaryTest.World spawn callers do not use the removed Consumer overload`，扫描所有生产 Java/Kotlin 源码，禁止任何 `World.spawn(Location, Class, lambda)` 三参数调用形式。下次有人无意把 lambda 写回 spawn 调用就会在 CI 失败，避免再次引入相同 bug。
+
+English Release Notes:
+
+- Missed callsites: 1.1.1 only migrated the four `World.spawn(..., Consumer)` calls in `DisplayEntities`, but `TableDiceAnimationCoordinator` had two more (the opening-roll dice entities and the result text label) that still bound to the removed `org.bukkit.util.Consumer` overload. Any command that triggers the opening dice animation, e.g. `/mahjong botmatch`, threw `NoSuchMethodError` on Paper 1.21+. Both sites now use the same spawn-then-configure pattern.
+- Regression gate: added `ArchitectureBoundaryTest.World spawn callers do not use the removed Consumer overload`. It scans every production Java/Kotlin source file and rejects any three-argument `World.spawn(Location, Class, lambda)` call site, so the same class of bug fails CI before it can ship again.
+
 ## 1.1.1 - 2026-06-16
 
 Hotfix release for Paper 1.21+ servers. 1.1.0 was unusable on Paper 1.21.x because every entity render path tripped a `NoSuchMethodError`.

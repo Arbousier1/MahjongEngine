@@ -166,22 +166,22 @@ public final class TableDiceAnimationCoordinator {
     }
 
     private TextDisplay spawnResultLabel(Component text) {
-        return this.world.spawn(
+        // See spawnDie: avoid the org.bukkit.util.Consumer overload that 1.21+ removed.
+        TextDisplay spawned = this.world.spawn(
             this.center.clone().add(0.0D, RESULT_LABEL_Y, 0.0D),
-            TextDisplay.class,
-            spawned -> {
-                spawned.setPersistent(false);
-                spawned.text(text);
-                spawned.setSeeThrough(false);
-                spawned.setShadowed(true);
-                spawned.setDefaultBackground(false);
-                spawned.setBillboard(Display.Billboard.CENTER);
-                spawned.setLineWidth(180);
-                spawned.setViewRange(32.0F);
-                spawned.setBrightness(new Display.Brightness(15, 15));
-                spawned.setBackgroundColor(Color.fromARGB(104, 20, 20, 24));
-            }
+            TextDisplay.class
         );
+        spawned.setPersistent(false);
+        spawned.text(text);
+        spawned.setSeeThrough(false);
+        spawned.setShadowed(true);
+        spawned.setDefaultBackground(false);
+        spawned.setBillboard(Display.Billboard.CENTER);
+        spawned.setLineWidth(180);
+        spawned.setViewRange(32.0F);
+        spawned.setBrightness(new Display.Brightness(15, 15));
+        spawned.setBackgroundColor(Color.fromARGB(104, 20, 20, 24));
+        return spawned;
     }
 
     private void animateRollingDie(ItemDisplay display, double baseX, long tick, double driftZ, double tiltBias, float yawBias) {
@@ -215,27 +215,31 @@ public final class TableDiceAnimationCoordinator {
     }
 
     private ItemDisplay spawnDie(Location location, int point) {
-        return this.world.spawn(location, ItemDisplay.class, spawned -> {
-            spawned.setPersistent(false);
-            spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
-            spawned.setInterpolationDuration(1);
-            spawned.setInterpolationDelay(0);
-            PaperCompatibility.setTeleportDuration(spawned, 1);
-            spawned.setViewRange(20.0F);
-            spawned.setShadowRadius(0.0F);
-            spawned.setShadowStrength(0.0F);
-            spawned.setDisplayWidth(0.45F * DIE_SCALE);
-            spawned.setDisplayHeight(0.45F * DIE_SCALE);
-            spawned.setBillboard(Display.Billboard.FIXED);
-            spawned.setBrightness(new Display.Brightness(15, 15));
-            spawned.setItemStack(diceItem(point));
-            spawned.setTransformation(new Transformation(
-                this.zeroTranslation,
-                this.identityRotation,
-                this.dieScaleVector,
-                this.identityRotation
-            ));
-        });
+        // World.spawn(Location, Class, Consumer) binds to the deprecated
+        // org.bukkit.util.Consumer overload under the 1.20.1 dev bundle, which
+        // Paper 1.21+ has removed. Use the long-stable two-argument spawn and
+        // configure the entity afterwards. See DisplayEntities for the same fix.
+        ItemDisplay spawned = this.world.spawn(location, ItemDisplay.class);
+        spawned.setPersistent(false);
+        spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
+        spawned.setInterpolationDuration(1);
+        spawned.setInterpolationDelay(0);
+        PaperCompatibility.setTeleportDuration(spawned, 1);
+        spawned.setViewRange(20.0F);
+        spawned.setShadowRadius(0.0F);
+        spawned.setShadowStrength(0.0F);
+        spawned.setDisplayWidth(0.45F * DIE_SCALE);
+        spawned.setDisplayHeight(0.45F * DIE_SCALE);
+        spawned.setBillboard(Display.Billboard.FIXED);
+        spawned.setBrightness(new Display.Brightness(15, 15));
+        spawned.setItemStack(diceItem(point));
+        spawned.setTransformation(new Transformation(
+            this.zeroTranslation,
+            this.identityRotation,
+            this.dieScaleVector,
+            this.identityRotation
+        ));
+        return spawned;
     }
 
     private Location baseLocation(double xOffset) {
