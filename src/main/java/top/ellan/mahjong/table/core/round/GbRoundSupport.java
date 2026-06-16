@@ -9,6 +9,8 @@ import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
 final class GbRoundSupport {
+    static final int DEAD_WALL_SIZE = 14;
+
     private GbRoundSupport() {
     }
 
@@ -190,13 +192,17 @@ final class GbRoundSupport {
     }
 
     static List<MahjongTile> reorderWallForDice(List<MahjongTile> wall, int dicePoints, int roundIndex) {
+        return reorderWallForDice(wall, dicePoints, dicePoints, roundIndex);
+    }
+
+    static List<MahjongTile> reorderWallForDice(List<MahjongTile> wall, int directionDicePoints, int breakDicePoints, int roundIndex) {
         if (wall == null || wall.isEmpty()) {
             return List.of();
         }
         int seatCount = SeatWind.values().length;
         int wallTilesPerSide = wall.size() / seatCount;
-        int directionIndex = seatCount - (((dicePoints % seatCount) - 1 + roundIndex) % seatCount);
-        int startingStackIndex = 2 * dicePoints;
+        int directionIndex = seatCount - (((directionDicePoints % seatCount) - 1 + roundIndex) % seatCount);
+        int startingStackIndex = 2 * breakDicePoints;
         List<MahjongTile> reordered = new ArrayList<>(wall.size());
         for (int i = 0; i < wall.size(); i++) {
             int tileIndex = Math.floorMod(directionIndex * wallTilesPerSide + startingStackIndex + i, wall.size());

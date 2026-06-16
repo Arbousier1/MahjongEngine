@@ -379,6 +379,7 @@ class CorePerformanceBenchmarksTest {
             70,
             1,
             7,
+            7,
             1,
             2,
             SeatWind.SOUTH,

@@ -48,6 +48,7 @@ public final class TableRenderSnapshotFactory {
             session.remainingWallCount(),
             session.kanCount(),
             session.dicePoints(),
+            session.breakDicePoints(),
             session.roundIndex(),
             session.honbaCount(),
             session.dealerSeat(),

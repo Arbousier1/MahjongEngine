@@ -17,6 +17,7 @@ public record TableRenderSnapshot(
     int remainingWallCount,
     int kanCount,
     int dicePoints,
+    int breakDicePoints,
     int roundIndex,
     int honbaCount,
     SeatWind dealerSeat,
@@ -30,6 +31,10 @@ public record TableRenderSnapshot(
     List<top.ellan.mahjong.model.MahjongTile> doraIndicators,
     EnumMap<SeatWind, TableSeatRenderSnapshot> seats
 ) {
+    public int breakDicePoints() {
+        return this.breakDicePoints;
+    }
+
     public TableSeatRenderSnapshot seat(SeatWind wind) {
         return this.seats.get(wind);
     }

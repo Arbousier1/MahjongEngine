@@ -55,12 +55,14 @@ class GbTableRoundControllerTest {
     fun `gb round rolls dice and breaks wall from the matching side`() {
         val sourceWall = deterministicWall()
         val controller = controller(wall = sourceWall)
-        controller.setPendingDiceRoll(OpeningDiceRoll(3, 4))
+        controller.setPendingDiceRoll(OpeningDiceRoll(3, 4, 2, 5))
 
         controller.startRound()
 
         assertEquals(7, controller.dicePoints())
-        assertEquals(reorderWall(sourceWall, 7, 0).drop(53), currentWall(controller))
+        assertEquals(7, controller.dicePoints2())
+        val expected = reorderWall(sourceWall, 7, 7, 0).drop(53).dropLast(GbRoundSupport.DEAD_WALL_SIZE)
+        assertEquals(expected, currentWall(controller))
     }
 
     @Test
@@ -1007,7 +1009,12 @@ class GbTableRoundControllerTest {
     private fun forceWall(controller: GbTableRoundController, tiles: List<String>) {
         val wallField = GbTableRoundController::class.java.getDeclaredField("wall")
         wallField.isAccessible = true
-        wallField.set(controller, tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf))
+        val deadWallField = GbTableRoundController::class.java.getDeclaredField("deadWall")
+        deadWallField.isAccessible = true
+        val parsed = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf)
+        wallField.set(controller, parsed)
+        // Provide a minimal dead wall so replacement draws (flower / kan) succeed.
+        deadWallField.set(controller, listOf(top.ellan.mahjong.model.MahjongTile.M1))
     }
 
     private fun forceFlowers(controller: GbTableRoundController, playerId: UUID, tiles: List<String>) {
@@ -1059,10 +1066,14 @@ class GbTableRoundControllerTest {
     }
 
     private fun reorderWall(wall: List<MahjongTile>, dicePoints: Int, roundIndex: Int): List<MahjongTile> {
+        return reorderWall(wall, dicePoints, dicePoints, roundIndex)
+    }
+
+    private fun reorderWall(wall: List<MahjongTile>, directionDicePoints: Int, breakDicePoints: Int, roundIndex: Int): List<MahjongTile> {
         val seatCount = SeatWind.values().size
         val wallTilesPerSide = wall.size / seatCount
-        val directionIndex = seatCount - (((dicePoints % seatCount) - 1 + roundIndex) % seatCount)
-        val breakIndex = (directionIndex * wallTilesPerSide + dicePoints * 2).mod(wall.size)
+        val directionIndex = seatCount - (((directionDicePoints % seatCount) - 1 + roundIndex) % seatCount)
+        val breakIndex = (directionIndex * wallTilesPerSide + breakDicePoints * 2).mod(wall.size)
         return List(wall.size) { offset -> wall[(breakIndex + offset) % wall.size] }
     }
 

@@ -75,6 +75,10 @@ public interface TableRoundController {
 
     int dicePoints();
 
+    default int dicePoints2() {
+        return this.dicePoints();
+    }
+
     int kanCount();
 
     int roundIndex();

@@ -84,9 +84,11 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, SichuanSuit> chosenMissingSuits = new HashMap<>();
     private final SichuanRulesEngine sichuanRulesEngine;
     private List<MahjongTile> wall = List.of();
+    private List<MahjongTile> deadWall = List.of();
     private boolean started;
     private boolean gameFinished;
     private int dicePoints;
+    private int dicePoints2;
     private int currentPlayerIndex;
     private int kanCount;
     private RoundResolution lastResolution;
@@ -187,10 +189,18 @@ public final class GbTableRoundController implements TableRoundController {
     public void startRound() {
         OpeningDiceRoll diceRoll = this.pendingDiceRoll;
         this.pendingDiceRoll = null;
-        this.dicePoints = diceRoll == null
-            ? GbRoundSupport.requireValidDicePoints(this.dicePointsSupplier.getAsInt())
-            : diceRoll.total();
-        this.wall = GbRoundSupport.reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.round.getRound());
+        if (diceRoll == null) {
+            int roll1 = GbRoundSupport.requireValidDicePoints(this.dicePointsSupplier.getAsInt());
+            int roll2 = GbRoundSupport.requireValidDicePoints(this.dicePointsSupplier.getAsInt());
+            this.dicePoints = roll1;
+            this.dicePoints2 = roll2;
+        } else {
+            this.dicePoints = diceRoll.total();
+            this.dicePoints2 = diceRoll.total2();
+        }
+        List<MahjongTile> fullWall = GbRoundSupport.reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.dicePoints2, this.round.getRound());
+        this.deadWall = List.copyOf(fullWall.subList(fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE, fullWall.size()));
+        this.wall = List.copyOf(fullWall.subList(0, fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE));
         this.pendingReactionWindow = null;
         this.lastResolution = null;
         this.started = true;
@@ -377,6 +387,11 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     @Override
+    public int dicePoints2() {
+        return this.dicePoints2;
+    }
+
+    @Override
     public int kanCount() {
         return this.kanCount;
     }
@@ -424,8 +439,11 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public List<MahjongTile> remainingWall() {
-        List<MahjongTile> hiddenWall = new ArrayList<>(this.wall.size());
+        List<MahjongTile> hiddenWall = new ArrayList<>(this.wall.size() + this.deadWall.size());
         for (int i = 0; i < this.wall.size(); i++) {
+            hiddenWall.add(MahjongTile.UNKNOWN);
+        }
+        for (int i = 0; i < this.deadWall.size(); i++) {
             hiddenWall.add(MahjongTile.UNKNOWN);
         }
         return List.copyOf(hiddenWall);
@@ -1755,18 +1773,18 @@ public final class GbTableRoundController implements TableRoundController {
         if (playerId == null || this.wall.isEmpty()) {
             return false;
         }
-        boolean nextFromBack = fromBack;
+        if (fromBack) {
+            return this.drawReplacementTile(playerId, markAfterKong, markAsDrawn);
+        }
         while (!this.wall.isEmpty()) {
             List<MahjongTile> mutableWall = new ArrayList<>(this.wall);
-            MahjongTile tile = nextFromBack ? mutableWall.remove(mutableWall.size() - 1) : mutableWall.remove(0);
+            MahjongTile tile = mutableWall.remove(0);
             this.wall = List.copyOf(mutableWall);
             if (tile.isFlower()) {
                 if (!this.ruleProfile.includesFlowers()) {
-                    nextFromBack = true;
                     continue;
                 }
                 this.flowers.get(playerId).add(tile);
-                nextFromBack = true;
                 continue;
             }
             this.hands.get(playerId).add(tile);
@@ -1776,6 +1794,32 @@ public final class GbTableRoundController implements TableRoundController {
             return true;
         }
         return false;
+    }
+
+    private boolean drawReplacementTile(UUID playerId, boolean markAfterKong, boolean markAsDrawn) {
+        if (this.deadWall.isEmpty()) {
+            return false;
+        }
+        List<MahjongTile> mutableDeadWall = new ArrayList<>(this.deadWall);
+        MahjongTile tile = mutableDeadWall.remove(mutableDeadWall.size() - 1);
+        if (!this.wall.isEmpty()) {
+            List<MahjongTile> mutableWall = new ArrayList<>(this.wall);
+            mutableDeadWall.add(0, mutableWall.remove(mutableWall.size() - 1));
+            this.wall = List.copyOf(mutableWall);
+        }
+        this.deadWall = List.copyOf(mutableDeadWall);
+        if (tile.isFlower()) {
+            if (!this.ruleProfile.includesFlowers()) {
+                return this.drawReplacementTile(playerId, markAfterKong, markAsDrawn);
+            }
+            this.flowers.get(playerId).add(tile);
+            return this.drawReplacementTile(playerId, markAfterKong, markAsDrawn);
+        }
+        this.hands.get(playerId).add(tile);
+        this.hasDrawnTile.put(playerId, markAsDrawn);
+        this.sortHand(playerId);
+        this.afterKanTsumoPlayer = markAfterKong ? playerId : null;
+        return true;
     }
 
     private void finishExhaustiveDraw() {

@@ -1694,8 +1694,9 @@ public final class TableRenderer {
     private static int wallBreakTileIndex(TableRenderSubject session) {
         int seatCount = SeatWind.values().length;
         int dicePoints = session.dicePoints();
+        int breakDice = session.breakDicePoints();
         int directionIndex = 4 - (((dicePoints % seatCount) - 1 + session.roundIndex()) % seatCount);
-        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + dicePoints * 2, TOTAL_WALL_TILES);
+        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + breakDice * 2, TOTAL_WALL_TILES);
     }
 
     private static int deadWallAnchorSlot(TableRenderSubject session) {

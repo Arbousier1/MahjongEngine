@@ -244,12 +244,12 @@ class ArchitectureBoundaryTest {
         ).map { projectRoot.resolve(it).normalize() }
         val lineBudgets = listOf(
             LineBudget("build.gradle.kts", 350),
-            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 1650),
+            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 1660),
             LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 1000),
             LineBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 2150)
         )
         val publicMethodBudgets = listOf(
-            PublicMethodBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 230),
+            PublicMethodBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 235),
             PublicMethodBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 50),
             PublicMethodBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 40)
         )

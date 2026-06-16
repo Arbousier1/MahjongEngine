@@ -644,6 +644,11 @@ public final class MahjongTableSession implements TableSessionMutator {
         );
     }
 
+    @Override
+    public int breakDicePoints() {
+        return this.intFromRoundController(TableRoundController::dicePoints2);
+    }
+
     public int honbaCount() {
         return this.intFromRoundController(TableRoundController::honbaCount);
     }

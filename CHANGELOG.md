@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.0 - 2026-06-16
+
+GB/SICHUAN opening procedure and wall management overhaul to match real Chinese Official / Sichuan Mahjong rules.
+
+中文更新日志:
+
+- **两次掷骰开门**: GB/SICHUAN 开局现在按真实国标流程，庄家先掷两骰确定开门方位，被指定方位的玩家再掷两骰确定开门位置。`OpeningDiceRoll` 扩展为 4 参数（两组骰子），渲染层同步更新。
+- **14 张王牌区（dead wall）**: 牌墙末尾 14 张分离为 dead wall，仅用于补花/补杠替换。正常摸牌只从 live wall 前端取，live wall 摸完即流局。补花/补杠从 dead wall 尾部取牌，同时从 live wall 尾部补一张到 dead wall 前端，维持 dead wall 大小。
+- **门风正确轮转**: `buildFanRequest` / `buildWinRequest` / `toNativeMelds` 均已使用 `logicalSeatOf()` 将物理座位映射为逻辑门风（庄家 = EAST），从第二局起门风刻、圈风刻及原生引擎输入不再错位。
+- **四川定缺准备阶段**: 已有完整的交换→定缺两阶段准备流程，定缺后缺门花色牌必须先打。
+- **四川一炮多响**: 四川模式下 `allowMultiRon = true`，同一放铳可被多人同时荣和。
+
+English Release Notes:
+
+- **Two dice rolls for wall break**: GB/SICHUAN opening now follows real Chinese Official rules — the dealer rolls two dice to determine which wall side to open, then the player at that side rolls two more dice to determine the break position. `OpeningDiceRoll` expanded to 4 parameters (two pairs of dice); rendering layer updated accordingly.
+- **14-tile dead wall**: The last 14 tiles of the wall are reserved as the dead wall for flower/kong replacement draws only. Normal draws come from the live wall front; when the live wall is empty, the hand ends in exhaustive draw. Replacement draws take from the dead wall tail and replenish from the live wall tail to maintain dead wall size.
+- **Correct seat wind rotation**: `buildFanRequest` / `buildWinRequest` / `toNativeMelds` all use `logicalSeatOf()` to map physical seats to logical winds (dealer = EAST), so seat wind, round wind, and native engine inputs are correct from the second hand onward.
+- **Sichuan dingque preparation**: Full exchange → dingque two-phase preparation flow; after choosing the missing suit, tiles of that suit must be discarded first.
+- **Sichuan multi-ron**: In Sichuan mode, `allowMultiRon = true`, allowing multiple players to win on the same discard.
+
 ## 1.1.3 - 2026-06-16
 
 Hotfix for Paper 1.21.4+ servers where clicking any custom inventory (settlement, rule settings, table control) threw `IncompatibleClassChangeError`.

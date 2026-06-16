@@ -364,8 +364,9 @@ public final class TableRenderLayout {
     private static int wallBreakTileIndex(TableRenderSnapshot snapshot) {
         int seatCount = SeatWind.values().length;
         int dicePoints = snapshot.dicePoints();
+        int breakDice = snapshot.breakDicePoints();
         int directionIndex = 4 - (((dicePoints % seatCount) - 1 + snapshot.roundIndex()) % seatCount);
-        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + dicePoints * 2, TOTAL_WALL_TILES);
+        return Math.floorMod(directionIndex * WALL_TILES_PER_SIDE + breakDice * 2, TOTAL_WALL_TILES);
     }
 
     private static int doraIndicatorDeadWallIndex(int kanCount, int indicatorIndex) {

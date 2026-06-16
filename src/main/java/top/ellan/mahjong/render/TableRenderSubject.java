@@ -50,6 +50,10 @@ public interface TableRenderSubject extends DisplayEntityRuntime {
 
     int dicePoints();
 
+    default int breakDicePoints() {
+        return this.dicePoints();
+    }
+
     int roundIndex();
 
     int honbaCount();
