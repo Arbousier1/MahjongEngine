@@ -143,12 +143,17 @@ public final class TablePublicTextFactory {
     public String publicCenterText() {
         Locale locale = this.session.publicLocale();
         if (this.session.isStarted()) {
+            MahjongVariant variant = this.session.currentVariant();
+            String messageKey = variant == MahjongVariant.RIICHI ? "table.public.center_active" : "table.public.center_active_gb";
+            String diceDisplay = variant == MahjongVariant.RIICHI
+                ? String.valueOf(this.session.dicePoints())
+                : this.session.dicePoints() + "+" + this.session.breakDicePoints();
             String center = this.session.plugin().messages().plain(
                 locale,
-                "table.public.center_active",
+                messageKey,
                 this.session.plugin().messages().tag("round", this.roundDisplay(locale)),
                 this.session.plugin().messages().number(locale, "wall", this.session.remainingWallCount()),
-                this.session.plugin().messages().number(locale, "dice", this.session.dicePoints()),
+                this.session.plugin().messages().tag("dice", diceDisplay),
                 this.session.plugin().messages().tag("dealer", this.dealerName(locale)),
                 this.session.plugin().messages().tag("last_discard", this.centerLastDiscardSummary(locale))
             );

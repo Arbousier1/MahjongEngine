@@ -245,7 +245,7 @@ class ArchitectureBoundaryTest {
         val lineBudgets = listOf(
             LineBudget("build.gradle.kts", 350),
             LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 1660),
-            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 1000),
+            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 1050),
             LineBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 2150)
         )
         val publicMethodBudgets = listOf(

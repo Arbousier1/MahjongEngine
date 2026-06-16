@@ -1,5 +1,6 @@
 package top.ellan.mahjong.table.presentation;
 
+import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
 import top.ellan.mahjong.table.core.TableSessionMutator;
@@ -89,17 +90,7 @@ public final class TableViewerSnapshotFactory {
             return this.buildWaitingHudSnapshot(locale, progress, color, spectator, nextRoundSeconds, lastResolution, summary);
         }
 
-        Component title = this.session.plugin().messages().render(
-            locale,
-            "hud.round",
-            this.session.plugin().messages().tag("round", summary.round()),
-            this.session.plugin().messages().tag("dealer", summary.dealer()),
-            this.session.plugin().messages().tag("turn", summary.turn()),
-            this.session.plugin().messages().number(locale, "wall", summary.wall()),
-            this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
-            this.session.plugin().messages().tag("dora", summary.doraSummary()),
-            this.session.plugin().messages().tag("role", summary.roleLabel())
-        );
+        Component title = this.buildRoundHudTitle(locale, summary);
         String stateSignature = this.hudSignatureBuilder(locale, progress, color, nextRoundSeconds, spectator, true, lastResolution)
             .field(summary.round())
             .field(summary.dealer())
@@ -171,6 +162,26 @@ public final class TableViewerSnapshotFactory {
             }
             return this.waitingOverlay(locale, summary);
         }
+        return this.buildActiveOverlay(locale, summary);
+    }
+
+    private Component buildActiveOverlay(Locale locale, ViewerSummarySnapshot summary) {
+        MahjongVariant variant = this.session.currentVariant();
+        if (variant == MahjongVariant.RIICHI) {
+            return this.session.plugin().messages().render(
+                locale,
+                "overlay.active",
+                this.session.plugin().messages().tag("role", summary.roleLabel()),
+                this.session.plugin().messages().tag("round", summary.round()),
+                this.session.plugin().messages().tag("dealer", summary.dealer()),
+                this.session.plugin().messages().tag("turn", summary.turn()),
+                this.session.plugin().messages().number(locale, "wall", summary.wall()),
+                this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
+                this.session.plugin().messages().tag("dora", summary.doraSummary()),
+                this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
+                this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
+            );
+        }
         return this.session.plugin().messages().render(
             locale,
             "overlay.active",
@@ -179,8 +190,8 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("dealer", summary.dealer()),
             this.session.plugin().messages().tag("turn", summary.turn()),
             this.session.plugin().messages().number(locale, "wall", summary.wall()),
-            this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
-            this.session.plugin().messages().tag("dora", summary.doraSummary()),
+            this.session.plugin().messages().number(locale, "riichi_pool", 0),
+            this.session.plugin().messages().tag("dora", ""),
             this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
             this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
         );
@@ -312,6 +323,33 @@ public final class TableViewerSnapshotFactory {
         );
     }
 
+    private Component buildRoundHudTitle(Locale locale, ViewerSummarySnapshot summary) {
+        MahjongVariant variant = this.session.currentVariant();
+        if (variant == MahjongVariant.RIICHI) {
+            return this.session.plugin().messages().render(
+                locale,
+                "hud.round_riichi",
+                this.session.plugin().messages().tag("round", summary.round()),
+                this.session.plugin().messages().tag("dealer", summary.dealer()),
+                this.session.plugin().messages().tag("turn", summary.turn()),
+                this.session.plugin().messages().number(locale, "wall", summary.wall()),
+                this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
+                this.session.plugin().messages().tag("dora", summary.doraSummary()),
+                this.session.plugin().messages().tag("role", summary.roleLabel())
+            );
+        }
+        return this.session.plugin().messages().render(
+            locale,
+            "hud.round_gb",
+            this.session.plugin().messages().tag("round", summary.round()),
+            this.session.plugin().messages().tag("dealer", summary.dealer()),
+            this.session.plugin().messages().tag("turn", summary.turn()),
+            this.session.plugin().messages().number(locale, "wall", summary.wall()),
+            this.session.plugin().messages().tag("dice", this.session.dicePoints() + "+" + this.session.breakDicePoints()),
+            this.session.plugin().messages().tag("role", summary.roleLabel())
+        );
+    }
+
     private String viewerPrompt(
         Locale locale,
         UUID viewerId,
@@ -383,7 +421,8 @@ public final class TableViewerSnapshotFactory {
         if (remainingWallCount <= 0) {
             return 0.0F;
         }
-        return Math.max(0.03F, Math.min(1.0F, remainingWallCount / 70.0F));
+        float divisor = this.session.currentVariant() == MahjongVariant.RIICHI ? 70.0F : 122.0F;
+        return Math.max(0.03F, Math.min(1.0F, remainingWallCount / divisor));
     }
 
     private BossBar.Color hudColor(UUID viewerId) {

@@ -125,6 +125,12 @@ public final class MahjongTableManager implements Listener {
             this.plugin.debug().log("table", "Rejected table create for " + owner.getName() + ": " + failure.reason());
             return CreateTableResult.rejected(failure);
         }
+        // Game room restriction check
+        failure = this.validateGameRoomRestriction(center);
+        if (failure != null) {
+            this.plugin.debug().log("table", "Rejected table create for " + owner.getName() + ": " + failure.reason());
+            return CreateTableResult.rejected(failure);
+        }
         MahjongTableSession session = new MahjongTableSession(this.plugin, id, center, true);
         session.setOwner(owner.getUniqueId());
         this.registerTable(session);
@@ -150,6 +156,14 @@ public final class MahjongTableManager implements Listener {
 
         String id = this.nextId();
         Location center = this.normalizedTableCenter(owner.getLocation());
+
+        // Game room restriction check
+        CreateTableFailure roomFailure = this.validateGameRoomRestriction(center);
+        if (roomFailure != null) {
+            this.plugin.messages().send(owner, "command.create_failed_not_in_room");
+            return null;
+        }
+
         MahjongTableSession session = new MahjongTableSession(
             this.plugin,
             id,
@@ -823,6 +837,17 @@ public final class MahjongTableManager implements Listener {
         return firstBlockedTableSpace(center);
     }
 
+    private CreateTableFailure validateGameRoomRestriction(Location center) {
+        top.ellan.mahjong.gameroom.GameRoomManager gameRoomManager = this.plugin.gameRoomManager();
+        if (gameRoomManager == null || !gameRoomManager.isRestrictNewTables()) {
+            return null;
+        }
+        if (!gameRoomManager.isTableInAnyRoom(center)) {
+            return CreateTableFailure.notInGameRoom();
+        }
+        return null;
+    }
+
     private MahjongTableSession overlappingTable(Location center) {
         MahjongTableSession nearest = null;
         double nearestDistanceSquared = Double.MAX_VALUE;
@@ -977,13 +1002,18 @@ public final class MahjongTableManager implements Listener {
         private static CreateTableFailure notEnoughHeight() {
             return new CreateTableFailure(CreateTableFailureReason.NOT_ENOUGH_HEIGHT, null, null, null, null);
         }
+
+        private static CreateTableFailure notInGameRoom() {
+            return new CreateTableFailure(CreateTableFailureReason.NOT_IN_GAME_ROOM, null, null, null, null);
+        }
     }
 
     public enum CreateTableFailureReason {
         INVALID_LOCATION,
         TOO_CLOSE_TO_TABLE,
         BLOCKED_SPACE,
-        NOT_ENOUGH_HEIGHT
+        NOT_ENOUGH_HEIGHT,
+        NOT_IN_GAME_ROOM
     }
 
     public record LeaveResult(LeaveStatus status, MahjongTableSession session) {

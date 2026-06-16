@@ -4,6 +4,7 @@ import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.gameroom.GameRoomManager;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.runtime.AsyncService;
@@ -23,6 +24,7 @@ public final class DefaultTableRuntimeServices implements TableRuntimeServices {
     private final Supplier<DatabaseService> database;
     private final MetricsCollector metrics;
     private final Supplier<MahjongTableManager> tableManager;
+    private final Supplier<GameRoomManager> gameRoomManager;
 
     public DefaultTableRuntimeServices(
         Plugin bukkitPlugin,
@@ -34,7 +36,8 @@ public final class DefaultTableRuntimeServices implements TableRuntimeServices {
         Supplier<CraftEngineService> craftEngine,
         Supplier<DatabaseService> database,
         MetricsCollector metrics,
-        Supplier<MahjongTableManager> tableManager
+        Supplier<MahjongTableManager> tableManager,
+        Supplier<GameRoomManager> gameRoomManager
     ) {
         this.bukkitPlugin = Objects.requireNonNull(bukkitPlugin, "bukkitPlugin");
         this.messages = Objects.requireNonNull(messages, "messages");
@@ -46,6 +49,7 @@ public final class DefaultTableRuntimeServices implements TableRuntimeServices {
         this.database = Objects.requireNonNull(database, "database");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
         this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
+        this.gameRoomManager = gameRoomManager;
     }
 
     @Override
@@ -96,5 +100,10 @@ public final class DefaultTableRuntimeServices implements TableRuntimeServices {
     @Override
     public MahjongTableManager tableManager() {
         return this.tableManager.get();
+    }
+
+    @Override
+    public GameRoomManager gameRoomManager() {
+        return this.gameRoomManager != null ? this.gameRoomManager.get() : null;
     }
 }

@@ -8,6 +8,7 @@ public final class PluginSettings {
     private final DebugSettings debug;
     private final DatabaseSettings database;
     private final TablesSettings tables;
+    private final GameRoomsSettings gameRooms;
     private final RankingSettings ranking;
     private final CraftEngineSettings craftEngine;
 
@@ -15,12 +16,14 @@ public final class PluginSettings {
         DebugSettings debug,
         DatabaseSettings database,
         TablesSettings tables,
+        GameRoomsSettings gameRooms,
         RankingSettings ranking,
         CraftEngineSettings craftEngine
     ) {
         this.debug = debug;
         this.database = database;
         this.tables = tables;
+        this.gameRooms = gameRooms;
         this.ranking = ranking;
         this.craftEngine = craftEngine;
     }
@@ -34,6 +37,7 @@ public final class PluginSettings {
         ConfigurationSection poolSection = ConfigAccess.firstSection(config, "database.pool");
         ConfigurationSection tablesSection = ConfigAccess.firstSection(config, "tables");
         ConfigurationSection tablePersistenceSection = ConfigAccess.firstSection(config, "tables.persistence", "tablePersistence");
+        ConfigurationSection gameRoomsSection = ConfigAccess.firstSection(config, "gameRooms", "game-rooms", "gamerooms");
         ConfigurationSection rankingSection = ConfigAccess.firstSection(config, "ranking");
         ConfigurationSection craftEngineSection = ConfigAccess.firstSection(config, "integrations.craftengine", "craftengine");
         ConfigurationSection craftEngineItemsSection = ConfigAccess.firstSection(config, "integrations.craftengine.items", "craftengine.items");
@@ -84,6 +88,15 @@ public final class PluginSettings {
                 ConfigAccess.string(tablePersistenceSection, "tables.yml", "file")
             )
         );
+        GameRoomsSettings gameRooms = new GameRoomsSettings(
+            ConfigAccess.bool(gameRoomsSection, true, "enabled"),
+            ConfigAccess.bool(gameRoomsSection, true, "restrictNewTables", "restrict-new-tables"),
+            ConfigAccess.bool(gameRoomsSection, true, "enterExitMessages", "enter-exit-messages"),
+            Math.max(5, ConfigAccess.integer(gameRoomsSection, 60, "leaveCountdownSeconds", "leave-countdown-seconds")),
+            Math.max(2, ConfigAccess.integer(gameRoomsSection, 10, "defaultRadius", "default-radius")),
+            Math.max(3, ConfigAccess.integer(gameRoomsSection, 8, "defaultHeight", "default-height")),
+            ConfigAccess.string(gameRoomsSection, "game-rooms.yml", "file")
+        );
         RankingSettings ranking = new RankingSettings(
             ConfigAccess.bool(rankingSection, true, "enabled"),
             ConfigAccess.string(rankingSection, "SILVER", "eastRoom"),
@@ -110,7 +123,7 @@ public final class PluginSettings {
                 ConfigAccess.string(craftEngineFurnitureSection, "mahjongpaper:seat_chair", "seatFurnitureId", "seat-furniture-id")
             )
         );
-        return new PluginSettings(debug, database, tables, ranking, craftEngine);
+        return new PluginSettings(debug, database, tables, gameRooms, ranking, craftEngine);
     }
 
     public DebugSettings debug() {
@@ -123,6 +136,10 @@ public final class PluginSettings {
 
     public TablesSettings tables() {
         return this.tables;
+    }
+
+    public GameRoomsSettings gameRooms() {
+        return this.gameRooms;
     }
 
     public RankingSettings ranking() {
@@ -229,6 +246,17 @@ public final class PluginSettings {
     }
 
     public record TablePersistenceSettings(boolean enabled, String file) {
+    }
+
+    public record GameRoomsSettings(
+        boolean enabled,
+        boolean restrictNewTables,
+        boolean enterExitMessages,
+        int leaveCountdownSeconds,
+        int defaultRadius,
+        int defaultHeight,
+        String file
+    ) {
     }
 
     public record RankingSettings(boolean enabled, String eastRoom, String southRoom) {

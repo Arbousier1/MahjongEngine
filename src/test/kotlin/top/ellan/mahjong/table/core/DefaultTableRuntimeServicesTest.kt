@@ -42,7 +42,8 @@ class DefaultTableRuntimeServicesTest {
             { craftEngine.get() },
             { database.get() },
             mock(MetricsCollector::class.java),
-            { tableManager.get() }
+            { tableManager.get() },
+            null
         )
 
         assertSame(firstSettings, services.settings())

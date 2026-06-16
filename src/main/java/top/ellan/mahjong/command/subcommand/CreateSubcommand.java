@@ -42,6 +42,7 @@ public final class CreateSubcommand extends AbstractMahjongSubcommand {
                 this.context.messages().tag("z", String.valueOf(failure.z()))
             );
             case NOT_ENOUGH_HEIGHT -> this.context.messages().send(player, "command.create_failed_height");
+            case NOT_IN_GAME_ROOM -> this.context.messages().send(player, "command.create_failed_not_in_room");
         }
     }
 }
