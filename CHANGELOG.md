@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.0-SNAPSHOT
+
+Game room system with core restrictions, bossbar/text mode adaptation, and documentation alignment.
+
+中文更新日志:
+
+- **棋牌室系统（核心限制）**: 新增 `GameRoom` 领域模型、`GameRoomManager` 管理器、`GameRoomListener` 监听器和 YAML 持久化。当 `gameRooms.enabled=true` 且 `gameRooms.restrictNewTables=true` 时，牌桌只能在棋牌室内创建；玩家进出棋牌室有提醒消息；对局中玩家离开棋牌室后启动倒计时，超时强制结束对局。
+- **倒计时警告节奏**: 前段每 15 秒提醒，最后 10 秒按 10/8/6/5/4/3/2/1 逐秒倒计时。玩家返回棋牌室则取消倒计时。
+- **Bossbar/桌上文字模式适配**: Bossbar 和桌上中心文字根据游戏模式（RIICHI/GB/SICHUAN）显示不同内容，不再统一显示日麻特有的供托/宝牌。
+- **配置模板补全**: 默认配置模板新增 `gameRooms` 配置段，包含 enabled、restrictNewTables、enterExitMessages、leaveCountdownSeconds、defaultRadius、defaultHeight、file 七个配置项。
+- **文档矫正**: README、wiki 和 CHANGELOG 与代码实际行为对齐，包括 botmatch 命令支持 GB/SICHUAN 预设、棋牌室系统说明等。
+
+English Release Notes:
+
+- **Game room system (core restrictions)**: Added `GameRoom` domain model, `GameRoomManager`, `GameRoomListener`, and YAML persistence. When `gameRooms.enabled=true` and `gameRooms.restrictNewTables=true`, tables can only be created inside game rooms; enter/exit messages are shown; active players who leave a game room trigger a countdown that force-ends the match on expiry.
+- **Countdown warning cadence**: Early phase warns every 15 seconds; final 10 seconds count down at 10, 8, 6, 5, 4, 3, 2, 1. Returning to the room cancels the countdown.
+- **Bossbar/table text mode adaptation**: Bossbar and center table text now display mode-appropriate content (RIICHI/GB/SICHUAN) instead of always showing riichi-specific indicators.
+- **Config template completion**: Default config template now includes the `gameRooms` section with enabled, restrictNewTables, enterExitMessages, leaveCountdownSeconds, defaultRadius, defaultHeight, and file settings.
+- **Documentation alignment**: README, wiki, and CHANGELOG corrected to match actual code behavior, including botmatch supporting GB/SICHUAN presets and game room system documentation.
+
 ## 1.2.0 - 2026-06-16
 
 GB/SICHUAN opening procedure and wall management overhaul to match real Chinese Official / Sichuan Mahjong rules.

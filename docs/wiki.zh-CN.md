@@ -247,6 +247,7 @@
 | `tables.startupRebuildBatchSize` | 启动时分批恢复牌桌展示的批量大小 |
 | `tables.allowFreeMoveDuringRound` | 是否允许牌局中自由移动 |
 | `tables.persistence` | 牌桌持久化文件开关和文件名 |
+| `gameRooms` | 棋牌室系统——牌桌的空间容器，创建限制、进出提醒、离开倒计时 |
 | `ranking` | 雀魂风格段位系统开关和房间档位 |
 | `integrations.craftengine` | CraftEngine bundle 导出、物品、家具和兼容性设置 |
 | `debug` | 调试日志分类 |
@@ -314,7 +315,7 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 | `/mahjong addbot` | 桌主/管理员 | 开局前添加 Bot |
 | `/mahjong removebot` | 桌主/管理员 | 开局前移除 Bot |
 | `/mahjong create` | 管理员 | 创建牌桌 |
-| `/mahjong botmatch [hanchan|tonpuu]` | 管理员 | 创建 4 Bot 测试桌 |
+| `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]` | 管理员 | 创建 4 Bot 测试桌 |
 | `/mahjong list` | 管理员 | 列出活动牌桌 |
 | `/mahjong render` | 管理员 | 强制刷新牌桌展示 |
 | `/mahjong inspect` | 管理员 | 渲染诊断 |
@@ -323,11 +324,42 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 | `/mahjong deletetable [table_id]` | 管理员 | 删除牌桌 |
 | `/mahjong reload` | 管理员 | 重载配置 |
 
+## 棋牌室系统
+
+棋牌室是牌桌的空间容器，用于限制牌桌的创建位置、提供进出提醒和对局中离开倒计时。
+
+### 核心功能
+
+| 功能 | 说明 |
+| --- | --- |
+| 牌桌创建限制 | `gameRooms.restrictNewTables: true` 时，新牌桌只能在棋牌室内创建；棋牌室外的已有牌桌仍可正常使用 |
+| 进出提醒 | `gameRooms.enterExitMessages: true` 时，玩家进出棋牌室会收到提示消息 |
+| 离开倒计时 | 对局中的玩家离开棋牌室后开始倒计时（默认 60 秒），超时则强制结束对局；玩家返回棋牌室则取消倒计时 |
+
+### 倒计时警告节奏
+
+- 前段：每 15 秒提醒一次（如 60s、45s、30s、15s）
+- 最后 10 秒：10、8、6、5、4、3、2、1 逐秒倒计时
+
+### 配置项
+
+| 配置项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `gameRooms.enabled` | `true` | 启用棋牌室系统 |
+| `gameRooms.restrictNewTables` | `true` | 限制新牌桌只能在棋牌室内创建 |
+| `gameRooms.enterExitMessages` | `true` | 进出棋牌室时显示提示 |
+| `gameRooms.leaveCountdownSeconds` | `60` | 离开倒计时秒数（最小 5） |
+| `gameRooms.defaultRadius` | `10` | 中心点创建棋牌室的默认半径 |
+| `gameRooms.defaultHeight` | `8` | 中心点创建棋牌室的默认高度 |
+| `gameRooms.file` | `game-rooms.yml` | 棋牌室持久化文件 |
+
+棋牌室数据保存在 `plugins/MahjongPaper/game-rooms.yml` 中。
+
 ## 常见问题
 
 ### 为什么我不能创建牌桌？
 
-`/mahjong create` 需要 `mahjongpaper.admin`。普通玩家只能加入、观战和进行牌局操作。
+`/mahjong create` 需要 `mahjongpaper.admin`。普通玩家只能加入、观战和进行牌局操作。此外，如果棋牌室系统已启用且 `gameRooms.restrictNewTables` 为 `true`，则牌桌只能在棋牌室内创建，在棋牌室外尝试创建会提示"必须在棋牌室内"。
 
 ### 为什么国标胡不了？
 

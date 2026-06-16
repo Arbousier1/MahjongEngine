@@ -27,12 +27,13 @@
 - 观战、私有手牌显示、HUD 覆盖层和本地化提示
 - 基于 CraftEngine 的座位 / 牌桌交互与 bundle 导出
 - 默认使用 H2 持久化对局历史和段位，可选 MariaDB/MySQL
+- 棋牌室系统：牌桌的空间容器，支持牌桌创建限制、进出提醒和对局中离开倒计时
 
 ## 指令概览
 
 - `/mahjong help`：显示游戏内帮助
 - `/mahjong create`：在当前位置创建一个空牌桌
-- `/mahjong botmatch [hanchan|tonpuu]`：创建一桌 4 Bot 测试对局并进入观战
+- `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]`：创建一桌 4 Bot 测试对局并进入观战
 - `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`：桌主/管理员在下一局开始前应用预设规则；默认玩法以 `MAJSOUL_HANCHAN` 为主
 - `/mahjong join <tableId>`：加入牌桌
 - `/mahjong leave`：开局前直接离开；开局后标记为本局结束后离开
@@ -191,6 +192,7 @@
 - `database.h2`：本地 H2 配置
 - `database.pool`：连接池参数
 - `tables.persistence`：持久牌桌文件配置
+- `gameRooms`：棋牌室系统——牌桌的空间容器，支持创建限制、进出提醒和离开倒计时
 - `integrations.craftengine`：CraftEngine 导出与交互偏好
 - `debug`：调试日志
 

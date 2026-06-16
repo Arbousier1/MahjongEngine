@@ -1,4 +1,4 @@
-﻿# MahjongPaper
+# MahjongPaper
 
 > This project was created entirely by AI.
 
@@ -29,12 +29,13 @@ The current branch already supports playable Riichi Mahjong, GB Mahjong, and Sic
 - Mahjong Soul-style rank persistence and per-mode leaderboards when database-backed ranking is enabled
 - CraftEngine-backed seat/table interaction and CraftEngine bundle export
 - round history persistence through H2 by default, with optional MariaDB/MySQL
+- game room system: spatial containers for tables, with optional table creation restriction, enter/exit messages, and leave countdown for active matches
 
 ## Command Summary
 
 - `/mahjong help`: show in-game command help
 - `/mahjong create`: create a new empty table at your location
-- `/mahjong botmatch [hanchan|tonpuu]`: create a 4-bot test match and spectate it
+- `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]`: create a 4-bot test match and spectate it
 - `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`: apply a preset before the next start
 - `/mahjong join <tableId>`: join a table as a player
 - `/mahjong leave`: leave immediately before the hand starts, or queue a leave after the current hand
@@ -196,6 +197,7 @@ The current human-friendly layout is:
 - `database.h2`: local embedded H2 settings
 - `database.pool`: connection pool sizing
 - `tables.persistence`: persistent table restore file
+- `gameRooms`: game room system — spatial containers for tables, creation restriction, enter/exit messages, and leave countdown
 - `ranking`: Mahjong Soul-style room presets and rank persistence
 - `integrations.craftengine`: CraftEngine export and interaction preferences
 - `debug`: debug logging switches

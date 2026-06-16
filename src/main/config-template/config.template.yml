@@ -53,6 +53,29 @@ tables:
     enabled: true
     file: tables.yml
 
+# {{gameroom.summary}}
+gameRooms:
+  # {{gameroom.enabled}}
+  enabled: true
+
+  # {{gameroom.restrict}}
+  restrictNewTables: true
+
+  # {{gameroom.messages}}
+  enterExitMessages: true
+
+  # {{gameroom.countdown}}
+  leaveCountdownSeconds: 60
+
+  # {{gameroom.radius}}
+  defaultRadius: 10
+
+  # {{gameroom.height}}
+  defaultHeight: 8
+
+  # {{gameroom.file}}
+  file: game-rooms.yml
+
 ranking:
   # {{ranking.summary}}
   enabled: true
