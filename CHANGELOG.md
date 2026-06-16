@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.3 - 2026-06-16
+
+Hotfix for Paper 1.21.4+ servers where clicking any custom inventory (settlement, rule settings, table control) threw `IncompatibleClassChangeError`.
+
+中文更新日志:
+
+- InventoryView 兼容性修复: Paper 1.21.4+ 将 `org.bukkit.inventory.InventoryView` 从 interface 改为 abstract class，导致编译期按 interface 调用 `event.getView().getTopInventory()` 的字节码在运行时抛 `IncompatibleClassChangeError`。新增 `PaperCompatibility.getTopInventory()` 反射桥接方法，替换所有 8 处直接调用，低版本和高版本均可正常工作。
+- Bot 调度/渲染预计算容错: 为 bot 调度、异步渲染预计算和 tick 分发添加 try/catch 保护，避免单次瞬态异常导致整桌 4-bot 对局冻结或显示永久卡死。
+
+English Release Notes:
+
+- InventoryView compatibility fix: Paper 1.21.4+ changed `org.bukkit.inventory.InventoryView` from an interface to an abstract class, causing `IncompatibleClassChangeError` whenever `event.getView().getTopInventory()` was called on compiled-against-old-Bukkit bytecode. Added a reflective `PaperCompatibility.getTopInventory()` bridge and replaced all 8 direct call sites, restoring inventory UI across all supported Paper versions.
+- Bot/render error recovery: wrapped bot scheduling, async render precompute, and tick dispatch in try/catch so a single transient failure cannot freeze a 4-bot match or leave the display permanently stuck.
+
 ## 1.1.2 - 2026-06-16
 
 Follow-up hotfix to 1.1.1. The Paper 1.21+ `NoSuchMethodError` regression had two more call sites that were not migrated in 1.1.1.
