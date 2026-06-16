@@ -2,11 +2,13 @@
 
 ## 1.3.0-SNAPSHOT
 
-Game room system with core restrictions, bossbar/text mode adaptation, and documentation alignment.
+Game room system with core restrictions, wand selection tool, room management commands, bossbar/text mode adaptation, and documentation alignment.
 
 中文更新日志:
 
 - **棋牌室系统（核心限制）**: 新增 `GameRoom` 领域模型、`GameRoomManager` 管理器、`GameRoomListener` 监听器和 YAML 持久化。当 `gameRooms.enabled=true` 且 `gameRooms.restrictNewTables=true` 时，牌桌只能在棋牌室内创建；玩家进出棋牌室有提醒消息；对局中玩家离开棋牌室后启动倒计时，超时强制结束对局。
+- **魔棒选区工具**: 新增 `GameRoomWandListener`，使用烈焰棒（Blaze Rod）作为魔棒，左键点击方块设置选区第一点，右键设置第二点，通过 PersistentDataContainer 标识魔棒物品。
+- **棋牌室管理命令**: 新增 `/mahjong room` 命令（别名 `gameroom`），支持 `wand`（获取魔棒）、`create`（创建棋牌室）、`delete`（删除棋牌室）、`list`（列出棋牌室）、`info`（查看详情）五个子操作。`create` 优先使用魔棒选区，无选区时以玩家位置为中心按配置半径创建。
 - **倒计时警告节奏**: 前段每 15 秒提醒，最后 10 秒按 10/8/6/5/4/3/2/1 逐秒倒计时。玩家返回棋牌室则取消倒计时。
 - **Bossbar/桌上文字模式适配**: Bossbar 和桌上中心文字根据游戏模式（RIICHI/GB/SICHUAN）显示不同内容，不再统一显示日麻特有的供托/宝牌。
 - **配置模板补全**: 默认配置模板新增 `gameRooms` 配置段，包含 enabled、restrictNewTables、enterExitMessages、leaveCountdownSeconds、defaultRadius、defaultHeight、file 七个配置项。
@@ -15,6 +17,8 @@ Game room system with core restrictions, bossbar/text mode adaptation, and docum
 English Release Notes:
 
 - **Game room system (core restrictions)**: Added `GameRoom` domain model, `GameRoomManager`, `GameRoomListener`, and YAML persistence. When `gameRooms.enabled=true` and `gameRooms.restrictNewTables=true`, tables can only be created inside game rooms; enter/exit messages are shown; active players who leave a game room trigger a countdown that force-ends the match on expiry.
+- **Wand selection tool**: Added `GameRoomWandListener` using Blaze Rod as the wand. Left-click sets the first corner, right-click sets the second corner. Wand items are identified via PersistentDataContainer.
+- **Game room management commands**: Added `/mahjong room` command (alias `gameroom`) with five sub-operations: `wand` (get wand), `create` (create room), `delete` (delete room), `list` (list rooms), `info` (room details). `create` uses the wand selection if available, falling back to player position with configured radius.
 - **Countdown warning cadence**: Early phase warns every 15 seconds; final 10 seconds count down at 10, 8, 6, 5, 4, 3, 2, 1. Returning to the room cancels the countdown.
 - **Bossbar/table text mode adaptation**: Bossbar and center table text now display mode-appropriate content (RIICHI/GB/SICHUAN) instead of always showing riichi-specific indicators.
 - **Config template completion**: Default config template now includes the `gameRooms` section with enabled, restrictNewTables, enterExitMessages, leaveCountdownSeconds, defaultRadius, defaultHeight, and file settings.
