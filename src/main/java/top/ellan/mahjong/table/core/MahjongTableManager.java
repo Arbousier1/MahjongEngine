@@ -3,6 +3,7 @@ package top.ellan.mahjong.table.core;
 import top.ellan.mahjong.model.MahjongVariant;
 
 import top.ellan.mahjong.compat.CraftEngineService;
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
@@ -598,32 +599,32 @@ public final class MahjongTableManager implements Listener {
 
     @EventHandler
     public void onSettlementClick(InventoryClickEvent event) {
-        if (TableControlUi.isTableControlInventory(event.getView().getTopInventory())) {
+        if (TableControlUi.isTableControlInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
             TableControlUi.handleClick(event, this);
             return;
         }
-        if (RuleSettingsUi.isRuleInventory(event.getView().getTopInventory())) {
+        if (RuleSettingsUi.isRuleInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
             RuleSettingsUi.handleClick(event, this);
             return;
         }
-        if (SettlementUi.isSettlementInventory(event.getView().getTopInventory())) {
+        if (SettlementUi.isSettlementInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onSettlementDrag(InventoryDragEvent event) {
-        if (TableControlUi.isTableControlInventory(event.getView().getTopInventory())) {
+        if (TableControlUi.isTableControlInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
             return;
         }
-        if (RuleSettingsUi.isRuleInventory(event.getView().getTopInventory())) {
+        if (RuleSettingsUi.isRuleInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
             return;
         }
-        if (SettlementUi.isSettlementInventory(event.getView().getTopInventory())) {
+        if (SettlementUi.isSettlementInventory(PaperCompatibility.getTopInventory(event))) {
             event.setCancelled(true);
         }
     }
@@ -698,8 +699,19 @@ public final class MahjongTableManager implements Listener {
     }
 
     private void dispatchTableTicks() {
+        // Each session.tick() runs on its own region. Wrap the per-session
+        // dispatch so a single misbehaving table cannot stop ticks for every
+        // other table on the server.
         for (MahjongTableSession session : this.directory.tables()) {
-            this.plugin.scheduler().runRegion(session.center(), session::tick);
+            try {
+                this.plugin.scheduler().runRegion(session.center(), session::tick);
+            } catch (RuntimeException dispatchException) {
+                org.bukkit.Bukkit.getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Failed to schedule tick for table " + session.id(),
+                    dispatchException
+                );
+            }
         }
     }
 

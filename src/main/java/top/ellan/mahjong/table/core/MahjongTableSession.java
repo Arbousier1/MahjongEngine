@@ -977,6 +977,16 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.botTask = botTask;
     }
 
+    /**
+     * Whether a bot turn / reaction task is currently armed. Used by the
+     * tick-driven watchdog in MahjongTableManager so it can re-schedule a
+     * bot if and only if the regular render flush path failed to do so.
+     */
+    public boolean hasArmedBotTask() {
+        PluginTask current = this.botTask;
+        return current != null && !current.isCancelled();
+    }
+
     public void cancelBotTask() {
         if (this.botTask != null) {
             this.botTask.cancel();

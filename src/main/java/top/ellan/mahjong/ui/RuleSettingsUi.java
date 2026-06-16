@@ -1,5 +1,6 @@
 package top.ellan.mahjong.ui;
 
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.table.core.MahjongTableManager;
@@ -41,7 +42,7 @@ public final class RuleSettingsUi {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        Inventory topInventory = event.getView().getTopInventory();
+        Inventory topInventory = PaperCompatibility.getTopInventory(event);
         if (!(topInventory.getHolder() instanceof RuleSettingsHolder holder)) {
             return;
         }

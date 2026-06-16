@@ -78,8 +78,24 @@ public final class TableRenderCoordinator {
         MetricsCollector metrics = this.metrics();
         metrics.incrementCounter("table.render.flush.calls");
         this.renderFlushScheduled = false;
-        this.scheduleAsyncRenderPrecompute();
-        this.session.completeRenderFlush();
+        // completeRenderFlush() is what reschedules bot turns and the viewer
+        // presentation tick. If scheduleAsyncRenderPrecompute() throws
+        // (network jitter, async executor refusal, an unexpected NPE, etc.)
+        // the bot would never get rescheduled and a 4-bot match would just
+        // freeze on whichever bot is currently up. Wrap the precompute call
+        // in try/finally so the finalize step always runs.
+        try {
+            this.scheduleAsyncRenderPrecompute();
+        } catch (RuntimeException exception) {
+            metrics.incrementCounter("table.render.flush.precompute_failed");
+            org.bukkit.Bukkit.getLogger().log(
+                java.util.logging.Level.WARNING,
+                "Table render precompute scheduling failed; falling through to completeRenderFlush",
+                exception
+            );
+        } finally {
+            this.session.completeRenderFlush();
+        }
         metrics.recordTimerNanos("table.render.flush.nanos", System.nanoTime() - startedAt);
     }
 
@@ -102,10 +118,37 @@ public final class TableRenderCoordinator {
         metrics.recordGauge("table.render.precompute.running", 1L);
         this.session.plugin().async().execute("render-precompute-" + this.session.id(), () -> {
             long startedAt = System.nanoTime();
-            TableRenderPrecomputeResult result = this.session.precomputeRender(snapshot);
-            this.metrics().recordTimerNanos("table.render.precompute.compute.nanos", System.nanoTime() - startedAt);
-            this.session.plugin().scheduler().runRegion(this.session.center(), () -> this.finishAsyncRenderPrecompute(result));
+            try {
+                TableRenderPrecomputeResult result = this.session.precomputeRender(snapshot);
+                this.metrics().recordTimerNanos("table.render.precompute.compute.nanos", System.nanoTime() - startedAt);
+                this.session.plugin().scheduler().runRegion(this.session.center(), () -> this.finishAsyncRenderPrecompute(result));
+            } catch (RuntimeException exception) {
+                // The async precompute threw. Without this guard renderPrecomputeRunning
+                // would stay true forever, so scheduleAsyncRenderPrecompute() would skip
+                // every future precompute (the "if (renderPrecomputeRunning) return"
+                // branch) and the table display would freeze permanently - which looks
+                // exactly like "the bots stopped playing". Recover on the region thread
+                // so the flag reset and any queued snapshot replay are correctly ordered.
+                this.metrics().incrementCounter("table.render.precompute.compute_failed");
+                this.session.plugin().scheduler().runRegion(
+                    this.session.center(),
+                    () -> this.recoverFromFailedPrecompute(snapshot, exception)
+                );
+            }
         });
+    }
+
+    private void recoverFromFailedPrecompute(TableRenderSnapshot snapshot, RuntimeException exception) {
+        this.renderPrecomputeRunning = false;
+        this.metrics().recordGauge("table.render.precompute.running", 0L);
+        org.bukkit.Bukkit.getLogger().log(
+            java.util.logging.Level.WARNING,
+            "Async render precompute failed for table " + this.session.id() + "; display will retry on the next render request",
+            exception
+        );
+        // Replay the newest pending snapshot if one queued up while we were running,
+        // so a transient failure does not leave the display stuck on a stale frame.
+        this.startNextPendingRenderIfNeeded(snapshot.version());
     }
 
     private void finishAsyncRenderPrecompute(TableRenderPrecomputeResult result) {

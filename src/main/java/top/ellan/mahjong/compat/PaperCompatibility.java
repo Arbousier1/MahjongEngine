@@ -8,6 +8,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.entity.Entity;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public final class PaperCompatibility {
@@ -17,7 +20,42 @@ public final class PaperCompatibility {
     private static final int CUSTOM_MODEL_DATA_BASE = 7_100_000;
     private static final int CUSTOM_MODEL_DATA_RANGE = 900_000;
 
+    private static final Method CLICK_GET_VIEW = findMethod(InventoryClickEvent.class, "getView");
+    private static final Method DRAG_GET_VIEW = findMethod(InventoryDragEvent.class, "getView");
+    private static final Method GET_TOP_INVENTORY = findTopInventoryMethod();
+
     private PaperCompatibility() {
+    }
+
+    /**
+     * Returns the top inventory from an InventoryClickEvent in a way that is compatible
+     * with both old Bukkit (where InventoryView is an interface) and Paper 1.21.4+
+     * (where InventoryView is an abstract class). Direct calls to event.getView()
+     * cause IncompatibleClassChangeError at runtime when the compiled bytecode
+     * expects an interface but the runtime provides a class.
+     */
+    public static Inventory getTopInventory(InventoryClickEvent event) {
+        return getTopInventoryReflective(CLICK_GET_VIEW, event);
+    }
+
+    /**
+     * Returns the top inventory from an InventoryDragEvent, compatible across
+     * Bukkit/Paper versions where InventoryView may be an interface or a class.
+     */
+    public static Inventory getTopInventory(InventoryDragEvent event) {
+        return getTopInventoryReflective(DRAG_GET_VIEW, event);
+    }
+
+    private static Inventory getTopInventoryReflective(Method getViewMethod, Object event) {
+        if (getViewMethod == null || GET_TOP_INVENTORY == null) {
+            throw new IllegalStateException("InventoryView.getView / getTopInventory not available");
+        }
+        try {
+            Object view = getViewMethod.invoke(event);
+            return (Inventory) GET_TOP_INVENTORY.invoke(view);
+        } catch (IllegalAccessException | InvocationTargetException exception) {
+            throw new IllegalStateException("Failed to call getView/getTopInventory reflectively", exception);
+        }
     }
 
     public static boolean isOwnedByCurrentRegion(Entity entity) {
@@ -97,5 +135,24 @@ public final class PaperCompatibility {
             }
         }
         return Particle.CRIT;
+    }
+
+    private static Method findMethod(Class<?> clazz, String name, Class<?>... paramTypes) {
+        try {
+            return clazz.getMethod(name, paramTypes);
+        } catch (NoSuchMethodException exception) {
+            return null;
+        }
+    }
+
+    private static Method findTopInventoryMethod() {
+        try {
+            // InventoryView is an interface in old Bukkit, a class in Paper 1.21.4+;
+            // look up the method by name to avoid a direct class reference in compiled bytecode.
+            Class<?> inventoryViewClass = Class.forName("org.bukkit.inventory.InventoryView");
+            return inventoryViewClass.getMethod("getTopInventory");
+        } catch (ClassNotFoundException | NoSuchMethodException exception) {
+            return null;
+        }
     }
 }

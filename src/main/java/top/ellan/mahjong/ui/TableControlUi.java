@@ -1,5 +1,6 @@
 package top.ellan.mahjong.ui;
 
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
@@ -39,7 +40,7 @@ public final class TableControlUi {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        Inventory topInventory = event.getView().getTopInventory();
+        Inventory topInventory = PaperCompatibility.getTopInventory(event);
         if (!(topInventory.getHolder() instanceof TableControlHolder holder)) {
             return;
         }
