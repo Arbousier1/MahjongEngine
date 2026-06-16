@@ -17,6 +17,10 @@ import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.DefaultTableRuntimeServices;
 import top.ellan.mahjong.table.core.MahjongTableManager;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -80,14 +84,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this::database,
             this::reloadMahjongConfiguration
         );
-        PluginCommand command = this.getCommand("mahjong");
-        if (command == null) {
-            this.getLogger().severe("MahjongPaper command is missing from plugin.yml; disabling plugin.");
-            this.getServer().getPluginManager().disablePlugin(this);
+        if (!this.registerMahjongCommand(mahjongCommand)) {
             return;
         }
-        command.setExecutor(mahjongCommand);
-        command.setTabCompleter(mahjongCommand);
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
         this.scheduler.runGlobal(() -> {
@@ -135,6 +134,113 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.debug != null && this.debug.isCategoryEnabled("database")) {
             this.getLogger().log(Level.SEVERE, "Database startup stack trace:", ex);
         }
+    }
+
+    private boolean registerMahjongCommand(MahjongCommand mahjongCommand) {
+        PaperCommandRegistrationResult paperResult = this.registerPaperCommand(mahjongCommand);
+        if (paperResult == PaperCommandRegistrationResult.REGISTERED) {
+            return true;
+        }
+        if (paperResult == PaperCommandRegistrationResult.FAILED) {
+            this.getServer().getPluginManager().disablePlugin(this);
+            return false;
+        }
+
+        PluginCommand command = this.getCommand("mahjong");
+        if (command == null) {
+            this.getLogger().severe("MahjongPaper command is missing from plugin.yml; disabling plugin.");
+            this.getServer().getPluginManager().disablePlugin(this);
+            return false;
+        }
+        command.setExecutor(mahjongCommand);
+        command.setTabCompleter(mahjongCommand);
+        return true;
+    }
+
+    private PaperCommandRegistrationResult registerPaperCommand(MahjongCommand mahjongCommand) {
+        try {
+            Class<?> lifecycleEventsClass = Class.forName("io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents");
+            Class<?> lifecycleEventTypeClass = Class.forName("io.papermc.paper.plugin.lifecycle.event.types.LifecycleEventType");
+            Class<?> lifecycleEventHandlerClass = Class.forName("io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler");
+            Class<?> lifecycleEventManagerClass = Class.forName("io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager");
+            Object commandsEventType = lifecycleEventsClass.getField("COMMANDS").get(null);
+            Object lifecycleManager = this.getClass().getMethod("getLifecycleManager").invoke(this);
+            Object handler = Proxy.newProxyInstance(
+                lifecycleEventHandlerClass.getClassLoader(),
+                new Class<?>[] { lifecycleEventHandlerClass },
+                (proxy, method, args) -> {
+                    if ("run".equals(method.getName()) && args != null && args.length == 1) {
+                        this.registerPaperCommandOnEvent(args[0], mahjongCommand);
+                    }
+                    return null;
+                }
+            );
+
+            Method registerEventHandler = lifecycleEventManagerClass.getMethod(
+                "registerEventHandler",
+                lifecycleEventTypeClass,
+                lifecycleEventHandlerClass
+            );
+            registerEventHandler.invoke(lifecycleManager, commandsEventType, handler);
+            return PaperCommandRegistrationResult.REGISTERED;
+        } catch (ClassNotFoundException | NoSuchMethodException ex) {
+            return PaperCommandRegistrationResult.UNAVAILABLE;
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchFieldException ex) {
+            this.getLogger().log(Level.SEVERE, "Failed to register MahjongPaper command through Paper lifecycle events.", ex);
+            return PaperCommandRegistrationResult.FAILED;
+        }
+    }
+
+    private void registerPaperCommandOnEvent(Object event, MahjongCommand mahjongCommand) throws ReflectiveOperationException {
+        Object registrar = event.getClass().getMethod("registrar").invoke(event);
+        Class<?> commandsClass = Class.forName("io.papermc.paper.command.brigadier.Commands");
+        Class<?> basicCommandClass = Class.forName("io.papermc.paper.command.brigadier.BasicCommand");
+        Object basicCommand = Proxy.newProxyInstance(
+            basicCommandClass.getClassLoader(),
+            new Class<?>[] { basicCommandClass },
+            (proxy, method, args) -> this.invokePaperBasicCommand(proxy, mahjongCommand, method, args)
+        );
+        Method register = commandsClass.getMethod(
+            "register",
+            String.class,
+            String.class,
+            Collection.class,
+            basicCommandClass
+        );
+        register.invoke(
+            registrar,
+            "mahjong",
+            "Manage MahjongPaper tables and rounds. Use /mahjong help for command explanations.",
+            java.util.List.of(),
+            basicCommand
+        );
+    }
+
+    private Object invokePaperBasicCommand(Object proxy, MahjongCommand mahjongCommand, Method method, Object[] args) throws ReflectiveOperationException {
+        return switch (method.getName()) {
+            case "execute" -> {
+                mahjongCommand.onCommand(this.paperCommandSender(args), null, "mahjong", (String[]) args[1]);
+                yield null;
+            }
+            case "suggest" -> mahjongCommand.onTabComplete(this.paperCommandSender(args), null, "mahjong", (String[]) args[1]);
+            case "canUse" -> mahjongCommand.canUse((org.bukkit.command.CommandSender) args[0]);
+            case "permission" -> mahjongCommand.permission();
+            case "toString" -> "MahjongPaperBasicCommand";
+            case "hashCode" -> System.identityHashCode(mahjongCommand);
+            case "equals" -> args != null && args.length == 1 && args[0] == proxy;
+            default -> null;
+        };
+    }
+
+    private org.bukkit.command.CommandSender paperCommandSender(Object[] args) throws ReflectiveOperationException {
+        Object sourceStack = args[0];
+        return (org.bukkit.command.CommandSender) sourceStack.getClass().getMethod("getSender").invoke(sourceStack);
+    }
+
+    private enum PaperCommandRegistrationResult {
+        REGISTERED,
+        UNAVAILABLE,
+        FAILED
     }
 
     public String reloadMahjongConfiguration() {
