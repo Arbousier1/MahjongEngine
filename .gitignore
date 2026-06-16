@@ -2,6 +2,9 @@
 /.gradle-home/
 /.kotlin/
 /build/
+/buildSrc/.gradle/
+/buildSrc/.kotlin/
+/buildSrc/build/
 /logs/
 /_upstream/
 /.tmp-gb-ref/
