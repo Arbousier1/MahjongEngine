@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.1 - 2026-06-16
+
+Hotfix release for Paper 1.21+ servers. 1.1.0 was unusable on Paper 1.21.x because every entity render path tripped a `NoSuchMethodError`.
+
+中文更新日志:
+
+- Paper 1.21+ 渲染崩溃修复: 在 1.21 上每次刷新桌面渲染都会抛 `NoSuchMethodError: org.bukkit.World.spawn(Location, Class, org.bukkit.util.Consumer)`，因为 Paper 1.21 已经移除了已弃用的 `org.bukkit.util.Consumer` 重载，而 1.20 的开发包让 lambda 在编译期被解析到这个 forRemoval 的方法上。改成两步 spawn（先 `World.spawn(Location, Class)`，再立即配置实体）后，麻将牌、文本标签、交互盒和方块展示在 1.20.1-26.x 全版本上都能正常生成。
+- 可见性次序加固: spawn 之后第一时间设置 `setVisibleByDefault`，防止 entity tracker 在某些版本上抢先广播一帧默认可见状态。
+
+English Release Notes:
+
+- Paper 1.21+ render crash fix: every render tick threw `NoSuchMethodError: org.bukkit.World.spawn(Location, Class, org.bukkit.util.Consumer)` on Paper 1.21.x because Paper removed the deprecated `org.bukkit.util.Consumer` overload while the 1.20 dev bundle had bound our lambdas to it at compile time. The four entity factories (tile/label/interaction/block) now use the long-stable two-argument `World.spawn(Location, Class)` and configure the entity immediately afterwards, restoring rendering across the full 1.20.1-26.x range.
+- Visibility ordering hardening: `setVisibleByDefault` is now called first so the entity tracker cannot publish a one-frame window of default visibility before the plugin restricts viewers.
+
 ## 1.1.0 - 2026-06-16
 
 Compatibility and architecture release for the post-1.0.0 Paper/Folia line.

@@ -654,37 +654,44 @@ public final class DisplayEntities {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        ItemDisplay display = world.spawn(location, ItemDisplay.class, spawned -> {
-            boolean restrictedVisibility = privateViewers != null;
-            spawned.setPersistent(false);
-            markManagedEntity(runtime.bukkitPlugin(), spawned);
-            spawned.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
-            spawned.setInterpolationDuration(smoothMovement ? 1 : 0);
-            spawned.setInterpolationDelay(0);
-            PaperCompatibility.setTeleportDuration(spawned, smoothMovement ? 1 : 0);
-            spawned.setViewRange(32.0F);
-            spawned.setShadowRadius(0.0F);
-            spawned.setShadowStrength(0.0F);
-            spawned.setDisplayWidth(0.4F * scale);
-            spawned.setDisplayHeight(0.6F * scale);
-            if (billboard != null) {
-                spawned.setBillboard(billboard);
-            }
-            spawned.setRotation(yaw, 0.0F);
-            spawned.setVisibleByDefault(!restrictedVisibility && visibleByDefault);
-            if (glowColor != null) {
-                spawned.setGlowing(true);
-                spawned.setGlowColorOverride(glowColor);
-                spawned.setBrightness(new Display.Brightness(15, 15));
-            }
-            spawned.setTransformation(new Transformation(
-                new Vector3f(),
-                new AxisAngle4f((float) Math.toRadians(pose.xRotationDegrees()), 1.0F, 0.0F, 0.0F),
-                new Vector3f(scale, scale, scale),
-                new AxisAngle4f()
-            ));
-            spawned.setItemStack(tileItem(runtime, variant, tile, pose.faceDown()));
-        });
+        // World.spawn(Location, Class, Consumer) was source-compatible across 1.20.x but the
+        // Consumer parameter type changed from org.bukkit.util.Consumer (forRemoval) to
+        // java.util.function.Consumer in 1.21+. To keep one jar working on both we use the
+        // pre-1.20 World.spawn(Location, Class) entry point, which has been stable since
+        // Bukkit's earliest releases, and configure the entity immediately after spawning.
+        ItemDisplay display = world.spawn(location, ItemDisplay.class);
+        boolean restrictedVisibility = privateViewers != null;
+        // Set visibility before any other property so the entity tracker that
+        // wakes up on the next broadcast tick already sees the final state and
+        // never publishes a one-frame window of default visibility to clients.
+        display.setVisibleByDefault(!restrictedVisibility && visibleByDefault);
+        display.setPersistent(false);
+        markManagedEntity(runtime.bukkitPlugin(), display);
+        display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.HEAD);
+        display.setInterpolationDuration(smoothMovement ? 1 : 0);
+        display.setInterpolationDelay(0);
+        PaperCompatibility.setTeleportDuration(display, smoothMovement ? 1 : 0);
+        display.setViewRange(32.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setDisplayWidth(0.4F * scale);
+        display.setDisplayHeight(0.6F * scale);
+        if (billboard != null) {
+            display.setBillboard(billboard);
+        }
+        display.setRotation(yaw, 0.0F);
+        if (glowColor != null) {
+            display.setGlowing(true);
+            display.setGlowColorOverride(glowColor);
+            display.setBrightness(new Display.Brightness(15, 15));
+        }
+        display.setTransformation(new Transformation(
+            new Vector3f(),
+            new AxisAngle4f((float) Math.toRadians(pose.xRotationDegrees()), 1.0F, 0.0F, 0.0F),
+            new Vector3f(scale, scale, scale),
+            new AxisAngle4f()
+        ));
+        display.setItemStack(tileItem(runtime, variant, tile, pose.faceDown()));
 
         if (clickAction != null) {
             TableDisplayRegistry.register(display.getEntityId(), clickAction);
@@ -755,22 +762,23 @@ public final class DisplayEntities {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        TextDisplay display = world.spawn(location, TextDisplay.class, spawned -> {
-            boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
-            spawned.setPersistent(false);
-            markManagedEntity(runtime.bukkitPlugin(), spawned);
-            spawned.text(text);
-            spawned.setSeeThrough(false);
-            spawned.setShadowed(shadowed);
-            spawned.setDefaultBackground(false);
-            spawned.setBillboard(billboard);
-            spawned.setRotation(yaw, pitch);
-            spawned.setLineWidth(160);
-            spawned.setViewRange(LABEL_VIEW_RANGE);
-            spawned.setBrightness(new Display.Brightness(15, 15));
-            spawned.setBackgroundColor(color);
-            spawned.setVisibleByDefault(!privateOnly);
-        });
+        TextDisplay display = world.spawn(location, TextDisplay.class);
+        boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
+        // See ItemDisplay spawn comment above: ensure the visibility flag is
+        // resolved before any tracker tick observes the entity.
+        display.setVisibleByDefault(!privateOnly);
+        display.setPersistent(false);
+        markManagedEntity(runtime.bukkitPlugin(), display);
+        display.text(text);
+        display.setSeeThrough(false);
+        display.setShadowed(shadowed);
+        display.setDefaultBackground(false);
+        display.setBillboard(billboard);
+        display.setRotation(yaw, pitch);
+        display.setLineWidth(160);
+        display.setViewRange(LABEL_VIEW_RANGE);
+        display.setBrightness(new Display.Brightness(15, 15));
+        display.setBackgroundColor(color);
         if (privateViewers != null && !privateViewers.isEmpty()) {
             DisplayVisibilityRegistry.registerPrivate(display.getEntityId(), privateViewers);
             syncPrivateVisibility(runtime, display, privateViewers);
@@ -812,15 +820,15 @@ public final class DisplayEntities {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        Interaction interaction = world.spawn(location, Interaction.class, spawned -> {
-            boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
-            spawned.setPersistent(false);
-            markManagedEntity(runtime.bukkitPlugin(), spawned);
-            spawned.setResponsive(true);
-            spawned.setInteractionWidth(width);
-            spawned.setInteractionHeight(height);
-            spawned.setVisibleByDefault(!privateOnly);
-        });
+        Interaction interaction = world.spawn(location, Interaction.class);
+        boolean interactionPrivateOnly = privateViewers != null && !privateViewers.isEmpty();
+        // See ItemDisplay spawn comment above.
+        interaction.setVisibleByDefault(!interactionPrivateOnly);
+        interaction.setPersistent(false);
+        markManagedEntity(runtime.bukkitPlugin(), interaction);
+        interaction.setResponsive(true);
+        interaction.setInteractionWidth(width);
+        interaction.setInteractionHeight(height);
         if (clickAction != null) {
             TableDisplayRegistry.register(interaction.getEntityId(), clickAction);
         }
@@ -866,29 +874,29 @@ public final class DisplayEntities {
             throw new IllegalArgumentException("Location world is null");
         }
 
-        BlockDisplay display = world.spawn(location, BlockDisplay.class, spawned -> {
-            boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
-            spawned.setPersistent(false);
-            markManagedEntity(plugin, spawned);
-            spawned.setInterpolationDuration(1);
-            spawned.setInterpolationDelay(0);
-            PaperCompatibility.setTeleportDuration(spawned, 1);
-            spawned.setViewRange(48.0F);
-            spawned.setShadowRadius(0.0F);
-            spawned.setShadowStrength(0.0F);
-            spawned.setVisibleByDefault(!privateOnly && visibleByDefault);
-            spawned.setRotation(0.0F, 0.0F);
-            spawned.setBlock(material.createBlockData());
-            // Keep display hit volume aligned with visual scale so custom ray hit-testing is stable.
-            spawned.setDisplayWidth(scaleX);
-            spawned.setDisplayHeight(scaleY);
-            spawned.setTransformation(new Transformation(
-                new Vector3f(),
-                new AxisAngle4f(),
-                new Vector3f(scaleX, scaleY, scaleZ),
-                new AxisAngle4f()
-            ));
-        });
+        BlockDisplay display = world.spawn(location, BlockDisplay.class);
+        boolean blockPrivateOnly = privateViewers != null && !privateViewers.isEmpty();
+        // See ItemDisplay spawn comment above.
+        display.setVisibleByDefault(!blockPrivateOnly && visibleByDefault);
+        display.setPersistent(false);
+        markManagedEntity(plugin, display);
+        display.setInterpolationDuration(1);
+        display.setInterpolationDelay(0);
+        PaperCompatibility.setTeleportDuration(display, 1);
+        display.setViewRange(48.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setRotation(0.0F, 0.0F);
+        display.setBlock(material.createBlockData());
+        // Keep display hit volume aligned with visual scale so custom ray hit-testing is stable.
+        display.setDisplayWidth(scaleX);
+        display.setDisplayHeight(scaleY);
+        display.setTransformation(new Transformation(
+            new Vector3f(),
+            new AxisAngle4f(),
+            new Vector3f(scaleX, scaleY, scaleZ),
+            new AxisAngle4f()
+        ));
         if (clickAction != null) {
             TableDisplayRegistry.register(display.getEntityId(), clickAction);
         }
