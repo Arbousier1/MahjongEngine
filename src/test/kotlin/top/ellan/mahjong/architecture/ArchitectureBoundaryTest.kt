@@ -136,7 +136,47 @@ class ArchitectureBoundaryTest {
         )
     }
 
+    @Test
+    fun `known large orchestration files stay under size budgets`() {
+        val violations = lineBudgets.mapNotNull { budget ->
+            val file = projectRoot.resolve(budget.path)
+            val lineCount = Files.readAllLines(file).size
+            if (lineCount <= budget.maxLines) {
+                null
+            } else {
+                "${budget.path}: $lineCount lines exceeds budget ${budget.maxLines}"
+            }
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Large files should shrink or stay flat; raise a budget only with an accompanying split plan:\n${violations.joinToString("\n")}"
+        )
+    }
+
+    @Test
+    fun `known broad public surfaces stay under method budgets`() {
+        val violations = publicMethodBudgets.mapNotNull { budget ->
+            val file = projectRoot.resolve(budget.path)
+            val methodCount = Files.readString(file).lineSequence()
+                .count { line -> publicMemberPattern.matches(line) }
+            if (methodCount <= budget.maxPublicMembers) {
+                null
+            } else {
+                "${budget.path}: $methodCount public members exceeds budget ${budget.maxPublicMembers}"
+            }
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Broad public surfaces should shrink or stay flat; prefer narrow interfaces before adding more public members:\n${violations.joinToString("\n")}"
+        )
+    }
+
     private companion object {
+        data class LineBudget(val path: String, val maxLines: Int)
+        data class PublicMethodBudget(val path: String, val maxPublicMembers: Int)
+
         val projectRoot: Path = Path.of("").toAbsolutePath()
         val forbiddenRuleImports = listOf(
             "import org.bukkit.",
@@ -173,6 +213,18 @@ class ArchitectureBoundaryTest {
             "src/main/kotlin/top/ellan/mahjong/riichi",
             "src/main/kotlin/top/ellan/mahjong/gb/jni"
         ).map { projectRoot.resolve(it).normalize() }
+        val lineBudgets = listOf(
+            LineBudget("build.gradle.kts", 350),
+            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 1650),
+            LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 1000),
+            LineBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 2150)
+        )
+        val publicMethodBudgets = listOf(
+            PublicMethodBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 230),
+            PublicMethodBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 50),
+            PublicMethodBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 40)
+        )
+        val publicMemberPattern = Regex("""^\s+public (?!class|interface|enum|record).*""")
 
         fun sourceFiles(vararg roots: String): List<Path> = roots.flatMap { root ->
             val rootPath = projectRoot.resolve(root)
