@@ -63,7 +63,9 @@ class SubcommandBehaviourTest {
             mock(AsyncService::class.java),
             mock(ServerScheduler::class.java),
             { null },
-            { null }
+            { null },
+            { null },
+            null
         )
         contextSpy = Mockito.spy(real)
         senderPlayer = mock(Player::class.java)

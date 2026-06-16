@@ -36,6 +36,7 @@ import top.ellan.mahjong.command.subcommand.ReloadSubcommand;
 import top.ellan.mahjong.command.subcommand.RemoveBotSubcommand;
 import top.ellan.mahjong.command.subcommand.RenderSubcommand;
 import top.ellan.mahjong.command.subcommand.RiichiSubcommand;
+import top.ellan.mahjong.command.subcommand.RoomSubcommand;
 import top.ellan.mahjong.command.subcommand.RonSubcommand;
 import top.ellan.mahjong.command.subcommand.RuleSubcommand;
 import top.ellan.mahjong.command.subcommand.SettlementSubcommand;
@@ -48,6 +49,8 @@ import top.ellan.mahjong.command.subcommand.TsumoSubcommand;
 import top.ellan.mahjong.command.subcommand.UnspectateSubcommand;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.gameroom.GameRoomManager;
+import top.ellan.mahjong.gameroom.GameRoomSelectionService;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.runtime.ServerScheduler;
@@ -67,9 +70,11 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         AsyncService async,
         ServerScheduler scheduler,
         Supplier<DatabaseService> database,
-        Supplier<String> reloadConfiguration
+        Supplier<String> reloadConfiguration,
+        Supplier<GameRoomManager> gameRoomManager,
+        GameRoomSelectionService selectionService
     ) {
-        this.context = new MahjongCommandContext(messages, tableManager, debug, async, scheduler, database, reloadConfiguration);
+        this.context = new MahjongCommandContext(messages, tableManager, debug, async, scheduler, database, reloadConfiguration, gameRoomManager, selectionService);
         this.subcommands = this.createSubcommands();
     }
 
@@ -209,6 +214,7 @@ public final class MahjongCommand implements CommandExecutor, TabCompleter {
         commands.add(new ForceEndSubcommand(context).create());
         commands.add(new DeleteTableSubcommand(context).create());
         commands.add(new ReloadSubcommand(context).create());
+        commands.add(new RoomSubcommand(context).create());
         return List.copyOf(commands);
     }
 

@@ -322,6 +322,11 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 | `/mahjong clear` | 管理员 | 清除展示实体 |
 | `/mahjong forceend [table_id]` | 管理员 | 强制结束牌桌 |
 | `/mahjong deletetable [table_id]` | 管理员 | 删除牌桌 |
+| `/mahjong room wand` | 管理员 | 获取魔棒选区工具 |
+| `/mahjong room create <id> [名称]` | 管理员 | 用选区或当前位置创建棋牌室 |
+| `/mahjong room delete <id>` | 管理员 | 删除棋牌室 |
+| `/mahjong room list` | 管理员 | 列出棋牌室 |
+| `/mahjong room info <id>` | 管理员 | 查看棋牌室详情 |
 | `/mahjong reload` | 管理员 | 重载配置 |
 
 ## 棋牌室系统
@@ -357,7 +362,62 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 
 ### 创建棋牌室
 
-目前棋牌室通过编辑 `plugins/MahjongPaper/game-rooms.yml` 手动创建。文件格式如下：
+有两种方式创建棋牌室：使用游戏内魔棒工具（推荐）或手动编辑配置文件。
+
+#### 方式一：魔棒工具（推荐）
+
+魔棒工具类似 WorldEdit 的选区功能，通过两点选区定义棋牌室区域。
+
+**获取魔棒**：
+
+```
+/mahjong room wand
+```
+
+执行后会获得一根烈焰棒（Blaze Rod），物品名和描述会标明这是麻将选区工具。
+
+**使用魔棒选区**：
+
+| 操作 | 效果 |
+| --- | --- |
+| 左键点击方块 | 设置选区第一点（最小角） |
+| 右键点击方块 | 设置选区第二点（最大角） |
+
+两点确定一个长方体（AABB）区域。设置成功后会收到提示消息，显示当前选区坐标。
+
+**创建棋牌室**：
+
+选好两点后，执行：
+
+```
+/mahjong room create <id> [名称]
+```
+
+- `id`：棋牌室唯一标识，只能包含小写字母、数字、下划线和短横线。
+- `名称`：可选的显示名称，不填则使用 id 作为名称。
+
+如果已有选区，会使用选区坐标创建；如果没有选区，则以玩家当前位置为中心，按配置中的 `defaultRadius` 和 `defaultHeight` 创建。
+
+**示例**：
+
+```
+/mahjong room wand                          # 获取魔棒
+# 左键点击房间一个角，右键点击对角
+/mahjong room create main-hall 主厅          # 用选区创建棋牌室
+/mahjong room create quick-room             # 无选区时以玩家位置为中心创建
+```
+
+**其他棋牌室命令**：
+
+| 命令 | 说明 |
+| --- | --- |
+| `/mahjong room delete <id>` | 删除指定棋牌室 |
+| `/mahjong room list` | 列出所有棋牌室 |
+| `/mahjong room info <id>` | 查看棋牌室详情（世界、坐标、大小、所有者） |
+
+#### 方式二：手动编辑配置文件
+
+直接编辑 `plugins/MahjongPaper/game-rooms.yml`：
 
 ```yaml
 rooms:
@@ -373,16 +433,16 @@ rooms:
     owner: "玩家UUID"                # 可选，所有者 UUID
 ```
 
-**创建步骤**：
+**步骤**：
 
 1. 停止服务器或确保没有活跃牌桌。
 2. 打开 `plugins/MahjongPaper/game-rooms.yml`。
-3. 在 `rooms:` 下添加一个新条目，按上面的格式填写 ID、名称、世界名和区域坐标。
+3. 在 `rooms:` 下添加新条目，填写 ID、名称、世界名和区域坐标。
 4. 保存文件，重启服务器或使用 `/mahjong reload` 重载。
 
-**确定区域坐标的方法**：
+**确定区域坐标**：
 
-- 站在你想设为棋牌室的一个角落，记下 `/minecraft:tp ~ ~ ~` 显示的坐标作为 `minX/minY/minZ`。
+- 站在棋牌室的一个角落，记下坐标作为 `minX/minY/minZ`。
 - 走到对角线的另一个角落，记下坐标作为 `maxX/maxY/maxZ`。
 - 两个角定义一个长方体（AABB），牌桌中心必须在这个长方体内才算"在棋牌室内"。
 
@@ -400,8 +460,6 @@ rooms:
     maxY: 69
     maxZ: 15
 ```
-
-> 后续版本将添加游戏内命令和选区工具来简化棋牌室的创建流程。
 
 ## 常见问题
 

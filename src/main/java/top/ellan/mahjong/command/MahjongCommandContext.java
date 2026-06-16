@@ -17,6 +17,8 @@ import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.db.MahjongSoulRankProfile;
 import top.ellan.mahjong.db.MahjongSoulRankRules;
+import top.ellan.mahjong.gameroom.GameRoomManager;
+import top.ellan.mahjong.gameroom.GameRoomSelectionService;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.layout.TableRenderLayout;
@@ -67,7 +69,8 @@ public final class MahjongCommandContext {
         "command.help.clear",
         "command.help.forceend",
         "command.help.deletetable",
-        "command.help.reload"
+        "command.help.reload",
+        "command.help.room"
     );
     static final java.util.Set<String> ADMIN_HELP_KEY_SET = java.util.Set.of(
         "command.help.create",
@@ -78,7 +81,8 @@ public final class MahjongCommandContext {
         "command.help.clear",
         "command.help.forceend",
         "command.help.deletetable",
-        "command.help.reload"
+        "command.help.reload",
+        "command.help.room"
     );
     private static final String[] HELP_KEYS = HELP_KEY_ORDER.toArray(new String[0]);
     private static final Set<String> ADMIN_HELP_KEYS = ADMIN_HELP_KEY_SET;
@@ -89,6 +93,8 @@ public final class MahjongCommandContext {
     private final ServerScheduler scheduler;
     private final Supplier<DatabaseService> database;
     private final Supplier<String> reloadConfiguration;
+    private final Supplier<GameRoomManager> gameRoomManager;
+    private final GameRoomSelectionService selectionService;
 
     public MahjongCommandContext(
         MessageService messages,
@@ -97,7 +103,9 @@ public final class MahjongCommandContext {
         AsyncService async,
         ServerScheduler scheduler,
         Supplier<DatabaseService> database,
-        Supplier<String> reloadConfiguration
+        Supplier<String> reloadConfiguration,
+        Supplier<GameRoomManager> gameRoomManager,
+        GameRoomSelectionService selectionService
     ) {
         this.messages = Objects.requireNonNull(messages, "messages");
         this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
@@ -106,6 +114,8 @@ public final class MahjongCommandContext {
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.database = Objects.requireNonNull(database, "database");
         this.reloadConfiguration = Objects.requireNonNull(reloadConfiguration, "reloadConfiguration");
+        this.gameRoomManager = gameRoomManager;
+        this.selectionService = selectionService;
     }
 
     public MessageService messages() {
@@ -507,5 +517,13 @@ public final class MahjongCommandContext {
 
     private DatabaseService database() {
         return this.database.get();
+    }
+
+    public GameRoomManager gameRoomManager() {
+        return this.gameRoomManager != null ? this.gameRoomManager.get() : null;
+    }
+
+    public GameRoomSelectionService selectionService() {
+        return this.selectionService;
     }
 }

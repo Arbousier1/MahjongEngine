@@ -40,9 +40,9 @@ class SubcommandRegistryTest {
             ?: emptySet()
 
         assertEquals(
-            34,
+            35,
             concreteClassNames.size,
-            "expected 34 concrete subcommand source files; found ${concreteClassNames.size}: $concreteClassNames"
+            "expected 35 concrete subcommand source files; found ${concreteClassNames.size}: $concreteClassNames"
         )
         assertEquals(
             concreteClassNames.size,
@@ -129,6 +129,8 @@ class SubcommandRegistryTest {
         mock(AsyncService::class.java),
         mock(ServerScheduler::class.java),
         { null },
-        { null }
+        { null },
+        { null },
+        null
     )
 }

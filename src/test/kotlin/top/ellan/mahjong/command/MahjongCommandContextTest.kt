@@ -46,7 +46,9 @@ class MahjongCommandContextTest {
             mock(top.ellan.mahjong.runtime.AsyncService::class.java),
             mock(top.ellan.mahjong.runtime.ServerScheduler::class.java),
             { null },
-            { reloadResult }
+            { reloadResult },
+            { null },
+            null
         )
     }
 
@@ -171,7 +173,9 @@ class MahjongCommandContextTest {
             mock(top.ellan.mahjong.runtime.AsyncService::class.java),
             mock(top.ellan.mahjong.runtime.ServerScheduler::class.java),
             { null },
-            { invoked = true; null }
+            { invoked = true; null },
+            { null },
+            null
         )
 
         tracking.handleReload(sender)

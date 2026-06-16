@@ -9,6 +9,8 @@ import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.gb.jni.GbNativeWarmupService;
 import top.ellan.mahjong.gameroom.GameRoomManager;
+import top.ellan.mahjong.gameroom.GameRoomSelectionService;
+import top.ellan.mahjong.gameroom.GameRoomWandListener;
 import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.metrics.InMemoryMetricsCollector;
 import top.ellan.mahjong.metrics.MetricsCollector;
@@ -42,6 +44,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private CraftEngineService craftEngine;
     private MahjongTableManager tableManager;
     private GameRoomManager gameRoomManager;
+    private GameRoomSelectionService gameRoomSelectionService;
 
     @Override
     public void onEnable() {
@@ -78,6 +81,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.scheduler.runGlobal(this.craftEngine::cleanupMahjongFurniture);
         this.tableManager.loadPersistentTables();
 
+        this.gameRoomSelectionService = new GameRoomSelectionService();
         this.gameRoomManager = new GameRoomManager(
             this.tableManager,
             this.debug,
@@ -97,7 +101,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
             this.async,
             this.scheduler,
             this::database,
-            this::reloadMahjongConfiguration
+            this::reloadMahjongConfiguration,
+            () -> this.gameRoomManager,
+            this.gameRoomSelectionService
         );
         if (!this.registerMahjongCommand(mahjongCommand)) {
             return;
@@ -106,6 +112,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
         if (this.gameRoomManager != null && this.settings.gameRooms().enabled()) {
             this.getServer().getPluginManager().registerEvents(new top.ellan.mahjong.gameroom.GameRoomListener(this.gameRoomManager, this.messages, () -> this.settings), this);
+            this.getServer().getPluginManager().registerEvents(new GameRoomWandListener(this.gameRoomSelectionService, this.messages), this);
             this.scheduler.runGlobalTimer(this.gameRoomManager::tick, 20L, 20L);
         }
         this.scheduler.runGlobal(() -> {

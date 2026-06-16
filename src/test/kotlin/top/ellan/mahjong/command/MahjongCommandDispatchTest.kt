@@ -55,7 +55,9 @@ class MahjongCommandDispatchTest {
             mock(top.ellan.mahjong.runtime.AsyncService::class.java),
             mock(top.ellan.mahjong.runtime.ServerScheduler::class.java),
             { null },
-            { null }
+            { null },
+            { null },
+            null
         )
         joinCalls.set(0)
         createCalls.set(0)
