@@ -2,6 +2,7 @@ package top.ellan.mahjong.table.runtime;
 
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.SichuanSessionAccess;
 import top.ellan.mahjong.runtime.PluginTask;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,6 +39,31 @@ final class SichuanBotStrategy implements BotStrategy {
     public void schedule(MahjongTableSession session) {
         if (!session.isStarted()) {
             return;
+        }
+        for (UUID playerId : session.players()) {
+            if (!session.isBot(playerId)) {
+                continue;
+            }
+            if (session.canChooseSichuanMissingSuit(playerId)) {
+                final PluginTask[] holder = new PluginTask[1];
+                holder[0] = session.plugin().scheduler().runRegionDelayed(
+                    session.center(),
+                    () -> this.safeHandleSichuanDingQue(session, playerId, holder[0]),
+                    20L
+                );
+                session.setBotTask(holder[0]);
+                return;
+            }
+            if (SichuanSessionAccess.isExchangePhase(session, playerId)) {
+                final PluginTask[] holder = new PluginTask[1];
+                holder[0] = session.plugin().scheduler().runRegionDelayed(
+                    session.center(),
+                    () -> this.safeHandleSichuanExchange(session, playerId, holder[0]),
+                    20L
+                );
+                session.setBotTask(holder[0]);
+                return;
+            }
         }
         // Check for pending reactions first (pon, kan, ron — no chii in Sichuan).
         for (UUID playerId : session.players()) {
@@ -86,6 +112,26 @@ final class SichuanBotStrategy implements BotStrategy {
         }
     }
 
+    private void safeHandleSichuanExchange(MahjongTableSession session, UUID playerId, PluginTask currentTask) {
+        try {
+            this.handleSichuanExchange(session, playerId);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("Sichuan bot exchange failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            session.clearBotTaskIfSame(currentTask);
+        }
+    }
+
+    private void safeHandleSichuanDingQue(MahjongTableSession session, UUID playerId, PluginTask currentTask) {
+        try {
+            this.handleSichuanDingQue(session, playerId);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("Sichuan bot dingque failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            session.clearBotTaskIfSame(currentTask);
+        }
+    }
+
     private void handleSichuanReaction(MahjongTableSession session, UUID playerId) {
         if (session.availableReactions(playerId) == null) {
             return;
@@ -95,6 +141,77 @@ final class SichuanBotStrategy implements BotStrategy {
         // - Evaluate pon/kan vs skip based on ting score
         // - No chii pairs in Sichuan mode
         session.react(playerId, session.gbSuggestedReaction(playerId));
+    }
+
+    private void handleSichuanExchange(MahjongTableSession session, UUID playerId) {
+        if (!SichuanSessionAccess.isExchangePhase(session, playerId)) {
+            return;
+        }
+        var hand = session.hand(playerId);
+        if (hand.isEmpty()) {
+            return;
+        }
+        Map<Character, java.util.List<Integer>> indicesBySuit = new HashMap<>();
+        for (int i = 0; i < hand.size(); i++) {
+            MahjongTile normalized = normalize(hand.get(i));
+            if (normalized == null || normalized.isFlower()) {
+                continue;
+            }
+            char suit = normalized.name().charAt(0);
+            if (suit == 'M' || suit == 'P' || suit == 'S') {
+                indicesBySuit.computeIfAbsent(suit, ignored -> new java.util.ArrayList<>()).add(i);
+            }
+        }
+        char targetSuit = 'M';
+        int smallest = Integer.MAX_VALUE;
+        for (var entry : indicesBySuit.entrySet()) {
+            int count = entry.getValue().size();
+            if (count >= 3 && count < smallest) {
+                smallest = count;
+                targetSuit = entry.getKey();
+            }
+        }
+        var candidates = indicesBySuit.getOrDefault(targetSuit, java.util.List.of());
+        if (candidates.size() < 3) {
+            return;
+        }
+        for (int i = candidates.size() - 3; i < candidates.size(); i++) {
+            session.clickHandTile(playerId, candidates.get(i), false);
+        }
+    }
+
+    private void handleSichuanDingQue(MahjongTableSession session, UUID playerId) {
+        if (!session.canChooseSichuanMissingSuit(playerId)) {
+            return;
+        }
+        Map<Character, Integer> suitCounts = new HashMap<>();
+        suitCounts.put('M', 0);
+        suitCounts.put('P', 0);
+        suitCounts.put('S', 0);
+        for (MahjongTile tile : session.hand(playerId)) {
+            MahjongTile normalized = normalize(tile);
+            if (normalized == null || normalized.isFlower()) {
+                continue;
+            }
+            char suit = normalized.name().charAt(0);
+            if (suitCounts.containsKey(suit)) {
+                suitCounts.merge(suit, 1, Integer::sum);
+            }
+        }
+        char targetSuit = 'M';
+        int minCount = Integer.MAX_VALUE;
+        for (var entry : suitCounts.entrySet()) {
+            if (entry.getValue() < minCount) {
+                minCount = entry.getValue();
+                targetSuit = entry.getKey();
+            }
+        }
+        String suitToken = switch (targetSuit) {
+            case 'P' -> "tong";
+            case 'S' -> "suo";
+            default -> "wan";
+        };
+        SichuanSessionAccess.chooseMissingSuit(session, playerId, suitToken);
     }
 
     private void handleSichuanTurn(MahjongTableSession session, UUID playerId, int retryAttempts) {

@@ -345,7 +345,7 @@ public final class MahjongTableManager implements Listener {
             return false;
         }
         UUID playerId = player.getUniqueId();
-        if (this.isDuplicateHandTileClick(playerId, tableId, ownerId, tileIndex)) {
+        if (!session.isSichuanExchangePhase(ownerId) && this.isDuplicateHandTileClick(playerId, tableId, ownerId, tileIndex)) {
             this.plugin.debug().log("table", player.getName() + " duplicate hand tile click ignored for tile index " + tileIndex + " on table " + tableId);
             return true;
         }
@@ -469,6 +469,7 @@ public final class MahjongTableManager implements Listener {
             case "tsumo" -> session.declareTsumo(playerId);
             case "kyuushu" -> session.declareKyuushuKyuuhai(playerId);
             case "kan" -> parts.length < 3 ? false : session.declareKan(playerId, parts[2].toLowerCase(Locale.ROOT));
+            case "dingque" -> parts.length < 3 ? false : session.chooseSichuanMissingSuit(playerId, parts[2]);
             case "riichi" -> {
                 if (parts.length < 3) {
                     yield false;

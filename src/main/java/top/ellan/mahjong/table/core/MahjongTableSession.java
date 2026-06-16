@@ -921,6 +921,21 @@ public final class MahjongTableSession implements TableSessionMutator {
         return this.fromRoundController(playerId, TableRoundController::canDeclareTsumo);
     }
 
+    public boolean canChooseSichuanMissingSuit(UUID playerId) {
+        return this.fromGbController(playerId, GbTableRoundController::canChooseSichuanMissingSuit, false);
+    }
+
+    boolean isSichuanExchangePhase(UUID playerId) { return this.fromGbController(playerId, GbTableRoundController::isSichuanExchangePhase, false); }
+
+    boolean chooseSichuanMissingSuit(UUID playerId, String suitToken) {
+        boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.chooseSichuanMissingSuit(actorId, suitToken), false);
+        if (result) {
+            this.clearSelectedHandTilesInternal();
+        }
+        this.render();
+        return result;
+    }
+
     public List<Integer> suggestedRiichiIndices(UUID playerId) {
         return this.fromRoundController(playerId, TableRoundController::suggestedRiichiIndices, List.of());
     }
@@ -1080,33 +1095,29 @@ public final class MahjongTableSession implements TableSessionMutator {
         return this.handSelectionCoordinator.clickHandTile(playerId, tileIndex, cancelSelection);
     }
 
-    public int selectedHandTileIndex(UUID playerId) {
-        return this.handSelectionCoordinator.selectedHandTileIndex(playerId);
+    public int selectedHandTileIndex(UUID playerId) { List<Integer> selected = this.selectedHandTileIndices(playerId); return selected.isEmpty() ? -1 : selected.get(0); }
+
+    @Override
+    public List<Integer> selectedHandTileIndices(UUID playerId) {
+        List<Integer> controllerSelected = this.fromRoundController(playerId, TableRoundController::selectedHandTileIndices, List.of());
+        return controllerSelected.isEmpty() ? this.handSelectionCoordinator.selectedHandTileIndices(playerId) : controllerSelected;
     }
 
     public void refreshSelectedHandTileViewInternal(UUID playerId) {
         SeatWind wind = this.seatOf(playerId);
-        if (wind == null) {
-            return;
-        }
+        if (wind == null) { return; }
         TableRenderSnapshot snapshot = this.captureRenderSnapshot(0L, 0L);
         TableSeatRenderSnapshot seat = snapshot.seat(wind);
-        if (seat == null || seat.playerId() == null) {
-            return;
-        }
+        if (seat == null || seat.playerId() == null) { return; }
         TableRenderLayout.SeatLayoutPlan seatPlan = TableRenderLayout.precomputeSeatOnly(snapshot, wind);
-        if (seatPlan == null) {
-            return;
-        }
+        if (seatPlan == null) { return; }
         this.regionDisplayCoordinator.refreshPrivateHandRegions(seat, seatPlan);
     }
 
-    public boolean canSelectHandTileInternal(UUID playerId, int tileIndex) {
-        return this.contains(playerId)
-            && tileIndex >= 0
-            && this.roundController != null
-            && this.roundController.canSelectHandTile(playerId, tileIndex);
-    }
+    public boolean canSelectHandTileInternal(UUID playerId, int tileIndex) { return this.contains(playerId) && tileIndex >= 0 && this.roundController != null && this.roundController.canSelectHandTile(playerId, tileIndex); }
+
+    @Override
+    public boolean handleHandTileClickInternal(UUID playerId, int tileIndex, boolean cancelSelection) { return this.contains(playerId) && tileIndex >= 0 && this.roundController != null && this.roundController.handleHandTileClick(playerId, tileIndex, cancelSelection); }
 
     public top.ellan.mahjong.model.MahjongTile handTileAtInternal(UUID playerId, int tileIndex) {
         List<top.ellan.mahjong.model.MahjongTile> hand = this.hand(playerId);

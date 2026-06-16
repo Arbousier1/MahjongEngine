@@ -325,6 +325,7 @@ class TableRendererTest {
         true,
         "",
         -1,
+        emptyList(),
         riichiDiscardIndex,
         scoringSticks.size + cornerSticks.size,
         emptyList(),
@@ -422,5 +423,4 @@ class TableRendererTest {
         return dx * dx + dz * dz
     }
 }
-
 

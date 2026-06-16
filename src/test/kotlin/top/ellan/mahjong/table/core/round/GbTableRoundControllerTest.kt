@@ -372,6 +372,7 @@ class GbTableRoundControllerTest {
         controller.startRound()
         val east = player(SeatWind.EAST)
 
+        activateSichuan(controller, east to "suo")
         forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9", "P9"))
 
         assertTrue(controller.canWinByTsumo(east))
@@ -391,6 +392,7 @@ class GbTableRoundControllerTest {
         val west = player(SeatWind.WEST)
         val north = player(SeatWind.NORTH)
 
+        activateSichuan(controller, east to "suo", south to "suo", west to "suo", north to "suo")
         forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9", "P9"))
         forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9"))
         forceHand(controller, west, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9"))
@@ -422,6 +424,7 @@ class GbTableRoundControllerTest {
         val west = player(SeatWind.WEST)
         val north = player(SeatWind.NORTH)
 
+        activateSichuan(controller, east to "suo", south to "suo", west to "suo", north to "suo")
         forceHand(controller, east, listOf("P9", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4"))
         forceHand(controller, south, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "P9"))
         forceHand(controller, west, listOf("M1", "M2", "M4", "M5", "M7", "M8", "P1", "P3", "P5", "S1", "S3", "S5", "S7"))
@@ -455,6 +458,7 @@ class GbTableRoundControllerTest {
         controller.startRound()
         val east = player(SeatWind.EAST)
 
+        activateSichuan(controller, east to "wan")
         forceHand(controller, east, listOf("M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P2", "P3", "P4", "S9", "S9"))
 
         assertFalse(controller.canWinByTsumo(east))
@@ -468,6 +472,7 @@ class GbTableRoundControllerTest {
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
 
+        activateSichuan(controller, east to "suo", south to "wan")
         forceHand(controller, east, listOf("M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "P1", "P2", "P3", "P4", "P5", "P6"))
         forceHand(controller, south, listOf("M1", "M3", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "P1", "P2"))
 
@@ -481,6 +486,7 @@ class GbTableRoundControllerTest {
         controller.startRound()
         val east = player(SeatWind.EAST)
 
+        activateSichuan(controller, east to "tong")
         forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M7", "M7", "M9", "M9"))
 
         assertTrue(controller.declareTsumo(east))
@@ -493,6 +499,7 @@ class GbTableRoundControllerTest {
         controller.startRound()
         val east = player(SeatWind.EAST)
 
+        activateSichuan(controller, east to "suo")
         forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "P1", "P2", "P3", "P4"))
         forceWall(controller, listOf("P5", "P6", "P7", "P8", "P9"))
 
@@ -553,6 +560,110 @@ class GbTableRoundControllerTest {
 
         assertTrue(controller.canWinByTsumo(east))
         assertEquals(listOf("a", "h"), gateway.lastFanRequest?.flowerTiles)
+    }
+
+    @Test
+    fun `gb native requests rotate logical seat wind with dealer`() {
+        val gateway = CapturingGateway()
+        val controller = controller(gateway)
+        controller.startRound()
+
+        assertTrue(controller.declareTsumo(player(SeatWind.EAST)))
+        controller.startRound()
+        val south = player(SeatWind.SOUTH)
+        forceHand(controller, south, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "RED_DRAGON", "RED_DRAGON"))
+
+        assertEquals(SeatWind.SOUTH, controller.dealerSeat())
+        assertTrue(controller.canWinByTsumo(south))
+        assertTrue(controller.declareTsumo(south))
+        assertEquals("EAST", gateway.lastFanRequest?.seatWind)
+        assertEquals("EAST", gateway.lastWinRequest?.winnerSeat)
+    }
+
+    @Test
+    fun `sichuan exchange requires same suit and transitions to dingque`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN, dicePoints = 4)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6", "S7"))
+        forceHand(controller, south, listOf("P1", "P2", "P3", "M4", "M5", "M6", "M7", "S1", "S2", "S3", "S4", "S5", "S6"))
+        forceHand(controller, west, listOf("S1", "S2", "S3", "M1", "M2", "M3", "M4", "P4", "P5", "P6", "P7", "P8", "P9"))
+        forceHand(controller, north, listOf("M4", "M5", "M6", "P4", "P5", "P6", "P7", "S4", "S5", "S6", "S7", "S8", "S9"))
+
+        assertTrue(controller.canSelectHandTile(south, 0))
+        assertTrue(controller.handleHandTileClick(east, 0, false))
+        assertFalse(controller.handleHandTileClick(east, 3, false))
+        assertTrue(controller.handleHandTileClick(east, 1, false))
+        assertTrue(controller.handleHandTileClick(east, 2, false))
+        assertTrue(controller.handleHandTileClick(south, 0, false))
+        assertTrue(controller.handleHandTileClick(south, 1, false))
+        assertTrue(controller.handleHandTileClick(south, 2, false))
+        assertTrue(controller.handleHandTileClick(west, 0, false))
+        assertTrue(controller.handleHandTileClick(west, 1, false))
+        assertTrue(controller.handleHandTileClick(west, 2, false))
+        assertTrue(controller.handleHandTileClick(north, 0, false))
+        assertTrue(controller.handleHandTileClick(north, 1, false))
+        assertTrue(controller.handleHandTileClick(north, 2, false))
+
+        assertTrue(controller.canChooseSichuanMissingSuit(east))
+        assertFalse(controller.canSelectHandTile(east, 0))
+        assertTrue(controller.hand(south).containsAll(listOf(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)))
+        assertTrue(controller.hand(east).containsAll(listOf(MahjongTile.M4, MahjongTile.M5, MahjongTile.M6)))
+    }
+
+    @Test
+    fun `sichuan declared suit must be discarded first`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        activateSichuan(controller, east to "wan")
+        forceHand(controller, east, listOf("M1", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6", "S7"))
+
+        assertTrue(controller.canSelectHandTile(east, 0))
+        assertFalse(controller.canSelectHandTile(east, 1))
+    }
+
+    @Test
+    fun `sichuan self draw requires missing the declared suit`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        activateSichuan(controller, east to "wan")
+        forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "P4", "P5", "P6", "P9", "P9"))
+        assertFalse(controller.canWinByTsumo(east))
+
+        forceHand(controller, east, listOf("P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "S1", "S2", "S3", "S4", "S4"))
+        assertTrue(controller.canWinByTsumo(east))
+    }
+
+    @Test
+    fun `sichuan allows multiple ron winners on the same discard`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        activateSichuan(controller, east to "tong", south to "wan", west to "wan", north to "wan")
+        forceHand(controller, east, listOf("P7", "M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "S4"))
+        forceHand(controller, south, listOf("P1", "P2", "P3", "P4", "P5", "P6", "P8", "P9", "S1", "S2", "S3", "S4", "S4"))
+        forceHand(controller, west, listOf("P1", "P2", "P3", "P4", "P5", "P6", "P8", "P9", "S1", "S2", "S3", "S4", "S4"))
+        forceHand(controller, north, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "S4"))
+
+        assertTrue(controller.discard(east, 0))
+        assertNull(controller.availableReactions(north))
+        assertTrue(controller.react(south, ReactionResponse(ReactionType.RON, null)))
+        assertTrue(controller.react(west, ReactionResponse(ReactionType.RON, null)))
+
+        assertEquals(2, settledSichuanPlayers(controller).size)
+        assertTrue(controller.started())
     }
 
     @Test
@@ -907,6 +1018,32 @@ class GbTableRoundControllerTest {
         flowers[playerId] = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf).toMutableList()
     }
 
+    private fun activateSichuan(controller: GbTableRoundController, vararg declarations: Pair<UUID, String>) {
+        val phaseClass = Class.forName("${GbTableRoundController::class.java.name}\$SichuanPreparationPhase")
+        val activePhase = phaseClass.enumConstants.first { (it as Enum<*>).name == "ACTIVE" }
+        val phaseField = GbTableRoundController::class.java.getDeclaredField("sichuanPreparationPhase")
+        phaseField.isAccessible = true
+        phaseField.set(controller, activePhase)
+
+        val missingSuitsField = GbTableRoundController::class.java.getDeclaredField("chosenMissingSuits")
+        missingSuitsField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val chosenMissingSuits = missingSuitsField.get(controller) as MutableMap<UUID, Any>
+        chosenMissingSuits.clear()
+        val suitClass = Class.forName("top.ellan.mahjong.table.core.round.SichuanSuit")
+        declarations.forEach { (playerId, suitKey) ->
+            val suit = suitClass.enumConstants.first { (it as Enum<*>).name == suitKey.uppercase() }
+            chosenMissingSuits[playerId] = suit
+        }
+    }
+
+    private fun settledSichuanPlayers(controller: GbTableRoundController): Set<UUID> {
+        val field = GbTableRoundController::class.java.getDeclaredField("settledSichuanPlayers")
+        field.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        return field.get(controller) as Set<UUID>
+    }
+
     private fun currentWall(controller: GbTableRoundController): List<MahjongTile> {
         val wallField = GbTableRoundController::class.java.getDeclaredField("wall")
         wallField.isAccessible = true
@@ -934,6 +1071,7 @@ class GbTableRoundControllerTest {
 
     private class CapturingGateway : GbNativeRulesGateway() {
         var lastFanRequest: GbFanRequest? = null
+        var lastWinRequest: GbWinRequest? = null
 
         override fun isAvailable(): Boolean = true
 
@@ -946,6 +1084,7 @@ class GbTableRoundControllerTest {
             GbTingResponse(true, listOf(GbTingCandidate("W1", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
 
         override fun evaluateWin(request: GbWinRequest): GbWinResponse {
+            lastWinRequest = request
             val winnerDelta = 24
             val loserSeat = request.discarderSeat ?: "SOUTH"
             return GbWinResponse(

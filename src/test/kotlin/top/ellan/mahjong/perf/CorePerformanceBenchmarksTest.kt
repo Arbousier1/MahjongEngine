@@ -415,6 +415,7 @@ class CorePerformanceBenchmarksTest {
         true,
         "viewer-a;viewer-b",
         -1,
+        emptyList(),
         riichiDiscardIndex,
         scoringSticks.size + cornerSticks.size,
         emptyList(),

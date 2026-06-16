@@ -133,6 +133,14 @@ public interface TableRoundController {
         return false;
     }
 
+    default boolean handleHandTileClick(UUID playerId, int tileIndex, boolean cancelSelection) {
+        return false;
+    }
+
+    default List<Integer> selectedHandTileIndices(UUID playerId) {
+        return List.of();
+    }
+
     default boolean canDeclareRiichi(UUID playerId) {
         return false;
     }

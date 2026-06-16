@@ -544,6 +544,10 @@ public final class TableViewerSnapshotFactory {
             this.addReactionButtons(locale, options, menuState, buttons);
             return List.copyOf(buttons);
         }
+        if (this.session.canChooseSichuanMissingSuit(viewerId)) {
+            this.addSichuanMissingSuitButtons(locale, buttons);
+            return List.copyOf(buttons);
+        }
         if (!this.session.isStarted() || this.session.currentSeat() != this.session.seatOf(viewerId)) {
             if (!menuState.isBlank()) {
                 this.session.clearViewerActionMenuState(viewerId);
@@ -673,6 +677,12 @@ public final class TableViewerSnapshotFactory {
         }
     }
 
+    private void addSichuanMissingSuitButtons(Locale locale, List<TableViewerActionButtonSnapshot> buttons) {
+        this.addButton(buttons, "turn-dingque-wan", this.session.plugin().messages().plain(locale, "table.action.dingque_wan"), NamedTextColor.RED, "turn:dingque:wan");
+        this.addButton(buttons, "turn-dingque-tong", this.session.plugin().messages().plain(locale, "table.action.dingque_tong"), NamedTextColor.GOLD, "turn:dingque:tong");
+        this.addButton(buttons, "turn-dingque-suo", this.session.plugin().messages().plain(locale, "table.action.dingque_suo"), NamedTextColor.GREEN, "turn:dingque:suo");
+    }
+
     private void addButton(
         List<TableViewerActionButtonSnapshot> buttons,
         String actionId,
@@ -732,5 +742,4 @@ public final class TableViewerSnapshotFactory {
     }
 
 }
-
 

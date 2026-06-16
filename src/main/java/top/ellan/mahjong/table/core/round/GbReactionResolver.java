@@ -77,12 +77,13 @@ final class GbReactionResolver {
         PendingReactionWindow pending,
         SeatWind discarderSeat,
         Function<SeatWind, UUID> playerAt,
+        boolean allowMultiRon,
         RonWinEvaluator ronWinEvaluator
     ) {
         if (pending == null || discarderSeat == null || playerAt == null || ronWinEvaluator == null) {
             return Resolution.noop();
         }
-        // GB uses intercept ron: only the earliest in turn order may win on one discard.
+        List<ResolvedGbWin> ronWinners = new java.util.ArrayList<>();
         for (SeatWind wind : GbRoundSupport.orderedAfter(discarderSeat)) {
             UUID playerId = playerAt.apply(wind);
             if (playerId == null) {
@@ -92,9 +93,15 @@ final class GbReactionResolver {
             if (response != null && response.getType() == ReactionType.RON) {
                 ResolvedGbWin win = ronWinEvaluator.evaluate(playerId, pending.discarderId(), pending.tile(), pending.flags());
                 if (win != null) {
-                    return new Resolution(List.of(win), null, false, false);
+                    ronWinners.add(win);
+                    if (!allowMultiRon) {
+                        return new Resolution(List.of(win), null, false, false);
+                    }
                 }
             }
+        }
+        if (!ronWinners.isEmpty()) {
+            return new Resolution(List.copyOf(ronWinners), null, false, false);
         }
         if (pending.robbingKong()) {
             return new Resolution(List.of(), null, true, false);

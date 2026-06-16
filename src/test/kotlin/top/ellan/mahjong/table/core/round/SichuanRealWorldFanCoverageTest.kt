@@ -161,6 +161,7 @@ class SichuanRealWorldFanCoverageTest {
 
     private fun controllerWithHand(hand: List<String>, drawn: Boolean = false): ControllerContext =
         controller().also { context ->
+            activateSichuan(context.controller, context.east to "suo")
             forceHand(context.controller, context.east, hand)
             setDrawn(context.controller, context.east, drawn)
         }
@@ -169,6 +170,7 @@ class SichuanRealWorldFanCoverageTest {
 
     private fun goldenSingleWaitController(): ControllerContext =
         controller().also { context ->
+            activateSichuan(context.controller, context.east to "suo")
             forceHand(context.controller, context.east, listOf("P2"))
             setDrawn(context.controller, context.east, false)
             addPung(context.controller, context.east, "M2")
@@ -233,6 +235,25 @@ class SichuanRealWorldFanCoverageTest {
         )
         pung.isAccessible = true
         melds.getValue(playerId).add(pung.invoke(null, MahjongTile.valueOf(tile), SeatWind.SOUTH, SeatWind.EAST))
+    }
+
+    private fun activateSichuan(controller: GbTableRoundController, vararg declarations: Pair<UUID, String>) {
+        val phaseClass = Class.forName("${GbTableRoundController::class.java.name}\$SichuanPreparationPhase")
+        val activePhase = phaseClass.enumConstants.first { (it as Enum<*>).name == "ACTIVE" }
+        val phaseField = GbTableRoundController::class.java.getDeclaredField("sichuanPreparationPhase")
+        phaseField.isAccessible = true
+        phaseField.set(controller, activePhase)
+
+        val missingSuitsField = GbTableRoundController::class.java.getDeclaredField("chosenMissingSuits")
+        missingSuitsField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val chosenMissingSuits = missingSuitsField.get(controller) as MutableMap<UUID, Any>
+        chosenMissingSuits.clear()
+        val suitClass = Class.forName("top.ellan.mahjong.table.core.round.SichuanSuit")
+        declarations.forEach { (playerId, suitKey) ->
+            val suit = suitClass.enumConstants.first { (it as Enum<*>).name == suitKey.uppercase() }
+            chosenMissingSuits[playerId] = suit
+        }
     }
 
     private data class ControllerContext(val controller: GbTableRoundController, val east: UUID)

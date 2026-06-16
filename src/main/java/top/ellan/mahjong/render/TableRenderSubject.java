@@ -96,6 +96,11 @@ public interface TableRenderSubject extends DisplayEntityRuntime {
 
     int selectedHandTileIndex(UUID playerId);
 
+    default List<Integer> selectedHandTileIndices(UUID playerId) {
+        int selected = this.selectedHandTileIndex(playerId);
+        return selected < 0 ? List.of() : List.of(selected);
+    }
+
     int riichiDiscardIndex(UUID playerId);
 
     int stickLayoutCount(SeatWind wind);

@@ -84,6 +84,7 @@ public final class TableRenderSnapshotFactory {
             occupied && onlineViewerIdSet.contains(playerId),
             occupied ? viewerMembershipSignatures.getOrDefault(playerId, "") : "",
             occupied ? session.selectedHandTileIndex(playerId) : -1,
+            occupied ? session.selectedHandTileIndices(playerId) : List.of(),
             occupied ? session.riichiDiscardIndex(playerId) : -1,
             session.stickLayoutCount(wind),
             occupied ? viewerIdsExcluding.getOrDefault(playerId, List.of()) : List.of(),
@@ -111,5 +112,4 @@ public final class TableRenderSnapshotFactory {
             .toList();
     }
 }
-
 

@@ -108,9 +108,10 @@ public final class TableRenderLayout {
 
         List<Point> publicHandPoints = new ArrayList<>(seat.hand().size());
         List<Point> privateHandPoints = new ArrayList<>(seat.hand().size());
+        List<Integer> selectedHandTileIndices = seat.selectedHandTileIndices();
         for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
             publicHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, false));
-            privateHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, tileIndex == seat.selectedHandTileIndex()));
+            privateHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, selectedHandTileIndices.contains(tileIndex)));
         }
 
         return new SeatLayoutPlan(
@@ -784,4 +785,3 @@ public final class TableRenderLayout {
     private record DeadWallPlacement(int wallSlot, Point point, float yaw) {
     }
 }
-

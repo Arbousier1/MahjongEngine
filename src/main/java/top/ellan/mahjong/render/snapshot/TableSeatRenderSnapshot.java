@@ -18,6 +18,7 @@ public record TableSeatRenderSnapshot(
     boolean online,
     String viewerMembershipSignature,
     int selectedHandTileIndex,
+    List<Integer> selectedHandTileIndices,
     int riichiDiscardIndex,
     int stickLayoutCount,
     List<UUID> viewerIdsExcluding,

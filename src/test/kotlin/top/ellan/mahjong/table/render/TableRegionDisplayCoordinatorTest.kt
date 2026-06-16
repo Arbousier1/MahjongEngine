@@ -173,6 +173,7 @@ class TableRegionDisplayCoordinatorTest {
                 true,
                 "",
                 -1,
+                emptyList(),
                 -1,
                 0,
                 emptyList(),

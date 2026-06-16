@@ -73,6 +73,8 @@ public interface TableSessionMutator extends TableSessionContext {
 
     void refreshSelectedHandTileViewInternal(UUID playerId);
 
+    boolean handleHandTileClickInternal(UUID playerId, int tileIndex, boolean cancelSelection);
+
     void clearSelectedHandTilesInternal();
 
     void clearLastPublicDiscardInternal();

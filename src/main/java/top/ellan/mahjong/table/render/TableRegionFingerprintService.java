@@ -40,7 +40,7 @@ public final class TableRegionFingerprintService {
             .field(tileIndex)
             .field(seat.online())
             .field(seat.hand().size())
-            .field(tileIndex == seat.selectedHandTileIndex())
+            .field(seat.selectedHandTileIndices().contains(tileIndex))
             .field(Double.doubleToLongBits(point.x()))
             .field(Double.doubleToLongBits(point.y()))
             .field(Double.doubleToLongBits(point.z()))
