@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 - 2026-06-16
+
+Compatibility and architecture release for the post-1.0.0 Paper/Folia line.
+
+- Added Paper 1.21.11 runtime compatibility by registering plugin commands through the Paper lifecycle command registry when available, with the Bukkit command map as the fallback path.
+- Updated the Paper plugin loader to resolve libraries from Paper's Maven Central mirror metadata when present, avoiding the newer server warning about direct Maven Central CDN use.
+- Refactored table variant dispatch around `VariantVisitor`, including Sichuan-specific visitation, so callers branch through `variant()` instead of open-coded variant checks.
+- Moved render snapshot models into the render package and moved `MahjongVariant` into the model package to tighten table/render boundaries.
+- Added `TableRenderSubject` plus architecture guards that block render code from depending back on table internals.
+- Introduced `TableSessionContext` and `TableSessionMutator`, then migrated session coordinators onto the narrower session-facing contracts.
+- Reworked plugin-held runtime collaborators into explicit constructor-injected services for clearer startup wiring and easier testing.
+- Added focused architecture, command, context, reload-supplier, and compatibility tests covering the new boundaries and registration paths.
+- Verified the built jar on live Paper servers: Paper 1.21.11 build 132 and Paper 26.1.2 build 70 with CraftEngine 26.6.2.
+
 ## 1.0.0 - 2026-06-15
 
 First stable release. MahjongPaper 1.0.0 covers Japanese riichi, Chinese national-standard (GB), and Sichuan blood-battle mahjong on a single plugin jar that runs on Paper/Folia 1.20.1 through 26.2.
