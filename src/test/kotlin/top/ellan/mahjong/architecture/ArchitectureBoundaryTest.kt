@@ -120,6 +120,22 @@ class ArchitectureBoundaryTest {
         )
     }
 
+    @Test
+    fun `production kotlin stays in rules and native model packages`() {
+        val violations = sourceFiles("src/main/kotlin")
+            .filter { file ->
+                allowedProductionKotlinRoots.none { root ->
+                    file.normalize().startsWith(root)
+                }
+            }
+            .map { projectRoot.relativize(it) }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Production Kotlin should stay in rule or serialization-model packages; update CONTRIBUTING.md and this allowlist for deliberate new roots:\n${violations.joinToString("\n")}"
+        )
+    }
+
     private companion object {
         val projectRoot: Path = Path.of("").toAbsolutePath()
         val forbiddenRuleImports = listOf(
@@ -153,6 +169,10 @@ class ArchitectureBoundaryTest {
             "import top.ellan.mahjong.table.core.MahjongTableSession",
             "import top.ellan.mahjong.table.core.TableFinalStanding"
         )
+        val allowedProductionKotlinRoots = listOf(
+            "src/main/kotlin/top/ellan/mahjong/riichi",
+            "src/main/kotlin/top/ellan/mahjong/gb/jni"
+        ).map { projectRoot.resolve(it).normalize() }
 
         fun sourceFiles(vararg roots: String): List<Path> = roots.flatMap { root ->
             val rootPath = projectRoot.resolve(root)

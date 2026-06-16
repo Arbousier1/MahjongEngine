@@ -4,6 +4,7 @@
 
 Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 Chinese gameplay and operations wiki: [docs/wiki.zh-CN.md](./docs/wiki.zh-CN.md)
+Contributor notes: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 `MahjongPaper` is a Paper plugin rewrite of `MahjongCraft` built around:
 
