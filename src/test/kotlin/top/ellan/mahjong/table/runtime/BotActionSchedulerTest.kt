@@ -27,6 +27,7 @@ import kotlin.test.assertTrue
 class BotActionSchedulerTest {
     companion object {
         private const val MAX_GB_TURN_RETRY_ATTEMPTS = 8
+        private const val MAX_SICHUAN_TURN_RETRY_ATTEMPTS = 8
     }
 
     @Test
@@ -219,5 +220,182 @@ class BotActionSchedulerTest {
         }
 
         assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS * 2, retryRunnables.size)
+    }
+
+    @Test
+    fun `sichuan variant uses sichuan bot strategy`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c001")
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.availableReactions(botId)).thenReturn(null)
+        `when`(session.currentSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.playerAt(SeatWind.EAST)).thenReturn(botId)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(scheduler.runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(20L))).thenReturn(task)
+
+        BotActionScheduler.schedule(session)
+
+        verify(session).setBotTask(task)
+        verify(session, never()).riichiEngine()
+    }
+
+    @Test
+    fun `sichuan bot prioritises discarding from smallest suit when all three suits present`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c002")
+
+        // Hand with 4 M tiles, 3 P tiles, 1 S tile — should discard from S suit (fewest)
+        val hand = listOf(
+            MahjongTile.M1, MahjongTile.M2, MahjongTile.M3, MahjongTile.M4,
+            MahjongTile.P1, MahjongTile.P2, MahjongTile.P3,
+            MahjongTile.S1
+        )
+
+        `when`(session.id()).thenReturn("SC001")
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.availableReactions(botId)).thenReturn(null)
+        `when`(session.currentSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.playerAt(SeatWind.EAST)).thenReturn(botId)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(session.hasPendingReaction()).thenReturn(false)
+        `when`(session.gbCanWinByTsumo(botId)).thenReturn(false)
+        `when`(session.gbSuggestedKanTile(botId)).thenReturn(null)
+        `when`(session.hand(botId)).thenReturn(hand)
+        `when`(session.canSelectHandTile(eq(botId), any(Int::class.java))).thenReturn(true)
+        `when`(session.discard(botId, 7)).thenReturn(true)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(20L))
+        runnableCaptor.value.run()
+
+        // Should discard the S1 tile (index 7) since S suit has the fewest tiles
+        verify(session).discard(botId, 7)
+    }
+
+    @Test
+    fun `sichuan bot delegates to engine when already missing one suit`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c003")
+
+        // Hand with only M and P tiles (already missing S suit)
+        val hand = listOf(
+            MahjongTile.M1, MahjongTile.M2, MahjongTile.M3,
+            MahjongTile.P1, MahjongTile.P2, MahjongTile.P3
+        )
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.availableReactions(botId)).thenReturn(null)
+        `when`(session.currentSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.playerAt(SeatWind.EAST)).thenReturn(botId)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(session.hasPendingReaction()).thenReturn(false)
+        `when`(session.gbCanWinByTsumo(botId)).thenReturn(false)
+        `when`(session.gbSuggestedKanTile(botId)).thenReturn(null)
+        `when`(session.hand(botId)).thenReturn(hand)
+        `when`(session.gbSuggestedDiscardIndex(botId)).thenReturn(3)
+        `when`(session.canSelectHandTile(botId, 3)).thenReturn(true)
+        `when`(session.discard(botId, 3)).thenReturn(true)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(20L))
+        runnableCaptor.value.run()
+
+        // Should use the engine's suggested discard index since hand already misses one suit
+        verify(session).discard(botId, 3)
+    }
+
+    @Test
+    fun `sichuan bot declares tsumo when possible`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c004")
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.availableReactions(botId)).thenReturn(null)
+        `when`(session.currentSeat()).thenReturn(SeatWind.EAST)
+        `when`(session.playerAt(SeatWind.EAST)).thenReturn(botId)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(session.hasPendingReaction()).thenReturn(false)
+        `when`(session.gbCanWinByTsumo(botId)).thenReturn(true)
+        `when`(session.declareTsumo(botId)).thenReturn(true)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(20L))
+        runnableCaptor.value.run()
+
+        verify(session).declareTsumo(botId)
+        verify(session, never()).discard(eq(botId), any(Int::class.java))
+    }
+
+    @Test
+    fun `sichuan bot reaction uses gb suggested reaction`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c005")
+        val reactionOptions = mock(top.ellan.mahjong.riichi.ReactionOptions::class.java)
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.availableReactions(botId)).thenReturn(reactionOptions)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(scheduler.runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(20L))).thenReturn(task)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(20L))
+        runnableCaptor.value.run()
+
+        verify(session).gbSuggestedReaction(botId)
+        verify(session).react(eq(botId), any())
     }
 }

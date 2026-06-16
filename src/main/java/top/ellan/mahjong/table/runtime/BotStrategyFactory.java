@@ -19,7 +19,7 @@ final class BotStrategyFactory {
         EnumMap<MahjongVariant, BotStrategy> map = new EnumMap<>(MahjongVariant.class);
         map.put(MahjongVariant.RIICHI, DEFAULT_STRATEGY);
         map.put(MahjongVariant.GB, new GbBotStrategy());
-        map.put(MahjongVariant.SICHUAN, new GbBotStrategy());
+        map.put(MahjongVariant.SICHUAN, new SichuanBotStrategy());
         return Map.copyOf(map);
     }
 }
