@@ -355,6 +355,54 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 
 棋牌室数据保存在 `plugins/MahjongPaper/game-rooms.yml` 中。
 
+### 创建棋牌室
+
+目前棋牌室通过编辑 `plugins/MahjongPaper/game-rooms.yml` 手动创建。文件格式如下：
+
+```yaml
+rooms:
+  my-room:                          # 棋牌室 ID（小写字母、数字、下划线、短横线）
+    name: "我的棋牌室"               # 显示名称
+    world: world                     # 世界名称
+    minX: -50                        # 区域最小 X
+    minY: -10                        # 区域最小 Y
+    minZ: -50                        # 区域最小 Z
+    maxX: 50                         # 区域最大 X
+    maxY: 20                         # 区域最大 Y
+    maxZ: 50                         # 区域最大 Z
+    owner: "玩家UUID"                # 可选，所有者 UUID
+```
+
+**创建步骤**：
+
+1. 停止服务器或确保没有活跃牌桌。
+2. 打开 `plugins/MahjongPaper/game-rooms.yml`。
+3. 在 `rooms:` 下添加一个新条目，按上面的格式填写 ID、名称、世界名和区域坐标。
+4. 保存文件，重启服务器或使用 `/mahjong reload` 重载。
+
+**确定区域坐标的方法**：
+
+- 站在你想设为棋牌室的一个角落，记下 `/minecraft:tp ~ ~ ~` 显示的坐标作为 `minX/minY/minZ`。
+- 走到对角线的另一个角落，记下坐标作为 `maxX/maxY/maxZ`。
+- 两个角定义一个长方体（AABB），牌桌中心必须在这个长方体内才算"在棋牌室内"。
+
+**示例**：创建一个以 (0, 64, 0) 为中心、半径 15、高度 10 的棋牌室：
+
+```yaml
+rooms:
+  main-hall:
+    name: "主厅"
+    world: world
+    minX: -15
+    minY: 60
+    minZ: -15
+    maxX: 15
+    maxY: 69
+    maxZ: 15
+```
+
+> 后续版本将添加游戏内命令和选区工具来简化棋牌室的创建流程。
+
 ## 常见问题
 
 ### 为什么我不能创建牌桌？
