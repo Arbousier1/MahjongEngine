@@ -1,6 +1,7 @@
 package top.ellan.mahjong.table.runtime;
 
 import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.runtime.PluginTask;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -16,17 +17,52 @@ final class GbBotStrategy implements BotStrategy {
             if (!session.isBot(playerId) || session.availableReactions(playerId) == null) {
                 continue;
             }
-            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleGbReaction(session, playerId), 20L));
+            final PluginTask[] holder = new PluginTask[1];
+            holder[0] = session.plugin().scheduler().runRegionDelayed(
+                session.center(),
+                () -> this.safeHandleGbReaction(session, playerId, holder[0]),
+                20L
+            );
+            session.setBotTask(holder[0]);
             return;
         }
         UUID current = session.playerAt(session.currentSeat());
         if (current != null && session.isBot(current)) {
-            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleGbTurn(session, current, 0), 20L));
+            final PluginTask[] holder = new PluginTask[1];
+            holder[0] = session.plugin().scheduler().runRegionDelayed(
+                session.center(),
+                () -> this.safeHandleGbTurn(session, current, 0, holder[0]),
+                20L
+            );
+            session.setBotTask(holder[0]);
+        }
+    }
+
+    private void safeHandleGbReaction(MahjongTableSession session, UUID playerId, PluginTask currentTask) {
+        try {
+            this.handleGbReaction(session, playerId);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("GB bot reaction failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            session.clearBotTaskIfSame(currentTask);
+        }
+    }
+
+    private void safeHandleGbTurn(MahjongTableSession session, UUID playerId, int retryAttempts, PluginTask currentTask) {
+        try {
+            this.handleGbTurn(session, playerId, retryAttempts);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("GB bot turn failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            // If handleGbTurn scheduled a retry, botTask now points to the retry
+            // task (not currentTask), so clearBotTaskIfSame is a no-op — correct.
+            // If the render cycle set a new task, same thing — no-op, correct.
+            // If nothing replaced the task, we clear it so the watchdog can re-schedule.
+            session.clearBotTaskIfSame(currentTask);
         }
     }
 
     private void handleGbReaction(MahjongTableSession session, UUID playerId) {
-        session.setBotTask(null);
         if (session.availableReactions(playerId) == null) {
             return;
         }
@@ -34,7 +70,6 @@ final class GbBotStrategy implements BotStrategy {
     }
 
     private void handleGbTurn(MahjongTableSession session, UUID playerId, int retryAttempts) {
-        session.setBotTask(null);
         if (!session.isStarted() || session.hasPendingReaction() || !Objects.equals(session.playerAt(session.currentSeat()), playerId)) {
             return;
         }
@@ -76,7 +111,13 @@ final class GbBotStrategy implements BotStrategy {
             );
             return;
         }
-        session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleGbTurn(session, playerId, nextRetry), 10L));
+        final PluginTask[] holder = new PluginTask[1];
+        holder[0] = session.plugin().scheduler().runRegionDelayed(
+            session.center(),
+            () -> this.safeHandleGbTurn(session, playerId, nextRetry, holder[0]),
+            10L
+        );
+        session.setBotTask(holder[0]);
     }
 
     private static int findSelectableDiscardIndex(MahjongTableSession session, UUID playerId, int handSize) {

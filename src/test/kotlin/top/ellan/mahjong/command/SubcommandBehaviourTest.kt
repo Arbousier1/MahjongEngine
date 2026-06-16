@@ -182,7 +182,7 @@ class SubcommandBehaviourTest {
         // No suggestions for the first arg slot (which is the subcommand keyword itself).
         assertTrue(sub.suggestions().suggest(senderPlayer, arrayOf("botmatch")).isEmpty())
         val matches = sub.suggestions().suggest(senderPlayer, arrayOf("botmatch", "ton"))
-        assertEquals(listOf("tonpuu"), matches)
+        assertEquals(listOf("TONPUU"), matches)
     }
 
     @Test

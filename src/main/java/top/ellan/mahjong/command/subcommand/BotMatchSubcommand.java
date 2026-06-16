@@ -9,7 +9,12 @@ import top.ellan.mahjong.command.MahjongSubcommand;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 
 public final class BotMatchSubcommand extends AbstractMahjongSubcommand {
-    private static final List<String> PRESETS = List.of("MAJSOUL_HANCHAN", "MAJSOUL_TONPUU", "hanchan", "tonpuu");
+    // Keep in sync with SessionRuleCoordinator.ruleValues("mode") and SessionRulePresetResolver.resolve()
+    private static final List<String> PRESETS = List.of(
+        "MAJSOUL_HANCHAN", "MAJSOUL_TONPUU",
+        "HANCHAN", "TONPUU",
+        "GB", "SICHUAN"
+    );
 
     public BotMatchSubcommand(MahjongCommandContext context) { super(context); }
     public MahjongSubcommand create() { return this.subcommand("botmatch", true); }
@@ -26,6 +31,7 @@ public final class BotMatchSubcommand extends AbstractMahjongSubcommand {
             this.context.messages().tag("table_id", table.id()),
             this.context.messages().tag("mode", preset.toLowerCase(Locale.ROOT))
         );
+        this.context.messages().send(player, "command.botmatch_created_hint");
     }
     @Override protected List<String> suggest(Player player, String[] args) {
         return args.length == 2 ? this.context.matchPrefix(args[1], PRESETS) : List.of();

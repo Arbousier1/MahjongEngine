@@ -19,10 +19,10 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import java.util.UUID
+import java.util.logging.Logger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import java.util.logging.Logger
 
 class BotActionSchedulerTest {
     companion object {
@@ -206,10 +206,18 @@ class BotActionSchedulerTest {
         }
         assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS, retryRunnables.size)
 
+        // Second scheduling cycle — the retry counter resets because
+        // scheduleGbTurnRetry starts from retryAttempts=0 again.
         BotActionScheduler.schedule(session)
         assertEquals(2, initialRunnables.size)
         initialRunnables[1].run()
 
-        assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS + 1, retryRunnables.size)
+        // Execute retry runnables from the second cycle
+        while (executedRetries < retryRunnables.size && executedRetries < 64) {
+            retryRunnables[executedRetries].run()
+            executedRetries++
+        }
+
+        assertEquals(MAX_GB_TURN_RETRY_ATTEMPTS * 2, retryRunnables.size)
     }
 }

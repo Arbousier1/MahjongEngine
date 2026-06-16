@@ -9,11 +9,13 @@ import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.model.MahjongTile;
 import top.ellan.mahjong.riichi.model.TileInstance;
 import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.runtime.PluginTask;
 import java.util.Objects;
 import java.util.UUID;
 import kotlin.Pair;
 
 final class RiichiBotStrategy implements BotStrategy {
+
     @Override
     public void schedule(MahjongTableSession session) {
         java.util.Optional<RiichiRoundEngine> maybeEngine = session.riichiEngine();
@@ -27,13 +29,25 @@ final class RiichiBotStrategy implements BotStrategy {
 
         UUID pendingBot = this.findPendingBotReaction(session, engine);
         if (pendingBot != null) {
-            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleBotReaction(session, pendingBot), 20L));
+            final PluginTask[] holder = new PluginTask[1];
+            holder[0] = session.plugin().scheduler().runRegionDelayed(
+                session.center(),
+                () -> this.safeHandleBotReaction(session, pendingBot, holder[0]),
+                20L
+            );
+            session.setBotTask(holder[0]);
             return;
         }
 
         UUID current = UUID.fromString(engine.getCurrentPlayer().getUuid());
         if (session.isBot(current)) {
-            session.setBotTask(session.plugin().scheduler().runRegionDelayed(session.center(), () -> this.handleBotTurn(session, current), 20L));
+            final PluginTask[] holder = new PluginTask[1];
+            holder[0] = session.plugin().scheduler().runRegionDelayed(
+                session.center(),
+                () -> this.safeHandleBotTurn(session, current, holder[0]),
+                20L
+            );
+            session.setBotTask(holder[0]);
         }
     }
 
@@ -50,8 +64,27 @@ final class RiichiBotStrategy implements BotStrategy {
         return null;
     }
 
+    private void safeHandleBotReaction(MahjongTableSession session, UUID playerId, PluginTask currentTask) {
+        try {
+            this.handleBotReaction(session, playerId);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("Bot reaction failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            session.clearBotTaskIfSame(currentTask);
+        }
+    }
+
+    private void safeHandleBotTurn(MahjongTableSession session, UUID playerId, PluginTask currentTask) {
+        try {
+            this.handleBotTurn(session, playerId);
+        } catch (RuntimeException exception) {
+            session.plugin().getLogger().warning("Bot turn failed for table " + session.id() + ", player " + playerId + ": " + exception.getMessage());
+        } finally {
+            session.clearBotTaskIfSame(currentTask);
+        }
+    }
+
     private void handleBotReaction(MahjongTableSession session, UUID playerId) {
-        session.setBotTask(null);
         java.util.Optional<RiichiRoundEngine> maybeEngine = session.riichiEngine();
         if (maybeEngine.isEmpty()) {
             return;
@@ -70,7 +103,6 @@ final class RiichiBotStrategy implements BotStrategy {
     }
 
     private void handleBotTurn(MahjongTableSession session, UUID playerId) {
-        session.setBotTask(null);
         java.util.Optional<RiichiRoundEngine> maybeEngine = session.riichiEngine();
         if (maybeEngine.isEmpty()) {
             return;

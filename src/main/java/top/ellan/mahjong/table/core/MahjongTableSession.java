@@ -974,7 +974,22 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public void setBotTask(PluginTask botTask) {
+        PluginTask old = this.botTask;
+        if (old != null && old != botTask) {
+            old.cancel();
+        }
         this.botTask = botTask;
+    }
+
+    /**
+     * Atomically clear the bot task only if it still references the expected
+     * task. This is used by bot callbacks to avoid clobbering a new task that
+     * was set by the render cycle during execution.
+     */
+    public void clearBotTaskIfSame(PluginTask expected) {
+        if (this.botTask == expected) {
+            this.botTask = null;
+        }
     }
 
     /**

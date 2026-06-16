@@ -9,6 +9,7 @@ import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.riichi.ReactionResponses;
+import top.ellan.mahjong.table.runtime.BotActionScheduler;
 import top.ellan.mahjong.table.runtime.ChunkNeighborhood;
 import top.ellan.mahjong.table.runtime.TableRefreshCoordinator;
 import top.ellan.mahjong.table.runtime.TableSeatCoordinator;
@@ -138,23 +139,27 @@ public final class MahjongTableManager implements Listener {
             return null;
         }
 
+        // Resolve the preset first so we know the correct variant and rule set.
+        SessionRulePresetResolver.Preset resolved = (preset != null && !preset.isBlank())
+            ? SessionRulePresetResolver.resolve(preset)
+            : null;
+        MahjongVariant variant = resolved != null ? resolved.variant() : MahjongVariant.RIICHI;
+        top.ellan.mahjong.riichi.model.MahjongRule rule = resolved != null
+            ? resolved.rule()
+            : SessionRulePresetResolver.majsoulRule(top.ellan.mahjong.riichi.model.MahjongRule.GameLength.TWO_WIND);
+
         String id = this.nextId();
         Location center = this.normalizedTableCenter(owner.getLocation());
         MahjongTableSession session = new MahjongTableSession(
             this.plugin,
             id,
             center,
-            MahjongVariant.RIICHI,
-            SessionRulePresetResolver.majsoulRule(top.ellan.mahjong.riichi.model.MahjongRule.GameLength.TWO_WIND),
+            variant,
+            rule,
             true,
             true
         );
         session.addPlayer(owner);
-        if (preset != null && !preset.isBlank()) {
-            if (!session.applyRulePreset(preset) || session.currentVariant() != MahjongVariant.RIICHI) {
-                return null;
-            }
-        }
         this.registerTable(session);
         this.directory.assignPlayer(owner.getUniqueId(), id);
 
@@ -170,7 +175,7 @@ public final class MahjongTableManager implements Listener {
         this.directory.assignSpectator(owner.getUniqueId(), id);
         session.startRound();
         this.persistTables();
-        this.plugin.debug().log("table", "Created 4-bot match " + id + " for spectator " + owner.getName());
+        this.plugin.debug().log("table", "Created 4-bot match " + id + " (variant=" + variant + ") for spectator " + owner.getName());
         return session;
     }
 
@@ -712,6 +717,20 @@ public final class MahjongTableManager implements Listener {
                     dispatchException
                 );
             }
+            // Bot watchdog: if the session is started but has no armed bot task,
+            // the bot scheduler may have stalled (e.g. after an unhandled
+            // exception in a previous callback). Re-schedule to recover.
+            if (session.isStarted() && !session.hasArmedBotTask()) {
+                try {
+                    BotActionScheduler.schedule(session);
+                } catch (RuntimeException watchdogException) {
+                    org.bukkit.Bukkit.getLogger().log(
+                        java.util.logging.Level.WARNING,
+                        "Bot watchdog failed for table " + session.id(),
+                        watchdogException
+                    );
+                }
+            }
         }
     }
 
@@ -978,6 +997,3 @@ public final class MahjongTableManager implements Listener {
     }
 
 }
-
-
-

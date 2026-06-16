@@ -19,6 +19,7 @@ public final class CreateSubcommand extends AbstractMahjongSubcommand {
         }
         MahjongTableSession table = result.table();
         this.context.messages().send(player, "command.created_table", this.context.messages().tag("table_id", table.id()));
+        this.context.messages().send(player, "command.created_table_hint");
     }
 
     private void sendCreateFailure(Player player, CreateTableFailure failure) {
