@@ -230,5 +230,3 @@ public final class TableRefreshCoordinator {
         return TableAreaChunks.allLoaded(world, centerChunkX, centerChunkZ);
     }
 }
-
-

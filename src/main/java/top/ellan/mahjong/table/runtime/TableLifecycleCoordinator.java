@@ -58,5 +58,3 @@ public final class TableLifecycleCoordinator {
         this.session.clearLeaveQueueForLifecycle();
     }
 }
-
-

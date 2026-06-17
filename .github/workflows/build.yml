@@ -30,6 +30,12 @@ jobs:
           distribution: temurin
           java-version: "25"
 
+      - name: Ensure Gradle user home exists
+        shell: bash
+        run: |
+          mkdir -p ~/.gradle
+          echo "GRADLE_USER_HOME=$(cd ~/.gradle && pwd)" >> "$GITHUB_ENV"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
@@ -102,6 +108,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
+
+      - name: Ensure Gradle user home exists
+        shell: bash
+        run: |
+          mkdir -p ~/.gradle
+          echo "GRADLE_USER_HOME=$(cd ~/.gradle && pwd)" >> "$GITHUB_ENV"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
