@@ -85,7 +85,7 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
     private PublicActionAnnouncement lastPublicActionAnnouncement;
     private PluginTask publicActionClearTask;
     private long publicActionAnnouncementSequence;
-    private PluginTask botTask;
+    private volatile PluginTask botTask;
     private final TableRenderCoordinator renderCoordinator;
     private final TableViewerPresentationCoordinator viewerPresentation;
     private final TableRegionDisplayCoordinator regionDisplayCoordinator;
@@ -1003,7 +1003,7 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         return this.fromGbController(playerId, GbTableRoundController::suggestedBotKanTile, null);
     }
 
-    public void setBotTask(PluginTask botTask) {
+    public synchronized void setBotTask(PluginTask botTask) {
         PluginTask old = this.botTask;
         if (old != null && old != botTask) {
             old.cancel();
@@ -1016,7 +1016,7 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
      * task. This is used by bot callbacks to avoid clobbering a new task that
      * was set by the render cycle during execution.
      */
-    public void clearBotTaskIfSame(PluginTask expected) {
+    public synchronized void clearBotTaskIfSame(PluginTask expected) {
         if (this.botTask == expected) {
             this.botTask = null;
         }
@@ -1032,7 +1032,7 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         return current != null && !current.isCancelled();
     }
 
-    public void cancelBotTask() {
+    public synchronized void cancelBotTask() {
         if (this.botTask != null) {
             this.botTask.cancel();
             this.botTask = null;

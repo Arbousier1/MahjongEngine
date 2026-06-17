@@ -338,7 +338,13 @@ public final class GameRoomManager {
                 String tableId = this.exitCountdownTableIds.get(playerId);
                 if (tableId != null) {
                     this.logDebug("Player " + playerId + " countdown expired, force-ending table " + tableId);
-                    this.tableManager.forceEndTable(tableId);
+                    // Schedule force-end on the table's region thread to avoid
+                    // cross-thread mutation of game state (round controller,
+                    // viewer presentation, bot task, etc.) on Folia.
+                    MahjongTableSession session = this.tableManager.resolveTableById(tableId);
+                    if (session != null) {
+                        this.scheduler.runRegion(session.center(), () -> this.tableManager.forceEndTable(tableId));
+                    }
                 }
                 iterator.remove();
                 this.removeCountdownState(playerId);

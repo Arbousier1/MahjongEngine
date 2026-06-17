@@ -735,7 +735,7 @@ public final class MahjongTableManager implements Listener {
         // other table on the server.
         for (MahjongTableSession session : this.directory.tables()) {
             try {
-                this.plugin.scheduler().runRegion(session.center(), session::tick);
+                this.plugin.scheduler().runRegion(session.center(), () -> this.tickSession(session));
             } catch (RuntimeException dispatchException) {
                 org.bukkit.Bukkit.getLogger().log(
                     java.util.logging.Level.WARNING,
@@ -743,19 +743,33 @@ public final class MahjongTableManager implements Listener {
                     dispatchException
                 );
             }
-            // Bot watchdog: if the session is started but has no armed bot task,
-            // the bot scheduler may have stalled (e.g. after an unhandled
-            // exception in a previous callback). Re-schedule to recover.
-            if (session.isStarted() && !session.hasArmedBotTask()) {
-                try {
-                    BotActionScheduler.schedule(session);
-                } catch (RuntimeException watchdogException) {
-                    org.bukkit.Bukkit.getLogger().log(
-                        java.util.logging.Level.WARNING,
-                        "Bot watchdog failed for table " + session.id(),
-                        watchdogException
-                    );
-                }
+        }
+    }
+
+    private void tickSession(MahjongTableSession session) {
+        try {
+            session.tick();
+        } catch (RuntimeException tickException) {
+            org.bukkit.Bukkit.getLogger().log(
+                java.util.logging.Level.WARNING,
+                "Tick failed for table " + session.id(),
+                tickException
+            );
+        }
+        // Bot watchdog: if the session is started but has no armed bot task,
+        // the bot scheduler may have stalled (e.g. after an unhandled
+        // exception in a previous callback). Re-schedule to recover.
+        // This runs on the region thread alongside tick() so that game state
+        // (engine, currentPlayer, etc.) is accessed from the owning thread.
+        if (session.isStarted() && !session.hasArmedBotTask()) {
+            try {
+                BotActionScheduler.schedule(session);
+            } catch (RuntimeException watchdogException) {
+                org.bukkit.Bukkit.getLogger().log(
+                    java.util.logging.Level.WARNING,
+                    "Bot watchdog failed for table " + session.id(),
+                    watchdogException
+                );
             }
         }
     }
