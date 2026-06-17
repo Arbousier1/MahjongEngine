@@ -6,9 +6,10 @@ import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
-import java.util.Map;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -22,8 +23,22 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 final class TableEventCoordinator {
     private static final long DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS = 40_000_000L;
+    /**
+     * Bounded TTL on the per-player recent-action cache. The dedup window is
+     * 40ms (DUPLICATE_DISPLAY_ACTION_WINDOW_NANOS), so anything older than a
+     * few seconds is by definition not a duplicate of a fresh click — but the
+     * previous bare ConcurrentHashMap only evicted on PlayerQuitEvent, which
+     * on Folia can occasionally be missed when the player's entity region
+     * differs from the global region at logout time. That left entries
+     * forever. The TTL below caps the worst-case leak at 2 minutes per entry
+     * so a server with many unique transient viewers cannot grow this map
+     * without bound.
+     */
+    private static final long RECENT_ACTION_TTL_SECONDS = 120L;
     private final MahjongTableManager manager;
-    private final Map<UUID, RecentDisplayAction> recentDisplayActions = new ConcurrentHashMap<>();
+    private final Cache<UUID, RecentDisplayAction> recentDisplayActions = Caffeine.newBuilder()
+        .expireAfterAccess(RECENT_ACTION_TTL_SECONDS, TimeUnit.SECONDS)
+        .build();
 
     TableEventCoordinator(MahjongTableManager manager) {
         this.manager = manager;
@@ -31,7 +46,7 @@ final class TableEventCoordinator {
 
     void onQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
-        this.recentDisplayActions.remove(playerId);
+        this.recentDisplayActions.invalidate(playerId);
         this.manager.clearRecentHandInput(playerId);
         this.manager.leave(playerId);
     }

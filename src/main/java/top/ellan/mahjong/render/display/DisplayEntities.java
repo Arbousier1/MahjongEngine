@@ -17,6 +17,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.BlockDisplay;
@@ -41,8 +42,56 @@ public final class DisplayEntities {
     private static final float LABEL_VIEW_RANGE = 48.0F;
     private static final Map<String, ItemStack> TILE_ITEM_CACHE = new ConcurrentHashMap<>();
     private static final Map<Plugin, NamespacedKey> MANAGED_ENTITY_KEYS = new ConcurrentHashMap<>();
+    /**
+     * Per-Material BlockData cache. Material.createBlockData allocates a fresh
+     * CraftBlockData on every call; for the ~5 distinct Materials used by
+     * table structure rendering (DARK_OAK_WOOD, SMOOTH_STONE, STRIPPED_OAK_WOOD,
+     * GREEN_WOOL, etc.) the result is identical across spawns and safe to
+     * share — BlockDisplay.setBlock copies the state internally and never
+     * mutates the input. This eliminates one allocation per BlockDisplay spawn
+     * in the render hot path; a single render pass that spawns ~16 block
+     * displays (table structure) saves 16 CraftBlockData allocations.
+     */
+    private static final Map<Material, BlockData> BLOCK_DATA_CACHE = new ConcurrentHashMap<>();
 
     private DisplayEntities() {
+    }
+
+    /**
+     * Clears static caches keyed by mutable inputs. Called on plugin reload
+     * (see MahjongPaperPlugin.reloadMahjongConfiguration) so that resource
+     * pack updates or CraftEngine custom-item config changes are picked up
+     * by tile displays spawned after the reload. Without this, the cached
+     * ItemStack from the OLD resourcepack/CraftEngine config is returned for
+     * every spawn until the JVM is restarted, leaving stale visuals on
+     * tables that re-render post-reload.
+     *
+     * Caches keyed by Plugin (MANAGED_ENTITY_KEYS) are NOT cleared here:
+     * the plugin instance is stable across reload (only its config changes),
+     * so the NamespacedKey remains valid. They are cleared by onDisable via
+     * the per-plugin remove path.
+     */
+    public static void clearCaches() {
+        TILE_ITEM_CACHE.clear();
+        BLOCK_DATA_CACHE.clear();
+    }
+
+    /**
+     * Returns a shared BlockData instance for the given Material. CraftBukkit's
+     * Material.createBlockData allocates a fresh CraftBlockData each call;
+     * since BlockDisplay.setBlock copies the state internally and never
+     * mutates the input BlockData, we can safely share a single instance per
+     * Material across all spawns. The cache is bounded by the (small, fixed)
+     * set of Materials used in rendering — typically 5-8 — so no eviction
+     * policy is needed. Cleared on plugin reload via clearCaches() so a
+     * server resourcepack update that changes block state mappings is
+     * picked up.
+     */
+    private static BlockData blockDataFor(Material material) {
+        if (material == null) {
+            return null;
+        }
+        return BLOCK_DATA_CACHE.computeIfAbsent(material, Material::createBlockData);
     }
 
     private record BukkitDisplayEntityRuntime(Plugin bukkitPlugin, List<Player> onlinePlayers) implements DisplayEntityRuntime {
@@ -635,7 +684,7 @@ public final class DisplayEntities {
         display.setShadowRadius(0.0F);
         display.setShadowStrength(0.0F);
         display.setRotation(0.0F, 0.0F);
-        display.setBlock(material.createBlockData());
+        display.setBlock(blockDataFor(material));
         // Keep display hit volume aligned with visual scale so custom ray hit-testing is stable.
         display.setDisplayWidth(scaleX);
         display.setDisplayHeight(scaleY);

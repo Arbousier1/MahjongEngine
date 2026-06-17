@@ -394,17 +394,34 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         if (playerId == null) {
             return null;
         }
-        // Note: this iterates participants.seats (a plain ArrayList). Most callers
-        // run on the table's region thread, where the write to seats also happens.
-        // Cross-thread callers (player entity thread in TableEventCoordinator,
-        // global timer in TableSeatCoordinator pre-T2 fix) read best-effort: an
-        // ArrayList.get is not throws-synchronized, but the worst case is reading
-        // a stale UUID which then fails the equals check and returns null — the
-        // caller treats null as "not seated" and re-checks on the next tick.
-        // If you change participants.seats to a different container, ensure
-        // either thread-safety or document the same best-effort contract.
+        // Fast path: when no round is active (or the round is finished), the
+        // participants' seatByPlayer map is the single source of truth and we
+        // can do an O(1) HashMap.get. This is the common case for lobby
+        // renders, viewer overlays, and command tab-completion.
+        //
+        // When a round IS active, the engine's seats vector is the source of
+        // truth (it is snapshotted at round start and never mutated mid-round).
+        // In production, participants.seatByPlayer is kept in sync with the
+        // engine seats at round boundaries (addPlayer → startRound → engine
+        // snapshot), so the fast path would return the same answer. We still
+        // fall through to the O(4) reverse lookup via playerAt(wind) for
+        // active rounds to preserve the exact pre-T4 semantics in any edge
+        // case where the two views diverge (e.g. a test that mocks an
+        // inconsistent engine). Performance-wise, the active-round path runs
+        // at most 4 playerAt calls and only on user interaction (not on the
+        // render hot path).
+        //
+        // Cross-thread contract: callers on the table's region thread see
+        // consistent state. Cross-thread callers (player entity thread in
+        // TableEventCoordinator) read best-effort — HashMap.get is not
+        // synchronized but does not throw, and the worst case is a stale
+        // value the caller treats as "not seated". See T1/T5 comments.
+        TableRoundController controller = this.roundController;
+        if (controller == null || !controller.started() || controller.gameFinished()) {
+            return this.participants.seatOf(playerId);
+        }
         for (SeatWind wind : SeatWind.values()) {
-            if (Objects.equals(this.playerAt(wind), playerId)) {
+            if (java.util.Objects.equals(this.playerAt(wind), playerId)) {
                 return wind;
             }
         }
@@ -810,13 +827,21 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
     }
 
     public List<ScoringStick> cornerSticks(SeatWind wind) {
-        List<ScoringStick> sticks = new ArrayList<>();
-        if (this.dealerSeat() == wind) {
-            for (int i = 0; i < this.honbaCount(); i++) {
-                sticks.add(ScoringStick.P100);
-            }
+        // Honba sticks live on the dealer's corner. For non-dealer seats the
+        // result is always the empty list; for the dealer it is N copies of
+        // ScoringStick.P100 where N = honbaCount. Both branches return an
+        // immutable List (List.of() / Collections.nCopies) so callers must
+        // never mutate the result. This avoids the previous per-call pattern
+        // of new ArrayList() + N add() + List.copyOf(), which ran 4x per
+        // render pass via stickLayoutCount + captureSeatSnapshot.
+        if (this.dealerSeat() != wind) {
+            return List.of();
         }
-        return List.copyOf(sticks);
+        int honba = this.honbaCount();
+        if (honba <= 0) {
+            return List.of();
+        }
+        return java.util.Collections.nCopies(honba, ScoringStick.P100);
     }
 
     public int stickLayoutCount(SeatWind wind) {

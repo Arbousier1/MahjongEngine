@@ -15,6 +15,7 @@ import top.ellan.mahjong.i18n.MessageService;
 import top.ellan.mahjong.metrics.InMemoryMetricsCollector;
 import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
+import top.ellan.mahjong.render.display.DisplayEntities;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
 import top.ellan.mahjong.runtime.AsyncService;
 import top.ellan.mahjong.runtime.PluginTask;
@@ -342,6 +343,24 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (previousDatabase != null) {
             previousDatabase.close();
         }
+
+        // Clear static display registries before respawning entities below.
+        // TableDisplayRegistry and DisplayVisibilityRegistry are static maps
+        // keyed by entity ID; on reload, every table calls clearDisplays() +
+        // render() (see end of this method), which spawns a fresh set of
+        // display entities with potentially recycled entity IDs. Without
+        // clearing the registries here, a new entity can inherit the
+        // visibility flags (private viewers, hidden viewers) of a deleted
+        // entity that happened to share the same ID, causing the new entity
+        // to be incorrectly hidden or shown to the wrong player. onDisable
+        // already clears these; reload is the missing symmetric path.
+        TableDisplayRegistry.clear();
+        DisplayVisibilityRegistry.clear();
+        // Also clear the static tile item cache: a resourcepack update or a
+        // CraftEngine custom-item config change (both possible via reload)
+        // would otherwise leave stale ItemStacks cached under the same path
+        // key, and tables re-rendered below would keep showing old textures.
+        DisplayEntities.clearCaches();
 
         this.settings = reloadedSettings;
         this.debug = reloadedDebug;
