@@ -176,11 +176,7 @@ tasks {
     }
 
     check {
-        dependsOn(jacocoTestReport)
-        dependsOn("verifyMahjongTileResources")
-        dependsOn("generateCraftEngineBundle")
-        dependsOn("spotlessCheck")
-        dependsOn("detekt")
+        dependsOn(jacocoTestReport, "verifyMahjongTileResources", "generateCraftEngineBundle", "spotlessCheck", "detekt")
     }
 }
 
