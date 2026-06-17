@@ -269,4 +269,26 @@ object MahjongTaskRegistration {
             shouldRunAfter(project.tasks.named("test"))
         }
     }
+
+    fun configureGitRatchet(
+        project: Project,
+        reference: String,
+        ratchetFrom: (String) -> Unit,
+    ) {
+        if (gitReferenceExists(project, reference)) {
+            ratchetFrom(reference)
+        }
+    }
+
+    private fun gitReferenceExists(
+        project: Project,
+        reference: String,
+    ): Boolean =
+        project.providers
+            .exec {
+                commandLine("git", "rev-parse", "--verify", "--quiet", reference)
+                isIgnoreExitValue = true
+            }.result
+            .get()
+            .exitValue == 0
 }
