@@ -106,6 +106,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
     private final SessionViewerActionMenuCoordinator viewerActionMenuCoordinator = new SessionViewerActionMenuCoordinator();
+    private RiichiRoundEngine riichiRoundEngine;
     private MahjongVariant configuredVariant;
     private UUID ownerId;
 
@@ -210,7 +211,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public Location center() {
-        return normalizedTableCenter(this.center);
+        return this.center.clone();
     }
 
     public Location seatAnchorLocation(SeatWind wind) {
@@ -534,7 +535,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public void clearEngineForLifecycle() {
-        this.roundController = null;
+        this.setRoundControllerInternal(null);
     }
 
     public void resetBotCounterForLifecycle() {
@@ -853,21 +854,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public Optional<RiichiRoundEngine> riichiEngine() {
-        if (this.roundController == null) {
-            return Optional.empty();
-        }
-        Optional<RiichiRoundEngine> engine = this.roundController.accept(new TableRoundController.VariantVisitor<>() {
-            @Override
-            public Optional<RiichiRoundEngine> visitRiichi(RiichiTableRoundController controller) {
-                return Optional.of(controller.roundEngine());
-            }
-
-            @Override
-            public Optional<RiichiRoundEngine> visitGb(GbTableRoundController controller) {
-                return Optional.empty();
-            }
-        });
-        return engine == null ? Optional.empty() : engine;
+        return Optional.ofNullable(this.riichiRoundEngine);
     }
 
     public boolean hasRoundController() {
@@ -1247,6 +1234,7 @@ public final class MahjongTableSession implements TableSessionMutator {
 
     public void setRoundControllerInternal(TableRoundController roundController) {
         this.roundController = roundController;
+        this.riichiRoundEngine = resolveRiichiEngine(roundController);
     }
 
     public TableRoundController createRoundControllerInternal() {
@@ -1335,6 +1323,23 @@ public final class MahjongTableSession implements TableSessionMutator {
             rule.getRonMode(),
             rule.getRiichiProfile()
         );
+    }
+
+    private static RiichiRoundEngine resolveRiichiEngine(TableRoundController roundController) {
+        if (roundController == null) {
+            return null;
+        }
+        return roundController.accept(new TableRoundController.VariantVisitor<>() {
+            @Override
+            public RiichiRoundEngine visitRiichi(RiichiTableRoundController controller) {
+                return controller.roundEngine();
+            }
+
+            @Override
+            public RiichiRoundEngine visitGb(GbTableRoundController controller) {
+                return null;
+            }
+        });
     }
 
     public List<TableFinalStanding> finalStandings() {

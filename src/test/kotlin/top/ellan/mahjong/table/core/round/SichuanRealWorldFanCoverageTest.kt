@@ -226,7 +226,7 @@ class SichuanRealWorldFanCoverageTest {
         meldsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
         val melds = meldsField.get(controller) as MutableMap<UUID, MutableList<Any>>
-        val meldClass = Class.forName("${GbTableRoundController::class.java.name}\$GbMeldState")
+        val meldClass = GbMeldState::class.java
         val pung = meldClass.getDeclaredMethod(
             "pung",
             MahjongTile::class.java,

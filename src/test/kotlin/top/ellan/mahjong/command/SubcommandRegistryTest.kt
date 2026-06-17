@@ -24,6 +24,7 @@ import kotlin.test.assertTrue
  * test before it reaches a server.
  */
 class SubcommandRegistryTest {
+    private val factoryGeneratedCommands = setOf("ron", "pon", "minkan", "skip")
     private val context = newContext()
     private val production = MahjongCommand.productionSubcommands(context)
 
@@ -40,14 +41,19 @@ class SubcommandRegistryTest {
             ?: emptySet()
 
         assertEquals(
-            35,
+            32,
             concreteClassNames.size,
-            "expected 35 concrete subcommand source files; found ${concreteClassNames.size}: $concreteClassNames"
+            "expected 32 concrete subcommand source files; found ${concreteClassNames.size}: $concreteClassNames"
         )
+        assertTrue("SimpleReactionSubcommand" in concreteClassNames, "expected SimpleReactionSubcommand to be present")
         assertEquals(
-            concreteClassNames.size,
+            concreteClassNames.size - 1 + factoryGeneratedCommands.size,
             production.size,
-            "MahjongCommand.productionSubcommands() must contain one entry per Subcommand class"
+            "MahjongCommand.productionSubcommands() must account for factory-generated reaction commands"
+        )
+        assertTrue(
+            production.map { it.name() }.containsAll(factoryGeneratedCommands),
+            "SimpleReactionSubcommand should generate $factoryGeneratedCommands"
         )
     }
 

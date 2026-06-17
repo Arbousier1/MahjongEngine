@@ -10,11 +10,12 @@ import top.ellan.mahjong.model.MahjongTile
 class GbBotDecisionServiceTest {
     @Test
     fun `ready score ignores waits below minimum fan`() {
+        val service = GbBotDecisionService(8)
         val lowFan = GbTingResponse(true, listOf(GbTingCandidate("W1", 7)), null)
         val qualified = GbTingResponse(true, listOf(GbTingCandidate("W1", 8)), null)
 
-        assertEquals(0, GbBotDecisionService.readyScore(lowFan))
-        assertTrue(GbBotDecisionService.readyScore(qualified) > 0)
+        assertEquals(0, service.readyScore(lowFan))
+        assertTrue(service.readyScore(qualified) > 0)
     }
 
     @Test
@@ -29,7 +30,7 @@ class GbBotDecisionServiceTest {
 
     @Test
     fun `discard suggestion uses injected ting evaluator`() {
-        val service = GbBotDecisionService()
+        val service = GbBotDecisionService(8)
         val hand = listOf(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3, MahjongTile.EAST)
 
         val suggestedIndex = service.suggestedDiscardIndex(hand, emptyList()) { remaining, _ ->

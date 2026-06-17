@@ -6,7 +6,6 @@ import org.bukkit.entity.Player;
 import top.ellan.mahjong.command.MahjongCommandContext;
 import top.ellan.mahjong.command.MahjongSubcommand;
 import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.model.MahjongVariant;
 
 public final class KyuushuSubcommand extends AbstractMahjongSubcommand {
     public KyuushuSubcommand(MahjongCommandContext context) { super(context); }
@@ -14,10 +13,7 @@ public final class KyuushuSubcommand extends AbstractMahjongSubcommand {
     @Override protected void execute(CommandSender sender, Player player, String[] args) {
         MahjongTableSession table = this.context.requireTable(player);
         if (table == null) { return; }
-        if (table.currentVariant() != MahjongVariant.RIICHI) {
-            this.context.messages().send(player, "command.variant_action_unavailable", this.context.messages().tag("action", "kyuushu"), this.context.messages().tag("variant", table.currentVariant().name()));
-            return;
-        }
+        if (!this.context.requireRiichiVariant(player, table, "kyuushu")) { return; }
         this.context.messages().send(player, table.declareKyuushuKyuuhai(player.getUniqueId()) ? "command.kyuushu_success" : "command.kyuushu_failed");
     }
 }

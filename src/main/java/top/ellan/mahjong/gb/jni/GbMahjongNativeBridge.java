@@ -1,12 +1,14 @@
 package top.ellan.mahjong.gb.jni;
 
 public final class GbMahjongNativeBridge {
+    private volatile GbMahjongNativeLibrary.LoadState loadState;
+
     public boolean isAvailable() {
-        return GbMahjongNativeLibrary.ensureLoaded().available();
+        return this.loadState().available();
     }
 
     public String availabilityDetail() {
-        return GbMahjongNativeLibrary.ensureLoaded().detail();
+        return this.loadState().detail();
     }
 
     public String libraryVersion() {
@@ -38,10 +40,20 @@ public final class GbMahjongNativeBridge {
     }
 
     private void requireAvailable() {
-        GbMahjongNativeLibrary.LoadState state = GbMahjongNativeLibrary.ensureLoaded();
+        GbMahjongNativeLibrary.LoadState state = this.loadState();
         if (!state.available()) {
             throw new IllegalStateException(state.detail());
         }
+    }
+
+    private GbMahjongNativeLibrary.LoadState loadState() {
+        GbMahjongNativeLibrary.LoadState cached = this.loadState;
+        if (cached != null) {
+            return cached;
+        }
+        GbMahjongNativeLibrary.LoadState resolved = GbMahjongNativeLibrary.ensureLoaded();
+        this.loadState = resolved;
+        return resolved;
     }
 
     private static native String nativeLibraryVersion();

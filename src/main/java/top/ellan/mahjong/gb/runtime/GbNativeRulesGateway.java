@@ -18,21 +18,29 @@ import java.util.Objects;
 import java.util.logging.Logger;
 
 public class GbNativeRulesGateway {
+    private static final int DEFAULT_FAN_CACHE_SIZE = 1024;
     private static final int DEFAULT_TING_CACHE_SIZE = 2048;
     private static final int DEFAULT_WIN_CACHE_SIZE = 1024;
     private static final Logger LOGGER = Logger.getLogger(GbNativeRulesGateway.class.getName());
 
     private final GbMahjongNativeBridge bridge = new GbMahjongNativeBridge();
+    private final Object fanCacheLock = new Object();
     private final Object tingCacheLock = new Object();
     private final Object winCacheLock = new Object();
+    private final Map<Long, GbFanResponse> fanCache;
     private final Map<Long, GbTingResponse> tingCache;
     private final Map<Long, GbWinResponse> winCache;
 
     public GbNativeRulesGateway() {
-        this(DEFAULT_TING_CACHE_SIZE, DEFAULT_WIN_CACHE_SIZE);
+        this(DEFAULT_FAN_CACHE_SIZE, DEFAULT_TING_CACHE_SIZE, DEFAULT_WIN_CACHE_SIZE);
     }
 
     public GbNativeRulesGateway(int tingCacheSize, int winCacheSize) {
+        this(DEFAULT_FAN_CACHE_SIZE, tingCacheSize, winCacheSize);
+    }
+
+    public GbNativeRulesGateway(int fanCacheSize, int tingCacheSize, int winCacheSize) {
+        this.fanCache = createLruCache(Math.max(0, fanCacheSize));
         this.tingCache = createLruCache(Math.max(0, tingCacheSize));
         this.winCache = createLruCache(Math.max(0, winCacheSize));
     }
@@ -45,11 +53,17 @@ public class GbNativeRulesGateway {
         if (request == null || !this.isAvailable()) {
             return invalidFan(MahjongErrorCode.GB_NATIVE_BRIDGE_UNAVAILABLE.publicMessage());
         }
+        long cacheKey = hashFanRequest(request);
+        GbFanResponse cached = this.cachedFan(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        GbFanResponse response;
         try {
-            GbFanResponse response = this.bridge.evaluateFan(request);
-            return response == null
-                ? invalidFan(MahjongErrorCode.GB_NATIVE_FAN_EVALUATION_FAILED.publicMessage())
-                : response;
+            response = this.bridge.evaluateFan(request);
+            if (response == null) {
+                response = invalidFan(MahjongErrorCode.GB_NATIVE_FAN_EVALUATION_FAILED.publicMessage());
+            }
         } catch (RuntimeException ex) {
             MahjongInfrastructureException failure = new MahjongInfrastructureException(
                 MahjongErrorCode.GB_NATIVE_FAN_EVALUATION_FAILED,
@@ -57,8 +71,12 @@ public class GbNativeRulesGateway {
                 ex
             );
             LOGGER.log(failure.logLevel(), failure.code().name(), ex);
-            return invalidFan(failure.publicMessage());
+            response = invalidFan(failure.publicMessage());
         }
+        if (shouldCache(response)) {
+            this.cacheFan(cacheKey, response);
+        }
+        return response;
     }
 
     public GbTingResponse evaluateTing(GbTingRequest request) {
@@ -85,7 +103,9 @@ public class GbNativeRulesGateway {
             LOGGER.log(failure.logLevel(), failure.code().name(), ex);
             response = invalidTing(failure.publicMessage());
         }
-        this.cacheTing(cacheKey, response);
+        if (shouldCache(response)) {
+            this.cacheTing(cacheKey, response);
+        }
         return response;
     }
 
@@ -113,7 +133,9 @@ public class GbNativeRulesGateway {
             LOGGER.log(failure.logLevel(), failure.code().name(), ex);
             response = invalidWin(failure.publicMessage());
         }
-        this.cacheWin(cacheKey, response);
+        if (shouldCache(response)) {
+            this.cacheWin(cacheKey, response);
+        }
         return response;
     }
 
@@ -135,6 +157,18 @@ public class GbNativeRulesGateway {
 
     private static GbWinResponse invalidWin(String message) {
         return new GbWinResponse(false, "WIN", 0, List.of(), List.of(), message);
+    }
+
+    private GbFanResponse cachedFan(long cacheKey) {
+        synchronized (this.fanCacheLock) {
+            return this.fanCache.get(cacheKey);
+        }
+    }
+
+    private void cacheFan(long cacheKey, GbFanResponse response) {
+        synchronized (this.fanCacheLock) {
+            this.fanCache.put(cacheKey, response);
+        }
     }
 
     private GbTingResponse cachedTing(long cacheKey) {
@@ -161,6 +195,18 @@ public class GbNativeRulesGateway {
         }
     }
 
+    private static boolean shouldCache(GbFanResponse response) {
+        return response != null && response.getValid();
+    }
+
+    private static boolean shouldCache(GbTingResponse response) {
+        return response != null && response.getValid();
+    }
+
+    private static boolean shouldCache(GbWinResponse response) {
+        return response != null && response.getValid();
+    }
+
     private static <T> Map<Long, T> createLruCache(int maxEntries) {
         return new LinkedHashMap<>(Math.max(16, maxEntries), 0.75F, true) {
             @Override
@@ -168,6 +214,20 @@ public class GbNativeRulesGateway {
                 return this.size() > maxEntries;
             }
         };
+    }
+
+    private static long hashFanRequest(GbFanRequest request) {
+        RequestFingerprint fingerprint = new RequestFingerprint();
+        fingerprint.field(request.getRuleProfile());
+        hashStringList(fingerprint, request.getHandTiles());
+        hashMelds(fingerprint, request.getMelds());
+        fingerprint.field(request.getWinningTile());
+        fingerprint.field(request.getWinType());
+        fingerprint.field(request.getSeatWind());
+        fingerprint.field(request.getRoundWind());
+        hashStringList(fingerprint, request.getFlowerTiles());
+        hashStringList(fingerprint, request.getFlags());
+        return fingerprint.value();
     }
 
     private static long hashTingRequest(GbTingRequest request) {

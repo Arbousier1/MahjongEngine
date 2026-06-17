@@ -431,18 +431,10 @@ public final class TableRenderer {
             return List.of();
         }
         Location center = displayCenter(session);
+        DeadWallRenderState deadWallState = deadWallRenderState(center, session);
         int liveWallCount = session.remainingWallCount();
-        int kanCount = session.kanCount();
+        int kanCount = deadWallState.kanCount();
         int frontDrawCount = Math.max(0, LIVE_WALL_SIZE - liveWallCount - kanCount);
-        boolean[] doraSlots = new boolean[DEAD_WALL_SIZE];
-        for (int i = 0; i < session.doraIndicators().size(); i++) {
-            int deadWallIndex = doraIndicatorDeadWallIndex(kanCount, i);
-            if (deadWallIndex >= 0 && deadWallIndex < doraSlots.length) {
-                doraSlots[deadWallIndex] = true;
-            }
-        }
-
-        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(center, session);
         List<Entity> spawned = new ArrayList<>(liveWallCount + DEAD_WALL_SIZE - session.doraIndicators().size());
         int breakTileIndex = wallBreakTileIndex(session);
         for (int i = 0; i < liveWallCount; i++) {
@@ -456,10 +448,10 @@ public final class TableRenderer {
         }
 
         for (int i = 0; i < DEAD_WALL_SIZE; i++) {
-            if (doraSlots[i]) {
+            if (deadWallState.hiddenDoraSlots()[i]) {
                 continue;
             }
-            DeadWallPlacement placement = deadWallPlacements.get(i);
+            DeadWallPlacement placement = deadWallState.placements().get(i);
             spawned.add(spawnPublicTile(session, placement.location(), placement.yaw(), MahjongTile.UNKNOWN, DisplayEntities.TileRenderPose.FLAT_FACE_DOWN));
         }
         return spawned;
@@ -515,11 +507,11 @@ public final class TableRenderer {
         }
         Location center = displayCenter(session);
         List<MahjongTile> dora = session.doraIndicators();
-        List<DeadWallPlacement> deadWallPlacements = deadWallPlacements(center, session);
+        DeadWallRenderState deadWallState = deadWallRenderState(center, session);
         List<Entity> spawned = new ArrayList<>(dora.size());
-        int kanCount = session.kanCount();
+        int kanCount = deadWallState.kanCount();
         for (int i = 0; i < dora.size(); i++) {
-            DeadWallPlacement placement = deadWallPlacements.get(doraIndicatorDeadWallIndex(kanCount, i));
+            DeadWallPlacement placement = deadWallState.placements().get(doraIndicatorDeadWallIndex(kanCount, i));
             spawned.add(spawnPublicTile(session, placement.location(), placement.yaw(), dora.get(i), DisplayEntities.TileRenderPose.FLAT_FACE_UP));
         }
         return spawned;
@@ -1460,33 +1452,7 @@ public final class TableRenderer {
         DisplayClickAction action,
         List<Entity> spawned
     ) {
-        if (action == null) {
-            return;
-        }
-        if (action.actionType() == DisplayClickAction.ActionType.TOGGLE_READY && seatedPlayerId != null && !session.isStarted()) {
-            this.appendSeatActionEntity(
-                session,
-                wind,
-                seatedPlayerId,
-                handBase,
-                action,
-                ready,
-                -SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
-                spawned
-            );
-            this.appendSeatActionEntity(
-                session,
-                wind,
-                seatedPlayerId,
-                handBase,
-                DisplayClickAction.playerCommand(session.id(), seatedPlayerId, "lobby:leave"),
-                ready,
-                SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
-                spawned
-            );
-            return;
-        }
-        this.appendSeatActionEntity(session, wind, seatedPlayerId, handBase, action, ready, 0.0D, spawned);
+        this.appendSeatActions(session, wind, seatedPlayerId, ready, handBase, action, spawned, this::appendSeatActionEntitiesFromData);
     }
 
     private void appendSeatActionSpecs(
@@ -1498,21 +1464,25 @@ public final class TableRenderer {
         DisplayClickAction action,
         List<DisplayEntities.EntitySpec> specs
     ) {
+        this.appendSeatActions(session, wind, seatedPlayerId, ready, handBase, action, specs, this::appendSeatActionSpecsFromData);
+    }
+
+    private <T> void appendSeatActions(
+        TableRenderSubject session,
+        SeatWind wind,
+        UUID seatedPlayerId,
+        boolean ready,
+        Location handBase,
+        DisplayClickAction action,
+        List<T> target,
+        SeatActionAppender<T> appender
+    ) {
         if (action == null) {
             return;
         }
         if (action.actionType() == DisplayClickAction.ActionType.TOGGLE_READY && seatedPlayerId != null && !session.isStarted()) {
-            this.appendSeatActionSpec(
-                session,
-                wind,
-                seatedPlayerId,
-                handBase,
-                action,
-                ready,
-                -SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
-                specs
-            );
-            this.appendSeatActionSpec(
+            this.appendSeatAction(session, wind, seatedPlayerId, handBase, action, ready, -SEAT_SIDE_ACTION_HORIZONTAL_OFFSET, target, appender);
+            this.appendSeatAction(
                 session,
                 wind,
                 seatedPlayerId,
@@ -1520,14 +1490,15 @@ public final class TableRenderer {
                 DisplayClickAction.playerCommand(session.id(), seatedPlayerId, "lobby:leave"),
                 ready,
                 SEAT_SIDE_ACTION_HORIZONTAL_OFFSET,
-                specs
+                target,
+                appender
             );
             return;
         }
-        this.appendSeatActionSpec(session, wind, seatedPlayerId, handBase, action, ready, 0.0D, specs);
+        this.appendSeatAction(session, wind, seatedPlayerId, handBase, action, ready, 0.0D, target, appender);
     }
 
-    private void appendSeatActionEntity(
+    private <T> void appendSeatAction(
         TableRenderSubject session,
         SeatWind wind,
         UUID seatedPlayerId,
@@ -1535,7 +1506,8 @@ public final class TableRenderer {
         DisplayClickAction action,
         boolean ready,
         double acrossOffset,
-        List<Entity> spawned
+        List<T> target,
+        SeatActionAppender<T> appender
     ) {
         Component actionLabel = seatActionLabel(session, action, ready);
         if (isBlankActionLabel(actionLabel)) {
@@ -1544,63 +1516,62 @@ public final class TableRenderer {
         float actionWidth = seatActionInteractionWidth(actionLabel);
         Collection<UUID> actionViewers = seatActionPrivateViewers(seatedPlayerId, action);
         Location actionLabelLocation = seatActionLabelLocation(handBase, wind, acrossOffset);
+        appender.append(
+            target,
+            new SeatActionRenderData(
+                session,
+                wind,
+                action,
+                actionLabel,
+                actionWidth,
+                actionViewers,
+                actionLabelLocation
+            )
+        );
+    }
+
+    private void appendSeatActionEntitiesFromData(List<Entity> spawned, SeatActionRenderData data) {
         spawned.add(DisplayEntities.spawnLabel(
-            session.bukkitPlugin(),
-            actionLabelLocation,
-            actionLabel,
-            seatActionLabelColor(action),
-            actionViewers,
+            data.session().bukkitPlugin(),
+            data.actionLabelLocation(),
+            data.actionLabel(),
+            seatActionLabelColor(data.action()),
+            data.actionViewers(),
             Display.Billboard.FIXED,
-            seatYaw(wind),
+            seatYaw(data.wind()),
             0.0F,
             true
         ));
         Entity interaction = DisplayEntities.spawnInteraction(
-            session.bukkitPlugin(),
-            seatLabelInteractionLocation(actionLabelLocation),
-            actionWidth,
+            data.session().bukkitPlugin(),
+            seatLabelInteractionLocation(data.actionLabelLocation()),
+            data.actionWidth(),
             SEAT_ACTION_INTERACTION_HEIGHT,
-            action,
-            actionViewers
+            data.action(),
+            data.actionViewers()
         );
         if (interaction != null) {
             spawned.add(interaction);
         }
     }
 
-    private void appendSeatActionSpec(
-        TableRenderSubject session,
-        SeatWind wind,
-        UUID seatedPlayerId,
-        Location handBase,
-        DisplayClickAction action,
-        boolean ready,
-        double acrossOffset,
-        List<DisplayEntities.EntitySpec> specs
-    ) {
-        Component actionLabel = seatActionLabel(session, action, ready);
-        if (isBlankActionLabel(actionLabel)) {
-            return;
-        }
-        float actionWidth = seatActionInteractionWidth(actionLabel);
-        Collection<UUID> actionViewers = seatActionPrivateViewers(seatedPlayerId, action);
-        Location actionLabelLocation = seatActionLabelLocation(handBase, wind, acrossOffset);
+    private void appendSeatActionSpecsFromData(List<DisplayEntities.EntitySpec> specs, SeatActionRenderData data) {
         specs.add(DisplayEntities.labelSpec(
-            actionLabelLocation,
-            actionLabel,
-            seatActionLabelColor(action),
-            actionViewers,
+            data.actionLabelLocation(),
+            data.actionLabel(),
+            seatActionLabelColor(data.action()),
+            data.actionViewers(),
             Display.Billboard.FIXED,
-            seatYaw(wind),
+            seatYaw(data.wind()),
             0.0F,
             true
         ));
         specs.add(DisplayEntities.interactionSpec(
-            seatLabelInteractionLocation(actionLabelLocation),
-            actionWidth,
+            seatLabelInteractionLocation(data.actionLabelLocation()),
+            data.actionWidth(),
             SEAT_ACTION_INTERACTION_HEIGHT,
-            action,
-            actionViewers
+            data.action(),
+            data.actionViewers()
         ));
     }
 
@@ -1751,6 +1722,18 @@ public final class TableRenderer {
 
     private static double wallLayerYOffset(int layer) {
         return layer * TILE_DEPTH + (layer == 1 ? TILE_PADDING : 0.0D);
+    }
+
+    private static DeadWallRenderState deadWallRenderState(Location center, TableRenderSubject session) {
+        int kanCount = session.kanCount();
+        boolean[] hiddenDoraSlots = new boolean[DEAD_WALL_SIZE];
+        for (int i = 0; i < session.doraIndicators().size(); i++) {
+            int deadWallIndex = doraIndicatorDeadWallIndex(kanCount, i);
+            if (deadWallIndex >= 0 && deadWallIndex < hiddenDoraSlots.length) {
+                hiddenDoraSlots[deadWallIndex] = true;
+            }
+        }
+        return new DeadWallRenderState(deadWallPlacements(center, session), hiddenDoraSlots, kanCount);
     }
 
     private static List<DeadWallPlacement> deadWallPlacements(Location center, TableRenderSubject session) {
@@ -2047,6 +2030,11 @@ public final class TableRenderer {
     private record Offset(double x, double z) {
     }
 
+    @FunctionalInterface
+    private interface SeatActionAppender<T> {
+        void append(List<T> target, SeatActionRenderData data);
+    }
+
     public record TableDiagnostics(
         Location displayCenter,
         Location tableCenter,
@@ -2120,6 +2108,20 @@ public final class TableRenderer {
     }
 
     private record DeadWallPlacement(Location location, float yaw) {
+    }
+
+    private record DeadWallRenderState(List<DeadWallPlacement> placements, boolean[] hiddenDoraSlots, int kanCount) {
+    }
+
+    private record SeatActionRenderData(
+        TableRenderSubject session,
+        SeatWind wind,
+        DisplayClickAction action,
+        Component actionLabel,
+        float actionWidth,
+        Collection<UUID> actionViewers,
+        Location actionLabelLocation
+    ) {
     }
 }
 

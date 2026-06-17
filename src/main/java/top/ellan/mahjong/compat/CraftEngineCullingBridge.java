@@ -123,7 +123,6 @@ final class CraftEngineCullingBridge {
                 true
             );
         } catch (ReflectiveOperationException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine culling data bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -143,7 +142,6 @@ final class CraftEngineCullingBridge {
                 bridge.addTrackedEntityMethod().invoke(cePlayer, tracked.entityId(), tracked.cullableProxy());
             }
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine tracked entity add failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -162,7 +160,6 @@ final class CraftEngineCullingBridge {
                 bridge.removeTrackedEntityMethod().invoke(cePlayer, entityId);
             }
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine tracked entity remove failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -210,7 +207,6 @@ final class CraftEngineCullingBridge {
             Object platformPlayer = bridge.platformPlayerMethod().invoke(args[0]);
             return platformPlayer instanceof Player player ? player : null;
         } catch (ReflectiveOperationException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine platform player bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -232,36 +228,44 @@ final class CraftEngineCullingBridge {
         if (craftEngine == null || !craftEngine.isEnabled()) {
             return null;
         }
-
-        try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> adaptorClass = Class.forName("net.momirealms.craftengine.bukkit.api.BukkitAdaptor", true, classLoader);
-            Class<?> cullableClass = Class.forName("net.momirealms.craftengine.core.entity.culling.Cullable", true, classLoader);
-            Class<?> cePlayerClass = Class.forName("net.momirealms.craftengine.core.entity.player.Player", true, classLoader);
-            Class<?> aabbClass = Class.forName("net.momirealms.craftengine.core.world.collision.AABB", true, classLoader);
-            Class<?> cullingDataClass = Class.forName("net.momirealms.craftengine.core.entity.culling.CullingData", true, classLoader);
-            CullingReflection resolved = new CullingReflection(
-                classLoader,
-                cullableClass,
-                adaptorClass.getMethod("adapt", Player.class),
-                cePlayerClass.getMethod("addTrackedEntity", int.class, cullableClass),
-                cePlayerClass.getMethod("removeTrackedEntity", int.class),
-                cePlayerClass.getMethod("platformPlayer"),
-                aabbClass.getConstructor(double.class, double.class, double.class, double.class, double.class, double.class),
-                cullingDataClass.getConstructor(aabbClass, int.class, double.class, boolean.class)
-            );
-            this.reflection = resolved;
-            return resolved;
-        } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
-            this.context.plugin().getLogger().warning(
-                "CraftEngine was detected, but MahjongPaper could not bridge CraftEngine entity culling. Display entities will use normal server tracking."
-            );
-            this.context.plugin().debug().log(
-                "lifecycle",
-                "CraftEngine culling reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
-            );
-            return null;
+        synchronized (this) {
+            cached = this.reflection;
+            if (cached != null) {
+                return cached;
+            }
+            if (this.reflectionUnavailable) {
+                return null;
+            }
+            try {
+                ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+                Class<?> adaptorClass = Class.forName("net.momirealms.craftengine.bukkit.api.BukkitAdaptor", true, classLoader);
+                Class<?> cullableClass = Class.forName("net.momirealms.craftengine.core.entity.culling.Cullable", true, classLoader);
+                Class<?> cePlayerClass = Class.forName("net.momirealms.craftengine.core.entity.player.Player", true, classLoader);
+                Class<?> aabbClass = Class.forName("net.momirealms.craftengine.core.world.collision.AABB", true, classLoader);
+                Class<?> cullingDataClass = Class.forName("net.momirealms.craftengine.core.entity.culling.CullingData", true, classLoader);
+                CullingReflection resolved = new CullingReflection(
+                    classLoader,
+                    cullableClass,
+                    adaptorClass.getMethod("adapt", Player.class),
+                    cePlayerClass.getMethod("addTrackedEntity", int.class, cullableClass),
+                    cePlayerClass.getMethod("removeTrackedEntity", int.class),
+                    cePlayerClass.getMethod("platformPlayer"),
+                    aabbClass.getConstructor(double.class, double.class, double.class, double.class, double.class, double.class),
+                    cullingDataClass.getConstructor(aabbClass, int.class, double.class, boolean.class)
+                );
+                this.reflection = resolved;
+                return resolved;
+            } catch (ReflectiveOperationException | RuntimeException exception) {
+                this.reflectionUnavailable = true;
+                this.context.plugin().getLogger().warning(
+                    "CraftEngine was detected, but MahjongPaper could not bridge CraftEngine entity culling. Display entities will use normal server tracking."
+                );
+                this.context.plugin().debug().log(
+                    "lifecycle",
+                    "CraftEngine culling reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+                );
+                return null;
+            }
         }
     }
 

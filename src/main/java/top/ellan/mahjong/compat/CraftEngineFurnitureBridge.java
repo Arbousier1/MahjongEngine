@@ -171,7 +171,6 @@ final class CraftEngineFurnitureBridge {
             }
             return null;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().getLogger().warning(
                 "CraftEngine was detected, but MahjongPaper could not place CraftEngine furniture. CraftEngine-based interaction may be unavailable."
             );
@@ -208,7 +207,6 @@ final class CraftEngineFurnitureBridge {
             }
             return true;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine furniture remove bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -233,7 +231,6 @@ final class CraftEngineFurnitureBridge {
             Object isFurniture = bridge.isFurnitureMethod().invoke(null, entity);
             return isFurniture instanceof Boolean flag && flag;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine furniture detection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -299,7 +296,6 @@ final class CraftEngineFurnitureBridge {
             Object isSeat = bridge.isSeatMethod().invoke(null, entity);
             return isSeat instanceof Boolean flag && flag;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine seat detection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -325,7 +321,6 @@ final class CraftEngineFurnitureBridge {
             Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
             return bukkitEntity instanceof Entity entity ? entity : null;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine seat owner bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -377,7 +372,6 @@ final class CraftEngineFurnitureBridge {
             }
             return false;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().debug().log(
                 "lifecycle",
                 "CraftEngine seat spawn bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
@@ -467,45 +461,54 @@ final class CraftEngineFurnitureBridge {
         if (cached != null) {
             return cached;
         }
-        try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
-            Class<?> furnitureClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineFurniture", true, classLoader);
-            Class<?> adaptorClass = Class.forName("net.momirealms.craftengine.bukkit.api.BukkitAdaptor", true, classLoader);
-            Class<?> seatClass = Class.forName("net.momirealms.craftengine.core.entity.seat.Seat", true, classLoader);
-            Class<?> cePlayerClass = Class.forName("net.momirealms.craftengine.core.entity.player.Player", true, classLoader);
-            Class<?> worldPositionClass = Class.forName("net.momirealms.craftengine.core.world.WorldPosition", true, classLoader);
-            Method removeWithFlagsMethod = null;
-            Method removeMethod = null;
-            try {
-                removeWithFlagsMethod = furnitureClass.getMethod("remove", Entity.class, boolean.class, boolean.class);
-            } catch (NoSuchMethodException ignored) {
-                removeMethod = furnitureClass.getMethod("remove", Entity.class);
+        synchronized (this) {
+            cached = this.reflection;
+            if (cached != null) {
+                return cached;
             }
-            FurnitureReflection resolved = new FurnitureReflection(
-                keyClass.getMethod("of", String.class),
-                furnitureClass.getMethod("place", Location.class, keyClass),
-                furnitureClass.getMethod("isFurniture", Entity.class),
-                furnitureClass.getMethod("isSeat", Entity.class),
-                furnitureClass.getMethod("getLoadedFurnitureBySeat", Entity.class),
-                furnitureClass.getMethod("getLoadedFurnitureByMetaEntity", Entity.class),
-                adaptorClass.getMethod("adapt", Player.class),
-                seatClass.getMethod("spawnSeat", cePlayerClass, worldPositionClass),
-                removeMethod,
-                removeWithFlagsMethod
-            );
-            this.reflection = resolved;
-            return resolved;
-        } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
-            this.context.plugin().getLogger().warning(
-                "CraftEngine was detected, but MahjongPaper could not place CraftEngine furniture. CraftEngine-based interaction may be unavailable."
-            );
-            this.context.plugin().debug().log(
-                "lifecycle",
-                "CraftEngine furniture bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
-            );
-            return null;
+            if (this.reflectionUnavailable) {
+                return null;
+            }
+            try {
+                ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+                Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
+                Class<?> furnitureClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineFurniture", true, classLoader);
+                Class<?> adaptorClass = Class.forName("net.momirealms.craftengine.bukkit.api.BukkitAdaptor", true, classLoader);
+                Class<?> seatClass = Class.forName("net.momirealms.craftengine.core.entity.seat.Seat", true, classLoader);
+                Class<?> cePlayerClass = Class.forName("net.momirealms.craftengine.core.entity.player.Player", true, classLoader);
+                Class<?> worldPositionClass = Class.forName("net.momirealms.craftengine.core.world.WorldPosition", true, classLoader);
+                Method removeWithFlagsMethod = null;
+                Method removeMethod = null;
+                try {
+                    removeWithFlagsMethod = furnitureClass.getMethod("remove", Entity.class, boolean.class, boolean.class);
+                } catch (NoSuchMethodException ignored) {
+                    removeMethod = furnitureClass.getMethod("remove", Entity.class);
+                }
+                FurnitureReflection resolved = new FurnitureReflection(
+                    keyClass.getMethod("of", String.class),
+                    furnitureClass.getMethod("place", Location.class, keyClass),
+                    furnitureClass.getMethod("isFurniture", Entity.class),
+                    furnitureClass.getMethod("isSeat", Entity.class),
+                    furnitureClass.getMethod("getLoadedFurnitureBySeat", Entity.class),
+                    furnitureClass.getMethod("getLoadedFurnitureByMetaEntity", Entity.class),
+                    adaptorClass.getMethod("adapt", Player.class),
+                    seatClass.getMethod("spawnSeat", cePlayerClass, worldPositionClass),
+                    removeMethod,
+                    removeWithFlagsMethod
+                );
+                this.reflection = resolved;
+                return resolved;
+            } catch (ReflectiveOperationException | RuntimeException exception) {
+                this.reflectionUnavailable = true;
+                this.context.plugin().getLogger().warning(
+                    "CraftEngine was detected, but MahjongPaper could not place CraftEngine furniture. CraftEngine-based interaction may be unavailable."
+                );
+                this.context.plugin().debug().log(
+                    "lifecycle",
+                    "CraftEngine furniture bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+                );
+                return null;
+            }
         }
     }
 

@@ -145,6 +145,10 @@ final class GbRoundSupport {
         return top.ellan.mahjong.riichi.model.MahjongTile.valueOf(tile.name());
     }
 
+    static MahjongTile fromRiichiTile(top.ellan.mahjong.riichi.model.MahjongTile tile) {
+        return MahjongTile.valueOf(tile.name());
+    }
+
     static List<top.ellan.mahjong.riichi.model.MahjongTile> toRiichiTiles(List<MahjongTile> tiles) {
         List<top.ellan.mahjong.riichi.model.MahjongTile> converted = new ArrayList<>(tiles.size());
         for (MahjongTile tile : tiles) {

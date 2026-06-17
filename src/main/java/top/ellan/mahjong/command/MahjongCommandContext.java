@@ -254,6 +254,34 @@ public final class MahjongCommandContext {
         }
     }
 
+    public java.util.Optional<top.ellan.mahjong.model.MahjongTile> parseTile(String raw) {
+        String normalized = this.normalizeTileToken(raw);
+        if (normalized.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(top.ellan.mahjong.model.MahjongTile.valueOf(normalized));
+        } catch (IllegalArgumentException ex) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    public boolean requireRiichiVariant(Player player, MahjongTableSession table, String actionName) {
+        if (player == null || table == null) {
+            return false;
+        }
+        if (table.currentVariant() == MahjongVariant.RIICHI) {
+            return true;
+        }
+        this.messages.send(
+            player,
+            "command.variant_action_unavailable",
+            this.messages.tag("action", actionName),
+            this.messages.tag("variant", table.currentVariant().name())
+        );
+        return false;
+    }
+
     public List<String> suggestedRiichiIndices(Player player) {
         MahjongTableSession table = this.tableManager.tableFor(player.getUniqueId());
         return table == null
@@ -513,6 +541,52 @@ public final class MahjongCommandContext {
 
     private String formatDecimal(double value) {
         return String.format(Locale.ROOT, "%.3f", value);
+    }
+
+    private String normalizeTileToken(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String upper = trimmed.toUpperCase(Locale.ROOT).replace('-', '_');
+        try {
+            top.ellan.mahjong.model.MahjongTile.valueOf(upper);
+            return upper;
+        } catch (IllegalArgumentException ignored) {
+            // Fall through to shorthand parsing below.
+        }
+
+        String compact = trimmed.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
+        if (compact.length() < 2 || compact.length() > 3) {
+            return upper;
+        }
+        char first = compact.charAt(0);
+        char second = compact.charAt(1);
+        Character suit = null;
+        Character number = null;
+        if (this.isSuit(first) && Character.isDigit(second)) {
+            suit = first;
+            number = second;
+        } else if (Character.isDigit(first) && this.isSuit(second)) {
+            number = first;
+            suit = second;
+        }
+        if (suit == null || number == null) {
+            return upper;
+        }
+        boolean red = compact.endsWith("r");
+        int numeric = number == '0' ? 5 : Character.digit(number, 10);
+        if (numeric < 1 || numeric > 9) {
+            return upper;
+        }
+        return ("" + Character.toUpperCase(suit) + numeric) + (red || number == '0' ? "_RED" : "");
+    }
+
+    private boolean isSuit(char value) {
+        return value == 'm' || value == 'p' || value == 's';
     }
 
     private DatabaseService database() {

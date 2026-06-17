@@ -78,7 +78,6 @@ final class CraftEngineItemBridge {
             this.customItemCache.put(itemId, itemStack.clone());
             return itemStack;
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
             this.context.plugin().getLogger().warning(
                 "CraftEngine was detected, but MahjongPaper could not build CraftEngine custom items. Falling back to direct item_model items."
             );
@@ -98,26 +97,35 @@ final class CraftEngineItemBridge {
         if (cached != null) {
             return cached;
         }
-        try {
-            ClassLoader classLoader = craftEngine.getClass().getClassLoader();
-            Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
-            Class<?> itemsClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineItems", true, classLoader);
-            ItemReflection resolved = new ItemReflection(
-                keyClass.getMethod("of", String.class),
-                itemsClass.getMethod("byId", keyClass)
-            );
-            this.reflection = resolved;
-            return resolved;
-        } catch (ReflectiveOperationException | RuntimeException exception) {
-            this.reflectionUnavailable = true;
-            this.context.plugin().getLogger().warning(
-                "CraftEngine was detected, but MahjongPaper could not build CraftEngine custom items. Falling back to direct item_model items."
-            );
-            this.context.plugin().debug().log(
-                "lifecycle",
-                "CraftEngine reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
-            );
-            return null;
+        synchronized (this) {
+            cached = this.reflection;
+            if (cached != null) {
+                return cached;
+            }
+            if (this.reflectionUnavailable) {
+                return null;
+            }
+            try {
+                ClassLoader classLoader = craftEngine.getClass().getClassLoader();
+                Class<?> keyClass = Class.forName("net.momirealms.craftengine.core.util.Key", true, classLoader);
+                Class<?> itemsClass = Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineItems", true, classLoader);
+                ItemReflection resolved = new ItemReflection(
+                    keyClass.getMethod("of", String.class),
+                    itemsClass.getMethod("byId", keyClass)
+                );
+                this.reflection = resolved;
+                return resolved;
+            } catch (ReflectiveOperationException | RuntimeException exception) {
+                this.reflectionUnavailable = true;
+                this.context.plugin().getLogger().warning(
+                    "CraftEngine was detected, but MahjongPaper could not build CraftEngine custom items. Falling back to direct item_model items."
+                );
+                this.context.plugin().debug().log(
+                    "lifecycle",
+                    "CraftEngine reflection bridge failed: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+                );
+                return null;
+            }
         }
     }
 

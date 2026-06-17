@@ -15,7 +15,11 @@ import java.util.Locale;
 import kotlin.Pair;
 
 final class GbBotDecisionService {
-    private static final int MIN_GB_FAN = 8;
+    private final int minimumFan;
+
+    GbBotDecisionService(int minimumFan) {
+        this.minimumFan = Math.max(0, minimumFan);
+    }
 
     int suggestedDiscardIndex(
         List<MahjongTile> hand,
@@ -145,8 +149,8 @@ final class GbBotDecisionService {
         TingEvaluator tingEvaluator
     ) {
         List<MahjongTile> hand = new ArrayList<>(sourceHand);
-        MahjongTile first = MahjongTile.valueOf(pair.getFirst().name());
-        MahjongTile second = MahjongTile.valueOf(pair.getSecond().name());
+        MahjongTile first = GbRoundSupport.fromRiichiTile(pair.getFirst());
+        MahjongTile second = GbRoundSupport.fromRiichiTile(pair.getSecond());
         GbRoundSupport.removeTiles(hand, first, 1);
         GbRoundSupport.removeTiles(hand, second, 1);
         List<GbMeldState> melds = new ArrayList<>(sourceMelds);
@@ -217,7 +221,7 @@ final class GbBotDecisionService {
         return null;
     }
 
-    static long readyScore(GbTingResponse response) {
+    long readyScore(GbTingResponse response) {
         if (response == null || !response.getValid() || response.getWaits().isEmpty()) {
             return 0;
         }
@@ -226,7 +230,7 @@ final class GbBotDecisionService {
         long totalFan = 0;
         for (GbTingCandidate candidate : response.getWaits()) {
             int candidateFan = candidateTotalFan(candidate);
-            if (candidateFan < MIN_GB_FAN) {
+            if (candidateFan < this.minimumFan) {
                 continue;
             }
             qualifiedWaits++;
