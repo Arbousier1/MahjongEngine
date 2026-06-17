@@ -14,6 +14,7 @@ public record TableRenderSnapshot(
     double centerZ,
     boolean started,
     boolean gameFinished,
+    boolean roundStartInProgress,
     int remainingWallCount,
     int kanCount,
     int dicePoints,

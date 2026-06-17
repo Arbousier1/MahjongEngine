@@ -45,6 +45,7 @@ public final class TableRenderSnapshotFactory {
             tableCenter.getZ(),
             started,
             session.isRoundFinished(),
+            session.isRoundStartInProgress(),
             session.remainingWallCount(),
             session.kanCount(),
             session.dicePoints(),

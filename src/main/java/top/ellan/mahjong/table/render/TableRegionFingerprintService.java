@@ -174,7 +174,14 @@ public final class TableRegionFingerprintService {
             .field(seat.wind().name())
             .field(snapshot.currentSeat().name())
             .field(snapshot.started())
-            .field(session.isRoundStartInProgress())
+            // Read roundStartInProgress from the snapshot rather than the live session.
+            // precomputeRegionFingerprints runs on the async render-precompute thread;
+            // although the session field is now volatile (so the live read would be safe),
+            // using the snapshot guarantees the fingerprint matches the rest of the
+            // snapshot state captured on the region thread, avoiding a torn read where
+            // the seat label fingerprint reflects a newer roundStartInProgress value than
+            // the seat occupancy snapshots around it.
+            .field(snapshot.roundStartInProgress())
             .field(Objects.toString(seat.playerId(), "empty"))
             .field(seat.displayName())
             .field(seat.publicSeatStatus())

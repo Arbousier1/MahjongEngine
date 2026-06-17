@@ -146,13 +146,21 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         }
         TableDisplayRegistry.clear();
         DisplayVisibilityRegistry.clear();
-        if (this.database != null) {
-            this.database.close();
-            this.database = null;
-        }
+        // Close async executor BEFORE the database pool: the async queue may
+        // still hold pending persistRoundResult / persistMatchRanks tasks that
+        // need a live DataSource. Closing the DB first would cause those tasks
+        // to throw SQLException on getConnection(), which AsyncService swallows
+        // (see AsyncService.execute error handler) — losing the final round
+        // results of any in-progress match. async.close() drains the queue
+        // (with a bounded wait) so by the time database.close() runs, no DB
+        // task is in flight.
         if (this.async != null) {
             this.async.close();
             this.async = null;
+        }
+        if (this.database != null) {
+            this.database.close();
+            this.database = null;
         }
         this.scheduler = null;
         this.craftEngine = null;
@@ -320,6 +328,16 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (previousCraftEngine != null) {
             previousCraftEngine.disableFurnitureInteractionBridge();
             previousCraftEngine.clearTrackedCullables();
+        }
+        // Drain pending async DB tasks before closing the old DataSource.
+        // Without this, any persistRoundResult / persistMatchRanks tasks still
+        // in the async queue would race the close and throw SQLException on
+        // getConnection() — AsyncService swallows the error but the round
+        // result is lost. awaitQuiescence blocks the (player-triggered) reload
+        // thread for up to 2s; on timeout we proceed and accept the race,
+        // matching prior behavior for the rare slow-persist case.
+        if (previousDatabase != null && this.async != null) {
+            this.async.awaitQuiescence(2L);
         }
         if (previousDatabase != null) {
             previousDatabase.close();

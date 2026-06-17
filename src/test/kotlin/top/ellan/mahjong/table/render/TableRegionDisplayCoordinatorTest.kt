@@ -274,6 +274,7 @@ class TableRegionDisplayCoordinatorTest {
             0.0,
             true,
             false,
+            false,
             0,
             0,
             2,

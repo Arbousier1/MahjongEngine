@@ -376,6 +376,7 @@ class CorePerformanceBenchmarksTest {
             0.0,
             true,
             false,
+            false,
             70,
             1,
             7,

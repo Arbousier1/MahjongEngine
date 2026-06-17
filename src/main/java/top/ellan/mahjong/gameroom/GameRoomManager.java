@@ -342,7 +342,14 @@ public final class GameRoomManager {
                     // cross-thread mutation of game state (round controller,
                     // viewer presentation, bot task, etc.) on Folia.
                     MahjongTableSession session = this.tableManager.resolveTableById(tableId);
-                    if (session != null) {
+                    // Guard against redundant forceEnd scheduling: if the match has
+                    // already ended (e.g. natural round end between the countdown
+                    // expiry and this tick) skip the region scheduling entirely.
+                    // forceEndMatch is idempotent but skipping it saves a region
+                    // task dispatch + an unnecessary render pass on the table's
+                    // region thread. isStarted() reads the now-volatile
+                    // roundController field (T1) so this cross-thread read is safe.
+                    if (session != null && session.isStarted()) {
                         this.scheduler.runRegion(session.center(), () -> this.tableManager.forceEndTable(tableId));
                     }
                 }

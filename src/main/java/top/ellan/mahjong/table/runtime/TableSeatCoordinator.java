@@ -200,8 +200,17 @@ public final class TableSeatCoordinator {
         for (Map.Entry<UUID, SeatWatchdogBinding> entry : this.seatWatchdogs.entrySet()) {
             UUID playerId = entry.getKey();
             SeatWatchdogBinding binding = entry.getValue();
-            MahjongTableSession session = this.tableManager.resolveTableById(binding.tableId());
-            if (session == null || !session.isStarted() || session.seatOf(playerId) != binding.wind() || binding.expiresAtTick() < nowTick) {
+            // Pure-local-state short-circuit only: binding expiry is owned by this
+            // global timer thread, so it is safe to read here. All session-state
+            // checks (isStarted, seatOf) and player online checks are deferred to
+            // inspectSeatWatchdogOnPlayerThread, which runs on the player's entity
+            // thread. Reading session.isStarted() / session.seatOf() here would
+            // touch non-region threads to session state (roundController etc.)
+            // even though T1 made those fields volatile; we still prefer the
+            // region-thread read because it eliminates the torn-read window where
+            // the binding is valid at check time but the session starts/stops a
+            // round between this check and the runEntity callback.
+            if (binding.expiresAtTick() < nowTick) {
                 this.seatWatchdogs.remove(playerId, binding);
                 continue;
             }

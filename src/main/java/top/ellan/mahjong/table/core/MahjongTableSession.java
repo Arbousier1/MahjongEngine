@@ -78,8 +78,20 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
     private final TableRenderSnapshotFactory renderSnapshotFactory = new TableRenderSnapshotFactory();
     private final TableRegionFingerprintService regionFingerprintService = new TableRegionFingerprintService();
     private MahjongRule configuredRule;
-    private TableRoundController roundController;
-    private boolean roundStartInProgress;
+    // These three fields are written on the table's region thread (during
+    // startRound / completeRoundStartInternal / setRoundControllerInternal)
+    // but read cross-thread by: the global tick timer's bot watchdog, the
+    // async render precompute thread (via TableRegionFingerprintService),
+    // the seat watchdog global timer (TableSeatCoordinator), the GameRoom
+    // tick timer, and player entity threads (TableEventCoordinator). They
+    // MUST be volatile so the write is published before subsequent renders
+    // and the readers observe a consistent snapshot. Without volatile, the
+    // JVM is free to reorder or cache these reads, leading to "bot scheduled
+    // on a half-published roundController" and similar races that mirror the
+    // botTask race fixed in 195b5aa. See the architecture review for the
+    // full region-ownership contract.
+    private volatile TableRoundController roundController;
+    private volatile boolean roundStartInProgress;
     private top.ellan.mahjong.model.MahjongTile lastPublicDiscardTile;
     private UUID lastPublicDiscardPlayerId;
     private PublicActionAnnouncement lastPublicActionAnnouncement;
@@ -106,7 +118,14 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
     private final SessionViewerActionMenuCoordinator viewerActionMenuCoordinator = new SessionViewerActionMenuCoordinator();
-    private RiichiRoundEngine riichiRoundEngine;
+    // Written on the table's region thread when roundController is set/rotated
+    // (resolveRiichiEngine + setRoundControllerInternal); read cross-thread by
+    // RiichiBotStrategy.schedule via session.riichiEngine() on the same region
+    // thread (post-195b5aa) AND by async render precompute via
+    // TableRenderSnapshotFactory when capturing engine state. Volatile so the
+    // async thread never observes a stale null pointer when the round has just
+    // started on the region thread.
+    private volatile RiichiRoundEngine riichiRoundEngine;
     private MahjongVariant configuredVariant;
     private UUID ownerId;
 
@@ -375,6 +394,15 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         if (playerId == null) {
             return null;
         }
+        // Note: this iterates participants.seats (a plain ArrayList). Most callers
+        // run on the table's region thread, where the write to seats also happens.
+        // Cross-thread callers (player entity thread in TableEventCoordinator,
+        // global timer in TableSeatCoordinator pre-T2 fix) read best-effort: an
+        // ArrayList.get is not throws-synchronized, but the worst case is reading
+        // a stale UUID which then fails the equals check and returns null — the
+        // caller treats null as "not seated" and re-checks on the next tick.
+        // If you change participants.seats to a different container, ensure
+        // either thread-safety or document the same best-effort contract.
         for (SeatWind wind : SeatWind.values()) {
             if (Objects.equals(this.playerAt(wind), playerId)) {
                 return wind;
