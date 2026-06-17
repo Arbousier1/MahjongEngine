@@ -63,7 +63,7 @@ class GbNativeRulesGatewayTest {
     }
 
     @Test
-    fun `ting cache evicts oldest entry with lru policy`() {
+    fun `ting cache evicts entries when capacity exceeded`() {
         var nativeCalls = 0
         val gateway = object : GbNativeRulesGateway(2, 2) {
             override fun isAvailable(): Boolean = true
@@ -81,12 +81,19 @@ class GbNativeRulesGatewayTest {
         val second = tingRequest("M2")
         val third = tingRequest("M3")
 
+        // Insert 3 distinct entries into a size-2 cache; one must be evicted.
         gateway.evaluateTing(first)
         gateway.evaluateTing(second)
         gateway.evaluateTing(third)
-        gateway.evaluateTing(first)
+        // Caffeine evicts asynchronously — force maintenance so eviction is observable.
+        gateway.cleanUpCaches()
 
-        assertEquals(4, nativeCalls)
+        // Re-query all three — at least one eviction means at least one extra native call.
+        gateway.evaluateTing(first)
+        gateway.evaluateTing(second)
+        gateway.evaluateTing(third)
+
+        assertTrue(nativeCalls >= 4, "Expected at least 4 native calls (3 initial + >=1 re-query miss) but got $nativeCalls")
     }
 
     @Test

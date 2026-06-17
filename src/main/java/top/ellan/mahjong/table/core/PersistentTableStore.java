@@ -75,7 +75,7 @@ final class PersistentTableStore {
         }
     }
 
-    void save(Collection<MahjongTableSession> sessions) {
+    void save(Collection<? extends TableIdentityPort> sessions) {
         if (!this.enabled) {
             return;
         }
@@ -83,7 +83,7 @@ final class PersistentTableStore {
         this.scheduleAsyncSave();
     }
 
-    void flush(Collection<MahjongTableSession> sessions) {
+    void flush(Collection<? extends TableIdentityPort> sessions) {
         if (!this.enabled) {
             return;
         }
@@ -116,9 +116,9 @@ final class PersistentTableStore {
         }
     }
 
-    private List<TableSnapshot> snapshotTables(Collection<MahjongTableSession> sessions) {
+    private List<TableSnapshot> snapshotTables(Collection<? extends TableIdentityPort> sessions) {
         List<TableSnapshot> snapshots = new ArrayList<>();
-        for (MahjongTableSession session : sessions) {
+        for (TableIdentityPort session : sessions) {
             if (!session.isPersistentRoom()) {
                 continue;
             }

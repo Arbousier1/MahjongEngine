@@ -905,16 +905,29 @@ std::string evaluateWinJson(const WinRequest& request) {
     }
 }
 
-jstring newString(JNIEnv* env, const std::string& value) {
-    return env->NewStringUTF(value.c_str());
+jbyteArray newByteArray(JNIEnv* env, const std::string& value) {
+    jbyteArray array = env->NewByteArray(static_cast<jsize>(value.size()));
+    if (array != nullptr && !value.empty()) {
+        env->SetByteArrayRegion(array, 0, static_cast<jsize>(value.size()),
+                                reinterpret_cast<const jbyte*>(value.data()));
+    }
+    return array;
 }
 
-std::string fromJString(JNIEnv* env, jstring value) {
-    const char* chars = env->GetStringUTFChars(value, nullptr);
-    std::string result(chars == nullptr ? "" : chars);
-    if (chars != nullptr) {
-        env->ReleaseStringUTFChars(value, chars);
+std::string fromJByteArray(JNIEnv* env, jbyteArray array) {
+    if (array == nullptr) {
+        return "";
     }
+    jsize length = env->GetArrayLength(array);
+    if (length == 0) {
+        return "";
+    }
+    jbyte* bytes = env->GetByteArrayElements(array, nullptr);
+    if (bytes == nullptr) {
+        return "";
+    }
+    std::string result(reinterpret_cast<const char*>(bytes), static_cast<std::size_t>(length));
+    env->ReleaseByteArrayElements(array, bytes, JNI_ABORT);
     return result;
 }
 
@@ -922,37 +935,37 @@ std::string fromJString(JNIEnv* env, jstring value) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeLibraryVersion(JNIEnv* env, jclass) {
-    return newString(env, "mahjongpaper-gb-jni/0.2.0");
+    return env->NewStringUTF("mahjongpaper-gb-jni/0.2.0");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativePing(JNIEnv* env, jclass) {
-    return newString(env, "mahjongpaper-gb-native-ready");
+    return env->NewStringUTF("mahjongpaper-gb-native-ready");
 }
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateFan(JNIEnv* env, jclass, jstring requestJson) {
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateFan(JNIEnv* env, jclass, jbyteArray requestJson) {
     try {
-        return newString(env, evaluateFanJson(parseFanRequest(fromJString(env, requestJson))));
+        return newByteArray(env, evaluateFanJson(parseFanRequest(fromJByteArray(env, requestJson))));
     } catch (const std::exception& exception) {
-        return newString(env, invalidFanResponse(exception.what()));
+        return newByteArray(env, invalidFanResponse(exception.what()));
     }
 }
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateTing(JNIEnv* env, jclass, jstring requestJson) {
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateTing(JNIEnv* env, jclass, jbyteArray requestJson) {
     try {
-        return newString(env, evaluateTingJson(parseTingRequest(fromJString(env, requestJson))));
+        return newByteArray(env, evaluateTingJson(parseTingRequest(fromJByteArray(env, requestJson))));
     } catch (const std::exception& exception) {
-        return newString(env, invalidTingResponse(exception.what()));
+        return newByteArray(env, invalidTingResponse(exception.what()));
     }
 }
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateWin(JNIEnv* env, jclass, jstring requestJson) {
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_top_ellan_mahjong_gb_jni_GbMahjongNativeBridge_nativeEvaluateWin(JNIEnv* env, jclass, jbyteArray requestJson) {
     try {
-        return newString(env, evaluateWinJson(parseWinRequest(fromJString(env, requestJson))));
+        return newByteArray(env, evaluateWinJson(parseWinRequest(fromJByteArray(env, requestJson))));
     } catch (const std::exception& exception) {
-        return newString(env, invalidWinResponse(exception.what()));
+        return newByteArray(env, invalidWinResponse(exception.what()));
     }
 }

@@ -38,6 +38,7 @@ val mariadbVersion = "3.5.9"
 val mysqlVersion = "9.7.0"
 val h2Version = "2.4.240"
 val hikariVersion = "7.1.0"
+val caffeineVersion = "3.2.0"
 // Keep explicit Adventure APIs on the Paper 1.20.1 line so the jar stays runtime-compatible with older servers.
 val adventureVersion = "4.14.0"
 val junitVersion = "6.1.0"
@@ -204,6 +205,7 @@ dependencies {
     implementation("com.mysql:mysql-connector-j:$mysqlVersion")
     implementation("com.h2database:h2:$h2Version")
     implementation("com.zaxxer:HikariCP:$hikariVersion")
+    implementation("com.github.ben-manes.caffeine:caffeine:$caffeineVersion")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinRuntimeVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinSerializationVersion")
     testImplementation(kotlin("test"))

@@ -66,7 +66,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-public final class MahjongTableSession implements TableSessionMutator {
+public final class MahjongTableSession implements TableSessionMutator, TableMembershipPort, TableRenderStatePort, TableBotTaskPort, TableLifecyclePort {
     private static final long PUBLIC_ACTION_DISPLAY_TICKS = 40L;
     private final TableRuntimeServices plugin;
     private final String id;
@@ -595,10 +595,17 @@ public final class MahjongTableSession implements TableSessionMutator {
         if (this.participants.isBot(playerId)) {
             return this.botDisplayName(playerId, locale);
         }
-        return this.riichiEngine()
-            .map(engine -> engine.seatPlayer(playerId.toString()))
-            .map(RiichiPlayerState::getDisplayName)
-            .orElse(this.plugin.messages().plain(locale, "common.offline"));
+        RiichiRoundEngine engine = this.riichiEngineOrNull();
+        if (engine != null) {
+            RiichiPlayerState riichiPlayer = engine.seatPlayer(playerId.toString());
+            if (riichiPlayer != null) {
+                String name = riichiPlayer.getDisplayName();
+                if (name != null) {
+                    return name;
+                }
+            }
+        }
+        return this.plugin.messages().plain(locale, "common.offline");
     }
 
     public boolean isBot(UUID playerId) {
@@ -714,11 +721,15 @@ public final class MahjongTableSession implements TableSessionMutator {
         if (playerId == null) {
             return -1;
         }
-        return this.riichiEngine()
-            .map(engine -> engine.seatPlayer(playerId.toString()))
-            .filter(player -> player.getRiichiSengenTile() != null)
-            .map(MahjongTableSession::resolveRiichiDiscardIndex)
-            .orElse(-1);
+        RiichiRoundEngine engine = this.riichiEngineOrNull();
+        if (engine == null) {
+            return -1;
+        }
+        RiichiPlayerState player = engine.seatPlayer(playerId.toString());
+        if (player == null || player.getRiichiSengenTile() == null) {
+            return -1;
+        }
+        return resolveRiichiDiscardIndex(player);
     }
 
     private static int resolveRiichiDiscardIndex(RiichiPlayerState player) {
@@ -758,9 +769,11 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public int riichiPoolCount() {
-        return this.riichiEngine()
-            .map(engine -> engine.getSeats().stream().mapToInt(RiichiPlayerState::getRiichiStickAmount).sum())
-            .orElse(0);
+        RiichiRoundEngine engine = this.riichiEngineOrNull();
+        if (engine == null) {
+            return 0;
+        }
+        return engine.getSeats().stream().mapToInt(RiichiPlayerState::getRiichiStickAmount).sum();
     }
 
     public List<ScoringStick> cornerSticks(SeatWind wind) {
@@ -855,6 +868,10 @@ public final class MahjongTableSession implements TableSessionMutator {
 
     public Optional<RiichiRoundEngine> riichiEngine() {
         return Optional.ofNullable(this.riichiRoundEngine);
+    }
+
+    private RiichiRoundEngine riichiEngineOrNull() {
+        return this.riichiRoundEngine;
     }
 
     public boolean hasRoundController() {
@@ -1283,7 +1300,7 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.viewerPresentation.flushNow();
     }
 
-    void flushViewerActionsNow(UUID viewerId) {
+    public void flushViewerActionsNow(UUID viewerId) {
         this.viewerPresentation.flushViewerActionsNow(viewerId);
     }
 
@@ -1346,8 +1363,8 @@ public final class MahjongTableSession implements TableSessionMutator {
         if (this.roundController == null || !this.roundController.gameFinished()) {
             return List.of();
         }
-        Optional<RiichiRoundEngine> riichiEngine = this.riichiEngine();
-        if (this.currentVariant() != MahjongVariant.RIICHI || riichiEngine.isEmpty()) {
+        RiichiRoundEngine riichiEngine = this.riichiEngineOrNull();
+        if (this.currentVariant() != MahjongVariant.RIICHI || riichiEngine == null) {
             List<TableFinalStanding> standings = new ArrayList<>();
             for (UUID playerId : this.players()) {
                 standings.add(new TableFinalStanding(
@@ -1373,7 +1390,7 @@ public final class MahjongTableSession implements TableSessionMutator {
             }
             return List.copyOf(ranked);
         }
-        List<RiichiPlayerState> ranked = new ArrayList<>(riichiEngine.get().placementOrder());
+        List<RiichiPlayerState> ranked = new ArrayList<>(riichiEngine.placementOrder());
 
         List<TableFinalStanding> standings = new ArrayList<>(ranked.size());
         for (int i = 0; i < ranked.size(); i++) {

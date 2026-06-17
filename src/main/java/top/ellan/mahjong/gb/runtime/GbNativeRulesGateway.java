@@ -1,5 +1,7 @@
 package top.ellan.mahjong.gb.runtime;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import top.ellan.mahjong.error.MahjongErrorCode;
 import top.ellan.mahjong.error.MahjongInfrastructureException;
 import top.ellan.mahjong.gb.jni.GbFanRequest;
@@ -11,9 +13,7 @@ import top.ellan.mahjong.gb.jni.GbTingRequest;
 import top.ellan.mahjong.gb.jni.GbTingResponse;
 import top.ellan.mahjong.gb.jni.GbWinRequest;
 import top.ellan.mahjong.gb.jni.GbWinResponse;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -24,12 +24,9 @@ public class GbNativeRulesGateway {
     private static final Logger LOGGER = Logger.getLogger(GbNativeRulesGateway.class.getName());
 
     private final GbMahjongNativeBridge bridge = new GbMahjongNativeBridge();
-    private final Object fanCacheLock = new Object();
-    private final Object tingCacheLock = new Object();
-    private final Object winCacheLock = new Object();
-    private final Map<Long, GbFanResponse> fanCache;
-    private final Map<Long, GbTingResponse> tingCache;
-    private final Map<Long, GbWinResponse> winCache;
+    private final Cache<Long, GbFanResponse> fanCache;
+    private final Cache<Long, GbTingResponse> tingCache;
+    private final Cache<Long, GbWinResponse> winCache;
 
     public GbNativeRulesGateway() {
         this(DEFAULT_FAN_CACHE_SIZE, DEFAULT_TING_CACHE_SIZE, DEFAULT_WIN_CACHE_SIZE);
@@ -54,13 +51,13 @@ public class GbNativeRulesGateway {
             return invalidFan(MahjongErrorCode.GB_NATIVE_BRIDGE_UNAVAILABLE.publicMessage());
         }
         long cacheKey = hashFanRequest(request);
-        GbFanResponse cached = this.cachedFan(cacheKey);
+        GbFanResponse cached = this.fanCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
         GbFanResponse response;
         try {
-            response = this.bridge.evaluateFan(request);
+            response = this.evaluateFanNative(request);
             if (response == null) {
                 response = invalidFan(MahjongErrorCode.GB_NATIVE_FAN_EVALUATION_FAILED.publicMessage());
             }
@@ -74,7 +71,7 @@ public class GbNativeRulesGateway {
             response = invalidFan(failure.publicMessage());
         }
         if (shouldCache(response)) {
-            this.cacheFan(cacheKey, response);
+            this.fanCache.put(cacheKey, response);
         }
         return response;
     }
@@ -84,7 +81,7 @@ public class GbNativeRulesGateway {
             return invalidTing(MahjongErrorCode.GB_NATIVE_BRIDGE_UNAVAILABLE.publicMessage());
         }
         long cacheKey = hashTingRequest(request);
-        GbTingResponse cached = this.cachedTing(cacheKey);
+        GbTingResponse cached = this.tingCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
@@ -104,7 +101,7 @@ public class GbNativeRulesGateway {
             response = invalidTing(failure.publicMessage());
         }
         if (shouldCache(response)) {
-            this.cacheTing(cacheKey, response);
+            this.tingCache.put(cacheKey, response);
         }
         return response;
     }
@@ -114,7 +111,7 @@ public class GbNativeRulesGateway {
             return invalidWin(MahjongErrorCode.GB_NATIVE_BRIDGE_UNAVAILABLE.publicMessage());
         }
         long cacheKey = hashWinRequest(request);
-        GbWinResponse cached = this.cachedWin(cacheKey);
+        GbWinResponse cached = this.winCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
@@ -134,9 +131,13 @@ public class GbNativeRulesGateway {
             response = invalidWin(failure.publicMessage());
         }
         if (shouldCache(response)) {
-            this.cacheWin(cacheKey, response);
+            this.winCache.put(cacheKey, response);
         }
         return response;
+    }
+
+    protected GbFanResponse evaluateFanNative(GbFanRequest request) {
+        return this.bridge.evaluateFan(request);
     }
 
     protected GbTingResponse evaluateTingNative(GbTingRequest request) {
@@ -159,42 +160,6 @@ public class GbNativeRulesGateway {
         return new GbWinResponse(false, "WIN", 0, List.of(), List.of(), message);
     }
 
-    private GbFanResponse cachedFan(long cacheKey) {
-        synchronized (this.fanCacheLock) {
-            return this.fanCache.get(cacheKey);
-        }
-    }
-
-    private void cacheFan(long cacheKey, GbFanResponse response) {
-        synchronized (this.fanCacheLock) {
-            this.fanCache.put(cacheKey, response);
-        }
-    }
-
-    private GbTingResponse cachedTing(long cacheKey) {
-        synchronized (this.tingCacheLock) {
-            return this.tingCache.get(cacheKey);
-        }
-    }
-
-    private void cacheTing(long cacheKey, GbTingResponse response) {
-        synchronized (this.tingCacheLock) {
-            this.tingCache.put(cacheKey, response);
-        }
-    }
-
-    private GbWinResponse cachedWin(long cacheKey) {
-        synchronized (this.winCacheLock) {
-            return this.winCache.get(cacheKey);
-        }
-    }
-
-    private void cacheWin(long cacheKey, GbWinResponse response) {
-        synchronized (this.winCacheLock) {
-            this.winCache.put(cacheKey, response);
-        }
-    }
-
     private static boolean shouldCache(GbFanResponse response) {
         return response != null && response.getValid();
     }
@@ -207,13 +172,17 @@ public class GbNativeRulesGateway {
         return response != null && response.getValid();
     }
 
-    private static <T> Map<Long, T> createLruCache(int maxEntries) {
-        return new LinkedHashMap<>(Math.max(16, maxEntries), 0.75F, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Long, T> eldest) {
-                return this.size() > maxEntries;
-            }
-        };
+    private static <T> Cache<Long, T> createLruCache(int maxEntries) {
+        return Caffeine.newBuilder()
+            .maximumSize(maxEntries)
+            .build();
+    }
+
+    /** Forces synchronous cache maintenance so eviction is observable in tests. */
+    void cleanUpCaches() {
+        this.fanCache.cleanUp();
+        this.tingCache.cleanUp();
+        this.winCache.cleanUp();
     }
 
     private static long hashFanRequest(GbFanRequest request) {
@@ -313,4 +282,3 @@ public class GbNativeRulesGateway {
         }
     }
 }
-

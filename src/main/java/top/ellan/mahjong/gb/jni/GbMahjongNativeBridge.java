@@ -11,6 +11,11 @@ public final class GbMahjongNativeBridge {
         return this.loadState().detail();
     }
 
+    public void resetLoadState() {
+        this.loadState = null;
+        GbMahjongNativeLibrary.resetLoadState();
+    }
+
     public String libraryVersion() {
         requireAvailable();
         return nativeLibraryVersion();
@@ -23,19 +28,19 @@ public final class GbMahjongNativeBridge {
 
     public GbFanResponse evaluateFan(GbFanRequest request) {
         requireAvailable();
-        String payload = GbMahjongNativeJson.encodeFanRequest(request);
+        byte[] payload = GbMahjongNativeJson.encodeFanRequestBytes(request);
         return GbMahjongNativeJson.decodeFanResponse(nativeEvaluateFan(payload));
     }
 
     public GbTingResponse evaluateTing(GbTingRequest request) {
         requireAvailable();
-        String payload = GbMahjongNativeJson.encodeTingRequest(request);
+        byte[] payload = GbMahjongNativeJson.encodeTingRequestBytes(request);
         return GbMahjongNativeJson.decodeTingResponse(nativeEvaluateTing(payload));
     }
 
     public GbWinResponse evaluateWin(GbWinRequest request) {
         requireAvailable();
-        String payload = GbMahjongNativeJson.encodeWinRequest(request);
+        byte[] payload = GbMahjongNativeJson.encodeWinRequestBytes(request);
         return GbMahjongNativeJson.decodeWinResponse(nativeEvaluateWin(payload));
     }
 
@@ -60,10 +65,9 @@ public final class GbMahjongNativeBridge {
 
     private static native String nativePing();
 
-    private static native String nativeEvaluateFan(String requestJson);
+    private static native byte[] nativeEvaluateFan(byte[] requestJson);
 
-    private static native String nativeEvaluateTing(String requestJson);
+    private static native byte[] nativeEvaluateTing(byte[] requestJson);
 
-    private static native String nativeEvaluateWin(String requestJson);
+    private static native byte[] nativeEvaluateWin(byte[] requestJson);
 }
-
