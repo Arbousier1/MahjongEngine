@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0-SNAPSHOT
+## 1.3.0 - 2026-06-17
 
 Game room system with core restrictions, wand selection tool, room management commands, bossbar/text mode adaptation, and documentation alignment.
 
