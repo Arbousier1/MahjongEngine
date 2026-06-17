@@ -1,5 +1,4 @@
 import dev.detekt.gradle.Detekt
-import org.gradle.api.tasks.testing.Test
 import top.ellan.mahjong.build.MahjongTaskRegistration
 
 plugins {
@@ -67,6 +66,7 @@ val nativeTasks =
         project,
         generatedNativeResourcesDir,
     )
+MahjongTaskRegistration.registerPerfTestTask(project)
 
 dependencies {
     paperweight.paperDevBundle(paperDevBundleVersion)
@@ -168,29 +168,6 @@ tasks {
         finalizedBy(jacocoTestReport)
     }
 
-    register<Test>("perfTest") {
-        group = "verification"
-        description = "Runs performance benchmarks tagged with @Tag(\"perf\")."
-        dependsOn(testClasses)
-        testClassesDirs = sourceSets["test"].output.classesDirs
-        classpath = sourceSets["test"].runtimeClasspath
-        useJUnitPlatform {
-            includeTags("perf")
-        }
-        jvmArgs("-Dnet.bytebuddy.experimental=true")
-        systemProperty("mahjong.perf.warmupIterations", providers.gradleProperty("perfWarmups").orElse("5").get())
-        systemProperty("mahjong.perf.measurementIterations", providers.gradleProperty("perfIterations").orElse("10").get())
-        systemProperty("mahjong.perf.batchSize", providers.gradleProperty("perfBatchSize").orElse("200").get())
-        systemProperty(
-            "mahjong.perf.reportDir",
-            layout.buildDirectory
-                .dir("reports/performance")
-                .get()
-                .asFile.absolutePath,
-        )
-        shouldRunAfter(test)
-    }
-
     jacocoTestReport {
         dependsOn(test)
         reports {
@@ -201,16 +178,12 @@ tasks {
     }
 
     check {
-        dependsOn(jacocoTestReport)
-        dependsOn("verifyMahjongTileResources")
-        dependsOn("generateCraftEngineBundle")
-        dependsOn("spotlessCheck")
-        dependsOn("detekt")
+        dependsOn(jacocoTestReport, "verifyMahjongTileResources", "generateCraftEngineBundle", "spotlessCheck", "detekt")
     }
 }
 
 spotless {
-    ratchetFrom("origin/dev")
+    MahjongTaskRegistration.configureGitRatchet(project, "origin/dev") { ratchetFrom(it) }
     kotlin {
         target("src/main/kotlin/**/*.kt", "src/test/kotlin/**/*.kt", "buildSrc/**/*.kt")
         ktlint()
