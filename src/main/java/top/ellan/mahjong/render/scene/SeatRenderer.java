@@ -295,15 +295,15 @@ public final class SeatRenderer {
 
     private static Color seatActionLabelColor(DisplayClickAction action) {
         if (action == null) {
-            return Color.fromARGB(92, 16, 18, 20);
+            return TableRenderConstants.SEAT_ACTION_DEFAULT_BACKGROUND;
         }
         return switch (action.actionType()) {
-            case JOIN_SEAT -> Color.fromARGB(104, 12, 54, 20);
-            case TOGGLE_READY -> Color.fromARGB(104, 12, 32, 52);
+            case JOIN_SEAT -> TableRenderConstants.SEAT_ACTION_JOIN_BACKGROUND;
+            case TOGGLE_READY -> TableRenderConstants.SEAT_ACTION_READY_BACKGROUND;
             case PLAYER_COMMAND -> "lobby:leave".equalsIgnoreCase(action.command())
-                ? Color.fromARGB(108, 68, 18, 18)
-                : Color.fromARGB(92, 16, 18, 20);
-            default -> Color.fromARGB(92, 16, 18, 20);
+                ? TableRenderConstants.SEAT_ACTION_LEAVE_BACKGROUND
+                : TableRenderConstants.SEAT_ACTION_DEFAULT_BACKGROUND;
+            default -> TableRenderConstants.SEAT_ACTION_DEFAULT_BACKGROUND;
         };
     }
 
@@ -476,13 +476,13 @@ public final class SeatRenderer {
 
     private static Color seatLabelColor(SeatWind wind, boolean active) {
         if (active) {
-            return Color.fromARGB(148, 255, 220, 70);
+            return TableRenderConstants.SEAT_LABEL_ACTIVE_BACKGROUND;
         }
         return switch (wind) {
-            case EAST -> Color.fromARGB(132, 255, 183, 0);
-            case SOUTH -> Color.fromARGB(132, 72, 217, 92);
-            case WEST -> Color.fromARGB(132, 120, 120, 120);
-            case NORTH -> Color.fromARGB(132, 86, 148, 255);
+            case EAST -> TableRenderConstants.SEAT_LABEL_EAST_BACKGROUND;
+            case SOUTH -> TableRenderConstants.SEAT_LABEL_SOUTH_BACKGROUND;
+            case WEST -> TableRenderConstants.SEAT_LABEL_WEST_BACKGROUND;
+            case NORTH -> TableRenderConstants.SEAT_LABEL_NORTH_BACKGROUND;
         };
     }
 

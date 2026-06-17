@@ -33,21 +33,15 @@ public final class HandRenderer {
         List<Entity> spawned = new ArrayList<>(seat.hand().size() * 2);
         for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
             Location tileLocation = TableGeometry.toLocation(session, plan.privateHandPoints().get(tileIndex));
-            spawned.add(DisplayEntities.spawnTileDisplay(
-                session.bukkitPlugin(),
+            spawned.add(DisplayEntities.tileDisplay(
                 tileLocation,
                 plan.yaw(),
                 session.currentVariant(),
                 seat.hand().get(tileIndex),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                ownerOnly,
-                1.0F,
-                null,
-                null,
-                true
-            ));
+                DisplayEntities.TileRenderPose.STANDING
+            )
+                .privateViewers(ownerOnly)
+                .spawn(session.bukkitPlugin()));
             Entity clickHitbox = DisplayEntities.spawnInteraction(
                 session.bukkitPlugin(),
                 handInteractionLocation(tileLocation),
@@ -76,21 +70,15 @@ public final class HandRenderer {
         Location tileLocation = TableGeometry.toLocation(session, plan.privateHandPoints().get(tileIndex));
         UUID playerId = seat.playerId();
         List<Entity> spawned = new ArrayList<>(2);
-        spawned.add(DisplayEntities.spawnTileDisplay(
-            session.bukkitPlugin(),
+        spawned.add(DisplayEntities.tileDisplay(
             tileLocation,
             plan.yaw(),
             session.currentVariant(),
             seat.hand().get(tileIndex),
-            DisplayEntities.TileRenderPose.STANDING,
-            null,
-            true,
-            List.of(playerId),
-            1.0F,
-            null,
-            null,
-            true
-        ));
+            DisplayEntities.TileRenderPose.STANDING
+        )
+            .privateViewers(List.of(playerId))
+            .spawn(session.bukkitPlugin()));
         Entity clickHitbox = DisplayEntities.spawnInteraction(
             session.bukkitPlugin(),
             handInteractionLocation(tileLocation),
@@ -117,20 +105,15 @@ public final class HandRenderer {
 
         List<UUID> ownerOnly = List.of(seat.playerId());
         Location tileLocation = TableGeometry.toLocation(session, plan.privateHandPoints().get(tileIndex));
-        DisplayEntities.EntitySpec tileSpec = DisplayEntities.tileDisplaySpec(
+        DisplayEntities.EntitySpec tileSpec = DisplayEntities.tileDisplay(
             tileLocation,
             plan.yaw(),
             session.currentVariant(),
             seat.hand().get(tileIndex),
-            DisplayEntities.TileRenderPose.STANDING,
-            null,
-            true,
-            ownerOnly,
-            1.0F,
-            null,
-            null,
-            true
-        );
+            DisplayEntities.TileRenderPose.STANDING
+        )
+            .privateViewers(ownerOnly)
+            .spec();
         return List.of(
             tileSpec,
             DisplayEntities.interactionSpec(
@@ -157,18 +140,15 @@ public final class HandRenderer {
         boolean concealHand = snapshot.started();
         List<UUID> ownerHidden = List.of(seat.playerId());
         for (int i = 0; i < seat.hand().size(); i++) {
-            spawned.add(DisplayEntities.spawnTileDisplay(
-                session.bukkitPlugin(),
+            spawned.add(DisplayEntities.tileDisplay(
                 TableGeometry.toLocation(session, plan.publicHandPoints().get(i)),
                 plan.yaw(),
                 session.currentVariant(),
                 concealHand ? MahjongTile.UNKNOWN : seat.hand().get(i),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                null,
-                ownerHidden
-            ));
+                DisplayEntities.TileRenderPose.STANDING
+            )
+                .hiddenViewers(ownerHidden)
+                .spawn(session.bukkitPlugin()));
         }
         return spawned;
     }
@@ -186,18 +166,15 @@ public final class HandRenderer {
 
         boolean concealHand = snapshot.started();
         List<UUID> ownerHidden = List.of(seat.playerId());
-        return List.of(DisplayEntities.spawnTileDisplay(
-            session.bukkitPlugin(),
+        return List.of(DisplayEntities.tileDisplay(
             TableGeometry.toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
             session.currentVariant(),
             concealHand ? MahjongTile.UNKNOWN : seat.hand().get(tileIndex),
-            DisplayEntities.TileRenderPose.STANDING,
-            null,
-            true,
-            null,
-            ownerHidden
-        ));
+            DisplayEntities.TileRenderPose.STANDING
+        )
+            .hiddenViewers(ownerHidden)
+            .spawn(session.bukkitPlugin()));
     }
 
     public static List<DisplayEntities.EntitySpec> renderHandPublicTileSpecs(
@@ -213,17 +190,15 @@ public final class HandRenderer {
 
         boolean concealHand = snapshot.started();
         List<UUID> ownerHidden = List.of(seat.playerId());
-        return List.of(DisplayEntities.tileDisplaySpec(
+        return List.of(DisplayEntities.tileDisplay(
             TableGeometry.toLocation(session, plan.publicHandPoints().get(tileIndex)),
             plan.yaw(),
             session.currentVariant(),
             concealHand ? MahjongTile.UNKNOWN : seat.hand().get(tileIndex),
-            DisplayEntities.TileRenderPose.STANDING,
-            null,
-            true,
-            null,
-            ownerHidden
-        ));
+            DisplayEntities.TileRenderPose.STANDING
+        )
+            .hiddenViewers(ownerHidden)
+            .spec());
     }
 
     private static Location handInteractionLocation(Location tileLocation) {

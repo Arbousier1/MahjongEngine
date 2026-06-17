@@ -69,7 +69,7 @@ public final class DatabaseService {
         boolean rankingEnabled,
         String rankingEastRoom,
         String rankingSouthRoom
-    ) throws InitializationException {
+    ) {
         this.databaseSettings = settings;
         this.debug = Objects.requireNonNull(debug, "debug");
         this.async = Objects.requireNonNull(async, "async");
@@ -1067,7 +1067,7 @@ public final class DatabaseService {
     public record LeaderboardEntry(MahjongVariant mode, int position, MahjongSoulRankProfile profile) {
     }
 
-    public static final class InitializationException extends Exception {
+    public static final class InitializationException extends RuntimeException {
         private final String databaseType;
         private final String userFacingReason;
         private final Throwable rootCause;
@@ -1092,6 +1092,3 @@ public final class DatabaseService {
         }
     }
 }
-
-
-

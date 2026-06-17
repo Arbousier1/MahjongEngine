@@ -364,16 +364,13 @@ public final class TableGeometry {
         // Public tiles still use CraftEngine custom items, but render through ItemDisplay so
         // they keep the exact sub-block positioning Mahjong tables need and don't introduce
         // furniture-sized interaction volumes over the table surface.
-        return DisplayEntities.spawnTileDisplay(
-            session.bukkitPlugin(),
+        return DisplayEntities.tileDisplay(
             location,
             yaw,
             session.currentVariant(),
             tile,
-            pose,
-            null,
-            true
-        );
+            pose
+        ).spawn(session.bukkitPlugin());
     }
 
     public static org.bukkit.entity.Entity spawnPublicTile(TableRenderSubject session, TableRenderLayout.TilePlacement placement) {
@@ -381,15 +378,13 @@ public final class TableGeometry {
     }
 
     public static DisplayEntities.TileDisplaySpec publicTileSpec(TableRenderSubject session, TableRenderLayout.TilePlacement placement) {
-        return DisplayEntities.tileDisplaySpec(
+        return DisplayEntities.tileDisplay(
             toLocation(session, placement.point()),
             placement.yaw(),
             session.currentVariant(),
             placement.tile(),
-            placement.pose(),
-            null,
-            true
-        );
+            placement.pose()
+        ).spec();
     }
 
     public record TableDiagnostics(

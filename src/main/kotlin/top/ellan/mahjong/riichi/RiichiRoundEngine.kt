@@ -1,12 +1,13 @@
 package top.ellan.mahjong.riichi
 
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll
+import mahjongutils.models.isYaochu
 import top.ellan.mahjong.riichi.model.ClaimTarget
 import top.ellan.mahjong.riichi.model.ExhaustiveDraw
 import top.ellan.mahjong.riichi.model.GeneralSituation
 import top.ellan.mahjong.riichi.model.MahjongRound
 import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.riichi.model.MahjongTile
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll
 import top.ellan.mahjong.riichi.model.PersonalSituation
 import top.ellan.mahjong.riichi.model.ScoreItem
 import top.ellan.mahjong.riichi.model.ScoreSettlement
@@ -17,7 +18,6 @@ import top.ellan.mahjong.riichi.model.TileInstance
 import top.ellan.mahjong.riichi.model.Wind
 import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.riichi.scoring.RiichiPaoRules
-import mahjongutils.models.isYaochu
 import kotlin.random.Random
 
 private val HAND_SORT_BUCKET_SIZE = MahjongTile.entries.maxOf { tile -> tile.sortOrder } + 1
@@ -27,20 +27,22 @@ enum class ReactionType {
     PON,
     MINKAN,
     CHII,
-    SKIP
+    SKIP,
 }
 
-data class ReactionOptions @JvmOverloads constructor(
-    val canRon: Boolean,
-    val canPon: Boolean,
-    val canMinkan: Boolean,
-    val chiiPairs: List<Pair<MahjongTile, MahjongTile>>,
-    val suggestedResponse: ReactionResponse? = null
-)
+data class ReactionOptions
+    @JvmOverloads
+    constructor(
+        val canRon: Boolean,
+        val canPon: Boolean,
+        val canMinkan: Boolean,
+        val chiiPairs: List<Pair<MahjongTile, MahjongTile>>,
+        val suggestedResponse: ReactionResponse? = null,
+    )
 
 data class ReactionResponse(
     val type: ReactionType,
-    val chiiPair: Pair<MahjongTile, MahjongTile>? = null
+    val chiiPair: Pair<MahjongTile, MahjongTile>? = null,
 )
 
 data class PendingReaction(
@@ -48,19 +50,19 @@ data class PendingReaction(
     val tile: TileInstance,
     val options: Map<String, ReactionOptions>,
     val isChankan: Boolean = false,
-    val responses: MutableMap<String, ReactionResponse> = linkedMapOf()
+    val responses: MutableMap<String, ReactionResponse> = linkedMapOf(),
 )
 
 data class RoundResolution(
     val title: String,
     val yakuSettlements: List<YakuSettlement> = emptyList(),
     val scoreSettlement: ScoreSettlement? = null,
-    val draw: ExhaustiveDraw? = null
+    val draw: ExhaustiveDraw? = null,
 )
 
 class RiichiRoundEngine(
     players: List<RiichiPlayerState>,
-    val rule: MahjongRule = MahjongRule()
+    val rule: MahjongRule = MahjongRule(),
 ) {
     val seats: MutableList<RiichiPlayerState> = players.toMutableList()
     var round: MahjongRound = rule.length.getStartingRound()
@@ -146,13 +148,14 @@ class RiichiRoundEngine(
         }
 
     val generalSituation: GeneralSituation
-        get() = GeneralSituation(
-            isFirstRound,
-            isHoutei,
-            round.wind,
-            doraIndicators.map { it.mahjongTile },
-            uraDoraIndicators.map { it.mahjongTile }
-        )
+        get() =
+            GeneralSituation(
+                isFirstRound,
+                isHoutei,
+                round.wind,
+                doraIndicators.map { it.mahjongTile },
+                uraDoraIndicators.map { it.mahjongTile },
+            )
 
     init {
         require(players.size == 4) { "Riichi round engine requires exactly 4 players" }
@@ -183,7 +186,10 @@ class RiichiRoundEngine(
         openingDiceRoll = diceRoll
     }
 
-    fun discard(playerUuid: String, tileIndex: Int): Boolean {
+    fun discard(
+        playerUuid: String,
+        tileIndex: Int,
+    ): Boolean {
         if (!started || pendingReaction != null) return false
         if (currentPlayer.uuid != playerUuid) return false
         if (pendingAbortiveDraw != null) {
@@ -210,7 +216,10 @@ class RiichiRoundEngine(
         return true
     }
 
-    fun declareRiichi(playerUuid: String, tileIndex: Int): Boolean {
+    fun declareRiichi(
+        playerUuid: String,
+        tileIndex: Int,
+    ): Boolean {
         if (!started || pendingReaction != null) return false
         if (riichiRequiresMinimumWallTilesForDeclaration() && liveWall.size < 4) return false
         val player = currentPlayer
@@ -244,11 +253,14 @@ class RiichiRoundEngine(
             true,
             rule = rule,
             generalSituation = generalSituation,
-            personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = currentDrawIsRinshan)
+            personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = currentDrawIsRinshan),
         )
     }
 
-    fun tryAnkanOrKakan(playerUuid: String, tile: MahjongTile): Boolean {
+    fun tryAnkanOrKakan(
+        playerUuid: String,
+        tile: MahjongTile,
+    ): Boolean {
         if (!started || pendingReaction != null || currentPlayer.uuid != playerUuid) return false
         if (kanForbiddenAfterLastLiveDraw() && liveWall.isEmpty()) return false
         if (kanCount >= 4) return false
@@ -285,7 +297,10 @@ class RiichiRoundEngine(
         return false
     }
 
-    fun react(playerUuid: String, response: ReactionResponse): Boolean {
+    fun react(
+        playerUuid: String,
+        response: ReactionResponse,
+    ): Boolean {
         val pending = pendingReaction ?: return false
         val options = pending.options[playerUuid] ?: return false
         when (response.type) {
@@ -306,7 +321,11 @@ class RiichiRoundEngine(
     fun availableReactions(playerUuid: String): ReactionOptions? = pendingReaction?.options?.get(playerUuid)
 
     fun canKyuushuKyuuhai(playerUuid: String): Boolean =
-        started && pendingReaction == null && currentPlayer.uuid == playerUuid && isFirstRound && currentPlayer.numbersOfYaochuuhaiTypes >= 9
+        started &&
+            pendingReaction == null &&
+            currentPlayer.uuid == playerUuid &&
+            isFirstRound &&
+            currentPlayer.numbersOfYaochuuhaiTypes >= 9
 
     fun declareKyuushuKyuuhai(playerUuid: String): Boolean {
         if (!canKyuushuKyuuhai(playerUuid)) return false
@@ -320,7 +339,7 @@ class RiichiRoundEngine(
         val seatOrder = seatOrderFromDealer()
         return seats.sortedWith(
             compareByDescending<RiichiPlayerState> { it.points }
-                .thenBy { seatOrder.indexOf(it) }
+                .thenBy { seatOrder.indexOf(it) },
         )
     }
 
@@ -347,20 +366,22 @@ class RiichiRoundEngine(
     }
 
     private fun buildWall() {
-        val tiles = when (rule.redFive) {
-            MahjongRule.RedFive.NONE -> MahjongTile.normalWall
-            MahjongRule.RedFive.THREE -> MahjongTile.redFive3Wall
-            MahjongRule.RedFive.FOUR -> MahjongTile.redFive4Wall
-        }.shuffled(Random.Default).map { TileInstance(mahjongTile = it) }
+        val tiles =
+            when (rule.redFive) {
+                MahjongRule.RedFive.NONE -> MahjongTile.normalWall
+                MahjongRule.RedFive.THREE -> MahjongTile.redFive3Wall
+                MahjongRule.RedFive.FOUR -> MahjongTile.redFive4Wall
+            }.shuffled(Random.Default).map { TileInstance(mahjongTile = it) }
         val diceRoll = openingDiceRoll ?: OpeningDiceRoll(Random.nextInt(1, 7), Random.nextInt(1, 7))
         openingDiceRoll = null
         dicePoints = diceRoll.total()
         val directionIndex = (4 - ((dicePoints % 4 - 1) + round.round) % 4)
         val startingStackIndex = 2 * dicePoints
-        val reordered = MutableList(tiles.size) {
-            val tileIndex = (directionIndex * 34 + startingStackIndex + it) % tiles.size
-            tiles[tileIndex]
-        }
+        val reordered =
+            MutableList(tiles.size) {
+                val tileIndex = (directionIndex * 34 + startingStackIndex + it) % tiles.size
+                tiles[tileIndex]
+            }
         liveWall.clear()
         liveWall.addAll(reordered)
     }
@@ -404,35 +425,39 @@ class RiichiRoundEngine(
         pendingAbortiveDraw = if (isSuukaikanAbort()) ExhaustiveDraw.SUUKAIKAN else null
     }
 
-    private fun canDrawRinshanTile(): Boolean =
-        deadWall.size >= 2 && liveWall.isNotEmpty()
+    private fun canDrawRinshanTile(): Boolean = deadWall.size >= 2 && liveWall.isNotEmpty()
 
-    private fun computePendingReaction(discarder: RiichiPlayerState, tile: TileInstance): PendingReaction? {
+    private fun computePendingReaction(
+        discarder: RiichiPlayerState,
+        tile: TileInstance,
+    ): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()
         val lastLiveDiscard = lastDiscardRonOnly() && liveWall.isEmpty()
         val situation = generalSituation
         forEachReactionCandidate(discarder) { candidate, target ->
-            val canRon = canRonOnDiscard(
-                candidate = candidate,
-                tile = tile,
-                generalSituation = situation,
-                personalSituation = personalSituation(candidate, isTsumo = false)
-            )
-            val reactionOptions = if (lastLiveDiscard) {
-                if (!canRon) {
-                    null
+            val canRon =
+                canRonOnDiscard(
+                    candidate = candidate,
+                    tile = tile,
+                    generalSituation = situation,
+                    personalSituation = personalSituation(candidate, isTsumo = false),
+                )
+            val reactionOptions =
+                if (lastLiveDiscard) {
+                    if (!canRon) {
+                        null
+                    } else {
+                        ReactionOptions(
+                            canRon = true,
+                            canPon = false,
+                            canMinkan = false,
+                            chiiPairs = emptyList(),
+                            suggestedResponse = ReactionResponse(ReactionType.RON, null),
+                        )
+                    }
                 } else {
-                    ReactionOptions(
-                        canRon = true,
-                        canPon = false,
-                        canMinkan = false,
-                        chiiPairs = emptyList(),
-                        suggestedResponse = ReactionResponse(ReactionType.RON, null)
-                    )
+                    candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
                 }
-            } else {
-                candidate.reactionOptionsFor(tile, allowChii = target == ClaimTarget.LEFT, canRon = canRon)
-            }
             if (reactionOptions != null) {
                 options[candidate.uuid] = reactionOptions
             }
@@ -440,25 +465,31 @@ class RiichiRoundEngine(
         return options.takeIf { it.isNotEmpty() }?.let { PendingReaction(discarder.uuid, tile, it) }
     }
 
-    private fun computeChankanReaction(discarder: RiichiPlayerState, tile: TileInstance, allowOnlyKokushi: Boolean): PendingReaction? {
+    private fun computeChankanReaction(
+        discarder: RiichiPlayerState,
+        tile: TileInstance,
+        allowOnlyKokushi: Boolean,
+    ): PendingReaction? {
         val options = linkedMapOf<String, ReactionOptions>()
         val situation = generalSituation
         forEachReactionCandidate(discarder) { candidate, _ ->
-            val canRon = canRonOnDiscard(
-                candidate = candidate,
-                tile = tile,
-                generalSituation = situation,
-                personalSituation = personalSituation(candidate, isTsumo = false, isChankan = true),
-                allowOnlyKokushi = allowOnlyKokushi
-            )
-            if (canRon) {
-                options[candidate.uuid] = ReactionOptions(
-                    canRon = true,
-                    canPon = false,
-                    canMinkan = false,
-                    chiiPairs = emptyList(),
-                    suggestedResponse = ReactionResponse(ReactionType.RON, null)
+            val canRon =
+                canRonOnDiscard(
+                    candidate = candidate,
+                    tile = tile,
+                    generalSituation = situation,
+                    personalSituation = personalSituation(candidate, isTsumo = false, isChankan = true),
+                    allowOnlyKokushi = allowOnlyKokushi,
                 )
+            if (canRon) {
+                options[candidate.uuid] =
+                    ReactionOptions(
+                        canRon = true,
+                        canPon = false,
+                        canMinkan = false,
+                        chiiPairs = emptyList(),
+                        suggestedResponse = ReactionResponse(ReactionType.RON, null),
+                    )
             }
         }
         return options.takeIf { it.isNotEmpty() }?.let {
@@ -471,7 +502,7 @@ class RiichiRoundEngine(
         tile: TileInstance,
         generalSituation: GeneralSituation,
         personalSituation: PersonalSituation,
-        allowOnlyKokushi: Boolean = false
+        allowOnlyKokushi: Boolean = false,
     ): Boolean {
         if (!candidate.isTenpai || candidate.temporaryFuriten || candidate.isFuriten(tile, discards)) {
             return false
@@ -484,22 +515,23 @@ class RiichiRoundEngine(
             false,
             rule = rule,
             generalSituation = generalSituation,
-            personalSituation = personalSituation
+            personalSituation = personalSituation,
         )
     }
 
     private inline fun forEachReactionCandidate(
         discarder: RiichiPlayerState,
-        block: (candidate: RiichiPlayerState, target: ClaimTarget) -> Unit
+        block: (candidate: RiichiPlayerState, target: ClaimTarget) -> Unit,
     ) {
         val discarderIndex = seatIndex(discarder)
         for (offset in 1 until seats.size) {
             val candidate = seats[(discarderIndex + offset) % seats.size]
-            val target = when (offset) {
-                1 -> ClaimTarget.LEFT
-                2 -> ClaimTarget.ACROSS
-                else -> ClaimTarget.RIGHT
-            }
+            val target =
+                when (offset) {
+                    1 -> ClaimTarget.LEFT
+                    2 -> ClaimTarget.ACROSS
+                    else -> ClaimTarget.RIGHT
+                }
             block(candidate, target)
         }
     }
@@ -513,10 +545,11 @@ class RiichiRoundEngine(
         }
         val ronPlayers = orderedClaimers.filter { pending.responses[it.uuid]?.type == ReactionType.RON }
         if (ronPlayers.isNotEmpty()) {
-            val winners = when (rule.ronMode) {
-                MahjongRule.RonMode.HEAD_BUMP -> ronPlayers.take(1)
-                MahjongRule.RonMode.MULTI_RON -> ronPlayers
-            }
+            val winners =
+                when (rule.ronMode) {
+                    MahjongRule.RonMode.HEAD_BUMP -> ronPlayers.take(1)
+                    MahjongRule.RonMode.MULTI_RON -> ronPlayers
+                }
             resolveRon(winners, discarder, pending.tile, isChankan = pending.isChankan)
             pendingReaction = null
             return
@@ -532,10 +565,11 @@ class RiichiRoundEngine(
         if (!allRespondedFor(pending) { it.canPon || it.canMinkan }) {
             return
         }
-        val ponKanWinner = orderedClaimers.firstOrNull { player ->
-            val type = pending.responses[player.uuid]?.type
-            type == ReactionType.PON || type == ReactionType.MINKAN
-        }
+        val ponKanWinner =
+            orderedClaimers.firstOrNull { player ->
+                val type = pending.responses[player.uuid]?.type
+                type == ReactionType.PON || type == ReactionType.MINKAN
+            }
         if (ponKanWinner != null) {
             val response = pending.responses[ponKanWinner.uuid]!!
             val winner = ponKanWinner
@@ -561,11 +595,12 @@ class RiichiRoundEngine(
         if (!allRespondedFor(pending) { it.chiiPairs.isNotEmpty() }) {
             return
         }
-        val chiiResponse = orderedClaimers.firstNotNullOfOrNull { player ->
-            pending.responses[player.uuid]
-                ?.takeIf { it.type == ReactionType.CHII }
-                ?.let { player to it }
-        }
+        val chiiResponse =
+            orderedClaimers.firstNotNullOfOrNull { player ->
+                pending.responses[player.uuid]
+                    ?.takeIf { it.type == ReactionType.CHII }
+                    ?.let { player to it }
+            }
         if (chiiResponse != null) {
             val winner = chiiResponse.first
             val response = chiiResponse.second
@@ -581,7 +616,10 @@ class RiichiRoundEngine(
         advanceAfterDiscard()
     }
 
-    private inline fun allRespondedFor(pending: PendingReaction, predicate: (ReactionOptions) -> Boolean): Boolean {
+    private inline fun allRespondedFor(
+        pending: PendingReaction,
+        predicate: (ReactionOptions) -> Boolean,
+    ): Boolean {
         pending.options.forEach { (uuid, options) ->
             if (predicate(options) && uuid !in pending.responses) {
                 return false
@@ -633,11 +671,9 @@ class RiichiRoundEngine(
         }
     }
 
-    private fun drawFromLiveWallFront(): TileInstance =
-        liveWall.removeFirstLiveTile()
+    private fun drawFromLiveWallFront(): TileInstance = liveWall.removeFirstLiveTile()
 
-    private fun drawFromLiveWallBack(): TileInstance =
-        liveWall.removeLastLiveTile()
+    private fun drawFromLiveWallBack(): TileInstance = liveWall.removeLastLiveTile()
 
     private fun registerClosedKan() {
         kanCount++
@@ -676,22 +712,30 @@ class RiichiRoundEngine(
         }
     }
 
-    private fun riichiRequiresMinimumWallTilesForDeclaration(): Boolean = when (rule.riichiProfile) {
-        MahjongRule.RiichiProfile.MAJSOUL -> true
-        MahjongRule.RiichiProfile.TOURNAMENT -> true
-    }
+    private fun riichiRequiresMinimumWallTilesForDeclaration(): Boolean =
+        when (rule.riichiProfile) {
+            MahjongRule.RiichiProfile.MAJSOUL -> true
+            MahjongRule.RiichiProfile.TOURNAMENT -> true
+        }
 
-    private fun lastDiscardRonOnly(): Boolean = when (rule.riichiProfile) {
-        MahjongRule.RiichiProfile.MAJSOUL -> true
-        MahjongRule.RiichiProfile.TOURNAMENT -> true
-    }
+    private fun lastDiscardRonOnly(): Boolean =
+        when (rule.riichiProfile) {
+            MahjongRule.RiichiProfile.MAJSOUL -> true
+            MahjongRule.RiichiProfile.TOURNAMENT -> true
+        }
 
-    private fun kanForbiddenAfterLastLiveDraw(): Boolean = when (rule.riichiProfile) {
-        MahjongRule.RiichiProfile.MAJSOUL -> true
-        MahjongRule.RiichiProfile.TOURNAMENT -> true
-    }
+    private fun kanForbiddenAfterLastLiveDraw(): Boolean =
+        when (rule.riichiProfile) {
+            MahjongRule.RiichiProfile.MAJSOUL -> true
+            MahjongRule.RiichiProfile.TOURNAMENT -> true
+        }
 
-    private fun resolveRon(winners: List<RiichiPlayerState>, target: RiichiPlayerState, tile: TileInstance, isChankan: Boolean = false) {
+    private fun resolveRon(
+        winners: List<RiichiPlayerState>,
+        target: RiichiPlayerState,
+        tile: TileInstance,
+        isChankan: Boolean = false,
+    ) {
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
         cancelRiichiDepositIfDeclarationRon(target, tile)
@@ -706,15 +750,16 @@ class RiichiRoundEngine(
         val honbaScore = round.honba * 300
         val riichiPoolScore = allRiichiStickQuantity * ScoringStick.P1000.point
         winners.forEach {
-            val settlement = it.calcYakuSettlementForWin(
-                winningTile = tile.mahjongTile,
-                isWinningTileInHands = false,
-                rule = rule,
-                generalSituation = situation,
-                personalSituation = personalSituation(it, isChankan = isChankan),
-                doraIndicators = doraIndicatorTiles,
-                uraDoraIndicators = uraDoraIndicatorTiles
-            )
+            val settlement =
+                it.calcYakuSettlementForWin(
+                    winningTile = tile.mahjongTile,
+                    isWinningTileInHands = false,
+                    rule = rule,
+                    generalSituation = situation,
+                    personalSituation = personalSituation(it, isChankan = isChankan),
+                    doraIndicators = doraIndicatorTiles,
+                    uraDoraIndicators = uraDoraIndicatorTiles,
+                )
             val liabilityEntries = RiichiPaoRules.liabilityEntries(paoLiabilityByWinner, it, settlement, ::seatPlayer)
             val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
             val basicScore = settlement.score
@@ -727,7 +772,13 @@ class RiichiRoundEngine(
             paoBreakdown.liabilityPayments.forEach { (liablePlayer, amount) ->
                 val totalPayment = amount + if (liablePlayer == paoBreakdown.honbaPayer) honbaScore else 0
                 if (totalPayment > 0) {
-                    payments += SettlementPayment(liablePlayer.uuid, totalPayment, SettlementPaymentType.PAO, paoBreakdown.liabilityNotes[liablePlayer.uuid].orEmpty())
+                    payments +=
+                        SettlementPayment(
+                            liablePlayer.uuid,
+                            totalPayment,
+                            SettlementPaymentType.PAO,
+                            paoBreakdown.liabilityNotes[liablePlayer.uuid].orEmpty(),
+                        )
                 }
             }
             if (it == atamahanePlayer && riichiPoolScore > 0) {
@@ -739,22 +790,22 @@ class RiichiRoundEngine(
             yakuSettlements += settlement.copy(paymentBreakdown = payments)
         }
         val targetRiichiStick = if (target.riichi || target.doubleRiichi) ScoringStick.P1000.point else 0
-        val targetPaoShare = yakuSettlements.sumOf { settlement ->
-            settlement.paymentBreakdown
-                .filter { payment -> payment.payerUuid == target.uuid && payment.type != SettlementPaymentType.RIICHI_POOL }
-                .sumOf(SettlementPayment::amount)
-        }
+        val targetPaoShare =
+            yakuSettlements.sumOf { settlement ->
+                settlement.paymentBreakdown
+                    .filter { payment -> payment.payerUuid == target.uuid && payment.type != SettlementPaymentType.RIICHI_POOL }
+                    .sumOf(SettlementPayment::amount)
+            }
         scoreList += ScoreItem(target.displayName, target.uuid, target.points, -(targetPaoShare + targetRiichiStick))
         target.points -= (targetPaoShare + targetRiichiStick)
         val liabilityTotals = linkedMapOf<String, Int>()
         yakuSettlements.forEach { settlement ->
             settlement.paymentBreakdown
                 .filter { payment ->
-                    payment.payerUuid.isNotBlank()
-                        && payment.payerUuid != target.uuid
-                        && payment.type == SettlementPaymentType.PAO
-                }
-                .forEach { payment -> liabilityTotals.merge(payment.payerUuid, payment.amount, Int::plus) }
+                    payment.payerUuid.isNotBlank() &&
+                        payment.payerUuid != target.uuid &&
+                        payment.type == SettlementPaymentType.PAO
+                }.forEach { payment -> liabilityTotals.merge(payment.payerUuid, payment.amount, Int::plus) }
         }
         liabilityTotals.forEach { (liableUuid, amount) ->
             val liablePlayer = seatPlayer(liableUuid) ?: return@forEach
@@ -774,7 +825,10 @@ class RiichiRoundEngine(
         finishRound(winners.contains(dealer), true)
     }
 
-    private fun cancelRiichiDepositIfDeclarationRon(target: RiichiPlayerState, tile: TileInstance) {
+    private fun cancelRiichiDepositIfDeclarationRon(
+        target: RiichiPlayerState,
+        tile: TileInstance,
+    ) {
         if (!(target.riichi || target.doubleRiichi)) {
             return
         }
@@ -790,7 +844,11 @@ class RiichiRoundEngine(
         target.riichiSengenTile = null
     }
 
-    private fun resolveTsumo(player: RiichiPlayerState, tile: TileInstance, isRinshanKaihoh: Boolean = false) {
+    private fun resolveTsumo(
+        player: RiichiPlayerState,
+        tile: TileInstance,
+        isRinshanKaihoh: Boolean = false,
+    ) {
         currentDrawIsRinshan = false
         pendingAbortiveDraw = null
         val yakuSettlements = mutableListOf<YakuSettlement>()
@@ -803,25 +861,26 @@ class RiichiRoundEngine(
         val playerRiichiStickPoints = if (player.riichi || player.doubleRiichi) ScoringStick.P1000.point else 0
         val riichiPoolScore = allRiichiStickQuantity * ScoringStick.P1000.point
         val tsumoPlayerIsDealer = player == dealer
-        val settlement = player.calcYakuSettlementForWin(
-            winningTile = tile.mahjongTile,
-            isWinningTileInHands = true,
-            rule = rule,
-            generalSituation = situation,
-            personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = isRinshanKaihoh),
-            doraIndicators = doraIndicatorTiles,
-            uraDoraIndicators = uraDoraIndicatorTiles
-        )
+        val settlement =
+            player.calcYakuSettlementForWin(
+                winningTile = tile.mahjongTile,
+                isWinningTileInHands = true,
+                rule = rule,
+                generalSituation = situation,
+                personalSituation = personalSituation(player, isTsumo = true, isRinshanKaihoh = isRinshanKaihoh),
+                doraIndicators = doraIndicatorTiles,
+                uraDoraIndicators = uraDoraIndicatorTiles,
+            )
         val liabilityEntries = RiichiPaoRules.liabilityEntries(paoLiabilityByWinner, player, settlement, ::seatPlayer)
         val basicScore = settlement.score
-        val paoBreakdown = RiichiPaoRules.tsumoBreakdown(
-            winner = player,
-            liabilityEntries = liabilityEntries,
-            winnerIsDealer = tsumoPlayerIsDealer,
-            basicScore = basicScore,
-            others = seats.filter { it != player },
-            dealer = dealer
-        )
+        val paoBreakdown =
+            RiichiPaoRules.tsumoBreakdown(
+                liabilityEntries = liabilityEntries,
+                winnerIsDealer = tsumoPlayerIsDealer,
+                basicScore = basicScore,
+                others = seats.filter { it != player },
+                dealer = dealer,
+            )
         val payments = paoBreakdown.payments.toMutableList()
         val honbaPayer = RiichiPaoRules.honbaPayer(liabilityEntries, seatOrderFromDealer())
         if (honbaPayer != null && honbaScore > 0) {
@@ -855,35 +914,36 @@ class RiichiRoundEngine(
                 return
             }
         }
-        val scoreList = buildList {
-            if (draw != ExhaustiveDraw.NORMAL) {
-                seats.forEach {
-                    val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
-                    add(ScoreItem(it.displayName, it.uuid, it.points, -riichiStickPoints))
-                    it.points -= riichiStickPoints
-                }
-            } else {
-                val tenpaiCount = seats.count { it.isTenpai }
-                if (tenpaiCount == 0 || tenpaiCount == seats.size) {
-                    seats.forEach { add(ScoreItem(it.displayName, it.uuid, it.points, 0)) }
-                } else {
-                    val notenCount = seats.size - tenpaiCount
-                    val notenBappu = 3000 / notenCount
-                    val bappuGet = 3000 / tenpaiCount
+        val scoreList =
+            buildList {
+                if (draw != ExhaustiveDraw.NORMAL) {
                     seats.forEach {
-                        if (it.isTenpai) {
-                            val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
-                            add(ScoreItem(it.displayName, it.uuid, it.points, bappuGet - riichiStickPoints))
-                            it.points += bappuGet
-                            it.points -= riichiStickPoints
-                        } else {
-                            add(ScoreItem(it.displayName, it.uuid, it.points, -notenBappu))
-                            it.points -= notenBappu
+                        val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
+                        add(ScoreItem(it.displayName, it.uuid, it.points, -riichiStickPoints))
+                        it.points -= riichiStickPoints
+                    }
+                } else {
+                    val tenpaiCount = seats.count { it.isTenpai }
+                    if (tenpaiCount == 0 || tenpaiCount == seats.size) {
+                        seats.forEach { add(ScoreItem(it.displayName, it.uuid, it.points, 0)) }
+                    } else {
+                        val notenCount = seats.size - tenpaiCount
+                        val notenBappu = 3000 / notenCount
+                        val bappuGet = 3000 / tenpaiCount
+                        seats.forEach {
+                            if (it.isTenpai) {
+                                val riichiStickPoints = if (it.riichi || it.doubleRiichi) ScoringStick.P1000.point else 0
+                                add(ScoreItem(it.displayName, it.uuid, it.points, bappuGet - riichiStickPoints))
+                                it.points += bappuGet
+                                it.points -= riichiStickPoints
+                            } else {
+                                add(ScoreItem(it.displayName, it.uuid, it.points, -notenBappu))
+                                it.points -= notenBappu
+                            }
                         }
                     }
                 }
             }
-        }
         lastResolution = RoundResolution(draw.name, scoreSettlement = ScoreSettlement(draw.name, scoreList), draw = draw)
         val dealerRemaining = if (draw == ExhaustiveDraw.NORMAL) dealer.isTenpai else true
         finishRound(dealerRemaining, false)
@@ -900,13 +960,14 @@ class RiichiRoundEngine(
         val atamahanePlayer = seatOrderFromDealer().firstOrNull { it in winners }
 
         winners.forEach { winner ->
-            val settlement = YakuSettlement.nagashiMangan(
-                displayName = winner.displayName,
-                uuid = winner.uuid,
-                doraIndicators = doraIndicatorTiles,
-                uraDoraIndicators = uraDoraIndicatorTiles,
-                isDealer = winner == dealer
-            )
+            val settlement =
+                YakuSettlement.nagashiMangan(
+                    displayName = winner.displayName,
+                    uuid = winner.uuid,
+                    doraIndicators = doraIndicatorTiles,
+                    uraDoraIndicators = uraDoraIndicatorTiles,
+                    isDealer = winner == dealer,
+                )
             yakuSettlements += settlement
             val score = settlement.score + if (winner == atamahanePlayer) extraScore else 0
             winner.points += score
@@ -918,15 +979,17 @@ class RiichiRoundEngine(
             }
         }
 
-        val scoreList = seats.map { player ->
-            val original = originalScores.getValue(player)
-            ScoreItem(player.displayName, player.uuid, original, player.points - original)
-        }
-        lastResolution = RoundResolution(
-            title = "NagashiMangan",
-            yakuSettlements = yakuSettlements,
-            scoreSettlement = ScoreSettlement("NagashiMangan", scoreList)
-        )
+        val scoreList =
+            seats.map { player ->
+                val original = originalScores.getValue(player)
+                ScoreItem(player.displayName, player.uuid, original, player.points - original)
+            }
+        lastResolution =
+            RoundResolution(
+                title = "NagashiMangan",
+                yakuSettlements = yakuSettlements,
+                scoreSettlement = ScoreSettlement("NagashiMangan", scoreList),
+            )
         finishRound(dealer.isTenpai, false)
     }
 
@@ -934,7 +997,7 @@ class RiichiRoundEngine(
         player: RiichiPlayerState,
         isTsumo: Boolean = false,
         isChankan: Boolean = false,
-        isRinshanKaihoh: Boolean = false
+        isRinshanKaihoh: Boolean = false,
     ): PersonalSituation {
         val selfWindNumber = (seatIndex(player) - round.round + 4) % 4
         val jikaze = Wind.entries[selfWindNumber]
@@ -946,22 +1009,23 @@ class RiichiRoundEngine(
             player.doubleRiichi,
             isChankan,
             isRinshanKaihoh,
-            jikaze
+            jikaze,
         )
     }
 
-    private fun seatIndex(player: RiichiPlayerState): Int =
-        seatIndexByUuid[player.uuid] ?: seats.indexOf(player)
+    private fun seatIndex(player: RiichiPlayerState): Int = seatIndexByUuid[player.uuid] ?: seats.indexOf(player)
 
-    private fun seatOrderFromDealer(): List<RiichiPlayerState> =
-        List(4) { seats[(round.round + it) % 4] }
+    private fun seatOrderFromDealer(): List<RiichiPlayerState> = List(4) { seats[(round.round + it) % 4] }
 
     private fun seatOrderFrom(target: RiichiPlayerState): List<RiichiPlayerState> {
         val index = seatIndex(target)
         return List(4) { seats[(index + it) % 4] }
     }
 
-    private fun claimTarget(claimer: RiichiPlayerState, discarder: RiichiPlayerState): ClaimTarget {
+    private fun claimTarget(
+        claimer: RiichiPlayerState,
+        discarder: RiichiPlayerState,
+    ): ClaimTarget {
         val diff = (seatIndex(claimer) - seatIndex(discarder) + 4) % 4
         return when (diff) {
             1 -> ClaimTarget.LEFT
@@ -978,7 +1042,10 @@ class RiichiRoundEngine(
         return seats.count { player -> player.fuuroList.count { it.isKan } > 0 } > 1
     }
 
-    private fun finishRound(dealerRemaining: Boolean, clearRiichiSticks: Boolean) {
+    private fun finishRound(
+        dealerRemaining: Boolean,
+        clearRiichiSticks: Boolean,
+    ) {
         started = false
         pendingReaction = null
         currentDrawIsRinshan = false
@@ -1041,15 +1108,17 @@ private class LiveWallBuffer : AbstractMutableList<TileInstance>() {
     override val size: Int
         get() = tiles.size - headIndex
 
-    override fun get(index: Int): TileInstance {
-        return tiles[resolveIndex(index)]
-    }
+    override fun get(index: Int): TileInstance = tiles[resolveIndex(index)]
 
-    override fun set(index: Int, element: TileInstance): TileInstance {
-        return tiles.set(resolveIndex(index), element)
-    }
+    override fun set(
+        index: Int,
+        element: TileInstance,
+    ): TileInstance = tiles.set(resolveIndex(index), element)
 
-    override fun add(index: Int, element: TileInstance) {
+    override fun add(
+        index: Int,
+        element: TileInstance,
+    ) {
         tiles.add(resolveInsertIndex(index), element)
     }
 
@@ -1117,4 +1186,3 @@ private class LiveWallBuffer : AbstractMutableList<TileInstance>() {
         }
     }
 }
-

@@ -8,6 +8,7 @@ import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.MahjongRule;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.model.MahjongVariant;
 import java.util.List;
@@ -193,4 +194,3 @@ public interface TableRoundController {
         return List.of();
     }
 }
-

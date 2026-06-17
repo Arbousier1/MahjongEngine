@@ -16,6 +16,7 @@ import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.riichi.ReactionResponse
 import top.ellan.mahjong.riichi.ReactionType
 import top.ellan.mahjong.riichi.model.MahjongRule
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll
 import java.util.EnumMap
 import java.util.UUID
 import java.util.function.IntSupplier
@@ -67,18 +68,18 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `discard draw supplements flower from the back and exposes it publicly`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -106,7 +107,26 @@ class GbTableRoundControllerTest {
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
 
-        forceHand(controller, east, listOf("M9", "P9", "S9", "EAST", "SOUTH", "WEST", "NORTH", "WHITE_DRAGON", "GREEN_DRAGON", "RED_DRAGON", "M1", "P1", "S1", "M2"))
+        forceHand(
+            controller,
+            east,
+            listOf(
+                "M9",
+                "P9",
+                "S9",
+                "EAST",
+                "SOUTH",
+                "WEST",
+                "NORTH",
+                "WHITE_DRAGON",
+                "GREEN_DRAGON",
+                "RED_DRAGON",
+                "M1",
+                "P1",
+                "S1",
+                "M2",
+            ),
+        )
         forceHand(controller, south, listOf("P3", "M3", "EAST", "S2", "M1", "RED_DRAGON", "P1", "S1", "M2", "P2", "S3", "M4", "P4"))
         forceWall(controller, listOf("M5"))
 
@@ -135,9 +155,9 @@ class GbTableRoundControllerTest {
                 MahjongTile.S3,
                 MahjongTile.EAST,
                 MahjongTile.RED_DRAGON,
-                MahjongTile.M5
+                MahjongTile.M5,
             ),
-            controller.hand(south)
+            controller.hand(south),
         )
     }
 
@@ -166,32 +186,34 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `gb end to end flow settles after discard and reaction`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                if (request.seatWind == "SOUTH") {
-                    GbFanResponse(true, 8, listOf(GbFanEntry("Mock Ron", 8, 1)), null)
-                } else {
-                    GbFanResponse(false, 0, emptyList(), "cannot win")
-                }
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                        if (request.seatWind == "SOUTH") {
+                            GbFanResponse(true, 8, listOf(GbFanEntry("Mock Ron", 8, 1)), null)
+                        } else {
+                            GbFanResponse(false, 0, emptyList(), "cannot win")
+                        }
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(
-                    true,
-                    "RON",
-                    8,
-                    listOf(GbFanEntry("Mock Ron", 8, 1)),
-                    listOf(
-                        GbScoreDelta(request.winnerSeat, 8),
-                        GbScoreDelta(request.discarderSeat ?: "EAST", -8)
-                    ),
-                    null
-                )
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                        GbWinResponse(
+                            true,
+                            "RON",
+                            8,
+                            listOf(GbFanEntry("Mock Ron", 8, 1)),
+                            listOf(
+                                GbScoreDelta(request.winnerSeat, 8),
+                                GbScoreDelta(request.discarderSeat ?: "EAST", -8),
+                            ),
+                            null,
+                        )
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -217,9 +239,32 @@ class GbTableRoundControllerTest {
         assertFalse(controller.hasPendingReaction())
         assertEquals("RON", controller.lastResolution()?.title)
         assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
-        assertEquals("SOUTH", controller.lastResolution()?.yakuSettlements?.single()?.displayName)
-        assertEquals(8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == south.toString() }?.scoreChange)
-        assertEquals(-8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
+        assertEquals(
+            "SOUTH",
+            controller
+                .lastResolution()
+                ?.yakuSettlements
+                ?.single()
+                ?.displayName,
+        )
+        assertEquals(
+            8,
+            controller
+                .lastResolution()
+                ?.scoreSettlement
+                ?.scoreList
+                ?.first { it.stringUUID == south.toString() }
+                ?.scoreChange,
+        )
+        assertEquals(
+            -8,
+            controller
+                .lastResolution()
+                ?.scoreSettlement
+                ?.scoreList
+                ?.first { it.stringUUID == east.toString() }
+                ?.scoreChange,
+        )
     }
 
     @Test
@@ -256,9 +301,9 @@ class GbTableRoundControllerTest {
                 MahjongTile.S6,
                 MahjongTile.S7,
                 MahjongTile.S8,
-                MahjongTile.S9
+                MahjongTile.S9,
             ),
-            controller.hand(south)
+            controller.hand(south),
         )
         assertFalse(controller.canWinByTsumo(south))
     }
@@ -317,18 +362,18 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `minkan takes priority over chii on the same discard`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -365,7 +410,16 @@ class GbTableRoundControllerTest {
         assertFalse(controller.started())
         assertEquals("TSUMO", controller.lastResolution()?.title)
         assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
-        assertEquals(24, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == player(SeatWind.EAST).toString() }?.scoreChange)
+        assertEquals(
+            24,
+            controller
+                .lastResolution()
+                ?.scoreSettlement
+                ?.scoreList
+                ?.first {
+                    it.stringUUID == player(SeatWind.EAST).toString()
+                }?.scoreChange,
+        )
     }
 
     @Test
@@ -586,7 +640,11 @@ class GbTableRoundControllerTest {
         assertTrue(controller.declareTsumo(player(SeatWind.EAST)))
         controller.startRound()
         val south = player(SeatWind.SOUTH)
-        forceHand(controller, south, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "RED_DRAGON", "RED_DRAGON"))
+        forceHand(
+            controller,
+            south,
+            listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "RED_DRAGON", "RED_DRAGON"),
+        )
 
         assertEquals(SeatWind.SOUTH, controller.dealerSeat())
         assertTrue(controller.canWinByTsumo(south))
@@ -708,22 +766,23 @@ class GbTableRoundControllerTest {
     @Test
     fun `gb bot discard suggestion prefers discard that keeps eight fan waits`() {
         val targetHand = encodedTiles("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "RED_DRAGON")
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                if (request.handTiles == targetHand) {
-                    GbTingResponse(true, listOf(GbTingCandidate("W9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
-                } else {
-                    GbTingResponse(true, emptyList(), null)
-                }
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                        if (request.handTiles == targetHand) {
+                            GbTingResponse(true, listOf(GbTingCandidate("W9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                        } else {
+                            GbTingResponse(true, emptyList(), null)
+                        }
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         forceHand(controller, east, listOf("M1", "M2", "M3", "M4", "M5", "M6", "P1", "P2", "P3", "S1", "S2", "S3", "EAST", "RED_DRAGON"))
@@ -734,22 +793,23 @@ class GbTableRoundControllerTest {
     @Test
     fun `gb bot reaction prefers pon when it creates eight fan ready shape`() {
         val targetHand = encodedTiles("P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6")
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                if (request.melds.any { it.type == "PUNG" } && request.handTiles == targetHand) {
-                    GbTingResponse(true, listOf(GbTingCandidate("B9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
-                } else {
-                    GbTingResponse(true, emptyList(), null)
-                }
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                        if (request.melds.any { it.type == "PUNG" } && request.handTiles == targetHand) {
+                            GbTingResponse(true, listOf(GbTingCandidate("B9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                        } else {
+                            GbTingResponse(true, emptyList(), null)
+                        }
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -763,18 +823,18 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `gb bot reaction skips pon when it does not improve to qualified waits`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -789,22 +849,23 @@ class GbTableRoundControllerTest {
     @Test
     fun `gb bot kan suggestion only keeps kong when it leads to qualified waits`() {
         val targetHand = encodedTiles("P1", "P2", "P3", "S1", "S2", "S3", "S4", "S5", "S6", "RED_DRAGON")
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                if (request.melds.any { it.type == "CONCEALED_KONG" } && request.handTiles == targetHand) {
-                    GbTingResponse(true, listOf(GbTingCandidate("T9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
-                } else {
-                    GbTingResponse(true, emptyList(), null)
-                }
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse =
+                        if (request.melds.any { it.type == "CONCEALED_KONG" } && request.handTiles == targetHand) {
+                            GbTingResponse(true, listOf(GbTingCandidate("T9", 8, listOf(GbFanEntry("Mock Fan", 8, 1)))), null)
+                        } else {
+                            GbTingResponse(true, emptyList(), null)
+                        }
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
 
@@ -844,29 +905,31 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `gb ron uses intercept priority when multiple players call on one discard`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                if (request.seatWind in setOf("SOUTH", "WEST")) {
-                    GbFanResponse(true, 8, listOf(GbFanEntry("Mock Ron", 8, 1)), null)
-                } else {
-                    GbFanResponse(false, 0, emptyList(), "cannot win")
-                }
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                        if (request.seatWind in setOf("SOUTH", "WEST")) {
+                            GbFanResponse(true, 8, listOf(GbFanEntry("Mock Ron", 8, 1)), null)
+                        } else {
+                            GbFanResponse(false, 0, emptyList(), "cannot win")
+                        }
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(
-                    true,
-                    "RON",
-                    8,
-                    listOf(GbFanEntry("Mock Ron", 8, 1)),
-                    listOf(GbScoreDelta(request.winnerSeat, 8), GbScoreDelta(request.discarderSeat ?: "EAST", -8)),
-                    null
-                )
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                        GbWinResponse(
+                            true,
+                            "RON",
+                            8,
+                            listOf(GbFanEntry("Mock Ron", 8, 1)),
+                            listOf(GbScoreDelta(request.winnerSeat, 8), GbScoreDelta(request.discarderSeat ?: "EAST", -8)),
+                            null,
+                        )
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -882,35 +945,52 @@ class GbTableRoundControllerTest {
 
         assertFalse(controller.started())
         assertEquals(1, controller.lastResolution()?.yakuSettlements?.size)
-        assertEquals("SOUTH", controller.lastResolution()?.yakuSettlements?.single()?.displayName)
-        assertEquals(-8, controller.lastResolution()?.scoreSettlement?.scoreList?.first { it.stringUUID == east.toString() }?.scoreChange)
+        assertEquals(
+            "SOUTH",
+            controller
+                .lastResolution()
+                ?.yakuSettlements
+                ?.single()
+                ?.displayName,
+        )
+        assertEquals(
+            -8,
+            controller
+                .lastResolution()
+                ?.scoreSettlement
+                ?.scoreList
+                ?.first { it.stringUUID == east.toString() }
+                ?.scoreChange,
+        )
     }
 
     @Test
     fun `added kong exposes robbing kong window`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                if ("ROBBING_KONG" in request.flags && request.seatWind == "SOUTH") {
-                    GbFanResponse(true, 8, listOf(GbFanEntry("QIANGGANGHU", 8, 1)), null)
-                } else {
-                    GbFanResponse(false, 0, emptyList(), "cannot win")
-                }
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse =
+                        if ("ROBBING_KONG" in request.flags && request.seatWind == "SOUTH") {
+                            GbFanResponse(true, 8, listOf(GbFanEntry("QIANGGANGHU", 8, 1)), null)
+                        } else {
+                            GbFanResponse(false, 0, emptyList(), "cannot win")
+                        }
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(
-                    true,
-                    "RON",
-                    8,
-                    listOf(GbFanEntry("QIANGGANGHU", 8, 1)),
-                    listOf(GbScoreDelta(request.winnerSeat, 8), GbScoreDelta(request.discarderSeat ?: "EAST", -8)),
-                    null
-                )
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse =
+                        GbWinResponse(
+                            true,
+                            "RON",
+                            8,
+                            listOf(GbFanEntry("QIANGGANGHU", 8, 1)),
+                            listOf(GbScoreDelta(request.winnerSeat, 8), GbScoreDelta(request.discarderSeat ?: "EAST", -8)),
+                            null,
+                        )
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
         val south = player(SeatWind.SOUTH)
@@ -936,18 +1016,18 @@ class GbTableRoundControllerTest {
 
     @Test
     fun `added kong displays as three base tiles plus one stacked tile`() {
-        val controller = controller(object : GbNativeRulesGateway() {
-            override fun isAvailable(): Boolean = true
+        val controller =
+            controller(
+                object : GbNativeRulesGateway() {
+                    override fun isAvailable(): Boolean = true
 
-            override fun evaluateFan(request: GbFanRequest): GbFanResponse =
-                GbFanResponse(false, 0, emptyList(), "cannot win")
+                    override fun evaluateFan(request: GbFanRequest): GbFanResponse = GbFanResponse(false, 0, emptyList(), "cannot win")
 
-            override fun evaluateTing(request: GbTingRequest): GbTingResponse =
-                GbTingResponse(true, emptyList(), null)
+                    override fun evaluateTing(request: GbTingRequest): GbTingResponse = GbTingResponse(true, emptyList(), null)
 
-            override fun evaluateWin(request: GbWinRequest): GbWinResponse =
-                GbWinResponse(false, error = "cannot win")
-        })
+                    override fun evaluateWin(request: GbWinRequest): GbWinResponse = GbWinResponse(false, error = "cannot win")
+                },
+            )
         controller.startRound()
         val east = player(SeatWind.EAST)
 
@@ -964,7 +1044,7 @@ class GbTableRoundControllerTest {
         gateway: GbNativeRulesGateway = defaultGateway(),
         profile: GbRuleProfile = GbRuleProfile.GB,
         dicePoints: Int? = null,
-        wall: List<MahjongTile>? = null
+        wall: List<MahjongTile>? = null,
     ): GbTableRoundController {
         val seats = EnumMap<SeatWind, UUID>(SeatWind::class.java)
         val names = mutableMapOf<UUID, String>()
@@ -983,12 +1063,13 @@ class GbTableRoundControllerTest {
                 gateway,
                 profile,
                 IntSupplier { dicePoints ?: 7 },
-                Supplier { wall ?: deterministicWall() }
+                Supplier { wall ?: deterministicWall() },
             )
         }
     }
 
-    private fun defaultGateway(): GbNativeRulesGateway = object : GbNativeRulesGateway() {
+    private fun defaultGateway(): GbNativeRulesGateway =
+        object : GbNativeRulesGateway() {
             override fun isAvailable(): Boolean = true
 
             override fun evaluateFan(request: GbFanRequest): GbFanResponse =
@@ -1006,12 +1087,16 @@ class GbTableRoundControllerTest {
                     8,
                     listOf(GbFanEntry("Mock Fan", 8, 1)),
                     listOf(GbScoreDelta(request.winnerSeat, winnerDelta), GbScoreDelta(loserSeat, -winnerDelta)),
-                    null
+                    null,
                 )
             }
         }
 
-    private fun forceHand(controller: GbTableRoundController, playerId: UUID, tiles: List<String>) {
+    private fun forceHand(
+        controller: GbTableRoundController,
+        playerId: UUID,
+        tiles: List<String>,
+    ) {
         val handsField = GbTableRoundController::class.java.getDeclaredField("hands")
         handsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
@@ -1020,35 +1105,45 @@ class GbTableRoundControllerTest {
         forceFlowers(controller, playerId, emptyList())
     }
 
-    private fun addPung(controller: GbTableRoundController, playerId: UUID, tile: String, selfSeat: SeatWind = SeatWind.EAST) {
+    private fun addPung(
+        controller: GbTableRoundController,
+        playerId: UUID,
+        tile: String,
+        selfSeat: SeatWind = SeatWind.EAST,
+    ) {
         val meldsField = GbTableRoundController::class.java.getDeclaredField("melds")
         meldsField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
         val melds = meldsField.get(controller) as MutableMap<UUID, MutableList<Any>>
         val meldClass = GbMeldState::class.java
-        val pung = meldClass.getDeclaredMethod(
-            "pung",
-            MahjongTile::class.java,
-            SeatWind::class.java,
-            SeatWind::class.java
-        )
+        val pung =
+            meldClass.getDeclaredMethod(
+                "pung",
+                MahjongTile::class.java,
+                SeatWind::class.java,
+                SeatWind::class.java,
+            )
         pung.isAccessible = true
         melds.getValue(playerId).add(
             pung.invoke(
                 null,
                 MahjongTile.valueOf(tile),
                 SeatWind.SOUTH,
-                selfSeat
-            )
+                selfSeat,
+            ),
         )
     }
 
-    private fun forceWall(controller: GbTableRoundController, tiles: List<String>) {
+    private fun forceWall(
+        controller: GbTableRoundController,
+        tiles: List<String>,
+    ) {
         val wallField = GbTableRoundController::class.java.getDeclaredField("wall")
         wallField.isAccessible = true
         val deadWallField = GbTableRoundController::class.java.getDeclaredField("deadWall")
         deadWallField.isAccessible = true
         val parsed = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf)
+
         @Suppress("UNCHECKED_CAST")
         val wall = wallField.get(controller) as MutableCollection<top.ellan.mahjong.model.MahjongTile>
         wall.clear()
@@ -1060,7 +1155,11 @@ class GbTableRoundControllerTest {
         deadWall.add(top.ellan.mahjong.model.MahjongTile.M1)
     }
 
-    private fun forceFlowers(controller: GbTableRoundController, playerId: UUID, tiles: List<String>) {
+    private fun forceFlowers(
+        controller: GbTableRoundController,
+        playerId: UUID,
+        tiles: List<String>,
+    ) {
         val flowersField = GbTableRoundController::class.java.getDeclaredField("flowers")
         flowersField.isAccessible = true
         @Suppress("UNCHECKED_CAST")
@@ -1068,7 +1167,10 @@ class GbTableRoundControllerTest {
         flowers[playerId] = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf).toMutableList()
     }
 
-    private fun activateSichuan(controller: GbTableRoundController, vararg declarations: Pair<UUID, String>) {
+    private fun activateSichuan(
+        controller: GbTableRoundController,
+        vararg declarations: Pair<UUID, String>,
+    ) {
         val phaseClass = Class.forName("${GbTableRoundController::class.java.name}\$SichuanPreparationPhase")
         val activePhase = phaseClass.enumConstants.first { (it as Enum<*>).name == "ACTIVE" }
         val phaseField = GbTableRoundController::class.java.getDeclaredField("sichuanPreparationPhase")
@@ -1106,17 +1208,25 @@ class GbTableRoundControllerTest {
     }
 
     private fun deterministicWall(): List<MahjongTile> {
-        val sequence = MahjongTile.values().filter { tile ->
-            tile != MahjongTile.UNKNOWN && !tile.isRedFive && !tile.isFlower
-        }
+        val sequence =
+            MahjongTile.values().filter { tile ->
+                tile != MahjongTile.UNKNOWN && !tile.isRedFive && !tile.isFlower
+            }
         return List(144) { sequence[it % sequence.size] }
     }
 
-    private fun reorderWall(wall: List<MahjongTile>, dicePoints: Int, roundIndex: Int): List<MahjongTile> {
-        return reorderWall(wall, dicePoints, dicePoints, roundIndex)
-    }
+    private fun reorderWall(
+        wall: List<MahjongTile>,
+        dicePoints: Int,
+        roundIndex: Int,
+    ): List<MahjongTile> = reorderWall(wall, dicePoints, dicePoints, roundIndex)
 
-    private fun reorderWall(wall: List<MahjongTile>, directionDicePoints: Int, breakDicePoints: Int, roundIndex: Int): List<MahjongTile> {
+    private fun reorderWall(
+        wall: List<MahjongTile>,
+        directionDicePoints: Int,
+        breakDicePoints: Int,
+        roundIndex: Int,
+    ): List<MahjongTile> {
         val seatCount = SeatWind.values().size
         val wallTilesPerSide = wall.size / seatCount
         val directionIndex = seatCount - (((directionDicePoints % seatCount) - 1 + roundIndex) % seatCount)
@@ -1124,8 +1234,7 @@ class GbTableRoundControllerTest {
         return List(wall.size) { offset -> wall[(breakIndex + offset) % wall.size] }
     }
 
-    private fun encodedTiles(vararg names: String): List<String> =
-        names.map { GbTileEncoding.encode(MahjongTile.valueOf(it)) }
+    private fun encodedTiles(vararg names: String): List<String> = names.map { GbTileEncoding.encode(MahjongTile.valueOf(it)) }
 
     private class CapturingGateway : GbNativeRulesGateway() {
         var lastFanRequest: GbFanRequest? = null
@@ -1151,11 +1260,10 @@ class GbTableRoundControllerTest {
                 8,
                 listOf(GbFanEntry("Mock Fan", 8, 1)),
                 listOf(GbScoreDelta(request.winnerSeat, winnerDelta), GbScoreDelta(loserSeat, -winnerDelta)),
-                null
+                null,
             )
         }
     }
 
     private fun player(wind: SeatWind): UUID = UUID.nameUUIDFromBytes(wind.name.toByteArray())
 }
-

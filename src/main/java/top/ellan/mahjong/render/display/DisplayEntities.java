@@ -112,130 +112,12 @@ public final class DisplayEntities {
         return true;
     }
 
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault
-    ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, null, null, TILE_SCALE, null, null, true);
+    public static TileDisplayBuilder tileDisplay(Location location, float yaw, MahjongTile tile, TileRenderPose pose) {
+        return new TileDisplayBuilder(location, yaw, null, tile, pose);
     }
 
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault
-    ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, null, null, TILE_SCALE, null, null, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers
-    ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers
-    ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers
-    ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, TILE_SCALE, null, null, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, true);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return new TileDisplaySpec(location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
-    }
-
-    public static TileDisplaySpec tileDisplaySpec(
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return new TileDisplaySpec(location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
+    public static TileDisplayBuilder tileDisplay(Location location, float yaw, MahjongVariant variant, MahjongTile tile, TileRenderPose pose) {
+        return new TileDisplayBuilder(location, yaw, variant, tile, pose);
     }
 
     public static LabelSpec labelSpec(Plugin plugin, Location location, Component text, Color color) {
@@ -278,6 +160,97 @@ public final class DisplayEntities {
 
         default boolean managesOwnReuse() {
             return false;
+        }
+    }
+
+    public static final class TileDisplayBuilder {
+        private final Location location;
+        private final float yaw;
+        private final MahjongTile tile;
+        private final TileRenderPose pose;
+        private MahjongVariant variant;
+        private DisplayClickAction clickAction;
+        private boolean visibleByDefault = true;
+        private Collection<UUID> privateViewers;
+        private Collection<UUID> hiddenViewers;
+        private float scale = TILE_SCALE;
+        private Color glowColor;
+        private Display.Billboard billboard;
+        private boolean smoothMovement = true;
+
+        private TileDisplayBuilder(Location location, float yaw, MahjongVariant variant, MahjongTile tile, TileRenderPose pose) {
+            this.location = location;
+            this.yaw = yaw;
+            this.variant = variant;
+            this.tile = tile;
+            this.pose = pose;
+        }
+
+        public TileDisplayBuilder variant(MahjongVariant variant) {
+            this.variant = variant;
+            return this;
+        }
+
+        public TileDisplayBuilder clickAction(DisplayClickAction clickAction) {
+            this.clickAction = clickAction;
+            return this;
+        }
+
+        public TileDisplayBuilder visibleByDefault(boolean visibleByDefault) {
+            this.visibleByDefault = visibleByDefault;
+            return this;
+        }
+
+        public TileDisplayBuilder privateViewers(Collection<UUID> privateViewers) {
+            this.privateViewers = privateViewers;
+            return this;
+        }
+
+        public TileDisplayBuilder hiddenViewers(Collection<UUID> hiddenViewers) {
+            this.hiddenViewers = hiddenViewers;
+            return this;
+        }
+
+        public TileDisplayBuilder scale(float scale) {
+            this.scale = scale;
+            return this;
+        }
+
+        public TileDisplayBuilder glowColor(Color glowColor) {
+            this.glowColor = glowColor;
+            return this;
+        }
+
+        public TileDisplayBuilder billboard(Display.Billboard billboard) {
+            this.billboard = billboard;
+            return this;
+        }
+
+        public TileDisplayBuilder smoothMovement(boolean smoothMovement) {
+            this.smoothMovement = smoothMovement;
+            return this;
+        }
+
+        public TileDisplaySpec spec() {
+            return new TileDisplaySpec(
+                this.location,
+                this.yaw,
+                this.variant,
+                this.tile,
+                this.pose,
+                this.clickAction,
+                this.visibleByDefault,
+                this.privateViewers,
+                this.hiddenViewers,
+                this.scale,
+                this.glowColor,
+                this.billboard,
+                this.smoothMovement
+            );
+        }
+
+        public ItemDisplay spawn(Plugin plugin) {
+            return spawnTileDisplay(plugin, this.spec());
         }
     }
 
@@ -389,275 +362,23 @@ public final class DisplayEntities {
         }
     }
 
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, TILE_SCALE, null, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, TILE_SCALE, null, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, null);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, true);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, true);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongVariant variant,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return spawnTileDisplayInternal(new BukkitDisplayEntityRuntime(plugin), location, yaw, variant, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return spawnTileDisplay(plugin, location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, null, scale, glowColor, billboard, smoothMovement);
-    }
-
-    public static ItemDisplay spawnTileDisplay(
-        Plugin plugin,
-        Location location,
-        float yaw,
-        MahjongTile tile,
-        TileRenderPose pose,
-        DisplayClickAction clickAction,
-        boolean visibleByDefault,
-        Collection<UUID> privateViewers,
-        Collection<UUID> hiddenViewers,
-        float scale,
-        Color glowColor,
-        Display.Billboard billboard,
-        boolean smoothMovement
-    ) {
-        return spawnTileDisplayInternal(new BukkitDisplayEntityRuntime(plugin), location, yaw, null, tile, pose, clickAction, visibleByDefault, privateViewers, hiddenViewers, scale, glowColor, billboard, smoothMovement);
+    public static ItemDisplay spawnTileDisplay(Plugin plugin, TileDisplaySpec spec) {
+        return spawnTileDisplayInternal(
+            new BukkitDisplayEntityRuntime(plugin),
+            spec.location(),
+            spec.yaw(),
+            spec.variant(),
+            spec.tile(),
+            spec.pose(),
+            spec.clickAction(),
+            spec.visibleByDefault(),
+            spec.privateViewers(),
+            spec.hiddenViewers(),
+            spec.scale(),
+            spec.glowColor(),
+            spec.billboard(),
+            spec.smoothMovement()
+        );
     }
 
     private static ItemDisplay spawnTileDisplayInternal(

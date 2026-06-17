@@ -1,4 +1,4 @@
-package top.ellan.mahjong.table.core.round;
+package top.ellan.mahjong.riichi.model;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -27,4 +27,3 @@ public record OpeningDiceRoll(int firstDie, int secondDie, int firstDie2, int se
         return new OpeningDiceRoll(random.nextInt(1, 7), random.nextInt(1, 7), random.nextInt(1, 7), random.nextInt(1, 7));
     }
 }
-

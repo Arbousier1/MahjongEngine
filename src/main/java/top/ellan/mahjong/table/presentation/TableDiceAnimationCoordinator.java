@@ -3,7 +3,7 @@ package top.ellan.mahjong.table.presentation;
 import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.runtime.PluginTask;
 import top.ellan.mahjong.table.core.TableSessionContext;
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +33,7 @@ public final class TableDiceAnimationCoordinator {
     private static final double DIE_Y = 0.68D;
     private static final double DIE_X_OFFSET = 0.16D;
     private static final double RESULT_LABEL_Y = 1.18D;
+    private static final Color RESULT_LABEL_BACKGROUND = Color.fromARGB(104, 20, 20, 24);
     private static final Map<Integer, ItemStack> DICE_ITEM_CACHE = new ConcurrentHashMap<>();
 
     private final TableSessionContext session;
@@ -180,7 +181,7 @@ public final class TableDiceAnimationCoordinator {
         spawned.setLineWidth(180);
         spawned.setViewRange(32.0F);
         spawned.setBrightness(new Display.Brightness(15, 15));
-        spawned.setBackgroundColor(Color.fromARGB(104, 20, 20, 24));
+        spawned.setBackgroundColor(RESULT_LABEL_BACKGROUND);
         return spawned;
     }
 
@@ -304,4 +305,3 @@ public final class TableDiceAnimationCoordinator {
         return stack;
     }
 }
-
