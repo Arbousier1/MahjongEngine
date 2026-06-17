@@ -20,8 +20,7 @@ val paperDevBundleVersion =
         .gradleProperty("mahjongPaperDevBundle")
         .orElse(minimumPaperDevBundleVersion)
         .get()
-val supportedPaperApiVersion = "1.20"
-val paperApiVersion = supportedPaperApiVersion
+val paperApiVersion = "1.20"
 val javaTargetVersion =
     providers
         .gradleProperty("mahjongJavaTarget")
@@ -54,7 +53,6 @@ repositories {
     maven("https://jitpack.io")
 }
 
-// Codegen + native build tasks are registered via buildSrc convention helpers.
 val codegenTasks =
     MahjongTaskRegistration.registerCodegenTasks(
         project,
@@ -187,7 +185,7 @@ tasks {
 }
 
 spotless {
-    ratchetFrom("origin/dev")
+    MahjongTaskRegistration.configureGitRatchet(project, "origin/dev") { ratchetFrom(it) }
     kotlin {
         target("src/main/kotlin/**/*.kt", "src/test/kotlin/**/*.kt", "buildSrc/**/*.kt")
         ktlint()
