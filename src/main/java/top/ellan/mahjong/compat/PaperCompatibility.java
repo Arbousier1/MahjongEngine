@@ -3,6 +3,9 @@ package top.ellan.mahjong.compat;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.CRC32;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
@@ -19,6 +22,8 @@ public final class PaperCompatibility {
     private static final Particle DUST_PARTICLE = findParticle("DUST", "REDSTONE");
     private static final int CUSTOM_MODEL_DATA_BASE = 7_100_000;
     private static final int CUSTOM_MODEL_DATA_RANGE = 900_000;
+    private static final Map<Class<?>, Method> TELEPORT_DURATION_METHODS = new ConcurrentHashMap<>();
+    private static final Set<Class<?>> TELEPORT_DURATION_UNSUPPORTED = ConcurrentHashMap.newKeySet();
 
     private static final Method CLICK_GET_VIEW = findMethod(InventoryClickEvent.class, "getView");
     private static final Method DRAG_GET_VIEW = findMethod(InventoryDragEvent.class, "getView");
@@ -92,10 +97,24 @@ public final class PaperCompatibility {
         if (entity == null) {
             return;
         }
+        Class<?> entityClass = entity.getClass();
+        Method method = TELEPORT_DURATION_METHODS.get(entityClass);
+        if (method == null && !TELEPORT_DURATION_UNSUPPORTED.contains(entityClass)) {
+            method = findMethod(entityClass, "setTeleportDuration", int.class);
+            if (method == null) {
+                TELEPORT_DURATION_UNSUPPORTED.add(entityClass);
+                return;
+            }
+            TELEPORT_DURATION_METHODS.put(entityClass, method);
+        }
+        if (method == null) {
+            return;
+        }
         try {
-            Method method = entity.getClass().getMethod("setTeleportDuration", int.class);
             method.invoke(entity, ticks);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | RuntimeException exception) {
+        } catch (IllegalAccessException | InvocationTargetException | RuntimeException exception) {
+            TELEPORT_DURATION_METHODS.remove(entityClass);
+            TELEPORT_DURATION_UNSUPPORTED.add(entityClass);
             // Paper 1.20.1 display entities do not expose teleport interpolation duration.
         }
     }

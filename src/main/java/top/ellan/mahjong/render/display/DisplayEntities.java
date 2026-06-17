@@ -1,13 +1,17 @@
 package top.ellan.mahjong.render.display;
 
 import top.ellan.mahjong.compat.PaperCompatibility;
+import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.MahjongVariant;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import net.kyori.adventure.text.Component;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -20,6 +24,7 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -40,7 +45,27 @@ public final class DisplayEntities {
     private DisplayEntities() {
     }
 
-    private record BukkitDisplayEntityRuntime(Plugin bukkitPlugin) implements DisplayEntityRuntime {
+    private record BukkitDisplayEntityRuntime(Plugin bukkitPlugin, List<Player> onlinePlayers) implements DisplayEntityRuntime {
+        private BukkitDisplayEntityRuntime(Plugin bukkitPlugin) {
+            this(bukkitPlugin, List.copyOf(Bukkit.getOnlinePlayers()));
+        }
+    }
+
+    private record SnapshotDisplayEntityRuntime(DisplayEntityRuntime delegate, List<Player> onlinePlayers) implements DisplayEntityRuntime {
+        @Override
+        public Plugin bukkitPlugin() {
+            return this.delegate.bukkitPlugin();
+        }
+
+        @Override
+        public ServerScheduler scheduler() {
+            return this.delegate.scheduler();
+        }
+
+        @Override
+        public Supplier<CraftEngineService> craftEngineSupplier() {
+            return this.delegate.craftEngineSupplier();
+        }
     }
 
     public static List<Entity> spawnAll(Plugin plugin, List<EntitySpec> specs) {
@@ -51,9 +76,10 @@ public final class DisplayEntities {
         if (runtime == null || runtime.bukkitPlugin() == null || specs == null || specs.isEmpty()) {
             return List.of();
         }
+        DisplayEntityRuntime scopedRuntime = visibilitySnapshotRuntime(runtime);
         List<Entity> spawned = new java.util.ArrayList<>(specs.size());
         for (EntitySpec spec : specs) {
-            Entity entity = spec.spawn(runtime);
+            Entity entity = spec.spawn(scopedRuntime);
             if (entity != null) {
                 spawned.add(entity);
             }
@@ -69,18 +95,19 @@ public final class DisplayEntities {
         if (runtime == null || runtime.bukkitPlugin() == null || entities == null || specs == null || entities.size() != specs.size()) {
             return false;
         }
+        DisplayEntityRuntime scopedRuntime = visibilitySnapshotRuntime(runtime);
         for (int i = 0; i < specs.size(); i++) {
             Entity entity = entities.get(i);
             EntitySpec spec = specs.get(i);
-            if (entity == null || spec == null || !spec.canReuse(runtime, entity)) {
+            if (entity == null || spec == null || !spec.canReuse(scopedRuntime, entity)) {
                 return false;
             }
-            if (!spec.managesOwnReuse() && !isManagedEntity(runtime.bukkitPlugin(), entity)) {
+            if (!spec.managesOwnReuse() && !isManagedEntity(scopedRuntime.bukkitPlugin(), entity)) {
                 return false;
             }
         }
         for (int i = 0; i < specs.size(); i++) {
-            specs.get(i).apply(runtime, entities.get(i));
+            specs.get(i).apply(scopedRuntime, entities.get(i));
         }
         return true;
     }
@@ -992,24 +1019,50 @@ public final class DisplayEntities {
         boolean hiddenSpecific = hiddenViewers != null && !hiddenViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
         if (privateViewers != null) {
-            if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
-                return;
-            }
+            Set<UUID> previousPrivateViewers = DisplayVisibilityRegistry.privateViewers(entity.getEntityId());
+            boolean hadPrivateVisibility = previousPrivateViewers != null
+                && DisplayVisibilityRegistry.excludedViewers(entity.getEntityId()) == null
+                && !DisplayVisibilityRegistry.isHidden(entity.getEntityId());
             if (privateViewers.isEmpty()) {
+                if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.isHidden(entity.getEntityId())) {
+                    return;
+                }
                 DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
                 syncPrivateVisibility(runtime, entity, privateViewers);
                 return;
             }
+            if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
+                return;
+            }
             DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
-            syncPrivateVisibility(runtime, entity, privateViewers);
+            if (!requiresVisibilityResync(runtime)
+                && hadPrivateVisibility
+                && previousPrivateViewers != null) {
+                syncPrivateVisibilityDelta(runtime, entity, previousPrivateViewers, Set.copyOf(privateViewers));
+            } else {
+                syncPrivateVisibility(runtime, entity, privateViewers);
+            }
             return;
         }
         if (hiddenSpecific) {
+            Set<UUID> previousExcludedViewers = DisplayVisibilityRegistry.excludedViewers(entity.getEntityId());
+            boolean hadExcludedVisibility = previousExcludedViewers != null
+                && DisplayVisibilityRegistry.privateViewers(entity.getEntityId()) == null
+                && !DisplayVisibilityRegistry.isHidden(entity.getEntityId());
             if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesExcluded(entity.getEntityId(), hiddenViewers)) {
                 return;
             }
             DisplayVisibilityRegistry.registerExcluded(entity.getEntityId(), hiddenViewers);
-            syncExcludedVisibility(runtime, entity, hiddenViewers, visibleByDefault);
+            if (!requiresVisibilityResync(runtime)
+                && hadExcludedVisibility
+                && previousExcludedViewers != null) {
+                syncExcludedVisibilityDelta(runtime, entity, previousExcludedViewers, Set.copyOf(hiddenViewers), visibleByDefault);
+            } else {
+                syncExcludedVisibility(runtime, entity, hiddenViewers, visibleByDefault);
+            }
+            return;
+        }
+        if (!requiresVisibilityResync(runtime) && !DisplayVisibilityRegistry.hasCustomVisibility(entity.getEntityId())) {
             return;
         }
         DisplayVisibilityRegistry.unregister(entity.getEntityId());
@@ -1019,25 +1072,41 @@ public final class DisplayEntities {
     private static void applyPrivateVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> privateViewers, boolean visibleByDefault) {
         boolean privateOnly = privateViewers != null && !privateViewers.isEmpty();
         entity.setVisibleByDefault(!privateOnly && visibleByDefault);
-        if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
-            return;
-        }
-        if (privateViewers == null) {
-            DisplayVisibilityRegistry.unregister(entity.getEntityId());
-            syncPublicVisibility(runtime, entity);
-            return;
-        }
-        if (privateViewers.isEmpty()) {
+        Set<UUID> previousPrivateViewers = DisplayVisibilityRegistry.privateViewers(entity.getEntityId());
+        boolean hadPrivateVisibility = previousPrivateViewers != null
+            && DisplayVisibilityRegistry.excludedViewers(entity.getEntityId()) == null
+            && !DisplayVisibilityRegistry.isHidden(entity.getEntityId());
+        if (privateViewers != null && privateViewers.isEmpty()) {
+            if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.isHidden(entity.getEntityId())) {
+                return;
+            }
             DisplayVisibilityRegistry.registerHidden(entity.getEntityId());
             syncPrivateVisibility(runtime, entity, privateViewers);
             return;
         }
+        if (!requiresVisibilityResync(runtime) && DisplayVisibilityRegistry.matchesPrivate(entity.getEntityId(), privateViewers)) {
+            return;
+        }
+        if (privateViewers == null) {
+            if (!requiresVisibilityResync(runtime) && !DisplayVisibilityRegistry.hasCustomVisibility(entity.getEntityId())) {
+                return;
+            }
+            DisplayVisibilityRegistry.unregister(entity.getEntityId());
+            syncPublicVisibility(runtime, entity);
+            return;
+        }
         DisplayVisibilityRegistry.registerPrivate(entity.getEntityId(), privateViewers);
-        syncPrivateVisibility(runtime, entity, privateViewers);
+        if (!requiresVisibilityResync(runtime)
+            && hadPrivateVisibility
+            && previousPrivateViewers != null) {
+            syncPrivateVisibilityDelta(runtime, entity, previousPrivateViewers, Set.copyOf(privateViewers));
+        } else {
+            syncPrivateVisibility(runtime, entity, privateViewers);
+        }
     }
 
     private static void syncExcludedVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> hiddenViewers, boolean visibleByDefault) {
-        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
+        for (Player player : runtime.onlinePlayers()) {
             runForViewer(runtime, entity, player, () -> {
                 if (hiddenViewers.contains(player.getUniqueId())) {
                     player.hideEntity(runtime.bukkitPlugin(), entity);
@@ -1051,7 +1120,7 @@ public final class DisplayEntities {
     }
 
     private static void syncPrivateVisibility(DisplayEntityRuntime runtime, Entity entity, Collection<UUID> privateViewers) {
-        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
+        for (Player player : runtime.onlinePlayers()) {
             runForViewer(runtime, entity, player, () -> {
                 if (!privateViewers.isEmpty() && privateViewers.contains(player.getUniqueId())) {
                     player.showEntity(runtime.bukkitPlugin(), entity);
@@ -1062,14 +1131,52 @@ public final class DisplayEntities {
         }
     }
 
-    private static void syncPublicVisibility(DisplayEntityRuntime runtime, Entity entity) {
-        for (org.bukkit.entity.Player player : onlinePlayersSnapshot()) {
-            runForViewer(runtime, entity, player, () -> player.showEntity(runtime.bukkitPlugin(), entity));
+    private static void syncPrivateVisibilityDelta(DisplayEntityRuntime runtime, Entity entity, Set<UUID> previousViewers, Set<UUID> currentViewers) {
+        for (Player player : runtime.onlinePlayers()) {
+            UUID viewerId = player.getUniqueId();
+            boolean wasVisible = previousViewers.contains(viewerId);
+            boolean isVisible = currentViewers.contains(viewerId);
+            if (wasVisible == isVisible) {
+                continue;
+            }
+            runForViewer(runtime, entity, player, () -> {
+                if (isVisible) {
+                    player.showEntity(runtime.bukkitPlugin(), entity);
+                } else {
+                    player.hideEntity(runtime.bukkitPlugin(), entity);
+                }
+            });
         }
     }
 
-    private static List<org.bukkit.entity.Player> onlinePlayersSnapshot() {
-        return List.copyOf(Bukkit.getOnlinePlayers());
+    private static void syncExcludedVisibilityDelta(
+        DisplayEntityRuntime runtime,
+        Entity entity,
+        Set<UUID> previousHiddenViewers,
+        Set<UUID> currentHiddenViewers,
+        boolean visibleByDefault
+    ) {
+        for (Player player : runtime.onlinePlayers()) {
+            UUID viewerId = player.getUniqueId();
+            boolean wasVisible = visibleByDefault && !previousHiddenViewers.contains(viewerId);
+            boolean isVisible = visibleByDefault && !currentHiddenViewers.contains(viewerId);
+            if (wasVisible == isVisible) {
+                continue;
+            }
+            runForViewer(runtime, entity, player, () -> {
+                if (isVisible) {
+                    player.showEntity(runtime.bukkitPlugin(), entity);
+                } else {
+                    player.hideEntity(runtime.bukkitPlugin(), entity);
+                }
+            });
+        }
+    }
+
+    private static void syncPublicVisibility(DisplayEntityRuntime runtime, Entity entity) {
+        for (Player player : runtime.onlinePlayers()) {
+            runForViewer(runtime, entity, player, () -> player.showEntity(runtime.bukkitPlugin(), entity));
+        }
     }
 
     private static void runForViewer(DisplayEntityRuntime runtime, Entity entity, org.bukkit.entity.Player player, Runnable runnable) {
@@ -1094,6 +1201,13 @@ public final class DisplayEntities {
 
     private static boolean requiresVisibilityResync(DisplayEntityRuntime runtime) {
         return runtime.requiresVisibilityResync();
+    }
+
+    private static DisplayEntityRuntime visibilitySnapshotRuntime(DisplayEntityRuntime runtime) {
+        if (runtime == null) {
+            return null;
+        }
+        return new SnapshotDisplayEntityRuntime(runtime, List.copyOf(runtime.onlinePlayers()));
     }
 
     public static boolean isManagedEntity(Plugin plugin, Entity entity) {
@@ -1152,4 +1266,3 @@ public final class DisplayEntities {
         }
     }
 }
-

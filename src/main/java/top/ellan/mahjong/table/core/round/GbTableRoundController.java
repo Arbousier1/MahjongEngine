@@ -29,6 +29,7 @@ import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.riichi.model.Wind;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
 import top.ellan.mahjong.model.MahjongVariant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -62,6 +63,7 @@ public final class GbTableRoundController implements TableRoundController {
     private final GbNativeRulesGateway nativeGateway;
     private final GbRuleProfile ruleProfile;
     private final EnumMap<SeatWind, UUID> seats;
+    private final Map<UUID, SeatWind> seatByPlayerId = new HashMap<>();
     private final Map<UUID, String> displayNames;
     private final IntSupplier dicePointsSupplier;
     private final Supplier<List<MahjongTile>> wallSupplier;
@@ -73,6 +75,7 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, Boolean> hasDrawnTile = new HashMap<>();
     private final Map<UUID, List<GbMeldState>> melds = new HashMap<>();
     private final Map<UUID, GbTingResponse> tingCache = new HashMap<>();
+    private final Set<UUID> dirtyTingPlayers = new HashSet<>();
     private final Map<UUID, Integer> roundStartPoints = new HashMap<>();
     private final Set<UUID> settledSichuanPlayers = new HashSet<>();
     private final List<GbReactionResolver.ResolvedGbWin> sichuanWinHistory = new ArrayList<>();
@@ -82,8 +85,8 @@ public final class GbTableRoundController implements TableRoundController {
     private final Map<UUID, SichuanSuit> chosenMissingSuits = new HashMap<>();
     private final SichuanRulesEngine sichuanRulesEngine;
     private final SichuanPreparationFlow sichuanPreparationFlow;
-    private List<MahjongTile> wall = List.of();
-    private List<MahjongTile> deadWall = List.of();
+    private final ArrayDeque<MahjongTile> wall = new ArrayDeque<>();
+    private final ArrayDeque<MahjongTile> deadWall = new ArrayDeque<>();
     private boolean started;
     private boolean gameFinished;
     private int dicePoints;
@@ -134,6 +137,11 @@ public final class GbTableRoundController implements TableRoundController {
         this.nativeGateway = nativeGateway;
         this.ruleProfile = ruleProfile == null ? GbRuleProfile.GB : ruleProfile;
         this.seats = new EnumMap<>(seats);
+        for (Map.Entry<SeatWind, UUID> entry : this.seats.entrySet()) {
+            if (entry.getValue() != null) {
+                this.seatByPlayerId.put(entry.getValue(), entry.getKey());
+            }
+        }
         this.displayNames = new HashMap<>(displayNames);
         this.dicePointsSupplier = dicePointsSupplier;
         this.wallSupplier = wallSupplier;
@@ -204,8 +212,10 @@ public final class GbTableRoundController implements TableRoundController {
             this.dicePoints2 = diceRoll.total2();
         }
         List<MahjongTile> fullWall = GbRoundSupport.reorderWallForDice(this.wallSupplier.get(), this.dicePoints, this.dicePoints2, this.round.getRound());
-        this.deadWall = List.copyOf(fullWall.subList(fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE, fullWall.size()));
-        this.wall = List.copyOf(fullWall.subList(0, fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE));
+        this.deadWall.clear();
+        this.deadWall.addAll(fullWall.subList(fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE, fullWall.size()));
+        this.wall.clear();
+        this.wall.addAll(fullWall.subList(0, fullWall.size() - GbRoundSupport.DEAD_WALL_SIZE));
         this.pendingReactionWindow = null;
         this.lastResolution = null;
         this.started = true;
@@ -805,6 +815,7 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     public GbTingResponse tingOptions(UUID playerId) {
+        this.refreshTingIfDirty(playerId);
         return this.tingCache.getOrDefault(playerId, new GbTingResponse(false, List.of(), "No ting data."));
     }
 
@@ -1504,7 +1515,7 @@ public final class GbTableRoundController implements TableRoundController {
             if (playerId == null) {
                 continue;
             }
-            this.tingCache.put(playerId, new GbTingResponse(false, List.of(), message));
+            this.cacheTing(playerId, new GbTingResponse(false, List.of(), message));
         }
     }
 
@@ -1697,9 +1708,7 @@ public final class GbTableRoundController implements TableRoundController {
             return this.drawReplacementTile(playerId, markAfterKong, markAsDrawn);
         }
         while (!this.wall.isEmpty()) {
-            List<MahjongTile> mutableWall = new ArrayList<>(this.wall);
-            MahjongTile tile = mutableWall.remove(0);
-            this.wall = List.copyOf(mutableWall);
+            MahjongTile tile = this.wall.removeFirst();
             if (tile.isFlower()) {
                 if (!this.ruleProfile.includesFlowers()) {
                     continue;
@@ -1720,14 +1729,10 @@ public final class GbTableRoundController implements TableRoundController {
         if (this.deadWall.isEmpty()) {
             return false;
         }
-        List<MahjongTile> mutableDeadWall = new ArrayList<>(this.deadWall);
-        MahjongTile tile = mutableDeadWall.remove(mutableDeadWall.size() - 1);
+        MahjongTile tile = this.deadWall.removeLast();
         if (!this.wall.isEmpty()) {
-            List<MahjongTile> mutableWall = new ArrayList<>(this.wall);
-            mutableDeadWall.add(0, mutableWall.remove(mutableWall.size() - 1));
-            this.wall = List.copyOf(mutableWall);
+            this.deadWall.addFirst(this.wall.removeLast());
         }
-        this.deadWall = List.copyOf(mutableDeadWall);
         if (tile.isFlower()) {
             if (!this.ruleProfile.includesFlowers()) {
                 return this.drawReplacementTile(playerId, markAfterKong, markAsDrawn);
@@ -1907,16 +1912,37 @@ public final class GbTableRoundController implements TableRoundController {
             if (playerId == null) {
                 continue;
             }
-            if (this.isSettledInSichuan(playerId)) {
-                this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Player has already won this hand."));
-                continue;
-            }
-            if (this.isSichuanPreparationPhase()) {
-                this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Complete Sichuan opening actions first."));
-                continue;
-            }
-            this.tingCache.put(playerId, this.evaluateTing(playerId, this.currentConcealedHand(playerId), this.melds.getOrDefault(playerId, List.of())));
+            this.invalidateTing(playerId);
         }
+    }
+
+    private void invalidateTing(UUID playerId) {
+        if (playerId != null) {
+            this.dirtyTingPlayers.add(playerId);
+        }
+    }
+
+    private void cacheTing(UUID playerId, GbTingResponse response) {
+        if (playerId == null || response == null) {
+            return;
+        }
+        this.tingCache.put(playerId, response);
+        this.dirtyTingPlayers.remove(playerId);
+    }
+
+    private void refreshTingIfDirty(UUID playerId) {
+        if (playerId == null || !this.dirtyTingPlayers.remove(playerId)) {
+            return;
+        }
+        if (this.isSettledInSichuan(playerId)) {
+            this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Player has already won this hand."));
+            return;
+        }
+        if (this.isSichuanPreparationPhase()) {
+            this.tingCache.put(playerId, new GbTingResponse(false, List.of(), "Complete Sichuan opening actions first."));
+            return;
+        }
+        this.tingCache.put(playerId, this.evaluateTing(playerId, this.currentConcealedHand(playerId), this.melds.getOrDefault(playerId, List.of())));
     }
 
     private GbTingResponse evaluateTing(UUID playerId, List<MahjongTile> concealedHand, List<GbMeldState> meldStates) {
@@ -2136,12 +2162,7 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private SeatWind seatOf(UUID playerId) {
-        for (Map.Entry<SeatWind, UUID> entry : this.seats.entrySet()) {
-            if (Objects.equals(entry.getValue(), playerId)) {
-                return entry.getKey();
-            }
-        }
-        return SeatWind.EAST;
+        return playerId == null ? SeatWind.EAST : this.seatByPlayerId.getOrDefault(playerId, SeatWind.EAST);
     }
 
     private boolean isSeatedPlayer(UUID playerId) {

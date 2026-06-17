@@ -52,6 +52,24 @@ public final class DisplayVisibilityRegistry {
         return viewers == null || viewers.contains(viewerId);
     }
 
+    public static boolean isHidden(int entityId) {
+        return HIDDEN_ENTITIES.contains(entityId);
+    }
+
+    public static boolean hasCustomVisibility(int entityId) {
+        return HIDDEN_ENTITIES.contains(entityId)
+            || PRIVATE_VIEWERS.containsKey(entityId)
+            || EXCLUDED_VIEWERS.containsKey(entityId);
+    }
+
+    public static Set<UUID> privateViewers(int entityId) {
+        return PRIVATE_VIEWERS.get(entityId);
+    }
+
+    public static Set<UUID> excludedViewers(int entityId) {
+        return EXCLUDED_VIEWERS.get(entityId);
+    }
+
     public static boolean matchesPrivate(int entityId, Collection<UUID> viewers) {
         if (EXCLUDED_VIEWERS.containsKey(entityId) || HIDDEN_ENTITIES.contains(entityId)) {
             return false;

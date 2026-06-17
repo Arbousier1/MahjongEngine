@@ -4,7 +4,9 @@ import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.runtime.ServerScheduler;
+import java.util.Collection;
 import java.util.function.Supplier;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -16,6 +18,10 @@ public interface DisplayEntityRuntime {
 
     default ServerScheduler scheduler() {
         return null;
+    }
+
+    default Collection<? extends Player> onlinePlayers() {
+        return Bukkit.getOnlinePlayers();
     }
 
     default Supplier<CraftEngineService> craftEngineSupplier() {

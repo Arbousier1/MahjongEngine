@@ -123,6 +123,7 @@ open class RiichiPlayerState(
                 bestShantenOnly = bestOnly
             )
         }
+            @Synchronized
             set(value) {
                 field = value
                 shantenStrategy = resolveShantenStrategy(value)

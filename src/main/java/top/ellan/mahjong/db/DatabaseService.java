@@ -35,6 +35,18 @@ import java.util.StringJoiner;
 import java.util.logging.Logger;
 
 public final class DatabaseService {
+    private static final String LEADERBOARD_TIER_ORDER_SQL = """
+        CASE rank_tier
+            WHEN 'NOVICE' THEN 0
+            WHEN 'ADEPT' THEN 1
+            WHEN 'EXPERT' THEN 2
+            WHEN 'MASTER' THEN 3
+            WHEN 'SAINT' THEN 4
+            WHEN 'CELESTIAL' THEN 5
+            ELSE -1
+        END
+        """;
+
     private final PluginSettings.DatabaseSettings databaseSettings;
     private final DebugService debug;
     private final AsyncService async;
@@ -165,45 +177,71 @@ public final class DatabaseService {
 
     public Map<MahjongVariant, MahjongSoulRankProfile> loadRankProfiles(java.util.UUID playerId, String displayName) throws SQLException {
         Map<MahjongVariant, MahjongSoulRankProfile> profiles = new EnumMap<>(MahjongVariant.class);
+        if (!this.rankingEnabled()) {
+            for (MahjongVariant mode : MahjongVariant.values()) {
+                profiles.put(mode, MahjongSoulRankProfile.defaultProfile(playerId, displayName));
+            }
+            return profiles;
+        }
         for (MahjongVariant mode : MahjongVariant.values()) {
-            profiles.put(mode, this.loadRankProfile(playerId, displayName, mode));
+            profiles.put(mode, MahjongSoulRankProfile.defaultProfile(playerId, displayName));
+        }
+        try (Connection connection = this.dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("""
+                 SELECT player_uuid, mode_code, display_name, rank_tier, rank_level, rank_points,
+                        total_matches, first_places, second_places, third_places, fourth_places
+                 FROM player_rank_mode
+                 WHERE player_uuid = ?
+                 """)) {
+            statement.setString(1, playerId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    MahjongVariant mode = this.parseEnum(
+                        resultSet.getString("mode_code"),
+                        MahjongVariant.class,
+                        MahjongVariant.RIICHI,
+                        "player_rank_mode.mode_code"
+                    );
+                    profiles.put(mode, this.readRankProfile(resultSet));
+                }
+            }
         }
         return profiles;
     }
 
     public List<LeaderboardEntry> loadLeaderboard(MahjongVariant mode, int limit) throws SQLException {
+        return this.loadLeaderboard(mode, limit, 0);
+    }
+
+    public List<LeaderboardEntry> loadLeaderboard(MahjongVariant mode, int limit, int offset) throws SQLException {
         MahjongVariant rankMode = normalizeRankMode(mode);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        List<MahjongSoulRankProfile> profiles = new ArrayList<>();
+        int safeOffset = Math.max(0, offset);
+        List<LeaderboardEntry> entries = new ArrayList<>();
         try (Connection connection = this.dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement("""
                  SELECT player_uuid, display_name, rank_tier, rank_level, rank_points,
                         total_matches, first_places, second_places, third_places, fourth_places
                  FROM player_rank_mode
                  WHERE mode_code = ? AND total_matches > 0
+                 ORDER BY
+                 """ + LEADERBOARD_TIER_ORDER_SQL + """
+                    DESC,
+                    rank_level DESC,
+                    rank_points DESC,
+                    total_matches DESC,
+                    LOWER(display_name) ASC
+                 LIMIT ? OFFSET ?
                  """)) {
             statement.setString(1, rankMode.name());
+            statement.setInt(2, safeLimit);
+            statement.setInt(3, safeOffset);
             try (ResultSet resultSet = statement.executeQuery()) {
+                int rank = safeOffset + 1;
                 while (resultSet.next()) {
-                    profiles.add(new MahjongSoulRankProfile(
-                        java.util.UUID.fromString(resultSet.getString("player_uuid")),
-                        resultSet.getString("display_name"),
-                        MahjongSoulRankRules.Tier.valueOf(resultSet.getString("rank_tier")),
-                        resultSet.getInt("rank_level"),
-                        resultSet.getInt("rank_points"),
-                        resultSet.getInt("total_matches"),
-                        resultSet.getInt("first_places"),
-                        resultSet.getInt("second_places"),
-                        resultSet.getInt("third_places"),
-                        resultSet.getInt("fourth_places")
-                    ));
+                    entries.add(new LeaderboardEntry(rankMode, rank++, this.readRankProfile(resultSet)));
                 }
             }
-        }
-        profiles.sort(DatabaseService::compareLeaderboardProfiles);
-        List<LeaderboardEntry> entries = new ArrayList<>();
-        for (int i = 0; i < profiles.size() && i < safeLimit; i++) {
-            entries.add(new LeaderboardEntry(rankMode, i + 1, profiles.get(i)));
         }
         return List.copyOf(entries);
     }
@@ -809,23 +847,24 @@ public final class DatabaseService {
             statement.setString(1, playerId.toString());
             statement.setString(2, normalizeRankMode(mode).name());
             try (ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    return null;
-                }
-                return new MahjongSoulRankProfile(
-                    java.util.UUID.fromString(resultSet.getString("player_uuid")),
-                    resultSet.getString("display_name"),
-                    MahjongSoulRankRules.Tier.valueOf(resultSet.getString("rank_tier")),
-                    resultSet.getInt("rank_level"),
-                    resultSet.getInt("rank_points"),
-                    resultSet.getInt("total_matches"),
-                    resultSet.getInt("first_places"),
-                    resultSet.getInt("second_places"),
-                    resultSet.getInt("third_places"),
-                    resultSet.getInt("fourth_places")
-                );
+                return resultSet.next() ? this.readRankProfile(resultSet) : null;
             }
         }
+    }
+
+    private MahjongSoulRankProfile readRankProfile(ResultSet resultSet) throws SQLException {
+        return new MahjongSoulRankProfile(
+            java.util.UUID.fromString(resultSet.getString("player_uuid")),
+            resultSet.getString("display_name"),
+            MahjongSoulRankRules.Tier.valueOf(resultSet.getString("rank_tier")),
+            resultSet.getInt("rank_level"),
+            resultSet.getInt("rank_points"),
+            resultSet.getInt("total_matches"),
+            resultSet.getInt("first_places"),
+            resultSet.getInt("second_places"),
+            resultSet.getInt("third_places"),
+            resultSet.getInt("fourth_places")
+        );
     }
 
     private void upsertRankProfile(Connection connection, java.util.UUID playerId, MahjongVariant mode, MahjongSoulRankProfile profile) throws SQLException {

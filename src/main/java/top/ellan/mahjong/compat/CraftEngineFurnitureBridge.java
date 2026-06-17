@@ -43,6 +43,7 @@ final class CraftEngineFurnitureBridge {
     private volatile boolean reflectionUnavailable;
     private volatile FurnitureReflection reflection;
     private volatile NamespacedKey furnitureDataKey;
+    private volatile NamespacedKey managedFurnitureKey;
 
     CraftEngineFurnitureBridge(CraftEngineBridgeContext context, boolean preferFurnitureHitbox) {
         this.context = context;
@@ -219,6 +220,9 @@ final class CraftEngineFurnitureBridge {
     boolean isFurnitureEntity(Entity entity) {
         if (entity == null || this.reflectionUnavailable) {
             return false;
+        }
+        if (this.isManagedFurnitureEntity(entity)) {
+            return true;
         }
         Plugin craftEngine = this.context.craftEnginePlugin();
         FurnitureReflection bridge = this.reflection(craftEngine);
@@ -402,7 +406,13 @@ final class CraftEngineFurnitureBridge {
     }
 
     private NamespacedKey managedFurnitureKey() {
-        return new NamespacedKey(this.context.bukkitPlugin(), MANAGED_FURNITURE_KEY);
+        NamespacedKey cached = this.managedFurnitureKey;
+        if (cached != null) {
+            return cached;
+        }
+        NamespacedKey resolved = new NamespacedKey(this.context.bukkitPlugin(), MANAGED_FURNITURE_KEY);
+        this.managedFurnitureKey = resolved;
+        return resolved;
     }
 
     private NamespacedKey resolveFurnitureDataKey(Plugin craftEngine) {

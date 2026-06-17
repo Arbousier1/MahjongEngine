@@ -1049,9 +1049,15 @@ class GbTableRoundControllerTest {
         val deadWallField = GbTableRoundController::class.java.getDeclaredField("deadWall")
         deadWallField.isAccessible = true
         val parsed = tiles.map(top.ellan.mahjong.model.MahjongTile::valueOf)
-        wallField.set(controller, parsed)
+        @Suppress("UNCHECKED_CAST")
+        val wall = wallField.get(controller) as MutableCollection<top.ellan.mahjong.model.MahjongTile>
+        wall.clear()
+        wall.addAll(parsed)
         // Provide a minimal dead wall so replacement draws (flower / kan) succeed.
-        deadWallField.set(controller, listOf(top.ellan.mahjong.model.MahjongTile.M1))
+        @Suppress("UNCHECKED_CAST")
+        val deadWall = deadWallField.get(controller) as MutableCollection<top.ellan.mahjong.model.MahjongTile>
+        deadWall.clear()
+        deadWall.add(top.ellan.mahjong.model.MahjongTile.M1)
     }
 
     private fun forceFlowers(controller: GbTableRoundController, playerId: UUID, tiles: List<String>) {
@@ -1091,8 +1097,12 @@ class GbTableRoundControllerTest {
     private fun currentWall(controller: GbTableRoundController): List<MahjongTile> {
         val wallField = GbTableRoundController::class.java.getDeclaredField("wall")
         wallField.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        return wallField.get(controller) as List<MahjongTile>
+        val wall = wallField.get(controller)
+        return when (wall) {
+            is List<*> -> wall.filterIsInstance<MahjongTile>()
+            is Collection<*> -> wall.filterIsInstance<MahjongTile>().toList()
+            else -> emptyList()
+        }
     }
 
     private fun deterministicWall(): List<MahjongTile> {

@@ -19,7 +19,6 @@ import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.riichi.scoring.RiichiPaoRules
 import mahjongutils.models.isYaochu
 import kotlin.random.Random
-import java.util.ArrayDeque
 
 private val HAND_SORT_BUCKET_SIZE = MahjongTile.entries.maxOf { tile -> tile.sortOrder } + 1
 
@@ -65,8 +64,8 @@ class RiichiRoundEngine(
 ) {
     val seats: MutableList<RiichiPlayerState> = players.toMutableList()
     var round: MahjongRound = rule.length.getStartingRound()
-    private val liveWall: ArrayDeque<TileInstance> = ArrayDeque()
-    val wall: MutableList<TileInstance> = LiveWallCompatList(liveWall)
+    private val liveWall: LiveWallBuffer = LiveWallBuffer()
+    val wall: MutableList<TileInstance> = liveWall
     val deadWall: MutableList<TileInstance> = mutableListOf()
     val discards: MutableList<TileInstance> = mutableListOf()
     var kanCount: Int = 0
@@ -353,7 +352,6 @@ class RiichiRoundEngine(
             MahjongRule.RedFive.THREE -> MahjongTile.redFive3Wall
             MahjongRule.RedFive.FOUR -> MahjongTile.redFive4Wall
         }.shuffled(Random.Default).map { TileInstance(mahjongTile = it) }
-        wall += tiles
         val diceRoll = openingDiceRoll ?: OpeningDiceRoll(Random.nextInt(1, 7), Random.nextInt(1, 7))
         openingDiceRoll = null
         dicePoints = diceRoll.total()
@@ -414,13 +412,12 @@ class RiichiRoundEngine(
         val lastLiveDiscard = lastDiscardRonOnly() && liveWall.isEmpty()
         val situation = generalSituation
         forEachReactionCandidate(discarder) { candidate, target ->
-            val canRon = candidate.canWin(
-                tile.mahjongTile,
-                false,
-                rule = rule,
+            val canRon = canRonOnDiscard(
+                candidate = candidate,
+                tile = tile,
                 generalSituation = situation,
                 personalSituation = personalSituation(candidate, isTsumo = false)
-            ) && !candidate.isFuriten(tile, discards) && !candidate.temporaryFuriten
+            )
             val reactionOptions = if (lastLiveDiscard) {
                 if (!canRon) {
                     null
@@ -447,14 +444,13 @@ class RiichiRoundEngine(
         val options = linkedMapOf<String, ReactionOptions>()
         val situation = generalSituation
         forEachReactionCandidate(discarder) { candidate, _ ->
-            val canRon = candidate.canWin(
-                tile.mahjongTile,
-                false,
-                rule = rule,
+            val canRon = canRonOnDiscard(
+                candidate = candidate,
+                tile = tile,
                 generalSituation = situation,
-                personalSituation = personalSituation(candidate, isTsumo = false, isChankan = true)
-            ) && !candidate.isFuriten(tile, discards) && !candidate.temporaryFuriten &&
-                (!allowOnlyKokushi || candidate.isKokushimuso(tile.mahjongTile))
+                personalSituation = personalSituation(candidate, isTsumo = false, isChankan = true),
+                allowOnlyKokushi = allowOnlyKokushi
+            )
             if (canRon) {
                 options[candidate.uuid] = ReactionOptions(
                     canRon = true,
@@ -468,6 +464,28 @@ class RiichiRoundEngine(
         return options.takeIf { it.isNotEmpty() }?.let {
             PendingReaction(discarder.uuid, tile, it, isChankan = true)
         }
+    }
+
+    private fun canRonOnDiscard(
+        candidate: RiichiPlayerState,
+        tile: TileInstance,
+        generalSituation: GeneralSituation,
+        personalSituation: PersonalSituation,
+        allowOnlyKokushi: Boolean = false
+    ): Boolean {
+        if (!candidate.isTenpai || candidate.temporaryFuriten || candidate.isFuriten(tile, discards)) {
+            return false
+        }
+        if (allowOnlyKokushi && !candidate.isKokushimuso(tile.mahjongTile)) {
+            return false
+        }
+        return candidate.canWin(
+            tile.mahjongTile,
+            false,
+            rule = rule,
+            generalSituation = generalSituation,
+            personalSituation = personalSituation
+        )
     }
 
     private inline fun forEachReactionCandidate(
@@ -616,10 +634,10 @@ class RiichiRoundEngine(
     }
 
     private fun drawFromLiveWallFront(): TileInstance =
-        liveWall.removeFirst()
+        liveWall.removeFirstLiveTile()
 
     private fun drawFromLiveWallBack(): TileInstance =
-        liveWall.removeLast()
+        liveWall.removeLastLiveTile()
 
     private fun registerClosedKan() {
         kanCount++
@@ -1016,46 +1034,87 @@ class RiichiRoundEngine(
     }
 }
 
-private class LiveWallCompatList(
-    private val deque: ArrayDeque<TileInstance>
-) : AbstractMutableList<TileInstance>() {
+private class LiveWallBuffer : AbstractMutableList<TileInstance>() {
+    private val tiles = ArrayList<TileInstance>()
+    private var headIndex: Int = 0
+
     override val size: Int
-        get() = deque.size
+        get() = tiles.size - headIndex
 
     override fun get(index: Int): TileInstance {
+        return tiles[resolveIndex(index)]
+    }
+
+    override fun set(index: Int, element: TileInstance): TileInstance {
+        return tiles.set(resolveIndex(index), element)
+    }
+
+    override fun add(index: Int, element: TileInstance) {
+        tiles.add(resolveInsertIndex(index), element)
+    }
+
+    override fun removeAt(index: Int): TileInstance {
+        val removed = tiles.removeAt(resolveIndex(index))
+        if (tiles.isEmpty()) {
+            headIndex = 0
+        }
+        compactIfNeeded()
+        return removed
+    }
+
+    override fun clear() {
+        tiles.clear()
+        headIndex = 0
+    }
+
+    fun removeFirstLiveTile(): TileInstance {
+        if (isEmpty()) {
+            throw NoSuchElementException("Live wall is empty")
+        }
+        val tile = tiles[headIndex]
+        headIndex++
+        compactIfNeeded()
+        return tile
+    }
+
+    fun removeLastLiveTile(): TileInstance {
+        if (isEmpty()) {
+            throw NoSuchElementException("Live wall is empty")
+        }
+        val tile = tiles.removeAt(tiles.lastIndex)
+        if (tiles.isEmpty()) {
+            headIndex = 0
+        }
+        compactIfNeeded()
+        return tile
+    }
+
+    private fun resolveIndex(index: Int): Int {
         if (index !in 0 until size) {
             throw IndexOutOfBoundsException("Index $index out of bounds for live wall size $size")
         }
-        var currentIndex = 0
-        deque.forEach { tile ->
-            if (currentIndex == index) {
-                return tile
-            }
-            currentIndex++
+        return headIndex + index
+    }
+
+    private fun resolveInsertIndex(index: Int): Int {
+        if (index !in 0..size) {
+            throw IndexOutOfBoundsException("Index $index out of bounds for live wall size $size")
         }
-        throw IndexOutOfBoundsException("Index $index out of bounds for live wall size $size")
+        return headIndex + index
     }
 
-    override fun set(index: Int, element: TileInstance): TileInstance =
-        mutateAsMutableList { list -> list.set(index, element) }
-
-    override fun add(index: Int, element: TileInstance) {
-        mutateAsMutableList { list -> list.add(index, element) }
-    }
-
-    override fun removeAt(index: Int): TileInstance =
-        mutateAsMutableList { list -> list.removeAt(index) }
-
-    override fun clear() {
-        deque.clear()
-    }
-
-    private inline fun <T> mutateAsMutableList(block: (MutableList<TileInstance>) -> T): T {
-        val list = deque.toMutableList()
-        val result = block(list)
-        deque.clear()
-        deque.addAll(list)
-        return result
+    private fun compactIfNeeded() {
+        if (headIndex == 0) {
+            return
+        }
+        if (tiles.isEmpty()) {
+            headIndex = 0
+            return
+        }
+        if (headIndex >= 64 && headIndex * 2 >= tiles.size) {
+            tiles.subList(0, headIndex).clear()
+            headIndex = 0
+        }
     }
 }
 
