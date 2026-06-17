@@ -11,7 +11,9 @@ import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerActionOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerPromptSnapshot;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -152,8 +154,44 @@ public final class TableRegionDisplayCoordinator {
             ApplyBudget.unlimited(),
             () -> this.session.renderer().renderViewerOverlaySpecs(this.session, snapshot)
         );
+        this.updateViewerPromptRegion(snapshot.prompt());
+        this.updateViewerActionOverlayRegion(snapshot.actions());
         this.recordRegionLoadMetrics(metrics);
         metrics.recordTimerNanos("table.render.viewer_overlay.apply.nanos", System.nanoTime() - startedAt);
+    }
+
+    public void updateViewerActionRegions(TableViewerOverlaySnapshot snapshot) {
+        long startedAt = System.nanoTime();
+        MetricsCollector metrics = this.metrics();
+        metrics.incrementCounter("table.render.viewer_actions.apply.calls");
+        this.updateViewerPromptRegion(snapshot.prompt());
+        this.updateViewerActionOverlayRegion(snapshot.actions());
+        this.recordRegionLoadMetrics(metrics);
+        metrics.recordTimerNanos("table.render.viewer_actions.apply.nanos", System.nanoTime() - startedAt);
+    }
+
+    private void updateViewerPromptRegion(TableViewerPromptSnapshot snapshot) {
+        if (snapshot == null) {
+            return;
+        }
+        this.updateRegionWithSpecs(
+            snapshot.regionKey(),
+            this.fingerprintService.opaqueFingerprint(snapshot.fingerprint()),
+            ApplyBudget.unlimited(),
+            () -> this.session.renderer().renderViewerPromptSpecs(this.session, snapshot)
+        );
+    }
+
+    private void updateViewerActionOverlayRegion(TableViewerActionOverlaySnapshot snapshot) {
+        if (snapshot == null) {
+            return;
+        }
+        this.updateRegionWithSpecs(
+            snapshot.regionKey(),
+            this.fingerprintService.opaqueFingerprint(snapshot.fingerprint()),
+            ApplyBudget.unlimited(),
+            () -> this.session.renderer().renderViewerActionOverlaySpecs(this.session, snapshot)
+        );
     }
 
     public List<String> regionKeys() {

@@ -35,6 +35,8 @@ public interface TableSessionMutator extends TableSessionContext {
 
     void updateViewerOverlayRegion(TableViewerOverlaySnapshot snapshot);
 
+    void updateViewerActionRegions(TableViewerOverlaySnapshot snapshot);
+
     void shutdownRenderFlow();
 
     void shutdownViewerPresentation();

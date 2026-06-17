@@ -79,6 +79,14 @@ public final class TableRenderLayout {
         return precomputeSeat(displayCenter, snapshot, snapshot.seat(wind));
     }
 
+    public static SeatLayoutPlan precomputePrivateHandOnly(double centerX, double centerY, double centerZ, TableSeatRenderSnapshot seat) {
+        if (seat == null) {
+            throw new IllegalArgumentException("seat is required");
+        }
+        Point displayCenter = new Point(centerX, centerY + DISPLAY_CENTER_Y_OFFSET, centerZ);
+        return precomputePrivateHandSeat(displayCenter, seat);
+    }
+
     private static SeatLayoutPlan precomputeSeat(
         Point displayCenter,
         TableRenderSnapshot snapshot,
@@ -126,6 +134,45 @@ public final class TableRenderLayout {
             precomputeDiscards(displayCenter, seat, snapshot.openDoorSeat()),
             precomputeMelds(displayCenter, seat),
             precomputeSticks(displayCenter, seat)
+        );
+    }
+
+    private static SeatLayoutPlan precomputePrivateHandSeat(Point displayCenter, TableSeatRenderSnapshot seat) {
+        SeatWind wind = seat.wind();
+        Point handBase = handDirectionBase(displayCenter, wind);
+        float yaw = seatYaw(wind);
+        if (seat.playerId() == null) {
+            return new SeatLayoutPlan(
+                wind,
+                handBase,
+                handBase,
+                handBase,
+                handBase,
+                yaw,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+            );
+        }
+        List<Point> privateHandPoints = new ArrayList<>(seat.hand().size());
+        List<Integer> selectedHandTileIndices = seat.selectedHandTileIndices();
+        for (int tileIndex = 0; tileIndex < seat.hand().size(); tileIndex++) {
+            privateHandPoints.add(handTilePoint(displayCenter, seat, wind, tileIndex, selectedHandTileIndices.contains(tileIndex)));
+        }
+        return new SeatLayoutPlan(
+            wind,
+            handBase,
+            handBase,
+            handBase,
+            handBase,
+            yaw,
+            List.of(),
+            List.copyOf(privateHandPoints),
+            List.of(),
+            List.of(),
+            List.of()
         );
     }
 

@@ -10,9 +10,11 @@ import top.ellan.mahjong.table.action.PlayerActionSnapshotFactory;
 import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
 import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.render.snapshot.TableSpectatorSeatOverlaySnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerActionOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerActionButtonSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerPromptSnapshot;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -38,7 +40,9 @@ public final class TableViewerSnapshotFactory {
         }
 
         Locale locale = this.session.plugin().messages().resolveLocale(player);
-        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, player.getUniqueId());
+        UUID viewerId = player.getUniqueId();
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId, actionSnapshot);
         return this.session.plugin().messages().render(
             player,
             "command.rule_summary",
@@ -48,7 +52,9 @@ public final class TableViewerSnapshotFactory {
 
     public Component createViewerOverlay(Player viewer) {
         Locale locale = this.session.plugin().messages().resolveLocale(viewer);
-        return this.viewerOverlay(locale, this.captureViewerSummarySnapshot(locale, viewer.getUniqueId()));
+        UUID viewerId = viewer.getUniqueId();
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
+        return this.viewerOverlay(locale, this.captureViewerSummarySnapshot(locale, viewerId, actionSnapshot));
     }
 
     public TableViewerOverlaySnapshot captureViewerOverlaySnapshot(Player viewer) {
@@ -56,18 +62,22 @@ public final class TableViewerSnapshotFactory {
         UUID viewerId = viewer.getUniqueId();
         String regionKey = "viewer-overlay:" + viewerId;
         boolean spectator = this.session.isSpectator(viewerId);
-        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
-        List<TableViewerActionButtonSnapshot> actionButtons = this.viewerActionButtons(locale, viewerId, spectator);
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId, actionSnapshot);
+        List<TableViewerActionButtonSnapshot> actionButtons = this.viewerActionButtons(locale, spectator, actionSnapshot);
         Component overlay = this.viewerOverlay(locale, summary);
+        TableViewerPromptSnapshot prompt = this.viewerPromptSnapshot(locale, viewerId, spectator, summary);
+        TableViewerActionOverlaySnapshot actions = this.viewerActionOverlaySnapshot(locale, viewerId, spectator, actionButtons);
         List<TableSpectatorSeatOverlaySnapshot> seatOverlays = List.of();
-        String fingerprint = this.viewerOverlayFingerprint(locale, viewerId, spectator, summary, actionButtons, seatOverlays);
-        return new TableViewerOverlaySnapshot(viewerId, regionKey, spectator, overlay, actionButtons, seatOverlays, fingerprint);
+        String fingerprint = this.viewerOverlayFingerprint(locale, viewerId, spectator, summary, seatOverlays);
+        return new TableViewerOverlaySnapshot(viewerId, regionKey, spectator, overlay, prompt, actions, seatOverlays, fingerprint);
     }
 
     public TableViewerHudSnapshot captureViewerHudSnapshot(Locale locale, UUID viewerId) {
         float progress = this.hudProgress();
         BossBar.Color color = this.hudColor(viewerId);
-        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId);
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
+        ViewerSummarySnapshot summary = this.captureViewerSummarySnapshot(locale, viewerId, actionSnapshot);
         boolean spectator = summary.spectator();
         long nextRoundSeconds = this.session.nextRoundSecondsRemainingValue();
         Object lastResolution = this.session.lastResolution();
@@ -174,7 +184,7 @@ public final class TableViewerSnapshotFactory {
     private Component buildActiveOverlay(Locale locale, ViewerSummarySnapshot summary) {
         MahjongVariant variant = this.session.currentVariant();
         if (variant == MahjongVariant.RIICHI) {
-            return this.appendViewerPrompt(this.session.plugin().messages().render(
+            return this.session.plugin().messages().render(
                 locale,
                 "overlay.active",
                 this.session.plugin().messages().tag("role", summary.roleLabel()),
@@ -185,10 +195,10 @@ public final class TableViewerSnapshotFactory {
                 this.session.plugin().messages().number(locale, "riichi_pool", summary.riichiPool()),
                 this.session.plugin().messages().tag("dora", summary.doraSummary()),
                 this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
-                this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
-            ), summary.viewerPrompt());
+                this.session.plugin().messages().tag("prompt", "")
+            );
         }
-        return this.appendViewerPrompt(this.session.plugin().messages().render(
+        return this.session.plugin().messages().render(
             locale,
             "overlay.active",
             this.session.plugin().messages().tag("role", summary.roleLabel()),
@@ -199,15 +209,8 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().number(locale, "riichi_pool", 0),
             this.session.plugin().messages().tag("dora", ""),
             this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
-            this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
-        ), summary.viewerPrompt());
-    }
-
-    private Component appendViewerPrompt(Component overlay, String prompt) {
-        if (prompt == null || prompt.isBlank()) {
-            return overlay;
-        }
-        return overlay.append(Component.newline()).append(Component.text(prompt, NamedTextColor.YELLOW));
+            this.session.plugin().messages().tag("prompt", "")
+        );
     }
 
     private Component waitingOverlay(Locale locale, ViewerSummarySnapshot summary) {
@@ -219,7 +222,7 @@ public final class TableViewerSnapshotFactory {
         );
     }
 
-    private ViewerSummarySnapshot captureViewerSummarySnapshot(Locale locale, UUID viewerId) {
+    private ViewerSummarySnapshot captureViewerSummarySnapshot(Locale locale, UUID viewerId, PlayerActionSnapshot actionSnapshot) {
         boolean spectator = this.session.isSpectator(viewerId);
         String waitingSummary = this.session.waitingDisplaySummary(locale);
         String ruleSummary = this.session.ruleDisplaySummary(locale);
@@ -251,7 +254,6 @@ public final class TableViewerSnapshotFactory {
         String doraSummary = this.doraSummary(locale);
         String roleLabel = this.viewerRoleLabel(locale, viewerId);
         String lastDiscardSummary = this.lastDiscardSummary(locale);
-        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
         ReactionOptions options = this.session.availableReactions(viewerId);
         String reactionOptionsFingerprint = Objects.toString(options, "");
         String resolutionTitle = this.session.lastResolution() == null
@@ -433,7 +435,6 @@ public final class TableViewerSnapshotFactory {
         UUID viewerId,
         boolean spectator,
         ViewerSummarySnapshot summary,
-        List<TableViewerActionButtonSnapshot> actionButtons,
         List<TableSpectatorSeatOverlaySnapshot> seatOverlays
     ) {
         DelimitedFingerprintBuilder builder = fingerprintBuilder(256)
@@ -451,15 +452,8 @@ public final class TableViewerSnapshotFactory {
             .field(summary.riichiPool())
             .field(summary.roleLabel())
             .field(summary.lastDiscardSummary())
-            .field(summary.viewerPrompt())
             .field(summary.resolutionTitle())
             .field(summary.commandStateSummary());
-        for (TableViewerActionButtonSnapshot button : actionButtons) {
-            builder.field(button.actionId())
-                .field(button.label())
-                .field(button.command())
-                .field(button.hitboxWidth());
-        }
         if (!this.session.hasRoundController()) {
             return builder.field("no-engine").toString();
         }
@@ -473,6 +467,45 @@ public final class TableViewerSnapshotFactory {
             builder.field(seatOverlay.signature());
         }
         return builder.toString();
+    }
+
+    private TableViewerPromptSnapshot viewerPromptSnapshot(
+        Locale locale,
+        UUID viewerId,
+        boolean spectator,
+        ViewerSummarySnapshot summary
+    ) {
+        String prompt = summary.viewerPrompt();
+        boolean visible = !spectator && prompt != null && !prompt.isBlank();
+        Component component = visible ? Component.text(prompt, NamedTextColor.YELLOW) : Component.empty();
+        String fingerprint = fingerprintBuilder(128)
+            .field(locale.toLanguageTag())
+            .field(viewerId)
+            .field(spectator)
+            .field(prompt)
+            .toString();
+        return new TableViewerPromptSnapshot(viewerId, "viewer-prompt:" + viewerId, visible, component, fingerprint);
+    }
+
+    private TableViewerActionOverlaySnapshot viewerActionOverlaySnapshot(
+        Locale locale,
+        UUID viewerId,
+        boolean spectator,
+        List<TableViewerActionButtonSnapshot> actionButtons
+    ) {
+        DelimitedFingerprintBuilder builder = fingerprintBuilder(192)
+            .field(locale.toLanguageTag())
+            .field(viewerId)
+            .field(spectator)
+            .field(actionButtons.size());
+        for (TableViewerActionButtonSnapshot button : actionButtons) {
+            builder.field(button.actionId())
+                .field(button.label())
+                .field(button.color())
+                .field(button.command())
+                .field(button.hitboxWidth());
+        }
+        return new TableViewerActionOverlaySnapshot(viewerId, "viewer-actions:" + viewerId, actionButtons, builder.toString());
     }
 
     private float hudProgress() {
@@ -634,11 +667,14 @@ public final class TableViewerSnapshotFactory {
         return this.session.plugin().messages().contains(locale, key) ? this.session.plugin().messages().plain(locale, key) : tileName.toLowerCase(Locale.ROOT);
     }
 
-    private List<TableViewerActionButtonSnapshot> viewerActionButtons(Locale locale, UUID viewerId, boolean spectator) {
+    private List<TableViewerActionButtonSnapshot> viewerActionButtons(
+        Locale locale,
+        boolean spectator,
+        PlayerActionSnapshot actionSnapshot
+    ) {
         if (spectator || !this.session.hasRoundController()) {
             return List.of();
         }
-        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
         if (!actionSnapshot.hasActions()) {
             return List.of();
         }

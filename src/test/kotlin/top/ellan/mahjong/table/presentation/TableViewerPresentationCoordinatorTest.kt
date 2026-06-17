@@ -3,8 +3,10 @@ package top.ellan.mahjong.table.presentation
 import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.table.core.MahjongTableSession
+import top.ellan.mahjong.render.snapshot.TableViewerActionOverlaySnapshot
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot
+import top.ellan.mahjong.render.snapshot.TableViewerPromptSnapshot
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
@@ -34,7 +36,8 @@ class TableViewerPresentationCoordinatorTest {
             "viewer-overlay:$viewerId",
             false,
             Component.empty(),
-            emptyList(),
+            TableViewerPromptSnapshot(viewerId, "viewer-prompt:$viewerId", false, Component.empty(), "prompt-fingerprint"),
+            TableViewerActionOverlaySnapshot(viewerId, "viewer-actions:$viewerId", emptyList(), "actions-fingerprint"),
             emptyList(),
             "overlay-fingerprint"
         )

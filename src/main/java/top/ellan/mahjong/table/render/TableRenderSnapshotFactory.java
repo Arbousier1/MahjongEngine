@@ -64,6 +64,38 @@ public final class TableRenderSnapshotFactory {
         );
     }
 
+    public TableSeatRenderSnapshot createPrivateHandSeat(TableRenderSubject session, SeatWind wind) {
+        if (wind == null) {
+            throw new IllegalArgumentException("wind is required");
+        }
+        UUID playerId = session.playerAt(wind);
+        boolean occupied = playerId != null;
+        boolean online = occupied && session.viewers().stream()
+            .anyMatch(viewer -> playerId.equals(viewer.getUniqueId()));
+        return new TableSeatRenderSnapshot(
+            wind,
+            playerId,
+            occupied ? session.displayName(playerId) : "",
+            "",
+            0,
+            false,
+            false,
+            false,
+            online,
+            "",
+            occupied ? session.selectedHandTileIndex(playerId) : -1,
+            occupied ? session.selectedHandTileIndices(playerId) : List.of(),
+            -1,
+            session.stickLayoutCount(wind),
+            List.of(),
+            occupied ? session.hand(playerId) : List.of(),
+            List.of(),
+            occupied ? session.fuuro(playerId) : List.of(),
+            List.of(),
+            List.of()
+        );
+    }
+
     private TableSeatRenderSnapshot captureSeatSnapshot(
         TableRenderSubject session,
         SeatWind wind,
@@ -113,4 +145,3 @@ public final class TableRenderSnapshotFactory {
             .toList();
     }
 }
-

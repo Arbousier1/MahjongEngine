@@ -105,7 +105,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     private final SessionRoundActionCoordinator roundActionCoordinator;
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
-    private final Map<UUID, String> viewerActionMenuStates = new HashMap<>();
+    private final SessionViewerActionMenuCoordinator viewerActionMenuCoordinator = new SessionViewerActionMenuCoordinator();
     private MahjongVariant configuredVariant;
     private UUID ownerId;
 
@@ -252,7 +252,7 @@ public final class MahjongTableSession implements TableSessionMutator {
 
     public boolean removeSpectator(UUID playerId) {
         this.viewerPresentation.hideHud(playerId);
-        this.viewerActionMenuStates.remove(playerId);
+        this.viewerActionMenuCoordinator.clear(playerId);
         return this.participants.removeSpectator(playerId);
     }
 
@@ -306,7 +306,7 @@ public final class MahjongTableSession implements TableSessionMutator {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
-        this.viewerActionMenuStates.remove(playerId);
+        this.viewerActionMenuCoordinator.clear(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
         this.handSelectionCoordinator.clearPlayer(playerId);
         boolean removed = this.participants.removePlayer(playerId);
@@ -503,7 +503,7 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.clearLastPublicActionInternal();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
-        this.viewerActionMenuStates.clear();
+        this.viewerActionMenuCoordinator.clearAll();
     }
 
     public void invalidateRenderFingerprints() {
@@ -928,16 +928,18 @@ public final class MahjongTableSession implements TableSessionMutator {
 
     public boolean chooseSichuanMissingSuit(UUID playerId, String suitToken) {
         boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.chooseSichuanMissingSuit(actorId, suitToken), false);
-        if (result) { this.clearSelectedHandTilesInternal(); }
+        if (!result) { return false; }
+        this.clearSelectedHandTilesInternal();
         this.render();
-        return result;
+        return true;
     }
 
     public boolean submitSichuanExchangeSelection(UUID playerId, List<Integer> tileIndices) {
         boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.submitSichuanExchangeSelection(actorId, tileIndices), false);
-        if (result) { this.clearSelectedHandTilesInternal(); }
+        if (!result) { return false; }
+        this.clearSelectedHandTilesInternal();
         this.render();
-        return result;
+        return true;
     }
 
     public List<Integer> suggestedRiichiIndices(UUID playerId) {
@@ -1110,10 +1112,14 @@ public final class MahjongTableSession implements TableSessionMutator {
     public void refreshSelectedHandTileViewInternal(UUID playerId) {
         SeatWind wind = this.seatOf(playerId);
         if (wind == null) { return; }
-        TableRenderSnapshot snapshot = this.captureRenderSnapshot(0L, 0L);
-        TableSeatRenderSnapshot seat = snapshot.seat(wind);
+        TableSeatRenderSnapshot seat = this.renderSnapshotFactory.createPrivateHandSeat(this, wind);
         if (seat == null || seat.playerId() == null) { return; }
-        TableRenderLayout.SeatLayoutPlan seatPlan = TableRenderLayout.precomputeSeatOnly(snapshot, wind);
+        TableRenderLayout.SeatLayoutPlan seatPlan = TableRenderLayout.precomputePrivateHandOnly(
+            this.center.getX(),
+            this.center.getY(),
+            this.center.getZ(),
+            seat
+        );
         if (seatPlan == null) { return; }
         this.regionDisplayCoordinator.refreshPrivateHandRegions(seat, seatPlan);
     }
@@ -1176,10 +1182,7 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public String viewerActionMenuState(UUID viewerId) {
-        if (viewerId == null) {
-            return "";
-        }
-        return Objects.toString(this.viewerActionMenuStates.get(viewerId), "");
+        return this.viewerActionMenuCoordinator.state(viewerId);
     }
 
     public void setViewerActionMenuState(UUID viewerId, String menuState) {
@@ -1190,19 +1193,17 @@ public final class MahjongTableSession implements TableSessionMutator {
             this.clearViewerActionMenuState(viewerId);
             return;
         }
-        if (Objects.equals(this.viewerActionMenuStates.get(viewerId), menuState)) {
-            return;
+        if (this.viewerActionMenuCoordinator.set(viewerId, menuState)) {
+            this.viewerPresentation.markViewerActionsDirty(viewerId);
         }
-        this.viewerActionMenuStates.put(viewerId, menuState);
-        this.viewerPresentation.markDirty();
     }
 
     public void clearViewerActionMenuState(UUID viewerId) {
         if (viewerId == null) {
             return;
         }
-        if (this.viewerActionMenuStates.remove(viewerId) != null) {
-            this.viewerPresentation.markDirty();
+        if (this.viewerActionMenuCoordinator.clear(viewerId)) {
+            this.viewerPresentation.markViewerActionsDirty(viewerId);
         }
     }
 
@@ -1391,8 +1392,12 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.regionDisplayCoordinator.updateViewerOverlayRegion(snapshot);
     }
 
+    public void updateViewerActionRegions(TableViewerOverlaySnapshot snapshot) {
+        this.regionDisplayCoordinator.updateViewerActionRegions(snapshot);
+    }
+
     public List<String> viewerOverlayRegionKeys() {
-        return this.regionDisplayCoordinator.regionKeysWithPrefix("viewer-overlay:");
+        return this.regionDisplayCoordinator.regionKeysWithPrefix("viewer-");
     }
 
     public void removeManagedRegionDisplays(String regionKey) {

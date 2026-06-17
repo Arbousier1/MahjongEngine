@@ -11,9 +11,11 @@ import top.ellan.mahjong.render.TableRenderSubject;
 import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerActionOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerActionButtonSnapshot;
 import top.ellan.mahjong.render.snapshot.TableSpectatorSeatOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerPromptSnapshot;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1145,9 +1147,8 @@ public final class TableRenderer {
 
     public List<DisplayEntities.EntitySpec> renderViewerOverlaySpecs(TableRenderSubject session, TableViewerOverlaySnapshot snapshot) {
         Location center = displayCenter(session);
-        int actionButtonSpecCount = snapshot.actionButtons().size() * 2;
         List<DisplayEntities.EntitySpec> specs = new ArrayList<>(
-            (snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size()) + actionButtonSpecCount
+            snapshot.spectatorSeatOverlays().isEmpty() ? 1 : 1 + snapshot.spectatorSeatOverlays().size()
         );
         if (session.isStarted() || snapshot.spectator()) {
             specs.add(DisplayEntities.labelSpec(
@@ -1175,28 +1176,55 @@ public final class TableRenderer {
                 ));
             }
         }
-        this.appendViewerActionButtonSpecs(session, snapshot, center, specs);
+        return List.copyOf(specs);
+    }
+
+    public List<DisplayEntities.EntitySpec> renderViewerPromptSpecs(TableRenderSubject session, TableViewerPromptSnapshot snapshot) {
+        if (snapshot == null || !snapshot.visible()) {
+            return List.of();
+        }
+        Location center = displayCenter(session);
+        return List.of(DisplayEntities.labelSpec(
+            center.clone().add(0.0D, 0.62D + FLOATING_TEXT_Y_OFFSET, 0.0D),
+            snapshot.prompt(),
+            Color.fromARGB(72, 20, 18, 4),
+            List.of(snapshot.viewerId()),
+            Display.Billboard.CENTER,
+            0.0F,
+            0.0F,
+            true
+        ));
+    }
+
+    public List<DisplayEntities.EntitySpec> renderViewerActionOverlaySpecs(TableRenderSubject session, TableViewerActionOverlaySnapshot snapshot) {
+        if (snapshot == null || snapshot.actionButtons().isEmpty()) {
+            return List.of();
+        }
+        Location center = displayCenter(session);
+        List<DisplayEntities.EntitySpec> specs = new ArrayList<>(snapshot.actionButtons().size() * 2);
+        this.appendViewerActionButtonSpecs(session, snapshot.viewerId(), snapshot.actionButtons(), center, specs);
         return List.copyOf(specs);
     }
 
     private void appendViewerActionButtonSpecs(
         TableRenderSubject session,
-        TableViewerOverlaySnapshot snapshot,
+        UUID viewerId,
+        List<TableViewerActionButtonSnapshot> actionButtons,
         Location center,
         List<DisplayEntities.EntitySpec> specs
     ) {
-        if (snapshot.actionButtons().isEmpty()) {
+        if (actionButtons.isEmpty()) {
             return;
         }
-        SeatWind viewerSeat = session.seatOf(snapshot.viewerId());
+        SeatWind viewerSeat = session.seatOf(viewerId);
         Location actionAnchor = viewerSeat == null
             ? center.clone().add(0.0D, OVERLAY_ACTION_Y_OFFSET, 0.0D)
             : add(handDirectionBase(center, viewerSeat), offsetTowardTableCenter(viewerSeat, 0.42D)).add(0.0D, OVERLAY_ACTION_Y_OFFSET, 0.0D);
         float yaw = viewerSeat == null ? 0.0F : seatYaw(viewerSeat);
         int row = 0;
-        for (int rowStart = 0; rowStart < snapshot.actionButtons().size(); rowStart += OVERLAY_ACTION_BUTTONS_PER_ROW) {
-            int rowEnd = Math.min(snapshot.actionButtons().size(), rowStart + OVERLAY_ACTION_BUTTONS_PER_ROW);
-            List<TableViewerActionButtonSnapshot> rowButtons = snapshot.actionButtons().subList(rowStart, rowEnd);
+        for (int rowStart = 0; rowStart < actionButtons.size(); rowStart += OVERLAY_ACTION_BUTTONS_PER_ROW) {
+            int rowEnd = Math.min(actionButtons.size(), rowStart + OVERLAY_ACTION_BUTTONS_PER_ROW);
+            List<TableViewerActionButtonSnapshot> rowButtons = actionButtons.subList(rowStart, rowEnd);
             double rowWidth = 0.0D;
             for (TableViewerActionButtonSnapshot rowButton : rowButtons) {
                 rowWidth += this.viewerActionButtonWidth(rowButton);
@@ -1214,7 +1242,7 @@ public final class TableRenderer {
                     labelLocation,
                     Component.text("[" + button.label() + "]", button.color()),
                     Color.fromARGB(60, 0, 0, 0),
-                    List.of(snapshot.viewerId()),
+                    List.of(viewerId),
                     Display.Billboard.FIXED,
                     yaw,
                     0.0F,
@@ -1224,8 +1252,8 @@ public final class TableRenderer {
                     labelLocation.clone().subtract(0.0D, 0.1D, 0.0D),
                     (float) buttonWidth,
                     OVERLAY_ACTION_BUTTON_HEIGHT,
-                    DisplayClickAction.playerCommand(session.id(), snapshot.viewerId(), button.command()),
-                    List.of(snapshot.viewerId())
+                    DisplayClickAction.playerCommand(session.id(), viewerId, button.command()),
+                    List.of(viewerId)
                 ));
             }
             row++;

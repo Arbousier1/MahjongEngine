@@ -428,6 +428,7 @@ public final class MahjongTableManager implements Listener {
             boolean accepted = this.handleReactionCommand(session, playerId, operation, parts);
             if (accepted) {
                 session.clearViewerActionMenuState(playerId);
+                session.flushViewerActionsNow(playerId);
             }
             return accepted;
         }
@@ -435,6 +436,7 @@ public final class MahjongTableManager implements Listener {
             boolean accepted = this.handleTurnCommand(session, playerId, operation, parts);
             if (accepted) {
                 session.clearViewerActionMenuState(playerId);
+                session.flushViewerActionsNow(playerId);
             }
             return accepted;
         }

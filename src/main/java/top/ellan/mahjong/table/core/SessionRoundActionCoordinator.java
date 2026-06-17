@@ -201,25 +201,26 @@ final class SessionRoundActionCoordinator {
     }
 
     private boolean completeRoundAction(RoundActionResult result) {
-        if (result.changed()) {
-            if (result.shouldClearSelectedHandTiles()) {
-                this.session.clearSelectedHandTilesInternal();
-            }
-            if (result.shouldClearLastPublicAction()) {
-                this.session.clearLastPublicActionInternal();
-            }
-            if (result.publicDiscardTile() != null) {
-                this.session.rememberPublicDiscardInternal(result.publicDiscardPlayerId(), result.publicDiscardTile());
-            }
-            if (result.publicActionKey() != null && !result.publicActionKey().isBlank()) {
-                this.session.rememberPublicActionInternal(result.publicActionPlayerId(), result.publicActionKey());
-            }
-            if (result.reactionSound() != null) {
-                this.session.playReactionSoundInternal(result.reactionSound());
-            }
+        if (!result.changed()) {
+            return false;
+        }
+        if (result.shouldClearSelectedHandTiles()) {
+            this.session.clearSelectedHandTilesInternal();
+        }
+        if (result.shouldClearLastPublicAction()) {
+            this.session.clearLastPublicActionInternal();
+        }
+        if (result.publicDiscardTile() != null) {
+            this.session.rememberPublicDiscardInternal(result.publicDiscardPlayerId(), result.publicDiscardTile());
+        }
+        if (result.publicActionKey() != null && !result.publicActionKey().isBlank()) {
+            this.session.rememberPublicActionInternal(result.publicActionPlayerId(), result.publicActionKey());
+        }
+        if (result.reactionSound() != null) {
+            this.session.playReactionSoundInternal(result.reactionSound());
         }
         this.renderAndFlushViewerPresentation();
-        return result.changed();
+        return true;
     }
 
     private record PublicAction(UUID playerId, String actionKey) {

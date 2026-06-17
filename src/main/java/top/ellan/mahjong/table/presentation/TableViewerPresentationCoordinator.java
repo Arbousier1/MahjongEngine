@@ -22,6 +22,7 @@ public final class TableViewerPresentationCoordinator {
     private final TableSessionMutator session;
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
+    private final Set<UUID> viewerActionDirtyIds = new LinkedHashSet<>();
     private boolean viewerOverlayDirty = true;
     private boolean viewerHudDirty = true;
     private long nextOverlayRefreshTick;
@@ -36,10 +37,18 @@ public final class TableViewerPresentationCoordinator {
         this.viewerHudDirty = true;
     }
 
+    public void markViewerActionsDirty(UUID viewerId) {
+        if (viewerId != null) {
+            this.viewerActionDirtyIds.add(viewerId);
+        }
+    }
+
     public void flushIfNeeded() {
         long nowTick = Bukkit.getCurrentTick();
         if (this.shouldRefreshOverlay(nowTick)) {
             this.flushOverlay(nowTick);
+        } else if (!this.viewerActionDirtyIds.isEmpty()) {
+            this.flushDirtyViewerActions();
         }
         if (this.shouldRefreshHud(nowTick)) {
             this.flushHud(nowTick);
@@ -60,8 +69,8 @@ public final class TableViewerPresentationCoordinator {
             return;
         }
         TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
-        this.session.updateViewerOverlayRegion(snapshot);
-        this.nextOverlayRefreshTick = Bukkit.getCurrentTick() + OVERLAY_REFRESH_INTERVAL_TICKS;
+        this.session.updateViewerActionRegions(snapshot);
+        this.viewerActionDirtyIds.remove(viewerId);
     }
 
     public boolean hasPresentationState() {
@@ -97,6 +106,7 @@ public final class TableViewerPresentationCoordinator {
     private void flushOverlay(long nowTick) {
         this.updateViewerOverlayRegions();
         this.viewerOverlayDirty = false;
+        this.viewerActionDirtyIds.clear();
         this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
     }
 
@@ -110,18 +120,27 @@ public final class TableViewerPresentationCoordinator {
         List<Player> viewers = this.session.viewers();
         if (viewers.isEmpty()) {
             this.clearViewerOverlayRegions();
+            this.viewerActionDirtyIds.clear();
             return;
         }
         Set<String> activeKeys = new LinkedHashSet<>();
         for (Player viewer : viewers) {
             TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
             activeKeys.add(snapshot.regionKey());
+            activeKeys.add(snapshot.prompt().regionKey());
+            activeKeys.add(snapshot.actions().regionKey());
             this.session.updateViewerOverlayRegion(snapshot);
         }
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:") && !activeKeys.contains(regionKey)) {
+            if (this.isViewerPresentationRegion(regionKey) && !activeKeys.contains(regionKey)) {
                 this.session.removeManagedRegionDisplays(regionKey);
             }
+        }
+    }
+
+    private void flushDirtyViewerActions() {
+        for (UUID viewerId : List.copyOf(this.viewerActionDirtyIds)) {
+            this.flushViewerActionsNow(viewerId);
         }
     }
 
@@ -181,7 +200,7 @@ public final class TableViewerPresentationCoordinator {
 
     private boolean hasViewerOverlayRegions() {
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:")) {
+            if (this.isViewerPresentationRegion(regionKey)) {
                 return true;
             }
         }
@@ -190,10 +209,16 @@ public final class TableViewerPresentationCoordinator {
 
     private void clearViewerOverlayRegions() {
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:")) {
+            if (this.isViewerPresentationRegion(regionKey)) {
                 this.session.removeManagedRegionDisplays(regionKey);
             }
         }
     }
-}
 
+    private boolean isViewerPresentationRegion(String regionKey) {
+        return regionKey != null
+            && (regionKey.startsWith("viewer-overlay:")
+                || regionKey.startsWith("viewer-prompt:")
+                || regionKey.startsWith("viewer-actions:"));
+    }
+}

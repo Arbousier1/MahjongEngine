@@ -1,5 +1,9 @@
 package top.ellan.mahjong.table.runtime;
 
+import top.ellan.mahjong.table.action.PlayerActionId;
+import top.ellan.mahjong.table.action.PlayerActionPhase;
+import top.ellan.mahjong.table.action.PlayerActionSnapshot;
+import top.ellan.mahjong.table.action.PlayerActionSnapshotFactory;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.runtime.PluginTask;
 import java.util.Objects;
@@ -13,8 +17,9 @@ final class GbBotStrategy implements BotStrategy {
         if (!session.isStarted()) {
             return;
         }
+        PlayerActionSnapshotFactory actionSnapshots = new PlayerActionSnapshotFactory(session);
         for (UUID playerId : session.players()) {
-            if (!session.isBot(playerId) || session.availableReactions(playerId) == null) {
+            if (!session.isBot(playerId) || actionSnapshots.capture(playerId).phase() != PlayerActionPhase.REACTION) {
                 continue;
             }
             final PluginTask[] holder = new PluginTask[1];
@@ -27,7 +32,7 @@ final class GbBotStrategy implements BotStrategy {
             return;
         }
         UUID current = session.playerAt(session.currentSeat());
-        if (current != null && session.isBot(current)) {
+        if (current != null && session.isBot(current) && actionSnapshots.capture(current).phase() == PlayerActionPhase.TURN) {
             final PluginTask[] holder = new PluginTask[1];
             holder[0] = session.plugin().scheduler().runRegionDelayed(
                 session.center(),
@@ -63,7 +68,8 @@ final class GbBotStrategy implements BotStrategy {
     }
 
     private void handleGbReaction(MahjongTableSession session, UUID playerId) {
-        if (session.availableReactions(playerId) == null) {
+        PlayerActionSnapshot snapshot = new PlayerActionSnapshotFactory(session).capture(playerId);
+        if (snapshot.phase() != PlayerActionPhase.REACTION) {
             return;
         }
         session.react(playerId, session.gbSuggestedReaction(playerId));
@@ -73,11 +79,15 @@ final class GbBotStrategy implements BotStrategy {
         if (!session.isStarted() || session.hasPendingReaction() || !Objects.equals(session.playerAt(session.currentSeat()), playerId)) {
             return;
         }
-        if (session.gbCanWinByTsumo(playerId) && session.declareTsumo(playerId)) {
+        PlayerActionSnapshot snapshot = new PlayerActionSnapshotFactory(session).capture(playerId);
+        if (snapshot.phase() != PlayerActionPhase.TURN) {
+            return;
+        }
+        if (this.hasAction(snapshot, PlayerActionId.TSUMO) && session.gbCanWinByTsumo(playerId) && session.declareTsumo(playerId)) {
             return;
         }
         String kanTile = session.gbSuggestedKanTile(playerId);
-        if (kanTile != null && session.declareKan(playerId, kanTile)) {
+        if (kanTile != null && this.hasKanAction(snapshot) && session.declareKan(playerId, kanTile)) {
             return;
         }
         var hand = session.hand(playerId);
@@ -98,6 +108,16 @@ final class GbBotStrategy implements BotStrategy {
             && Objects.equals(session.playerAt(session.currentSeat()), playerId)) {
             this.scheduleGbTurnRetry(session, playerId, retryAttempts, "discard-failed");
         }
+    }
+
+    private boolean hasKanAction(PlayerActionSnapshot snapshot) {
+        return this.hasAction(snapshot, PlayerActionId.ANKAN)
+            || this.hasAction(snapshot, PlayerActionId.KAKAN)
+            || this.hasAction(snapshot, PlayerActionId.MENU_TURN_KAN);
+    }
+
+    private boolean hasAction(PlayerActionSnapshot snapshot, PlayerActionId actionId) {
+        return snapshot.actions().stream().anyMatch(action -> action.actionId() == actionId);
     }
 
     private void scheduleGbTurnRetry(MahjongTableSession session, UUID playerId, int retryAttempts, String reason) {
