@@ -1918,11 +1918,14 @@ public final class GbTableRoundController implements TableRoundController {
             List<MahjongTile> waits = this.sichuanRulesEngine.waitingTiles(concealedHand, meldStates.size());
             List<GbTingCandidate> candidates = waits.stream()
                 .filter(tile -> this.isMissingChosenSuit(playerId, this.tilesForSichuanWin(playerId, concealedHand, meldStates, tile)))
-                .map(tile -> new GbTingCandidate(
-                    GbTileEncoding.encode(tile),
-                    this.sichuanFanTotal(playerId, concealedHand, meldStates, tile),
-                    this.sichuanFans(playerId, concealedHand, meldStates, tile, "DISCARD", List.of())
-                ))
+                .map(tile -> {
+                    SichuanRulesEngine.FanResult result = this.sichuanFanResult(
+                        playerId, concealedHand, meldStates, tile, "DISCARD", List.of()
+                    );
+                    int totalFan = result.valid() ? Math.max(1, result.totalFan()) : 1;
+                    List<GbFanEntry> fans = result.valid() ? result.fans() : List.of();
+                    return new GbTingCandidate(GbTileEncoding.encode(tile), totalFan, fans);
+                })
                 .toList();
             return new GbTingResponse(!candidates.isEmpty(), candidates, candidates.isEmpty() ? "No valid Sichuan waits." : null);
         }
