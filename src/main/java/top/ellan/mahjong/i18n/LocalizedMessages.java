@@ -68,7 +68,7 @@ public final class LocalizedMessages {
     }
 
     public TagResolver number(Locale locale, String key, Number value) {
-        Locale formatLocale = this.resolveLocales(locale).getFirst();
+        Locale formatLocale = this.resolveLocales(locale).get(0);
         NumberFormat format = this.integerFormats.computeIfAbsent(
             formatLocale,
             resolvedLocale -> ThreadLocal.withInitial(() -> NumberFormat.getIntegerInstance(resolvedLocale))
@@ -81,7 +81,7 @@ public final class LocalizedMessages {
             return this.index.defaultLocale();
         }
         Locale locale = Locale.forLanguageTag(rawLocale.replace('_', '-'));
-        return locale.getLanguage().isBlank() ? this.index.defaultLocale() : this.resolveLocales(locale).getFirst();
+        return locale.getLanguage().isBlank() ? this.index.defaultLocale() : this.resolveLocales(locale).get(0);
     }
 
     private List<Locale> resolveLocales(Locale locale) {

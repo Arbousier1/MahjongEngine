@@ -1,6 +1,7 @@
 package top.ellan.mahjong.debug;
 
 import top.ellan.mahjong.config.ConfigAccess;
+import top.ellan.mahjong.config.PluginSettings;
 import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -17,6 +18,10 @@ public final class DebugService {
             ConfigAccess.bool(section, false, "enabled"),
             ConfigAccess.stringList(section, "categories")
         );
+    }
+
+    public DebugService(Logger logger, PluginSettings.DebugSettings settings) {
+        this(logger, settings != null && settings.enabled(), settings == null ? java.util.List.of() : settings.categories());
     }
 
     public DebugService(Logger logger, boolean enabled, Iterable<String> categories) {

@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible bug
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+      placeholder: Briefly describe the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact steps so we can reproduce.
+      placeholder: |
+        1. Run command ...
+        2. Join table ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version / commit
+      placeholder: e.g. 0.1.0 or 797a190
+    validations:
+      required: true
+
+  - type: input
+    id: server_version
+    attributes:
+      label: Server version
+      placeholder: e.g. Paper 1.21.x / Folia ...
+    validations:
+      required: true
+
+  - type: input
+    id: java_version
+    attributes:
+      label: Java version
+      placeholder: e.g. Temurin 21
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack trace
+      description: Paste relevant logs or attach files.
+      render: shell

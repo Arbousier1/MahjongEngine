@@ -1,6 +1,7 @@
 package top.ellan.mahjong.ui;
 
 import top.ellan.mahjong.i18n.MessageService;
+import top.ellan.mahjong.compat.PaperCompatibility;
 import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.RankedScoreItem;
@@ -180,7 +181,7 @@ public final class SettlementUi {
     }
 
     static List<Component> settlementLore(Locale locale, MahjongTableSession session, YakuSettlement settlement) {
-        if (session.currentVariant() == top.ellan.mahjong.table.core.MahjongVariant.GB) {
+        if (session.currentVariant() != top.ellan.mahjong.model.MahjongVariant.RIICHI) {
             return gbSettlementLore(locale, session, settlement);
         }
         MessageService messages = session.plugin().messages();
@@ -235,7 +236,7 @@ public final class SettlementUi {
         if (settlement.getYakuList().isEmpty()) {
             lore.add(messages.render(locale, "ui.gb_no_fan_breakdown"));
         } else {
-            settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fan))));
+            settlement.getYakuList().forEach(fan -> lore.add(messages.render(locale, "ui.gb_fan", messages.tag("value", fanLabel(session, locale, fan)))));
         }
         SettlementPaymentFormatter.appendBreakdown(lore, locale, session, settlement);
         return lore;
@@ -260,7 +261,7 @@ public final class SettlementUi {
         String path = faceDown ? "mahjong_tile/back" : tile.itemModelPath();
         ItemStack itemStack = new ItemStack(Material.PAPER);
         ItemMeta meta = itemStack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("mahjongcraft", path));
+        PaperCompatibility.applyItemModel(meta, new NamespacedKey("mahjongcraft", path));
         meta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));
         itemStack.setItemMeta(meta);
         return itemStack;
@@ -330,6 +331,18 @@ public final class SettlementUi {
 
     private static String yakuLabel(MahjongTableSession session, Locale locale, String yaku) {
         return translatedLabel(session, locale, "yaku", yaku);
+    }
+
+    private static String fanLabel(MahjongTableSession session, Locale locale, String fan) {
+        // GB/Sichuan fan entries may carry a multiplier suffix such as "GEN x2"; translate
+        // the fan name and re-attach the original count suffix when present.
+        int suffixIndex = fan.lastIndexOf(" x");
+        if (suffixIndex > 0 && fan.substring(suffixIndex + 2).chars().allMatch(Character::isDigit) && !fan.substring(suffixIndex + 2).isEmpty()) {
+            String name = fan.substring(0, suffixIndex);
+            String suffix = fan.substring(suffixIndex);
+            return translatedLabel(session, locale, "fan", name) + suffix;
+        }
+        return translatedLabel(session, locale, "fan", fan);
     }
 
     private static String yakumanLabel(MahjongTableSession session, Locale locale, String yaku) {

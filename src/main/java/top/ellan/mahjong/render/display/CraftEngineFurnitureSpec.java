@@ -1,9 +1,7 @@
 package top.ellan.mahjong.render.display;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
-import org.bukkit.plugin.Plugin;
 
 public record CraftEngineFurnitureSpec(
     Location location,
@@ -11,23 +9,17 @@ public record CraftEngineFurnitureSpec(
     DisplayClickAction clickAction
 ) implements DisplayEntities.EntitySpec {
     @Override
-    public Entity spawn(Plugin plugin) {
-        if (!(plugin instanceof MahjongPaperPlugin mahjongPlugin)) {
-            return null;
-        }
-        return mahjongPlugin.craftEngine().placeFurniture(this.location, this.furnitureItemId, this.clickAction);
+    public Entity spawn(DisplayEntityRuntime runtime) {
+        return runtime.placeFurniture(this.location, this.furnitureItemId, this.clickAction);
     }
 
     @Override
-    public boolean canReuse(Plugin plugin, Entity entity) {
-        if (!(plugin instanceof MahjongPaperPlugin mahjongPlugin)) {
-            return false;
-        }
-        return mahjongPlugin.craftEngine().reconcileFurniture(entity, this.location, this.furnitureItemId, this.clickAction);
+    public boolean canReuse(DisplayEntityRuntime runtime, Entity entity) {
+        return runtime.reconcileFurniture(entity, this.location, this.furnitureItemId, this.clickAction);
     }
 
     @Override
-    public void apply(Plugin plugin, Entity entity) {
+    public void apply(DisplayEntityRuntime runtime, Entity entity) {
         // CraftEngine furniture is already updated during canReuse/reconcile.
     }
 

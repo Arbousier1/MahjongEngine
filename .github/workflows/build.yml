@@ -9,30 +9,47 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  wrapper-validation:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
 
+  test-gate:
+    needs: wrapper-validation
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
+
+      - name: Ensure Gradle user home exists
+        shell: bash
+        run: |
+          mkdir -p ~/.gradle
+          echo "GRADLE_USER_HOME=$(cd ~/.gradle && pwd)" >> "$GITHUB_ENV"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
       - name: Run tests
-        run: ./gradlew test
+        # Gate the build on tests so a native-platform build never ships a jar
+        # with broken Java/Kotlin. Native tasks are skipped here; they are
+        # exercised in the build-platform matrix below.
+        run: ./gradlew test "-PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT" "-PmahjongJavaToolchain=25" "-PmahjongJavaTarget=17" -x configureGbMahjongNative -x buildGbMahjongNative -x packageGbMahjongNative
 
   build-platform:
-    needs: test
+    needs: test-gate
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +76,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Cache native build (CMake)
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/native/gbmahjong
+            native/gbmahjong/build
+          key: native-cmake-${{ runner.os }}-${{ hashFiles('native/gbmahjong/**/CMakeLists.txt', 'native/gbmahjong/**/*.cpp', 'native/gbmahjong/**/*.h') }}
+          restore-keys: |
+            native-cmake-${{ runner.os }}-
+
       - name: Set up Windows native toolchain
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -76,21 +103,70 @@ jobs:
           "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
+
+      - name: Ensure Gradle user home exists
+        shell: bash
+        run: |
+          mkdir -p ~/.gradle
+          echo "GRADLE_USER_HOME=$(cd ~/.gradle && pwd)" >> "$GITHUB_ENV"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Make Gradle wrapper executable
         if: matrix.needs_chmod
         run: chmod +x ./gradlew
 
       - name: Build platform plugin
-        run: ${{ matrix.gradle }} build -x test
+        # Pin to the lowest supported Paper baseline so the released jar stays runtime-compatible
+        # with Paper/Folia 1.20.1 -> 26.2. PaperCompatibility handles newer APIs at runtime.
+        # Quote each -P argument because PowerShell on Windows runners mis-parses `1.20.1-R0.1-SNAPSHOT`.
+        run: ${{ matrix.gradle }} build -x test "-PmahjongPaperDevBundle=1.20.1-R0.1-SNAPSHOT" "-PmahjongJavaTarget=17" "-PmahjongJavaToolchain=25"
+
+      - name: Verify artifact compatibility (Linux only)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(ls build/libs/*.jar | grep -v -E '(sources|dev)' | head -n 1)"
+          echo "Inspecting $JAR"
+          mkdir -p inspect
+          (cd inspect && jar xf "$GITHUB_WORKSPACE/$JAR" plugin.yml paper-plugin.yml)
+          for f in inspect/plugin.yml inspect/paper-plugin.yml; do
+            if ! grep -q 'api-version: "1.20"' "$f"; then
+              echo "::error::Expected api-version: \"1.20\" in $f"
+              cat "$f"
+              exit 1
+            fi
+          done
+          python3 - "$JAR" <<'PY'
+          import sys, zipfile, struct
+          jar = sys.argv[1]
+          allowed_max = 61  # Java 17
+          bad = []
+          with zipfile.ZipFile(jar) as z:
+              for n in z.namelist():
+                  if not n.endswith('.class'):
+                      continue
+                  with z.open(n) as f:
+                      head = f.read(8)
+                  if len(head) < 8 or head[:4] != b'\xca\xfe\xba\xbe':
+                      continue
+                  major = struct.unpack('>H', head[6:8])[0]
+                  if major > allowed_max:
+                      bad.append((n, major))
+          if bad:
+              print(f'::error::Found {len(bad)} class files compiled above Java 17:')
+              for n, m in bad[:20]:
+                  print(f'  {n}: major={m} (Java {m-44})')
+              sys.exit(1)
+          print('All classes compiled to Java 17 or lower.')
+          PY
 
       - name: Upload platform jar
         uses: actions/upload-artifact@v7
@@ -103,11 +179,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
 
       - name: Download Linux jar
         uses: actions/download-artifact@v8

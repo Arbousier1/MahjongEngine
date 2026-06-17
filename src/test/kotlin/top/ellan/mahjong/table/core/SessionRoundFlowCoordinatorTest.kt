@@ -1,5 +1,7 @@
 package top.ellan.mahjong.table.core
 
+import top.ellan.mahjong.model.MahjongVariant
+
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.table.core.round.TableRoundController
 import org.mockito.ArgumentMatchers.any
@@ -13,7 +15,7 @@ import kotlin.test.Test
 class SessionRoundFlowCoordinatorTest {
     @Test
     fun `startRound recreates controller when seat assignments changed`() {
-        val session = mock(MahjongTableSession::class.java)
+        val session = mock(TableSessionMutator::class.java)
         val existing = mock(TableRoundController::class.java)
         val replacement = mock(TableRoundController::class.java)
         val coordinator = SessionRoundFlowCoordinator(session)

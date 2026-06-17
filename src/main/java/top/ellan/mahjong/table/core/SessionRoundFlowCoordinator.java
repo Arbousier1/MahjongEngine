@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.table.core.round.TableRoundController;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 final class SessionRoundFlowCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
 
-    SessionRoundFlowCoordinator(MahjongTableSession session) {
+    SessionRoundFlowCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
@@ -94,9 +94,7 @@ final class SessionRoundFlowCoordinator {
             return;
         }
         this.session.removeQueuedLeavesInternal(new ArrayList<>(removed.keySet()));
-        if (this.session.plugin().tableManager() != null) {
-            this.session.plugin().tableManager().finalizeDeferredLeaves(this.session, removed);
-        }
+        this.session.finalizeDeferredLeaves(removed);
     }
 
     private void handleBotMatchAutoNextRound() {
@@ -128,4 +126,3 @@ final class SessionRoundFlowCoordinator {
         return true;
     }
 }
-

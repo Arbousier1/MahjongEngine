@@ -1,18 +1,24 @@
 package top.ellan.mahjong.table.core;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 final class SessionHandSelectionCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private final Map<UUID, Integer> selectedHandTileIndices = new HashMap<>();
 
-    SessionHandSelectionCoordinator(MahjongTableSession session) {
+    SessionHandSelectionCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
     boolean clickHandTile(UUID playerId, int tileIndex, boolean cancelSelection) {
+        if (this.session.handleHandTileClickInternal(playerId, tileIndex, cancelSelection)) {
+            this.selectedHandTileIndices.remove(playerId);
+            this.session.render();
+            return true;
+        }
         if (!this.session.canSelectHandTileInternal(playerId, tileIndex)) {
             return false;
         }
@@ -32,6 +38,11 @@ final class SessionHandSelectionCoordinator {
 
     int selectedHandTileIndex(UUID playerId) {
         return this.selectedHandTileIndices.getOrDefault(playerId, -1);
+    }
+
+    List<Integer> selectedHandTileIndices(UUID playerId) {
+        Integer selectedIndex = this.selectedHandTileIndices.get(playerId);
+        return selectedIndex == null ? List.of() : List.of(selectedIndex);
     }
 
     void clearPlayer(UUID playerId) {

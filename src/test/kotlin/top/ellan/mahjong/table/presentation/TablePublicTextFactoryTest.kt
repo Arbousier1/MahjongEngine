@@ -1,6 +1,6 @@
 package top.ellan.mahjong.table.presentation
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.table.core.MahjongTableSession
@@ -13,7 +13,7 @@ import org.mockito.Mockito.`when`
 class TablePublicTextFactoryTest {
     @Test
     fun `seat display name follows dealer rotation`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = mock(MahjongTableSession::class.java)
         val messages = MessageService()
         val factory = TablePublicTextFactory(session)
@@ -31,7 +31,7 @@ class TablePublicTextFactoryTest {
 
     @Test
     fun `seat display name stays unchanged before a round controller exists`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = mock(MahjongTableSession::class.java)
         val messages = MessageService()
         val factory = TablePublicTextFactory(session)

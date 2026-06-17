@@ -115,18 +115,42 @@ object GbMahjongNativeJson {
     fun encodeFanRequest(request: GbFanRequest): String = json.encodeToString(request)
 
     @JvmStatic
+    fun encodeFanRequestBytes(request: GbFanRequest): ByteArray =
+        json.encodeToString(request).toByteArray(Charsets.UTF_8)
+
+    @JvmStatic
     fun decodeFanResponse(payload: String): GbFanResponse = json.decodeFromString(payload)
+
+    @JvmStatic
+    fun decodeFanResponse(payload: ByteArray): GbFanResponse =
+        json.decodeFromString(String(payload, Charsets.UTF_8))
 
     @JvmStatic
     fun encodeTingRequest(request: GbTingRequest): String = json.encodeToString(request)
 
     @JvmStatic
+    fun encodeTingRequestBytes(request: GbTingRequest): ByteArray =
+        json.encodeToString(request).toByteArray(Charsets.UTF_8)
+
+    @JvmStatic
     fun decodeTingResponse(payload: String): GbTingResponse = json.decodeFromString(payload)
+
+    @JvmStatic
+    fun decodeTingResponse(payload: ByteArray): GbTingResponse =
+        json.decodeFromString(String(payload, Charsets.UTF_8))
 
     @JvmStatic
     fun encodeWinRequest(request: GbWinRequest): String = json.encodeToString(request)
 
     @JvmStatic
+    fun encodeWinRequestBytes(request: GbWinRequest): ByteArray =
+        json.encodeToString(request).toByteArray(Charsets.UTF_8)
+
+    @JvmStatic
     fun decodeWinResponse(payload: String): GbWinResponse = json.decodeFromString(payload)
+
+    @JvmStatic
+    fun decodeWinResponse(payload: ByteArray): GbWinResponse =
+        json.decodeFromString(String(payload, Charsets.UTF_8))
 }
 

@@ -1,28 +1,34 @@
 package top.ellan.mahjong.compat
 
 import net.momirealms.craftengine.core.item.ItemBuildContext
-import org.bukkit.configuration.MemoryConfiguration
+import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.plugin.Plugin
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.config.PluginSettings
+import top.ellan.mahjong.debug.DebugService
+import top.ellan.mahjong.i18n.MessageService
+import top.ellan.mahjong.runtime.AsyncService
+import top.ellan.mahjong.runtime.ServerScheduler
 import java.lang.reflect.Method
 
 class CraftEngineServiceBuildMethodTest {
     @Test
-    fun `lookup prefers legacy buildItemStack when available`() {
-        val service = CraftEngineService(mock(MahjongPaperPlugin::class.java), MemoryConfiguration())
+    fun `lookup prefers current no-arg buildBukkitItem when available`() {
+        val service = service()
 
-        val method = lookupBuildMethod(service, LegacyCustomItem::class.java)
+        val method = lookupBuildMethod(service, CurrentCustomItem::class.java)
 
-        assertEquals("buildItemStack", method.name)
-        val built = invokeBuildMethod(service, LegacyCustomItem(), method)
-        assertEquals("legacy", built)
+        assertEquals("buildBukkitItem", method.name)
+        assertEquals(0, method.parameterCount)
+        val built = invokeBuildMethod(service, CurrentCustomItem(), method)
+        assertEquals("current", built)
     }
 
     @Test
     fun `lookup supports craftengine dev buildBukkitItem with context and count`() {
-        val service = CraftEngineService(mock(MahjongPaperPlugin::class.java), MemoryConfiguration())
+        val service = service()
 
         val method = lookupBuildMethod(service, DevCustomItemWithCount::class.java)
 
@@ -33,7 +39,7 @@ class CraftEngineServiceBuildMethodTest {
 
     @Test
     fun `lookup supports buildBukkitItem with only context`() {
-        val service = CraftEngineService(mock(MahjongPaperPlugin::class.java), MemoryConfiguration())
+        val service = service()
 
         val method = lookupBuildMethod(service, DevCustomItemContextOnly::class.java)
 
@@ -54,8 +60,21 @@ class CraftEngineServiceBuildMethodTest {
         return invoke.invoke(service, target, buildMethod)
     }
 
-    private class LegacyCustomItem {
-        fun buildItemStack(): String = "legacy"
+    private fun service(): CraftEngineService {
+        val config = YamlConfiguration()
+        return CraftEngineService(
+            mock(Plugin::class.java),
+            mock(ServerScheduler::class.java),
+            mock(AsyncService::class.java),
+            mock(DebugService::class.java),
+            mock(MessageService::class.java),
+            { PluginSettings.from(config) },
+            config
+        )
+    }
+
+    private class CurrentCustomItem {
+        fun buildBukkitItem(): String = "current"
     }
 
     private class DevCustomItemWithCount {

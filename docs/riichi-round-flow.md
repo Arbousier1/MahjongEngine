@@ -16,6 +16,8 @@ This document describes the formal round-flow rules used by the Riichi mode in t
 - Wall consumption is modeled as a single forward sequence from the live wall front.
 - Dead wall reserve: the last 14 tiles are reserved and not used for normal draws.
 - Kan supplement draw: after kan (ankan, minkan, kakan), draw one rinshan tile from the dead wall side and then discard.
+- Riichi declaration requires at least 4 tiles remaining in the live wall.
+- After drawing the final live-wall tile (haitei draw), ankan/kakan are disallowed.
 - Exhaustive draw: when the live wall is exhausted (only dead wall reserve remains), the hand ends in an exhaustive draw if nobody has won.
 
 ## 3. Discard Rules
@@ -29,8 +31,15 @@ This document describes the formal round-flow rules used by the Riichi mode in t
 - Chii: only the next player in turn order after the discarder may chii.
 - Pon: any non-discarding player may pon if legal.
 - Kan: any non-discarding player may minkan if legal; caller then performs a rinshan draw.
-- Ron: a legal ron claim immediately ends the hand.
+- Ron: a legal ron claim ends the hand after all ron-eligible players have had a chance to respond.
 - Priority when multiple claims compete on one discard: ron > pon/kan > chii.
+- The final live-wall discard only allows ron; chii/pon/minkan are disallowed.
+- Multi-ron behavior is configurable with `rule.ronMode`:
+- `MULTI_RON`: all ron claimants win (double/triple ron).
+- `HEAD_BUMP`: only the nearest ron claimant in turn order wins (atamahane).
+- Riichi flow profile is configurable with `rule.riichiProfile`:
+- `MAJSOUL`: open-kan dora is revealed immediately after minkan/kakan is confirmed.
+- `TOURNAMENT`: open-kan dora is revealed after the caller's next discard resolves with no ron.
 - After chii/pon, the caller does not take a normal draw and must discard directly.
 
 ## 5. Furiten

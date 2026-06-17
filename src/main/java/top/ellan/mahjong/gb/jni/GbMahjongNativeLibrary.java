@@ -33,6 +33,12 @@ final class GbMahjongNativeLibrary {
         }
     }
 
+    static void resetLoadState() {
+        synchronized (GbMahjongNativeLibrary.class) {
+            state = null;
+        }
+    }
+
     static String platformLibraryFileName(String osName) {
         String normalized = osName == null ? "" : osName.trim().toLowerCase();
         if (normalized.contains("win")) {

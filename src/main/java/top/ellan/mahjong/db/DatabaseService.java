@@ -2,14 +2,18 @@ package top.ellan.mahjong.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import top.ellan.mahjong.config.ConfigAccess;
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.config.PluginSettings;
+import top.ellan.mahjong.debug.DebugService;
+import top.ellan.mahjong.error.MahjongErrorCode;
+import top.ellan.mahjong.error.MahjongInfrastructureException;
 import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import top.ellan.mahjong.riichi.model.ScoreItem;
 import top.ellan.mahjong.riichi.model.ScoreSettlement;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.model.MahjongVariant;
+import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.net.ConnectException;
 import java.nio.file.Path;
@@ -21,38 +25,78 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
-import org.bukkit.configuration.ConfigurationSection;
+import java.util.logging.Logger;
 
 public final class DatabaseService {
-    private final MahjongPaperPlugin plugin;
+    private static final String LEADERBOARD_TIER_ORDER_SQL = """
+        CASE rank_tier
+            WHEN 'NOVICE' THEN 0
+            WHEN 'ADEPT' THEN 1
+            WHEN 'EXPERT' THEN 2
+            WHEN 'MASTER' THEN 3
+            WHEN 'SAINT' THEN 4
+            WHEN 'CELESTIAL' THEN 5
+            ELSE -1
+        END
+        """;
+
+    private final PluginSettings.DatabaseSettings databaseSettings;
+    private final DebugService debug;
+    private final AsyncService async;
+    private final Logger logger;
+    private final Path dataFolder;
+    private final boolean rankingEnabled;
+    private final String rankingEastRoom;
+    private final String rankingSouthRoom;
     private final String databaseType;
+    private final SqlDialect sqlDialect;
+    private final RankProfileUpsertStrategy rankProfileUpsertStrategy;
     private final HikariDataSource dataSource;
 
-    public DatabaseService(MahjongPaperPlugin plugin, ConfigurationSection config) throws InitializationException {
-        this.plugin = plugin;
-        this.databaseType = normalizedType(config);
+    public DatabaseService(
+        PluginSettings.DatabaseSettings settings,
+        DebugService debug,
+        AsyncService async,
+        Logger logger,
+        Path dataFolder,
+        boolean rankingEnabled,
+        String rankingEastRoom,
+        String rankingSouthRoom
+    ) {
+        this.databaseSettings = settings;
+        this.debug = Objects.requireNonNull(debug, "debug");
+        this.async = Objects.requireNonNull(async, "async");
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.dataFolder = Objects.requireNonNull(dataFolder, "dataFolder");
+        this.rankingEnabled = rankingEnabled;
+        this.rankingEastRoom = rankingEastRoom;
+        this.rankingSouthRoom = rankingSouthRoom;
+        this.databaseType = normalizedType(settings == null ? "h2" : settings.type());
+        this.sqlDialect = SqlDialect.fromDatabaseType(this.databaseType);
+        this.rankProfileUpsertStrategy = this.createRankProfileUpsertStrategy();
 
         HikariDataSource initialized = null;
         try {
-            initialized = new HikariDataSource(this.hikariConfig(config));
+            initialized = new HikariDataSource(this.hikariConfig());
             this.initializeSchema(initialized);
         } catch (RuntimeException | SQLException ex) {
             if (initialized != null) {
                 initialized.close();
             }
-            throw this.wrapInitializationException(config, ex);
+            throw this.wrapInitializationException(ex);
         }
         this.dataSource = initialized;
     }
 
-    public static boolean isEnabled(ConfigurationSection config) {
-        return ConfigAccess.bool(config, true, "enabled");
+    public static boolean isEnabled(PluginSettings.DatabaseSettings settings) {
+        return settings == null || settings.enabled();
     }
 
     public void close() {
@@ -64,84 +108,258 @@ public final class DatabaseService {
     }
 
     public boolean rankingEnabled() {
-        return this.plugin.settings().rankingEnabled();
+        return this.rankingEnabled;
     }
 
-    public void persistRoundResultAsync(MahjongTableSession session, RoundResolution resolution) {
-        this.plugin.debug().log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
-        this.plugin.async().execute("persist-round-result", () -> {
+    public void persistRoundResultAsync(TableSessionContext session, RoundResolution resolution) {
+        this.debug.log("database", "Queueing round persistence for table=" + session.id() + " title=" + resolution.getTitle());
+        this.async.execute("persist-round-result", () -> {
             try {
                 this.persistRoundResult(session, resolution);
-                this.plugin.debug().log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());
+                this.debug.log("database", "Persisted round result for table=" + session.id() + " title=" + resolution.getTitle());
             } catch (SQLException ex) {
-                this.plugin.getLogger().warning("Failed to persist round result to " + this.databaseType + ": " + ex.getMessage());
+                MahjongInfrastructureException failure = new MahjongInfrastructureException(
+                    MahjongErrorCode.DATABASE_OPERATION_FAILED,
+                    MahjongErrorCode.DATABASE_OPERATION_FAILED.publicMessage(),
+                    ex
+                );
+                this.logger.log(
+                    failure.logLevel(),
+                    failure.code().name() + " operation=persist-round-result databaseType=" + this.databaseType,
+                    ex
+                );
+            }
+        });
+    }
+
+    public void persistMatchRanksAsync(String tableId, MahjongVariant mode, MahjongRule.GameLength length, List<TableFinalStanding> standings) {
+        if (!this.rankingEnabled() || standings.isEmpty()) {
+            return;
+        }
+        List<TableFinalStanding> snapshot = List.copyOf(standings);
+        this.debug.log("database", "Queueing rank persistence for table=" + tableId + " standings=" + snapshot.size());
+        this.async.execute("persist-match-ranks", () -> {
+            try {
+                this.persistMatchRanks(tableId, mode, length, snapshot);
+                this.debug.log("database", "Persisted match rank results for table=" + tableId);
+            } catch (SQLException ex) {
+                MahjongInfrastructureException failure = new MahjongInfrastructureException(
+                    MahjongErrorCode.DATABASE_OPERATION_FAILED,
+                    MahjongErrorCode.DATABASE_OPERATION_FAILED.publicMessage(),
+                    ex
+                );
+                this.logger.log(
+                    failure.logLevel(),
+                    failure.code().name() + " operation=persist-match-ranks databaseType=" + this.databaseType,
+                    ex
+                );
             }
         });
     }
 
     public void persistMatchRanksAsync(String tableId, MahjongRule.GameLength length, List<TableFinalStanding> standings) {
-        if (!this.rankingEnabled() || standings.isEmpty()) {
-            return;
-        }
-        List<TableFinalStanding> snapshot = List.copyOf(standings);
-        this.plugin.debug().log("database", "Queueing rank persistence for table=" + tableId + " standings=" + snapshot.size());
-        this.plugin.async().execute("persist-match-ranks", () -> {
-            try {
-                this.persistMatchRanks(tableId, length, snapshot);
-                this.plugin.debug().log("database", "Persisted match rank results for table=" + tableId);
-            } catch (SQLException ex) {
-                this.plugin.getLogger().warning("Failed to persist match rank results to " + this.databaseType + ": " + ex.getMessage());
-            }
-        });
+        this.persistMatchRanksAsync(tableId, MahjongVariant.RIICHI, length, standings);
     }
 
     public MahjongSoulRankProfile loadRankProfile(java.util.UUID playerId, String displayName) throws SQLException {
+        return this.loadRankProfile(playerId, displayName, MahjongVariant.RIICHI);
+    }
+
+    public MahjongSoulRankProfile loadRankProfile(java.util.UUID playerId, String displayName, MahjongVariant mode) throws SQLException {
         if (!this.rankingEnabled()) {
             return MahjongSoulRankProfile.defaultProfile(playerId, displayName);
         }
         try (Connection connection = this.dataSource.getConnection()) {
-            MahjongSoulRankProfile profile = this.selectRankProfile(connection, playerId);
+            MahjongSoulRankProfile profile = this.selectRankProfile(connection, playerId, mode);
             return profile == null ? MahjongSoulRankProfile.defaultProfile(playerId, displayName) : profile;
         }
     }
 
-    void persistRoundResultSync(MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    public Map<MahjongVariant, MahjongSoulRankProfile> loadRankProfiles(java.util.UUID playerId, String displayName) throws SQLException {
+        Map<MahjongVariant, MahjongSoulRankProfile> profiles = new EnumMap<>(MahjongVariant.class);
+        if (!this.rankingEnabled()) {
+            for (MahjongVariant mode : MahjongVariant.values()) {
+                profiles.put(mode, MahjongSoulRankProfile.defaultProfile(playerId, displayName));
+            }
+            return profiles;
+        }
+        for (MahjongVariant mode : MahjongVariant.values()) {
+            profiles.put(mode, MahjongSoulRankProfile.defaultProfile(playerId, displayName));
+        }
+        try (Connection connection = this.dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("""
+                 SELECT player_uuid, mode_code, display_name, rank_tier, rank_level, rank_points,
+                        total_matches, first_places, second_places, third_places, fourth_places
+                 FROM player_rank_mode
+                 WHERE player_uuid = ?
+                 """)) {
+            statement.setString(1, playerId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    MahjongVariant mode = this.parseEnum(
+                        resultSet.getString("mode_code"),
+                        MahjongVariant.class,
+                        MahjongVariant.RIICHI,
+                        "player_rank_mode.mode_code"
+                    );
+                    profiles.put(mode, this.readRankProfile(resultSet));
+                }
+            }
+        }
+        return profiles;
+    }
+
+    public List<LeaderboardEntry> loadLeaderboard(MahjongVariant mode, int limit) throws SQLException {
+        return this.loadLeaderboard(mode, limit, 0);
+    }
+
+    public List<LeaderboardEntry> loadLeaderboard(MahjongVariant mode, int limit, int offset) throws SQLException {
+        MahjongVariant rankMode = normalizeRankMode(mode);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        int safeOffset = Math.max(0, offset);
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        try (Connection connection = this.dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("""
+                 SELECT player_uuid, display_name, rank_tier, rank_level, rank_points,
+                        total_matches, first_places, second_places, third_places, fourth_places
+                 FROM player_rank_mode
+                 WHERE mode_code = ? AND total_matches > 0
+                 ORDER BY
+                 """ + LEADERBOARD_TIER_ORDER_SQL + """
+                    DESC,
+                    rank_level DESC,
+                    rank_points DESC,
+                    total_matches DESC,
+                    LOWER(display_name) ASC
+                 LIMIT ? OFFSET ?
+                 """)) {
+            statement.setString(1, rankMode.name());
+            statement.setInt(2, safeLimit);
+            statement.setInt(3, safeOffset);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                int rank = safeOffset + 1;
+                while (resultSet.next()) {
+                    entries.add(new LeaderboardEntry(rankMode, rank++, this.readRankProfile(resultSet)));
+                }
+            }
+        }
+        return List.copyOf(entries);
+    }
+
+    void persistRoundResultSync(TableSessionContext session, RoundResolution resolution) throws SQLException {
         this.persistRoundResult(session, resolution);
     }
 
-    void persistMatchRanksSync(String tableId, MahjongRule.GameLength length, List<TableFinalStanding> standings) throws SQLException {
-        this.persistMatchRanks(tableId, length, standings);
+    void persistMatchRanksSync(String tableId, MahjongVariant mode, MahjongRule.GameLength length, List<TableFinalStanding> standings) throws SQLException {
+        this.persistMatchRanks(tableId, mode, length, standings);
     }
 
-    private HikariConfig hikariConfig(ConfigurationSection config) {
+    void persistMatchRanksSync(String tableId, MahjongRule.GameLength length, List<TableFinalStanding> standings) throws SQLException {
+        this.persistMatchRanksSync(tableId, MahjongVariant.RIICHI, length, standings);
+    }
+
+    public List<PersistentTableRecord> loadPersistentTables() throws SQLException {
+        try (Connection connection = this.dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("""
+                 SELECT table_id, world_name, center_x, center_y, center_z, owner_uuid, variant, bot_match,
+                        rule_length, rule_thinking_time, rule_starting_points, rule_min_points_to_win,
+                        rule_minimum_han, rule_spectate, rule_red_five, rule_open_tanyao,
+                        rule_local_yaku, rule_ron_mode, rule_riichi_profile
+                 FROM persistent_table
+                 ORDER BY table_id
+                 """);
+             ResultSet resultSet = statement.executeQuery()) {
+            List<PersistentTableRecord> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                String id = resultSet.getString("table_id");
+                MahjongRule rule = this.readPersistentRule(resultSet);
+                MahjongVariant variant = this.parseEnum(
+                    resultSet.getString("variant"),
+                    MahjongVariant.class,
+                    MahjongVariant.RIICHI,
+                    "persistent_table.variant"
+                );
+                rows.add(new PersistentTableRecord(
+                    id,
+                    resultSet.getString("world_name"),
+                    resultSet.getDouble("center_x"),
+                    resultSet.getDouble("center_y"),
+                    resultSet.getDouble("center_z"),
+                    this.parseUuid(resultSet.getString("owner_uuid"), "persistent_table.owner_uuid"),
+                    variant,
+                    rule,
+                    resultSet.getBoolean("bot_match")
+                ));
+            }
+            return List.copyOf(rows);
+        }
+    }
+
+    public void replacePersistentTables(List<PersistentTableRecord> tables) throws SQLException {
+        List<PersistentTableRecord> safeTables = tables == null ? List.of() : List.copyOf(tables);
+        try (Connection connection = this.dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement clear = connection.prepareStatement("DELETE FROM persistent_table");
+                 PreparedStatement insert = connection.prepareStatement("""
+                     INSERT INTO persistent_table (
+                         table_id, world_name, center_x, center_y, center_z, owner_uuid, variant, bot_match,
+                         rule_length, rule_thinking_time, rule_starting_points, rule_min_points_to_win,
+                         rule_minimum_han, rule_spectate, rule_red_five, rule_open_tanyao,
+                         rule_local_yaku, rule_ron_mode, rule_riichi_profile, updated_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     """)) {
+                clear.executeUpdate();
+                for (PersistentTableRecord table : safeTables) {
+                    this.bindPersistentTable(insert, table);
+                    insert.addBatch();
+                }
+                if (!safeTables.isEmpty()) {
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private HikariConfig hikariConfig() {
         HikariConfig hikari = new HikariConfig();
-        ConfigurationSection pool = pool(config);
+        PluginSettings.DatabasePoolSettings pool = this.databaseSettings == null
+            ? new PluginSettings.DatabasePoolSettings(10, 2, 10000L)
+            : this.databaseSettings.pool();
         hikari.setPoolName("MahjongPaper-" + this.databaseType.toUpperCase(Locale.ROOT));
-        hikari.setMaximumPoolSize(ConfigAccess.integer(pool, 10, "maxSize", "maximumPoolSize"));
-        hikari.setMinimumIdle(ConfigAccess.integer(pool, 2, "minIdle", "minimumIdle"));
-        hikari.setConnectionTimeout(ConfigAccess.longValue(pool, 10000L, "connectionTimeoutMillis"));
+        hikari.setMaximumPoolSize(pool == null ? 10 : pool.maxSize());
+        hikari.setMinimumIdle(pool == null ? 2 : pool.minIdle());
+        hikari.setConnectionTimeout(pool == null ? 10000L : pool.connectionTimeoutMillis());
         hikari.setAutoCommit(true);
         hikari.setConnectionTestQuery("SELECT 1");
 
         if ("h2".equals(this.databaseType)) {
-            ConfigurationSection h2 = this.h2(config);
-            String rawPath = Objects.requireNonNull(ConfigAccess.string(h2, null, "path"), "database.h2.path");
-            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
+            PluginSettings.DatabaseH2Settings h2 = this.databaseSettings == null ? null : this.databaseSettings.h2();
+            String rawPath = Objects.requireNonNull(h2 == null ? "data/mahjongpaper" : h2.path(), "database.h2.path");
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.dataFolder, rawPath);
             Path parent = resolvedPath.getParent();
             if (parent != null) {
                 parent.toFile().mkdirs();
             }
             hikari.setDriverClassName("org.h2.Driver");
-            hikari.setJdbcUrl("jdbc:h2:file:" + resolvedPath.toString().replace('\\', '/') + appendH2Parameters(ConfigAccess.string(h2, "", "parameters")));
-            hikari.setUsername(ConfigAccess.string(h2, "sa", "username"));
-            hikari.setPassword(ConfigAccess.string(h2, "", "password"));
+            hikari.setJdbcUrl("jdbc:h2:file:" + resolvedPath.toString().replace('\\', '/')
+                + appendH2Parameters(h2 == null ? "" : Objects.toString(h2.parameters(), "")));
+            hikari.setUsername(h2 == null ? "sa" : Objects.toString(h2.username(), "sa"));
+            hikari.setPassword(h2 == null ? "" : Objects.toString(h2.password(), ""));
             return hikari;
         }
 
-        String host = Objects.requireNonNull(ConfigAccess.string(config, null, "connection.host", "host"), "database.host");
-        int port = ConfigAccess.integer(config, 3306, "connection.port", "port");
-        String database = Objects.requireNonNull(ConfigAccess.string(config, null, "connection.name", "name"), "database.name");
-        String parameters = ConfigAccess.string(config, "", "connection.parameters", "parameters");
+        PluginSettings.DatabaseConnectionSettings connection = this.databaseSettings == null ? null : this.databaseSettings.connection();
+        PluginSettings.DatabaseCredentialsSettings credentials = this.databaseSettings == null ? null : this.databaseSettings.credentials();
+        String host = Objects.requireNonNull(connection == null ? "127.0.0.1" : connection.host(), "database.host");
+        int port = connection == null ? 3306 : connection.port();
+        String database = Objects.requireNonNull(connection == null ? "mahjongpaper" : connection.name(), "database.name");
+        String parameters = connection == null ? "" : Objects.toString(connection.parameters(), "");
 
         if ("mysql".equals(this.databaseType)) {
             hikari.setDriverClassName("com.mysql.cj.jdbc.Driver");
@@ -150,8 +368,8 @@ public final class DatabaseService {
             hikari.setDriverClassName("org.mariadb.jdbc.Driver");
             hikari.setJdbcUrl("jdbc:mariadb://" + host + ":" + port + "/" + database + (parameters.isBlank() ? "" : "?" + parameters));
         }
-        hikari.setUsername(Objects.requireNonNull(ConfigAccess.string(config, null, "credentials.username", "username"), "database.username"));
-        hikari.setPassword(ConfigAccess.string(config, "", "credentials.password", "password"));
+        hikari.setUsername(Objects.requireNonNull(credentials == null ? "root" : credentials.username(), "database.username"));
+        hikari.setPassword(credentials == null ? "" : Objects.toString(credentials.password(), ""));
         return hikari;
     }
 
@@ -212,11 +430,29 @@ public final class DatabaseService {
                 )
                 """);
             statement.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS player_rank_mode (
+                    player_uuid VARCHAR(36) NOT NULL,
+                    mode_code VARCHAR(16) NOT NULL,
+                    display_name VARCHAR(64) NOT NULL,
+                    rank_tier VARCHAR(16) NOT NULL,
+                    rank_level INT NOT NULL,
+                    rank_points INT NOT NULL,
+                    total_matches INT NOT NULL DEFAULT 0,
+                    first_places INT NOT NULL DEFAULT 0,
+                    second_places INT NOT NULL DEFAULT 0,
+                    third_places INT NOT NULL DEFAULT 0,
+                    fourth_places INT NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (player_uuid, mode_code)
+                )
+                """);
+            statement.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS rank_history (
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
                     table_id VARCHAR(32) NOT NULL,
                     player_uuid VARCHAR(36) NOT NULL,
                     display_name VARCHAR(64) NOT NULL,
+                    mode_code VARCHAR(16) NOT NULL DEFAULT 'RIICHI',
                     room_code VARCHAR(16) NOT NULL,
                     match_length VARCHAR(16) NOT NULL,
                     place INT NOT NULL,
@@ -231,10 +467,89 @@ public final class DatabaseService {
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
+            this.addColumnIfMissing(connection, "rank_history", "mode_code", "VARCHAR(16) NOT NULL DEFAULT 'RIICHI'");
+            this.migrateLegacyRankProfiles(connection);
+            statement.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS persistent_table (
+                    table_id VARCHAR(32) PRIMARY KEY,
+                    world_name VARCHAR(128) NULL,
+                    center_x DOUBLE NOT NULL,
+                    center_y DOUBLE NOT NULL,
+                    center_z DOUBLE NOT NULL,
+                    owner_uuid VARCHAR(36) NULL,
+                    variant VARCHAR(16) NOT NULL,
+                    bot_match BOOLEAN NOT NULL DEFAULT FALSE,
+                    rule_length VARCHAR(16) NOT NULL,
+                    rule_thinking_time VARCHAR(16) NOT NULL,
+                    rule_starting_points INT NOT NULL,
+                    rule_min_points_to_win INT NOT NULL,
+                    rule_minimum_han VARCHAR(16) NOT NULL,
+                    rule_spectate BOOLEAN NOT NULL,
+                    rule_red_five VARCHAR(16) NOT NULL,
+                    rule_open_tanyao BOOLEAN NOT NULL,
+                    rule_local_yaku BOOLEAN NOT NULL,
+                    rule_ron_mode VARCHAR(16) NOT NULL,
+                    rule_riichi_profile VARCHAR(16) NOT NULL,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+            this.addColumnIfMissing(connection, "persistent_table", "owner_uuid", "VARCHAR(36) NULL");
         }
     }
 
-    private void persistRoundResult(MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    private void addColumnIfMissing(Connection connection, String tableName, String columnName, String columnDefinition) throws SQLException {
+        if (this.columnExists(connection, tableName, columnName)) {
+            return;
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
+        }
+    }
+
+    private boolean columnExists(Connection connection, String tableName, String columnName) throws SQLException {
+        String catalog = connection.getCatalog();
+        String[] tableCandidates = {
+            tableName,
+            tableName.toUpperCase(Locale.ROOT),
+            tableName.toLowerCase(Locale.ROOT)
+        };
+        String[] columnCandidates = {
+            columnName,
+            columnName.toUpperCase(Locale.ROOT),
+            columnName.toLowerCase(Locale.ROOT)
+        };
+        for (String tableCandidate : tableCandidates) {
+            for (String columnCandidate : columnCandidates) {
+                try (ResultSet columns = connection.getMetaData().getColumns(catalog, null, tableCandidate, columnCandidate)) {
+                    if (columns.next()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void migrateLegacyRankProfiles(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                INSERT INTO player_rank_mode (
+                    player_uuid, mode_code, display_name, rank_tier, rank_level, rank_points,
+                    total_matches, first_places, second_places, third_places, fourth_places, updated_at
+                )
+                SELECT player_uuid, 'RIICHI', display_name, rank_tier, rank_level, rank_points,
+                       total_matches, first_places, second_places, third_places, fourth_places, updated_at
+                FROM player_rank legacy
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM player_rank_mode mode_rank
+                    WHERE mode_rank.player_uuid = legacy.player_uuid
+                      AND mode_rank.mode_code = 'RIICHI'
+                )
+                """);
+        }
+    }
+
+    private void persistRoundResult(TableSessionContext session, RoundResolution resolution) throws SQLException {
         Map<String, ScoreItem> scoreItemsByUuid = this.scoreItemsByUuid(resolution.getScoreSettlement());
         Map<String, YakuSettlement> yakuByUuid = this.yakuSettlementsByUuid(resolution.getYakuSettlements());
 
@@ -255,7 +570,7 @@ public final class DatabaseService {
         }
     }
 
-    private long insertRoundHistory(Connection connection, MahjongTableSession session, RoundResolution resolution) throws SQLException {
+    private long insertRoundHistory(Connection connection, TableSessionContext session, RoundResolution resolution) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
             INSERT INTO round_history (
                 table_id, resolution_title, round_display, dealer_name, draw_type,
@@ -286,7 +601,7 @@ public final class DatabaseService {
         Connection connection,
         long roundHistoryId,
         String uuid,
-        MahjongTableSession session,
+        TableSessionContext session,
         ScoreItem scoreItem,
         YakuSettlement yakuSettlement
     ) throws SQLException {
@@ -340,19 +655,26 @@ public final class DatabaseService {
         return results;
     }
 
-    private void persistMatchRanks(String tableId, MahjongRule.GameLength gameLength, List<TableFinalStanding> standings) throws SQLException {
+    private void persistMatchRanks(
+        String tableId,
+        MahjongVariant mode,
+        MahjongRule.GameLength gameLength,
+        List<TableFinalStanding> standings
+    ) throws SQLException {
+        MahjongVariant rankMode = normalizeRankMode(mode);
         List<TableFinalStanding> humanStandings = standings.stream()
             .filter(standing -> !standing.bot())
             .toList();
-        if (humanStandings.isEmpty()) {
+        if (humanStandings.size() < 4) {
+            this.debug.log("database", "Skipping rank persistence for table=" + tableId + " mode=" + rankMode.name() + ": ranked matches require 4 human players");
             return;
         }
 
         MahjongSoulRankRules.MatchLength matchLength = MahjongSoulRankRules.matchLength(gameLength);
         MahjongSoulRankRules.Room room = MahjongSoulRankRules.roomFor(
             matchLength,
-            this.plugin.settings().rankingEastRoom(),
-            this.plugin.settings().rankingSouthRoom()
+            this.rankingEastRoom,
+            this.rankingSouthRoom
         );
 
         try (Connection connection = this.dataSource.getConnection()) {
@@ -361,7 +683,7 @@ public final class DatabaseService {
                 Map<java.util.UUID, MahjongSoulRankProfile> currentProfiles = new HashMap<>();
                 boolean allPlayersCelestial = true;
                 for (TableFinalStanding standing : humanStandings) {
-                    MahjongSoulRankProfile current = this.selectRankProfile(connection, standing.playerId());
+                    MahjongSoulRankProfile current = this.selectRankProfile(connection, standing.playerId(), rankMode);
                     if (current == null) {
                         current = MahjongSoulRankProfile.defaultProfile(standing.playerId(), standing.displayName());
                     }
@@ -370,6 +692,7 @@ public final class DatabaseService {
                         allPlayersCelestial = false;
                     }
                 }
+                List<MahjongSoulRankProfile> fieldProfiles = List.copyOf(currentProfiles.values());
 
                 for (TableFinalStanding standing : humanStandings) {
                     MahjongSoulRankProfile current = currentProfiles.get(standing.playerId());
@@ -379,10 +702,11 @@ public final class DatabaseService {
                         matchLength,
                         standing.place(),
                         standing.points(),
-                        allPlayersCelestial
+                        allPlayersCelestial,
+                        fieldProfiles
                     );
-                    this.upsertRankProfile(connection, result.updated().playerId(), result.updated());
-                    this.insertRankHistory(connection, tableId, standing.displayName(), result);
+                    this.upsertRankProfile(connection, result.updated().playerId(), rankMode, result.updated());
+                    this.insertRankHistory(connection, tableId, rankMode, standing.displayName(), result);
                 }
                 connection.commit();
             } catch (SQLException ex) {
@@ -427,47 +751,60 @@ public final class DatabaseService {
         return joiner.toString();
     }
 
-    private static ConfigurationSection pool(ConfigurationSection config) {
-        ConfigurationSection pool = ConfigAccess.firstSection(config, "pool");
-        if (pool == null) {
-            throw new IllegalStateException("database.pool section is required");
-        }
-        return pool;
-    }
-
-    private ConfigurationSection h2(ConfigurationSection config) {
-        return Objects.requireNonNull(ConfigAccess.firstSection(config, "h2"), "database.h2");
-    }
-
-    private static String normalizedType(ConfigurationSection config) {
-        String type = ConfigAccess.string(config, "h2", "connection.type", "type").trim().toLowerCase(Locale.ROOT);
+    private static String normalizedType(String rawType) {
+        String type = Objects.toString(rawType, "h2").trim().toLowerCase(Locale.ROOT);
         return switch (type) {
             case "mariadb", "mysql", "h2" -> type;
             default -> throw new IllegalArgumentException("Unsupported database.type: " + type);
         };
     }
 
+    private static MahjongVariant normalizeRankMode(MahjongVariant mode) {
+        return mode == null ? MahjongVariant.RIICHI : mode;
+    }
+
+    private static int compareLeaderboardProfiles(MahjongSoulRankProfile left, MahjongSoulRankProfile right) {
+        int tier = Integer.compare(right.tier().ordinal(), left.tier().ordinal());
+        if (tier != 0) {
+            return tier;
+        }
+        int level = Integer.compare(right.level(), left.level());
+        if (level != 0) {
+            return level;
+        }
+        int points = Integer.compare(right.rankPoints(), left.rankPoints());
+        if (points != 0) {
+            return points;
+        }
+        int matches = Integer.compare(right.totalMatches(), left.totalMatches());
+        if (matches != 0) {
+            return matches;
+        }
+        return left.displayName().compareToIgnoreCase(right.displayName());
+    }
+
     private static String appendH2Parameters(String parameters) {
         return parameters.isBlank() ? "" : ";" + parameters;
     }
 
-    private InitializationException wrapInitializationException(ConfigurationSection config, Exception cause) {
+    private InitializationException wrapInitializationException(Exception cause) {
         Throwable rootCause = rootCause(cause);
-        return new InitializationException(this.databaseType, this.userFacingReason(config, rootCause), cause, rootCause);
+        return new InitializationException(this.databaseType, this.userFacingReason(rootCause), cause, rootCause);
     }
 
-    private String userFacingReason(ConfigurationSection config, Throwable rootCause) {
+    private String userFacingReason(Throwable rootCause) {
         if ("h2".equals(this.databaseType)) {
-            ConfigurationSection h2 = this.h2(config);
-            String rawPath = ConfigAccess.string(h2, "data/mahjongpaper", "path");
-            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.plugin.getDataFolder().toPath(), rawPath);
+            PluginSettings.DatabaseH2Settings h2 = this.databaseSettings == null ? null : this.databaseSettings.h2();
+            String rawPath = h2 == null ? "data/mahjongpaper" : Objects.toString(h2.path(), "data/mahjongpaper");
+            Path resolvedPath = DatabasePaths.resolveH2FilePath(this.dataFolder, rawPath);
             return "Could not open the H2 database file. Resolved path: " + resolvedPath
                 + ". Check database.h2.path and make sure the plugin folder is writable.";
         }
 
-        String host = ConfigAccess.string(config, "127.0.0.1", "connection.host", "host");
-        int port = ConfigAccess.integer(config, 3306, "connection.port", "port");
-        String database = ConfigAccess.string(config, "mahjongpaper", "connection.name", "name");
+        PluginSettings.DatabaseConnectionSettings connection = this.databaseSettings == null ? null : this.databaseSettings.connection();
+        String host = connection == null ? "127.0.0.1" : Objects.toString(connection.host(), "127.0.0.1");
+        int port = connection == null ? 3306 : connection.port();
+        String database = connection == null ? "mahjongpaper" : Objects.toString(connection.name(), "mahjongpaper");
         String target = host + ":" + port + "/" + database;
         String databaseLabel = "mysql".equals(this.databaseType) ? "MySQL" : "MariaDB";
         String message = Objects.toString(rootCause.getMessage(), "");
@@ -500,136 +837,237 @@ public final class DatabaseService {
         }
     }
 
-    private MahjongSoulRankProfile selectRankProfile(Connection connection, java.util.UUID playerId) throws SQLException {
+    private MahjongSoulRankProfile selectRankProfile(Connection connection, java.util.UUID playerId, MahjongVariant mode) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
             SELECT player_uuid, display_name, rank_tier, rank_level, rank_points,
                    total_matches, first_places, second_places, third_places, fourth_places
-            FROM player_rank
-            WHERE player_uuid = ?
+            FROM player_rank_mode
+            WHERE player_uuid = ? AND mode_code = ?
             """)) {
             statement.setString(1, playerId.toString());
+            statement.setString(2, normalizeRankMode(mode).name());
             try (ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    return null;
-                }
-                return new MahjongSoulRankProfile(
-                    java.util.UUID.fromString(resultSet.getString("player_uuid")),
-                    resultSet.getString("display_name"),
-                    MahjongSoulRankRules.Tier.valueOf(resultSet.getString("rank_tier")),
-                    resultSet.getInt("rank_level"),
-                    resultSet.getInt("rank_points"),
-                    resultSet.getInt("total_matches"),
-                    resultSet.getInt("first_places"),
-                    resultSet.getInt("second_places"),
-                    resultSet.getInt("third_places"),
-                    resultSet.getInt("fourth_places")
-                );
+                return resultSet.next() ? this.readRankProfile(resultSet) : null;
             }
         }
     }
 
-    private void upsertRankProfile(Connection connection, java.util.UUID playerId, MahjongSoulRankProfile profile) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("""
-            MERGE INTO player_rank (
-                player_uuid, display_name, rank_tier, rank_level, rank_points,
-                total_matches, first_places, second_places, third_places, fourth_places, updated_at
-            ) KEY (player_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """)) {
-            statement.setString(1, playerId.toString());
-            statement.setString(2, profile.displayName());
-            statement.setString(3, profile.tier().name());
-            statement.setInt(4, profile.level());
-            statement.setInt(5, profile.rankPoints());
-            statement.setInt(6, profile.totalMatches());
-            statement.setInt(7, profile.firstPlaces());
-            statement.setInt(8, profile.secondPlaces());
-            statement.setInt(9, profile.thirdPlaces());
-            statement.setInt(10, profile.fourthPlaces());
-            statement.setTimestamp(11, Timestamp.from(Instant.now()));
-            statement.executeUpdate();
-        } catch (SQLException mergeFailure) {
-            this.upsertRankProfilePortable(connection, playerId, profile, mergeFailure);
-        }
+    private MahjongSoulRankProfile readRankProfile(ResultSet resultSet) throws SQLException {
+        return new MahjongSoulRankProfile(
+            java.util.UUID.fromString(resultSet.getString("player_uuid")),
+            resultSet.getString("display_name"),
+            MahjongSoulRankRules.Tier.valueOf(resultSet.getString("rank_tier")),
+            resultSet.getInt("rank_level"),
+            resultSet.getInt("rank_points"),
+            resultSet.getInt("total_matches"),
+            resultSet.getInt("first_places"),
+            resultSet.getInt("second_places"),
+            resultSet.getInt("third_places"),
+            resultSet.getInt("fourth_places")
+        );
     }
 
-    private void upsertRankProfilePortable(Connection connection, java.util.UUID playerId, MahjongSoulRankProfile profile, SQLException mergeFailure) throws SQLException {
-        try (PreparedStatement update = connection.prepareStatement("""
-            UPDATE player_rank SET
-                display_name = ?, rank_tier = ?, rank_level = ?, rank_points = ?,
-                total_matches = ?, first_places = ?, second_places = ?, third_places = ?, fourth_places = ?, updated_at = ?
-            WHERE player_uuid = ?
-            """)) {
-            update.setString(1, profile.displayName());
-            update.setString(2, profile.tier().name());
-            update.setInt(3, profile.level());
-            update.setInt(4, profile.rankPoints());
-            update.setInt(5, profile.totalMatches());
-            update.setInt(6, profile.firstPlaces());
-            update.setInt(7, profile.secondPlaces());
-            update.setInt(8, profile.thirdPlaces());
-            update.setInt(9, profile.fourthPlaces());
-            update.setTimestamp(10, Timestamp.from(Instant.now()));
-            update.setString(11, playerId.toString());
-            if (update.executeUpdate() > 0) {
-                return;
-            }
-        }
-        try (PreparedStatement insert = connection.prepareStatement("""
-            INSERT INTO player_rank (
-                player_uuid, display_name, rank_tier, rank_level, rank_points,
-                total_matches, first_places, second_places, third_places, fourth_places, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """)) {
-            insert.setString(1, playerId.toString());
-            insert.setString(2, profile.displayName());
-            insert.setString(3, profile.tier().name());
-            insert.setInt(4, profile.level());
-            insert.setInt(5, profile.rankPoints());
-            insert.setInt(6, profile.totalMatches());
-            insert.setInt(7, profile.firstPlaces());
-            insert.setInt(8, profile.secondPlaces());
-            insert.setInt(9, profile.thirdPlaces());
-            insert.setInt(10, profile.fourthPlaces());
-            insert.setTimestamp(11, Timestamp.from(Instant.now()));
-            insert.executeUpdate();
-        } catch (SQLException insertFailure) {
-            insertFailure.addSuppressed(mergeFailure);
-            throw insertFailure;
-        }
+    private void upsertRankProfile(Connection connection, java.util.UUID playerId, MahjongVariant mode, MahjongSoulRankProfile profile) throws SQLException {
+        this.rankProfileUpsertStrategy.upsert(connection, playerId, normalizeRankMode(mode), profile);
     }
 
     private void insertRankHistory(
         Connection connection,
         String tableId,
+        MahjongVariant mode,
         String displayName,
         MahjongSoulRankRules.RankedMatchResult result
     ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
             INSERT INTO rank_history (
-                table_id, player_uuid, display_name, room_code, match_length, place, raw_score, rank_point_change,
+                table_id, player_uuid, display_name, mode_code, room_code, match_length, place, raw_score, rank_point_change,
                 previous_tier, previous_level, previous_points, updated_tier, updated_level, updated_points, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)) {
             statement.setString(1, tableId);
             statement.setString(2, result.updated().playerId().toString());
             statement.setString(3, displayName);
-            statement.setString(4, result.room().name());
-            statement.setString(5, result.length().name());
-            statement.setInt(6, result.place());
-            statement.setInt(7, result.rawScore());
-            statement.setInt(8, result.rankPointChange());
-            statement.setString(9, result.previous().tier().name());
-            statement.setInt(10, result.previous().level());
-            statement.setInt(11, result.previous().rankPoints());
-            statement.setString(12, result.updated().tier().name());
-            statement.setInt(13, result.updated().level());
-            statement.setInt(14, result.updated().rankPoints());
-            statement.setTimestamp(15, Timestamp.from(Instant.now()));
+            statement.setString(4, normalizeRankMode(mode).name());
+            statement.setString(5, result.room().name());
+            statement.setString(6, result.length().name());
+            statement.setInt(7, result.place());
+            statement.setInt(8, result.rawScore());
+            statement.setInt(9, result.rankPointChange());
+            statement.setString(10, result.previous().tier().name());
+            statement.setInt(11, result.previous().level());
+            statement.setInt(12, result.previous().rankPoints());
+            statement.setString(13, result.updated().tier().name());
+            statement.setInt(14, result.updated().level());
+            statement.setInt(15, result.updated().rankPoints());
+            statement.setTimestamp(16, Timestamp.from(Instant.now()));
             statement.executeUpdate();
         }
     }
 
-    public static final class InitializationException extends Exception {
+    private RankProfileUpsertStrategy createRankProfileUpsertStrategy() {
+        return switch (this.sqlDialect) {
+            case H2 -> this::upsertRankProfileForH2;
+            case MYSQL_FAMILY -> this::upsertRankProfileForMySqlFamily;
+        };
+    }
+
+    private void upsertRankProfileForH2(Connection connection, java.util.UUID playerId, MahjongVariant mode, MahjongSoulRankProfile profile) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+            MERGE INTO player_rank_mode (
+                player_uuid, mode_code, display_name, rank_tier, rank_level, rank_points,
+                total_matches, first_places, second_places, third_places, fourth_places, updated_at
+            ) KEY (player_uuid, mode_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+            this.bindRankProfile(statement, playerId, mode, profile, Timestamp.from(Instant.now()));
+            statement.executeUpdate();
+        }
+    }
+
+    private void upsertRankProfileForMySqlFamily(Connection connection, java.util.UUID playerId, MahjongVariant mode, MahjongSoulRankProfile profile) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+            INSERT INTO player_rank_mode (
+                player_uuid, mode_code, display_name, rank_tier, rank_level, rank_points,
+                total_matches, first_places, second_places, third_places, fourth_places, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                display_name = VALUES(display_name),
+                rank_tier = VALUES(rank_tier),
+                rank_level = VALUES(rank_level),
+                rank_points = VALUES(rank_points),
+                total_matches = VALUES(total_matches),
+                first_places = VALUES(first_places),
+                second_places = VALUES(second_places),
+                third_places = VALUES(third_places),
+                fourth_places = VALUES(fourth_places),
+                updated_at = VALUES(updated_at)
+            """)) {
+            this.bindRankProfile(statement, playerId, mode, profile, Timestamp.from(Instant.now()));
+            statement.executeUpdate();
+        }
+    }
+
+    private void bindRankProfile(
+        PreparedStatement statement,
+        java.util.UUID playerId,
+        MahjongVariant mode,
+        MahjongSoulRankProfile profile,
+        Timestamp updatedAt
+    ) throws SQLException {
+        statement.setString(1, playerId.toString());
+        statement.setString(2, normalizeRankMode(mode).name());
+        statement.setString(3, profile.displayName());
+        statement.setString(4, profile.tier().name());
+        statement.setInt(5, profile.level());
+        statement.setInt(6, profile.rankPoints());
+        statement.setInt(7, profile.totalMatches());
+        statement.setInt(8, profile.firstPlaces());
+        statement.setInt(9, profile.secondPlaces());
+        statement.setInt(10, profile.thirdPlaces());
+        statement.setInt(11, profile.fourthPlaces());
+        statement.setTimestamp(12, updatedAt);
+    }
+
+    private MahjongRule readPersistentRule(ResultSet resultSet) throws SQLException {
+        MahjongRule rule = new MahjongRule();
+        rule.setLength(this.parseEnum(resultSet.getString("rule_length"), MahjongRule.GameLength.class, rule.getLength(), "persistent_table.rule_length"));
+        rule.setThinkingTime(this.parseEnum(resultSet.getString("rule_thinking_time"), MahjongRule.ThinkingTime.class, rule.getThinkingTime(), "persistent_table.rule_thinking_time"));
+        rule.setStartingPoints(resultSet.getInt("rule_starting_points"));
+        rule.setMinPointsToWin(resultSet.getInt("rule_min_points_to_win"));
+        rule.setMinimumHan(this.parseEnum(resultSet.getString("rule_minimum_han"), MahjongRule.MinimumHan.class, rule.getMinimumHan(), "persistent_table.rule_minimum_han"));
+        rule.setSpectate(resultSet.getBoolean("rule_spectate"));
+        rule.setRedFive(this.parseEnum(resultSet.getString("rule_red_five"), MahjongRule.RedFive.class, rule.getRedFive(), "persistent_table.rule_red_five"));
+        rule.setOpenTanyao(resultSet.getBoolean("rule_open_tanyao"));
+        rule.setLocalYaku(resultSet.getBoolean("rule_local_yaku"));
+        rule.setRonMode(this.parseEnum(resultSet.getString("rule_ron_mode"), MahjongRule.RonMode.class, rule.getRonMode(), "persistent_table.rule_ron_mode"));
+        rule.setRiichiProfile(this.parseEnum(resultSet.getString("rule_riichi_profile"), MahjongRule.RiichiProfile.class, rule.getRiichiProfile(), "persistent_table.rule_riichi_profile"));
+        return rule;
+    }
+
+    private void bindPersistentTable(PreparedStatement statement, PersistentTableRecord table) throws SQLException {
+        MahjongRule rule = table.rule() == null ? new MahjongRule() : table.rule();
+        statement.setString(1, table.id());
+        statement.setString(2, table.worldName());
+        statement.setDouble(3, table.x());
+        statement.setDouble(4, table.y());
+        statement.setDouble(5, table.z());
+        statement.setString(6, table.ownerId() == null ? null : table.ownerId().toString());
+        statement.setString(7, (table.variant() == null ? MahjongVariant.RIICHI : table.variant()).name());
+        statement.setBoolean(8, table.botMatch());
+        statement.setString(9, rule.getLength().name());
+        statement.setString(10, rule.getThinkingTime().name());
+        statement.setInt(11, rule.getStartingPoints());
+        statement.setInt(12, rule.getMinPointsToWin());
+        statement.setString(13, rule.getMinimumHan().name());
+        statement.setBoolean(14, rule.getSpectate());
+        statement.setString(15, rule.getRedFive().name());
+        statement.setBoolean(16, rule.getOpenTanyao());
+        statement.setBoolean(17, rule.getLocalYaku());
+        statement.setString(18, rule.getRonMode().name());
+        statement.setString(19, rule.getRiichiProfile().name());
+        statement.setTimestamp(20, Timestamp.from(Instant.now()));
+    }
+
+    private java.util.UUID parseUuid(String rawValue, String columnName) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+        try {
+            return java.util.UUID.fromString(rawValue.trim());
+        } catch (IllegalArgumentException ex) {
+            this.logger.warning(
+                "Invalid database value '" + rawValue + "' for " + columnName + ", ignoring it."
+            );
+            return null;
+        }
+    }
+
+    private <E extends Enum<E>> E parseEnum(String rawValue, Class<E> enumType, E fallback, String columnName) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(enumType, rawValue.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            this.logger.warning(
+                "Invalid database value '" + rawValue + "' for " + columnName + ", using " + fallback.name() + " instead."
+            );
+            return fallback;
+        }
+    }
+
+    private interface RankProfileUpsertStrategy {
+        void upsert(Connection connection, java.util.UUID playerId, MahjongVariant mode, MahjongSoulRankProfile profile) throws SQLException;
+    }
+
+    private enum SqlDialect {
+        H2,
+        MYSQL_FAMILY;
+
+        private static SqlDialect fromDatabaseType(String databaseType) {
+            if ("h2".equals(databaseType)) {
+                return H2;
+            }
+            return MYSQL_FAMILY;
+        }
+    }
+
+    public record PersistentTableRecord(
+        String id,
+        String worldName,
+        double x,
+        double y,
+        double z,
+        java.util.UUID ownerId,
+        MahjongVariant variant,
+        MahjongRule rule,
+        boolean botMatch
+    ) {
+    }
+
+    public record LeaderboardEntry(MahjongVariant mode, int position, MahjongSoulRankProfile profile) {
+    }
+
+    public static final class InitializationException extends RuntimeException {
         private final String databaseType;
         private final String userFacingReason;
         private final Throwable rootCause;
@@ -654,6 +1092,3 @@ public final class DatabaseService {
         }
     }
 }
-
-
-

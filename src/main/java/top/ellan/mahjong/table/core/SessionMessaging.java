@@ -1,14 +1,16 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongVariant;
+
 import top.ellan.mahjong.model.SeatWind;
 import java.util.Locale;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 
 final class SessionMessaging {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    SessionMessaging(MahjongTableSession session) {
+    SessionMessaging(TableSessionContext session) {
         this.session = session;
     }
 

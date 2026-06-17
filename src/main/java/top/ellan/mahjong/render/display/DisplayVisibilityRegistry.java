@@ -52,6 +52,24 @@ public final class DisplayVisibilityRegistry {
         return viewers == null || viewers.contains(viewerId);
     }
 
+    public static boolean isHidden(int entityId) {
+        return HIDDEN_ENTITIES.contains(entityId);
+    }
+
+    public static boolean hasCustomVisibility(int entityId) {
+        return HIDDEN_ENTITIES.contains(entityId)
+            || PRIVATE_VIEWERS.containsKey(entityId)
+            || EXCLUDED_VIEWERS.containsKey(entityId);
+    }
+
+    public static Set<UUID> privateViewers(int entityId) {
+        return PRIVATE_VIEWERS.get(entityId);
+    }
+
+    public static Set<UUID> excludedViewers(int entityId) {
+        return EXCLUDED_VIEWERS.get(entityId);
+    }
+
     public static boolean matchesPrivate(int entityId, Collection<UUID> viewers) {
         if (EXCLUDED_VIEWERS.containsKey(entityId) || HIDDEN_ENTITIES.contains(entityId)) {
             return false;
@@ -63,7 +81,7 @@ public final class DisplayVisibilityRegistry {
         if (viewers.isEmpty()) {
             return current != null && current.isEmpty();
         }
-        return current != null && current.equals(Set.copyOf(viewers));
+        return sameViewerSet(current, viewers);
     }
 
     public static boolean matchesExcluded(int entityId, Collection<UUID> viewers) {
@@ -71,7 +89,7 @@ public final class DisplayVisibilityRegistry {
             return !EXCLUDED_VIEWERS.containsKey(entityId);
         }
         Set<UUID> current = EXCLUDED_VIEWERS.get(entityId);
-        return current != null && current.equals(Set.copyOf(viewers));
+        return sameViewerSet(current, viewers);
     }
 
     public static void unregister(int entityId) {
@@ -84,6 +102,16 @@ public final class DisplayVisibilityRegistry {
         PRIVATE_VIEWERS.clear();
         EXCLUDED_VIEWERS.clear();
         HIDDEN_ENTITIES.clear();
+    }
+
+    private static boolean sameViewerSet(Set<UUID> current, Collection<UUID> viewers) {
+        if (current == null || viewers == null) {
+            return current == null && viewers == null;
+        }
+        if (current.size() == viewers.size()) {
+            return current.containsAll(viewers);
+        }
+        return current.equals(Set.copyOf(viewers));
     }
 }
 

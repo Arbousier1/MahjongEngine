@@ -8,9 +8,9 @@ import java.util.function.BiFunction;
 import org.bukkit.entity.Player;
 
 final class SessionViewerIndex {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    SessionViewerIndex(MahjongTableSession session) {
+    SessionViewerIndex(TableSessionContext session) {
         this.session = session;
     }
 

@@ -11,9 +11,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDismountEvent;
-import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -40,11 +40,11 @@ final class TableEventCoordinator {
         this.manager.pluginRef().scheduler().runEntity(event.getPlayer(), () -> this.manager.pluginRef().craftEngine().syncTrackedEntitiesFor(event.getPlayer()));
     }
 
-    void onSeatMount(EntityMountEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+    void onSeatMount(Event event) {
+        if (!(eventEntity(event, "getEntity") instanceof Player player)) {
             return;
         }
-        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getMount());
+        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(eventEntity(event, "getMount"));
         if (action == null || action.actionType() != ActionType.JOIN_SEAT) {
             return;
         }
@@ -58,12 +58,12 @@ final class TableEventCoordinator {
             this.manager.seatCoordinatorRef().requestSeatRestore(player, session, action.seatWind());
             return;
         }
-        event.setCancelled(true);
+        cancel(event);
         this.manager.pluginRef().messages().actionBar(player, "command.join_failed");
     }
 
-    void onSeatDismount(EntityDismountEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+    void onSeatDismount(Event event) {
+        if (!(eventEntity(event, "getEntity") instanceof Player player)) {
             return;
         }
         UUID playerId = player.getUniqueId();
@@ -77,13 +77,13 @@ final class TableEventCoordinator {
                 return;
             }
             MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
-            event.setCancelled(true);
+            cancel(event);
             this.manager.seatCoordinatorRef().startSeatWatchdog(playerSession, playerId, playerSeatWind);
             this.manager.seatCoordinatorRef().requestSeatRestore(player, playerSession, playerSeatWind);
             this.manager.pluginRef().messages().actionBar(player, result.status() == MahjongTableManager.LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
             return;
         }
-        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(event.getDismounted());
+        DisplayClickAction action = this.manager.seatCoordinatorRef().seatAction(eventEntity(event, "getDismounted"));
         if (action == null) {
             return;
         }
@@ -94,7 +94,7 @@ final class TableEventCoordinator {
                 return;
             }
             MahjongTableManager.LeaveResult result = this.manager.leave(playerId);
-            event.setCancelled(true);
+            cancel(event);
             this.manager.seatCoordinatorRef().startSeatWatchdog(session, playerId, seatWind);
             this.manager.seatCoordinatorRef().requestSeatRestore(player, session, seatWind);
             this.manager.pluginRef().messages().actionBar(player, result.status() == MahjongTableManager.LeaveStatus.DEFERRED ? "command.leave_deferred" : "command.leave_blocked_started");
@@ -166,7 +166,7 @@ final class TableEventCoordinator {
         if (entity == null) {
             return false;
         }
-        if (DisplayEntities.isManagedEntity(this.manager.pluginRef(), entity)) {
+        if (DisplayEntities.isManagedEntity(this.manager.pluginRef().bukkitPlugin(), entity)) {
             return true;
         }
         if (TableDisplayRegistry.get(entity.getEntityId()) != null || this.manager.seatCoordinatorRef().seatAction(entity) != null) {
@@ -228,7 +228,7 @@ final class TableEventCoordinator {
         if (!(entity instanceof org.bukkit.entity.Display)) {
             return false;
         }
-        if (!DisplayEntities.isManagedEntity(this.manager.pluginRef(), entity)) {
+        if (!DisplayEntities.isManagedEntity(this.manager.pluginRef().bukkitPlugin(), entity)) {
             return false;
         }
         int entityId = entity.getEntityId();
@@ -246,6 +246,24 @@ final class TableEventCoordinator {
             return false;
         }
         return DisplayVisibilityRegistry.canView(entity.getEntityId(), player.getUniqueId());
+    }
+
+    private static Entity eventEntity(Event event, String methodName) {
+        if (event == null) {
+            return null;
+        }
+        try {
+            Object value = event.getClass().getMethod(methodName).invoke(event);
+            return value instanceof Entity entity ? entity : null;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static void cancel(Event event) {
+        if (event instanceof Cancellable cancellable) {
+            cancellable.setCancelled(true);
+        }
     }
 
     private record RecentDisplayAction(DisplayClickAction action, long timestampNanos) {

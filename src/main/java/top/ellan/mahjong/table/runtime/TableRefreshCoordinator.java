@@ -1,11 +1,13 @@
 package top.ellan.mahjong.table.runtime;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.runtime.PluginTask;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -14,7 +16,8 @@ import org.bukkit.World;
 public final class TableRefreshCoordinator {
     private static final int CHUNK_REFRESH_BATCH_SIZE = 1;
 
-    private final MahjongPaperPlugin plugin;
+    private final DebugService debug;
+    private final ServerScheduler scheduler;
     private final MahjongTableManager tableManager;
     private final TableSeatCoordinator seatCoordinator;
     private final int startupRebuildBatchSize;
@@ -24,10 +27,17 @@ public final class TableRefreshCoordinator {
     private PluginTask startupRefreshTask;
     private PluginTask chunkRefreshTask;
 
-    public TableRefreshCoordinator(MahjongPaperPlugin plugin, MahjongTableManager tableManager, TableSeatCoordinator seatCoordinator, int startupRebuildBatchSize) {
-        this.plugin = plugin;
-        this.tableManager = tableManager;
-        this.seatCoordinator = seatCoordinator;
+    public TableRefreshCoordinator(
+        DebugService debug,
+        ServerScheduler scheduler,
+        MahjongTableManager tableManager,
+        TableSeatCoordinator seatCoordinator,
+        int startupRebuildBatchSize
+    ) {
+        this.debug = Objects.requireNonNull(debug, "debug");
+        this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
+        this.seatCoordinator = Objects.requireNonNull(seatCoordinator, "seatCoordinator");
         this.startupRebuildBatchSize = Math.max(1, startupRebuildBatchSize);
     }
 
@@ -64,7 +74,7 @@ public final class TableRefreshCoordinator {
             return;
         }
         this.refreshPersistentTableArtifacts(session);
-        this.plugin.debug().log("table", "Deferred startup cleanup finished for persistent table " + session.id());
+        this.debug.log("table", "Deferred startup cleanup finished for persistent table " + session.id());
     }
 
     public void enqueueStartupRefresh(String tableId) {
@@ -89,7 +99,7 @@ public final class TableRefreshCoordinator {
         if (this.startupRefreshTask != null && !this.startupRefreshTask.isCancelled()) {
             return;
         }
-        this.startupRefreshTask = this.plugin.scheduler().runGlobalTimer(this::processStartupRefreshBatch, 1L, 1L);
+        this.startupRefreshTask = this.scheduler.runGlobalTimer(this::processStartupRefreshBatch, 1L, 1L);
     }
 
     public void handleChunkLoad(Chunk chunk, Collection<String> candidateTableIds) {
@@ -113,7 +123,7 @@ public final class TableRefreshCoordinator {
         if (this.chunkRefreshTask != null && !this.chunkRefreshTask.isCancelled()) {
             return;
         }
-        this.chunkRefreshTask = this.plugin.scheduler().runGlobalTimer(this::processChunkRefreshBatch, 1L, 1L);
+        this.chunkRefreshTask = this.scheduler.runGlobalTimer(this::processChunkRefreshBatch, 1L, 1L);
     }
 
     private void processStartupRefreshBatch() {
@@ -128,9 +138,10 @@ public final class TableRefreshCoordinator {
                 attempts++;
                 continue;
             }
-            this.plugin.scheduler().runRegion(session.center(), () -> {
-                this.refreshPersistentTableArtifacts(session);
+            this.scheduler.runRegion(session.center(), () -> {
+                this.cleanupLoadedTableArtifactsIfNeeded(session);
                 session.render();
+                this.maybeAddBotsForBotMatchRoom(session);
             });
             attempts++;
         }
@@ -152,9 +163,10 @@ public final class TableRefreshCoordinator {
                 attempts++;
                 continue;
             }
-            this.plugin.scheduler().runRegion(session.center(), () -> {
+            this.scheduler.runRegion(session.center(), () -> {
                 this.cleanupLoadedTableArtifactsIfNeeded(session);
                 session.render();
+                this.maybeAddBotsForBotMatchRoom(session);
                 this.seatCoordinator.startSeatWatchdog(session);
             });
             attempts++;
@@ -162,6 +174,25 @@ public final class TableRefreshCoordinator {
         if (this.chunkRefreshQueue.isEmpty() && this.chunkRefreshTask != null) {
             this.chunkRefreshTask.cancel();
             this.chunkRefreshTask = null;
+        }
+    }
+
+    /**
+     * Adds bots to bot match rooms after cleanup and render have completed.
+     * This is called after the startup/chunk refresh has cleared leftover
+     * entities and rendered the initial table state, so addBot()'s internal
+     * render() and maybeStartRoundIfReady() calls operate on a clean display
+     * state. addBot() is idempotent (returns false when size >= 4 or the
+     * round has started), so calling this from both refresh batches is safe.
+     */
+    private void maybeAddBotsForBotMatchRoom(MahjongTableSession session) {
+        if (session == null || !session.isBotMatchRoom() || session.isStarted()) {
+            return;
+        }
+        while (session.size() < 4) {
+            if (!session.addBot()) {
+                break;
+            }
         }
     }
 
@@ -196,14 +227,6 @@ public final class TableRefreshCoordinator {
         }
         int centerChunkX = center.getBlockX() >> 4;
         int centerChunkZ = center.getBlockZ() >> 4;
-        Set<ChunkNeighborhood.ChunkKey> loadedChunks = new HashSet<>();
-        for (ChunkNeighborhood.ChunkKey chunkKey : ChunkNeighborhood.around(world.getUID(), centerChunkX, centerChunkZ)) {
-            if (world.isChunkLoaded(chunkKey.chunkX(), chunkKey.chunkZ())) {
-                loadedChunks.add(chunkKey);
-            }
-        }
-        return TableAreaChunks.allLoaded(world.getUID(), centerChunkX, centerChunkZ, loadedChunks);
+        return TableAreaChunks.allLoaded(world, centerChunkX, centerChunkZ);
     }
 }
-
-

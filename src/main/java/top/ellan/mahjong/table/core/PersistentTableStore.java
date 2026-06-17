@@ -1,32 +1,37 @@
 package top.ellan.mahjong.table.core;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.model.MahjongVariant;
+
+import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.riichi.model.MahjongRule;
-import java.io.File;
-import java.io.IOException;
+import top.ellan.mahjong.runtime.AsyncService;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 
 final class PersistentTableStore {
-    private final MahjongPaperPlugin plugin;
+    private final Supplier<DatabaseService> database;
+    private final AsyncService async;
+    private final Logger logger;
     private final boolean enabled;
-    private final File file;
     private final AtomicReference<List<TableSnapshot>> pendingSnapshot = new AtomicReference<>();
     private final AtomicBoolean asyncSaveScheduled = new AtomicBoolean();
-    private final Object saveLock = new Object();
+    private final AtomicBoolean missingDatabaseWarningLogged = new AtomicBoolean();
 
-    PersistentTableStore(MahjongPaperPlugin plugin) {
-        this.plugin = plugin;
-        this.enabled = plugin.settings().tablePersistenceEnabled();
-        this.file = new File(plugin.getDataFolder(), plugin.settings().tablePersistenceFile());
+    PersistentTableStore(Supplier<DatabaseService> database, AsyncService async, Logger logger, boolean enabled) {
+        this.database = Objects.requireNonNull(database, "database");
+        this.async = Objects.requireNonNull(async, "async");
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.enabled = enabled;
     }
 
     boolean isEnabled() {
@@ -34,46 +39,43 @@ final class PersistentTableStore {
     }
 
     List<LoadedTable> load() {
-        if (!this.enabled || !this.file.isFile()) {
+        if (!this.enabled) {
             return List.of();
         }
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(this.file);
-        ConfigurationSection tables = yaml.getConfigurationSection("tables");
-        if (tables == null) {
+        DatabaseService database = this.database();
+        if (database == null) {
+            this.warnMissingDatabase();
             return List.of();
         }
-
-        List<LoadedTable> loaded = new ArrayList<>();
-        for (String key : tables.getKeys(false)) {
-            ConfigurationSection table = tables.getConfigurationSection(key);
-            if (table == null) {
-                continue;
+        try {
+            List<LoadedTable> loaded = new ArrayList<>();
+            for (DatabaseService.PersistentTableRecord row : database.loadPersistentTables()) {
+                if (row.id() == null || row.id().isBlank()) {
+                    this.logger.warning("Skipping persisted table row with empty table_id.");
+                    continue;
+                }
+                World world = row.worldName() == null ? null : Bukkit.getWorld(row.worldName());
+                if (world == null) {
+                    this.logger.warning("Skipping persisted table " + row.id() + " because world '" + row.worldName() + "' is unavailable.");
+                    continue;
+                }
+                loaded.add(new LoadedTable(
+                    row.id().toUpperCase(),
+                    new Location(world, row.x(), row.y(), row.z()),
+                    row.ownerId(),
+                    row.variant(),
+                    copyRule(row.rule()),
+                    row.botMatch()
+                ));
             }
-            String worldName = table.getString("world");
-            World world = worldName == null ? null : Bukkit.getWorld(worldName);
-            if (world == null) {
-                this.plugin.getLogger().warning("Skipping persisted table " + key + " because world '" + worldName + "' is unavailable.");
-                continue;
-            }
-
-            Location center = new Location(
-                world,
-                table.getDouble("x"),
-                table.getDouble("y"),
-                table.getDouble("z")
-            );
-            loaded.add(new LoadedTable(
-                table.getString("id", key).toUpperCase(),
-                center,
-                this.loadVariant(table.getString("variant", "RIICHI")),
-                this.loadRule(table.getConfigurationSection("rule")),
-                table.getBoolean("botMatch", false)
-            ));
+            return List.copyOf(loaded);
+        } catch (SQLException ex) {
+            this.logger.warning("Failed to load persistent tables from " + database.databaseType() + ": " + ex.getMessage());
+            return List.of();
         }
-        return List.copyOf(loaded);
     }
 
-    void save(Collection<MahjongTableSession> sessions) {
+    void save(Collection<? extends TableIdentityPort> sessions) {
         if (!this.enabled) {
             return;
         }
@@ -81,7 +83,7 @@ final class PersistentTableStore {
         this.scheduleAsyncSave();
     }
 
-    void flush(Collection<MahjongTableSession> sessions) {
+    void flush(Collection<? extends TableIdentityPort> sessions) {
         if (!this.enabled) {
             return;
         }
@@ -94,7 +96,7 @@ final class PersistentTableStore {
         if (!this.asyncSaveScheduled.compareAndSet(false, true)) {
             return;
         }
-        this.plugin.async().execute("save-persistent-tables", this::drainPendingSaves);
+        this.async.execute("save-persistent-tables", this::drainPendingSaves);
     }
 
     private void drainPendingSaves() {
@@ -114,9 +116,9 @@ final class PersistentTableStore {
         }
     }
 
-    private List<TableSnapshot> snapshotTables(Collection<MahjongTableSession> sessions) {
+    private List<TableSnapshot> snapshotTables(Collection<? extends TableIdentityPort> sessions) {
         List<TableSnapshot> snapshots = new ArrayList<>();
-        for (MahjongTableSession session : sessions) {
+        for (TableIdentityPort session : sessions) {
             if (!session.isPersistentRoom()) {
                 continue;
             }
@@ -129,90 +131,69 @@ final class PersistentTableStore {
                 center.getZ(),
                 session.configuredVariant(),
                 session.configuredRuleSnapshot(),
-                session.isBotMatchRoom()
+                session.isBotMatchRoom(),
+                session.owner()
             ));
         }
         return List.copyOf(snapshots);
     }
 
     private void writeSnapshot(List<TableSnapshot> snapshots) {
-        YamlConfiguration yaml = new YamlConfiguration();
-        ConfigurationSection tables = yaml.createSection("tables");
-        for (TableSnapshot snapshot : snapshots) {
-            ConfigurationSection table = tables.createSection(snapshot.id());
-            table.set("id", snapshot.id());
-            table.set("world", snapshot.worldName());
-            table.set("x", snapshot.x());
-            table.set("y", snapshot.y());
-            table.set("z", snapshot.z());
-            table.set("variant", snapshot.variant().name());
-            table.set("botMatch", snapshot.botMatch());
-            this.saveRule(table.createSection("rule"), snapshot.rule());
-        }
-        this.file.getParentFile().mkdirs();
-        synchronized (this.saveLock) {
-            try {
-                yaml.save(this.file);
-            } catch (IOException ex) {
-                this.plugin.getLogger().warning("Failed to save persistent tables: " + ex.getMessage());
-            }
-        }
-    }
-
-    private MahjongRule loadRule(ConfigurationSection section) {
-        MahjongRule rule = new MahjongRule();
-        if (section == null) {
-            return rule;
-        }
-        rule.setLength(this.enumValue(section.getString("length"), MahjongRule.GameLength.class, rule.getLength()));
-        rule.setThinkingTime(this.enumValue(section.getString("thinkingTime"), MahjongRule.ThinkingTime.class, rule.getThinkingTime()));
-        rule.setStartingPoints(section.getInt("startingPoints", rule.getStartingPoints()));
-        rule.setMinPointsToWin(section.getInt("minPointsToWin", rule.getMinPointsToWin()));
-        rule.setMinimumHan(this.enumValue(section.getString("minimumHan"), MahjongRule.MinimumHan.class, rule.getMinimumHan()));
-        rule.setSpectate(section.getBoolean("spectate", rule.getSpectate()));
-        rule.setRedFive(this.enumValue(section.getString("redFive"), MahjongRule.RedFive.class, rule.getRedFive()));
-        rule.setOpenTanyao(section.getBoolean("openTanyao", rule.getOpenTanyao()));
-        rule.setLocalYaku(section.getBoolean("localYaku", rule.getLocalYaku()));
-        return rule;
-    }
-
-    private MahjongVariant loadVariant(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return MahjongVariant.RIICHI;
+        DatabaseService database = this.database();
+        if (database == null) {
+            this.warnMissingDatabase();
+            return;
         }
         try {
-            return MahjongVariant.valueOf(rawValue.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            this.plugin.getLogger().warning("Invalid persisted variant '" + rawValue + "', using RIICHI instead.");
-            return MahjongVariant.RIICHI;
+            List<DatabaseService.PersistentTableRecord> rows = snapshots.stream()
+                .map(snapshot -> new DatabaseService.PersistentTableRecord(
+                    snapshot.id(),
+                    snapshot.worldName(),
+                    snapshot.x(),
+                    snapshot.y(),
+                    snapshot.z(),
+                    snapshot.ownerId(),
+                    snapshot.variant(),
+                    copyRule(snapshot.rule()),
+                    snapshot.botMatch()
+                ))
+                .toList();
+            database.replacePersistentTables(rows);
+        } catch (SQLException ex) {
+            this.logger.warning("Failed to save persistent tables to " + database.databaseType() + ": " + ex.getMessage());
         }
     }
 
-    private <E extends Enum<E>> E enumValue(String rawValue, Class<E> enumType, E fallback) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return fallback;
-        }
-        try {
-            return Enum.valueOf(enumType, rawValue.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            this.plugin.getLogger().warning("Invalid persisted rule value '" + rawValue + "' for " + enumType.getSimpleName() + ", using " + fallback.name() + " instead.");
-            return fallback;
+    private void warnMissingDatabase() {
+        if (this.missingDatabaseWarningLogged.compareAndSet(false, true)) {
+            this.logger.warning("Table persistence is enabled but database is unavailable; persistent tables are temporarily disabled.");
         }
     }
 
-    private void saveRule(ConfigurationSection section, MahjongRule rule) {
-        section.set("length", rule.getLength().name());
-        section.set("thinkingTime", rule.getThinkingTime().name());
-        section.set("startingPoints", rule.getStartingPoints());
-        section.set("minPointsToWin", rule.getMinPointsToWin());
-        section.set("minimumHan", rule.getMinimumHan().name());
-        section.set("spectate", rule.getSpectate());
-        section.set("redFive", rule.getRedFive().name());
-        section.set("openTanyao", rule.getOpenTanyao());
-        section.set("localYaku", rule.getLocalYaku());
+    private DatabaseService database() {
+        return this.database.get();
     }
 
-    record LoadedTable(String id, Location center, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
+    private static MahjongRule copyRule(MahjongRule rule) {
+        if (rule == null) {
+            return new MahjongRule();
+        }
+        return new MahjongRule(
+            rule.getLength(),
+            rule.getThinkingTime(),
+            rule.getStartingPoints(),
+            rule.getMinPointsToWin(),
+            rule.getMinimumHan(),
+            rule.getSpectate(),
+            rule.getRedFive(),
+            rule.getOpenTanyao(),
+            rule.getLocalYaku(),
+            rule.getRonMode(),
+            rule.getRiichiProfile()
+        );
+    }
+
+    record LoadedTable(String id, Location center, java.util.UUID ownerId, MahjongVariant variant, MahjongRule rule, boolean botMatch) {
     }
 
     private record TableSnapshot(
@@ -223,9 +204,8 @@ final class PersistentTableStore {
         double z,
         MahjongVariant variant,
         MahjongRule rule,
-        boolean botMatch
+        boolean botMatch,
+        java.util.UUID ownerId
     ) {
     }
 }
-
-

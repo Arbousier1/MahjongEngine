@@ -1,7 +1,8 @@
 package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.riichi.ReactionOptions;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.table.core.TableFinalStanding;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
@@ -18,13 +19,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public final class TablePlayerFeedbackCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private final Map<UUID, String> feedbackState = new HashMap<>();
     private String lastSettlementFingerprint = "";
     private String lastPersistedSettlementFingerprint = "";
     private String lastPersistedRankFingerprint = "";
 
-    public TablePlayerFeedbackCoordinator(MahjongTableSession session) {
+    public TablePlayerFeedbackCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
@@ -91,6 +92,7 @@ public final class TablePlayerFeedbackCoordinator {
         }
         this.session.plugin().database().persistMatchRanksAsync(
             this.session.id(),
+            this.session.currentVariant(),
             this.session.configuredRuleSnapshot().getLength(),
             standings
         );
@@ -188,7 +190,7 @@ public final class TablePlayerFeedbackCoordinator {
             if (this.session.canDeclareKyuushu(playerId)) {
                 actions.add(this.session.plugin().messages().plain(locale, "table.action.kyuushu"));
             }
-            if (this.session.currentVariant() == top.ellan.mahjong.table.core.MahjongVariant.GB) {
+            if (this.session.currentVariant() != top.ellan.mahjong.model.MahjongVariant.RIICHI) {
                 top.ellan.mahjong.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
                 if (this.session.canDeclareTsumo(playerId)) {
                     actions.add(this.session.plugin().messages().plain(locale, "table.action.tsumo"));
@@ -256,7 +258,7 @@ public final class TablePlayerFeedbackCoordinator {
         if (!discardSuggestion.isBlank()) {
             return Component.text(discardSuggestion, NamedTextColor.GRAY);
         }
-        if (this.session.currentVariant() == top.ellan.mahjong.table.core.MahjongVariant.GB) {
+        if (this.session.currentVariant() != top.ellan.mahjong.model.MahjongVariant.RIICHI) {
             top.ellan.mahjong.gb.jni.GbTingResponse ting = this.session.gbTingOptions(playerId);
             if (ting.getValid()) {
                 return this.session.plugin().messages().render(
@@ -274,7 +276,7 @@ public final class TablePlayerFeedbackCoordinator {
         if (suggestions.isEmpty()) {
             return "";
         }
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         String labels = this.suggestedDiscardLabels(locale, suggestions);
         if (labels.isBlank()) {
             return "";
@@ -293,7 +295,7 @@ public final class TablePlayerFeedbackCoordinator {
         Locale locale,
         List<top.ellan.mahjong.riichi.RiichiDiscardSuggestion> suggestions
     ) {
-        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.getFirst();
+        top.ellan.mahjong.riichi.RiichiDiscardSuggestion best = suggestions.get(0);
         LinkedHashSet<String> labels = new LinkedHashSet<>();
         for (top.ellan.mahjong.riichi.RiichiDiscardSuggestion suggestion : suggestions) {
             if (!this.hasSameDiscardShape(best, suggestion) || labels.size() >= 3) {
@@ -345,8 +347,8 @@ public final class TablePlayerFeedbackCoordinator {
         };
     }
 
-    private static FingerprintBuilder fingerprintBuilder(int capacity) {
-        return new FingerprintBuilder(capacity);
+    private static DelimitedFingerprintBuilder fingerprintBuilder(int capacity) {
+        return DelimitedFingerprintBuilder.create(capacity);
     }
 
     private record PlayerFeedbackSnapshot(
@@ -357,28 +359,6 @@ public final class TablePlayerFeedbackCoordinator {
     ) {
     }
 
-    private static final class FingerprintBuilder {
-        private final StringBuilder delegate;
-        private boolean needsSeparator;
-
-        private FingerprintBuilder(int capacity) {
-            this.delegate = new StringBuilder(capacity);
-        }
-
-        private FingerprintBuilder field(Object value) {
-            if (this.needsSeparator) {
-                this.delegate.append(':');
-            }
-            this.delegate.append(Objects.toString(value, ""));
-            this.needsSeparator = true;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return this.delegate.toString();
-        }
-    }
 }
 
 

@@ -1,6 +1,7 @@
 package top.ellan.mahjong.table.core
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.model.MahjongVariant
+
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.riichi.RiichiPlayerState
 import top.ellan.mahjong.riichi.RiichiRoundEngine
@@ -19,7 +20,7 @@ import kotlin.test.assertTrue
 class MahjongTableSessionTest {
     @Test
     fun `player removal after finished round ignores stale engine seats`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE01", Location(null, 0.0, 64.0, 0.0), false)
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
         val southId = UUID.fromString("00000000-0000-0000-0000-000000000002")
@@ -45,7 +46,7 @@ class MahjongTableSessionTest {
 
     @Test
     fun `active round still reads seat occupants from engine`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE02", Location(null, 0.0, 64.0, 0.0), false)
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000011")
         val southId = UUID.fromString("00000000-0000-0000-0000-000000000012")
@@ -64,7 +65,7 @@ class MahjongTableSessionTest {
 
     @Test
     fun `empty seat accessors stay null safe for render snapshots`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE03", Location(null, 0.0, 64.0, 0.0), false)
 
         assertEquals(0, session.points(null))
@@ -78,7 +79,7 @@ class MahjongTableSessionTest {
 
     @Test
     fun `gb preset switches table variant to gb`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE04", Location(null, 0.0, 64.0, 0.0), false)
 
         assertTrue(session.applyRulePreset("GB"))
@@ -86,8 +87,35 @@ class MahjongTableSessionTest {
     }
 
     @Test
+    fun `sichuan preset switches table variant to sichuan`() {
+        val plugin = mock(TableRuntimeServices::class.java)
+        val session = MahjongTableSession(plugin, "TABLE04B", Location(null, 0.0, 64.0, 0.0), false)
+
+        assertTrue(session.applyRulePreset("SICHUAN"))
+        assertEquals(MahjongVariant.SICHUAN, session.currentVariant())
+    }
+
+    @Test
+    fun `table owner transfers to next human player when owner leaves`() {
+        val plugin = mock(TableRuntimeServices::class.java)
+        val session = MahjongTableSession(plugin, "TABLE04C", Location(null, 0.0, 64.0, 0.0), false)
+        val ownerId = UUID.fromString("00000000-0000-0000-0000-000000000041")
+        val nextOwnerId = UUID.fromString("00000000-0000-0000-0000-000000000042")
+
+        session.setOwner(ownerId)
+        session.addPlayer(mockPlayer(ownerId), SeatWind.EAST)
+        session.addPlayer(mockPlayer(nextOwnerId), SeatWind.SOUTH)
+
+        assertTrue(session.isOwner(ownerId))
+        removeParticipant(session, ownerId)
+        reassignOwnerFromSeats(session)
+        assertEquals(nextOwnerId, session.owner())
+        assertTrue(session.isOwner(nextOwnerId))
+    }
+
+    @Test
     fun `gb helpers stay inactive before a gb round is created`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE05", Location(null, 0.0, 64.0, 0.0), false)
 
         session.applyRulePreset("GB")
@@ -99,7 +127,7 @@ class MahjongTableSessionTest {
 
     @Test
     fun `player can replace bot on a specific seat before round start`() {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = MahjongTableSession(plugin, "TABLE06", Location(null, 0.0, 64.0, 0.0), false)
         val playerId = UUID.fromString("00000000-0000-0000-0000-000000000061")
         val player = mockPlayer(playerId)
@@ -136,6 +164,12 @@ class MahjongTableSessionTest {
         val removePlayer = participants.javaClass.getDeclaredMethod("removePlayer", UUID::class.java)
         removePlayer.isAccessible = true
         removePlayer.invoke(participants, playerId)
+    }
+
+    private fun reassignOwnerFromSeats(session: MahjongTableSession) {
+        val reassignOwner = MahjongTableSession::class.java.getDeclaredMethod("reassignOwnerFromSeats")
+        reassignOwner.isAccessible = true
+        reassignOwner.invoke(session)
     }
 
     private fun addBotParticipant(session: MahjongTableSession, tableId: String): Boolean {

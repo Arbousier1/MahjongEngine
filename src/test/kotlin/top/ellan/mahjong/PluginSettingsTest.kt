@@ -1,7 +1,7 @@
 package top.ellan.mahjong
 
 import top.ellan.mahjong.config.PluginSettings
-import top.ellan.mahjong.table.core.MahjongVariant
+import top.ellan.mahjong.model.MahjongVariant
 import org.bukkit.configuration.file.YamlConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,6 +27,7 @@ class PluginSettingsTest {
         assertEquals("mahjongpaper:", settings.craftEngineGbTileItemIdPrefix())
         assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.RIICHI))
         assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.GB))
+        assertEquals("mahjongpaper:", settings.craftEngineTileItemIdPrefix(MahjongVariant.SICHUAN))
         assertEquals("mahjongpaper:table_visual", settings.craftEngineTableFurnitureId())
         assertEquals("mahjongpaper:seat_chair", settings.craftEngineSeatFurnitureId())
         assertEquals("SILVER", settings.rankingEastRoom())
@@ -73,6 +74,63 @@ class PluginSettingsTest {
         assertEquals("shared:", settings.craftEngineTileItemIdPrefix())
         assertEquals("riichi:", settings.craftEngineTileItemIdPrefix(MahjongVariant.RIICHI))
         assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.GB))
+        assertEquals("gb:", settings.craftEngineTileItemIdPrefix(MahjongVariant.SICHUAN))
+    }
+
+    @Test
+    fun `from exposes grouped strong typed snapshots`() {
+        val config = YamlConfiguration()
+        config.set("debug.enabled", true)
+        config.set("debug.categories", listOf("database", "render"))
+        config.set("database.connection.type", "mariadb")
+        config.set("database.connection.host", "db.local")
+        config.set("database.connection.port", 3307)
+        config.set("database.connection.name", "mahjong")
+        config.set("database.credentials.username", "mahjong")
+        config.set("database.credentials.password", "secret")
+        config.set("tables.persistence.enabled", false)
+        config.set("tables.persistence.file", "persist.yml")
+        config.set("integrations.craftengine.bundle.folder", "pack-a")
+        config.set("integrations.craftengine.compatibility.injectAntiCheatPacketEventsMappings", false)
+        config.set("integrations.craftengine.furniture.preferHitboxInteraction", false)
+
+        val settings = PluginSettings.from(config)
+
+        assertTrue(settings.debug().enabled())
+        assertEquals(listOf("database", "render"), settings.debug().categories())
+        assertEquals("mariadb", settings.database().type())
+        assertEquals("db.local", settings.database().connection().host())
+        assertEquals(3307, settings.database().connection().port())
+        assertEquals("mahjong", settings.database().connection().name())
+        assertEquals("mahjong", settings.database().credentials().username())
+        assertEquals("secret", settings.database().credentials().password())
+        assertFalse(settings.tables().persistence().enabled())
+        assertEquals("persist.yml", settings.tables().persistence().file())
+        assertEquals("pack-a", settings.craftEngine().bundleFolder())
+        assertFalse(settings.craftEngine().injectAntiCheatPacketEventsMappings())
+        assertFalse(settings.craftEngine().furniture().preferHitboxInteraction())
+    }
+
+    @Test
+    fun `from parses and clamps game room settings including legacy aliases`() {
+        val config = YamlConfiguration()
+        config.set("gamerooms.enabled", false)
+        config.set("gamerooms.restrict-new-tables", false)
+        config.set("gamerooms.enter-exit-messages", false)
+        config.set("gamerooms.leave-countdown-seconds", 1)
+        config.set("gamerooms.default-radius", 1)
+        config.set("gamerooms.default-height", 2)
+        config.set("gamerooms.file", "rooms-custom.yml")
+
+        val settings = PluginSettings.from(config)
+
+        assertFalse(settings.gameRooms().enabled())
+        assertFalse(settings.gameRooms().restrictNewTables())
+        assertFalse(settings.gameRooms().enterExitMessages())
+        assertEquals(5, settings.gameRooms().leaveCountdownSeconds())
+        assertEquals(2, settings.gameRooms().defaultRadius())
+        assertEquals(3, settings.gameRooms().defaultHeight())
+        assertEquals("rooms-custom.yml", settings.gameRooms().file())
     }
 }
 

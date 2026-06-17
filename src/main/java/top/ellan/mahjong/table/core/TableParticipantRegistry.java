@@ -131,12 +131,21 @@ final class TableParticipantRegistry {
     }
 
     Set<UUID> spectators() {
-        return Set.copyOf(this.spectators);
+        return Collections.unmodifiableSet(new LinkedHashSet<>(this.spectators));
     }
 
     UUID owner() {
         for (UUID playerId : this.seats) {
             if (playerId != null) {
+                return playerId;
+            }
+        }
+        return null;
+    }
+
+    UUID firstHumanPlayer() {
+        for (UUID playerId : this.seats) {
+            if (playerId != null && !this.botNames.containsKey(playerId)) {
                 return playerId;
             }
         }

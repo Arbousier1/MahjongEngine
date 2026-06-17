@@ -44,11 +44,24 @@ public final class MahjongSoulRankRules {
         int rawScore,
         boolean allPlayersCelestial
     ) {
+        return applyMatch(profile, room, length, place, rawScore, allPlayersCelestial, List.of());
+    }
+
+    public static RankedMatchResult applyMatch(
+        MahjongSoulRankProfile profile,
+        Room room,
+        MatchLength length,
+        int place,
+        int rawScore,
+        boolean allPlayersCelestial,
+        List<MahjongSoulRankProfile> fieldProfiles
+    ) {
         if (profile.isCelestial()) {
             return applyCelestial(profile, length, place, allPlayersCelestial);
         }
         Stage stage = stageFor(profile.tier(), profile.level());
-        int pointsChange = (int) Math.ceil(((rawScore - 25000) / 1000.0D) + uma(place) + rankPoints(room, stage, length, place));
+        int pointsChange = (int) Math.ceil(((rawScore - 25000) / 1000.0D) + uma(place) + rankPoints(room, stage, length, place))
+            + competitiveFieldAdjustment(profile, fieldProfiles, length, place);
         MahjongSoulRankProfile updated = applyStandardTransition(profile, stage, pointsChange, place);
         return new RankedMatchResult(profile, updated, pointsChange, room, length, place, rawScore);
     }
@@ -65,6 +78,33 @@ public final class MahjongSoulRankRules {
             return String.format(Locale.ROOT, "%.1f/20.0 SP", profile.rankPoints() / 10.0D);
         }
         return profile.rankPoints() + "/" + nextThreshold(profile);
+    }
+
+    public static String formatAveragePlace(MahjongSoulRankProfile profile) {
+        if (profile.totalMatches() <= 0) {
+            return "-";
+        }
+        double weightedPlaces = profile.firstPlaces()
+            + profile.secondPlaces() * 2.0D
+            + profile.thirdPlaces() * 3.0D
+            + profile.fourthPlaces() * 4.0D;
+        return String.format(Locale.ROOT, "%.2f", weightedPlaces / profile.totalMatches());
+    }
+
+    public static String formatFirstRate(MahjongSoulRankProfile profile) {
+        return formatPercent(profile.firstPlaces(), profile.totalMatches());
+    }
+
+    public static String formatTopTwoRate(MahjongSoulRankProfile profile) {
+        return formatPercent(profile.firstPlaces() + profile.secondPlaces(), profile.totalMatches());
+    }
+
+    public static String formatFourthRate(MahjongSoulRankProfile profile) {
+        return formatPercent(profile.fourthPlaces(), profile.totalMatches());
+    }
+
+    public static int promotionRemaining(MahjongSoulRankProfile profile) {
+        return Math.max(0, nextThreshold(profile) - profile.rankPoints());
     }
 
     private static RankedMatchResult applyCelestial(
@@ -234,6 +274,61 @@ public final class MahjongSoulRankRules {
             case 3 -> 0;
             default -> -stage.penalty(length);
         };
+    }
+
+    private static int competitiveFieldAdjustment(
+        MahjongSoulRankProfile profile,
+        List<MahjongSoulRankProfile> fieldProfiles,
+        MatchLength length,
+        int place
+    ) {
+        if (fieldProfiles == null || fieldProfiles.size() < 4) {
+            return 0;
+        }
+        double selfStrength = competitiveStrength(profile);
+        double opponentStrengthTotal = 0.0D;
+        int opponentCount = 0;
+        for (MahjongSoulRankProfile fieldProfile : fieldProfiles) {
+            if (fieldProfile == null || fieldProfile.playerId().equals(profile.playerId())) {
+                continue;
+            }
+            opponentStrengthTotal += competitiveStrength(fieldProfile);
+            opponentCount++;
+        }
+        if (opponentCount == 0) {
+            return 0;
+        }
+        double averageOpponentStrength = opponentStrengthTotal / opponentCount;
+        double stageDifference = (averageOpponentStrength - selfStrength) / 100.0D;
+        double placeWeight = place == 1 || place == 4 ? 1.0D : 0.55D;
+        double lengthWeight = length == MatchLength.SOUTH ? 1.0D : 0.6D;
+        int adjustment = (int) Math.round(stageDifference * 10.0D * placeWeight * lengthWeight);
+        int cap = length == MatchLength.SOUTH ? 18 : 11;
+        return Math.max(-cap, Math.min(cap, adjustment));
+    }
+
+    private static double competitiveStrength(MahjongSoulRankProfile profile) {
+        if (profile.isCelestial()) {
+            return STAGES.size() * 100.0D
+                + Math.max(0, profile.level() - 1) * 100.0D
+                + boundedRatio(profile.rankPoints(), CELESTIAL_UPGRADE_POINTS) * 100.0D;
+        }
+        Stage stage = stageFor(profile.tier(), profile.level());
+        return STAGES.indexOf(stage) * 100.0D + boundedRatio(profile.rankPoints(), stage.upgradePoints()) * 100.0D;
+    }
+
+    private static double boundedRatio(int points, int threshold) {
+        if (threshold <= 0) {
+            return 0.0D;
+        }
+        return Math.max(0.0D, Math.min(1.0D, points / (double) threshold));
+    }
+
+    private static String formatPercent(int numerator, int denominator) {
+        if (denominator <= 0) {
+            return "0.0%";
+        }
+        return String.format(Locale.ROOT, "%.1f%%", numerator * 100.0D / denominator);
     }
 
     private static Stage stageFor(Tier tier, int level) {

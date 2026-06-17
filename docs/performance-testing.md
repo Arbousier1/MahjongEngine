@@ -6,12 +6,12 @@ MahjongPaper includes benchmark-style tests under the `perf` JUnit tag. They are
 
 Benchmark helpers live in:
 
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/PerformanceBenchmarkSupport.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/PerformanceBenchmarkSupport.kt`
 
 Current benchmark entry points live in:
 
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/CorePerformanceBenchmarksTest.kt`
-- `src/test/kotlin/doublemoon/mahjongcraft/paper/perf/GbBotSuggestionBenchmarkTest.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/CorePerformanceBenchmarksTest.kt`
+- `src/test/kotlin/top/ellan/mahjong/perf/GbBotSuggestionBenchmarkTest.kt`
 
 The helper writes aggregated reports after each benchmark run to:
 
@@ -55,6 +55,11 @@ As of the current `dev` branch, the benchmark suite covers:
 - `riichi.round_engine.start_round`
 - `gb.round_controller.start_round`
 - `gb.bot.suggest_discard.duplicate_hand`
+- `gb.native_gateway.ting_cache.hit`
+
+In addition to the `perf` suite, JNI startup now logs a one-time first-call benchmark
+(`GbNativeWarmupService`) for `fan/ting/win` first-call vs warm-call latency.
+Use those startup numbers as the baseline before considering JNI "call pool" designs.
 
 ## Reading Results
 
@@ -68,6 +73,20 @@ The generated markdown report includes:
 - total measured milliseconds
 
 Use the same warmup, measurement, and batch parameters before and after an optimization so the results remain comparable.
+
+## Entity-Heavy Render Changes
+
+`perfTest` measures CPU-side hot paths such as snapshot creation, layout precompute, and region fingerprinting. It does **not** model Paper entity tracking cost or client-side rendering cost.
+
+For changes that increase table entities, per-viewer overlays, or display churn, also validate on a live server scene:
+
+- server `mspt`
+- client `fps`
+- `table.render.region.managed_entities`
+- `table.render.region.viewer_overlay_regions`
+- `table.render.region.viewer_overlay_entities`
+
+Treat those entity gauges as leading indicators. Even if benchmark numbers stay flat, a higher managed entity count can still hurt server tick time and client frame rate once real viewers are present.
 
 ## Recommended Workflow
 

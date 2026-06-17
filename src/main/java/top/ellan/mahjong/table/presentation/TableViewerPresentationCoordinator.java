@@ -1,8 +1,8 @@
 package top.ellan.mahjong.table.presentation;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.TableViewerHudSnapshot;
-import top.ellan.mahjong.table.core.TableViewerOverlaySnapshot;
+import top.ellan.mahjong.table.core.TableSessionMutator;
+import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
+import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,15 +19,16 @@ public final class TableViewerPresentationCoordinator {
     private static final long OVERLAY_REFRESH_INTERVAL_TICKS = 20L;
     private static final long HUD_REFRESH_INTERVAL_TICKS = 20L;
 
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
     private final Map<UUID, BossBar> viewerHudBars = new HashMap<>();
     private final Map<UUID, String> viewerHudState = new HashMap<>();
+    private final Set<UUID> viewerActionDirtyIds = new LinkedHashSet<>();
     private boolean viewerOverlayDirty = true;
     private boolean viewerHudDirty = true;
     private long nextOverlayRefreshTick;
     private long nextHudRefreshTick;
 
-    public TableViewerPresentationCoordinator(MahjongTableSession session) {
+    public TableViewerPresentationCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
@@ -36,18 +37,40 @@ public final class TableViewerPresentationCoordinator {
         this.viewerHudDirty = true;
     }
 
+    public void markViewerActionsDirty(UUID viewerId) {
+        if (viewerId != null) {
+            this.viewerActionDirtyIds.add(viewerId);
+        }
+    }
+
     public void flushIfNeeded() {
         long nowTick = Bukkit.getCurrentTick();
         if (this.shouldRefreshOverlay(nowTick)) {
-            this.updateViewerOverlayRegions();
-            this.viewerOverlayDirty = false;
-            this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
+            this.flushOverlay(nowTick);
+        } else if (!this.viewerActionDirtyIds.isEmpty()) {
+            this.flushDirtyViewerActions();
         }
         if (this.shouldRefreshHud(nowTick)) {
-            this.syncHud();
-            this.viewerHudDirty = false;
-            this.nextHudRefreshTick = nowTick + HUD_REFRESH_INTERVAL_TICKS;
+            this.flushHud(nowTick);
         }
+    }
+
+    public void flushNow() {
+        long nowTick = Bukkit.getCurrentTick();
+        this.flushOverlay(nowTick);
+        if (this.viewerHudDirty || !this.viewerHudBars.isEmpty()) {
+            this.flushHud(nowTick);
+        }
+    }
+
+    public void flushViewerActionsNow(UUID viewerId) {
+        Player viewer = viewerId == null ? null : this.session.onlinePlayer(viewerId);
+        if (viewer == null) {
+            return;
+        }
+        TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
+        this.session.updateViewerActionRegions(snapshot);
+        this.viewerActionDirtyIds.remove(viewerId);
     }
 
     public boolean hasPresentationState() {
@@ -80,22 +103,44 @@ public final class TableViewerPresentationCoordinator {
         }
     }
 
+    private void flushOverlay(long nowTick) {
+        this.updateViewerOverlayRegions();
+        this.viewerOverlayDirty = false;
+        this.viewerActionDirtyIds.clear();
+        this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
+    }
+
+    private void flushHud(long nowTick) {
+        this.syncHud();
+        this.viewerHudDirty = false;
+        this.nextHudRefreshTick = nowTick + HUD_REFRESH_INTERVAL_TICKS;
+    }
+
     private void updateViewerOverlayRegions() {
         List<Player> viewers = this.session.viewers();
         if (viewers.isEmpty()) {
             this.clearViewerOverlayRegions();
+            this.viewerActionDirtyIds.clear();
             return;
         }
         Set<String> activeKeys = new LinkedHashSet<>();
         for (Player viewer : viewers) {
             TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
             activeKeys.add(snapshot.regionKey());
+            activeKeys.add(snapshot.prompt().regionKey());
+            activeKeys.add(snapshot.actions().regionKey());
             this.session.updateViewerOverlayRegion(snapshot);
         }
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:") && !activeKeys.contains(regionKey)) {
+            if (this.isViewerPresentationRegion(regionKey) && !activeKeys.contains(regionKey)) {
                 this.session.removeManagedRegionDisplays(regionKey);
             }
+        }
+    }
+
+    private void flushDirtyViewerActions() {
+        for (UUID viewerId : List.copyOf(this.viewerActionDirtyIds)) {
+            this.flushViewerActionsNow(viewerId);
         }
     }
 
@@ -155,7 +200,7 @@ public final class TableViewerPresentationCoordinator {
 
     private boolean hasViewerOverlayRegions() {
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:")) {
+            if (this.isViewerPresentationRegion(regionKey)) {
                 return true;
             }
         }
@@ -164,12 +209,16 @@ public final class TableViewerPresentationCoordinator {
 
     private void clearViewerOverlayRegions() {
         for (String regionKey : this.session.viewerOverlayRegionKeys()) {
-            if (regionKey.startsWith("viewer-overlay:")) {
+            if (this.isViewerPresentationRegion(regionKey)) {
                 this.session.removeManagedRegionDisplays(regionKey);
             }
         }
     }
+
+    private boolean isViewerPresentationRegion(String regionKey) {
+        return regionKey != null
+            && (regionKey.startsWith("viewer-overlay:")
+                || regionKey.startsWith("viewer-prompt:")
+                || regionKey.startsWith("viewer-actions:"));
+    }
 }
-
-
-

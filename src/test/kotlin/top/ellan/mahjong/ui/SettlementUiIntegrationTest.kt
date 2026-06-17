@@ -1,6 +1,6 @@
 package top.ellan.mahjong.ui
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin
+import top.ellan.mahjong.table.core.TableRuntimeServices
 import top.ellan.mahjong.compat.CraftEngineService
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.riichi.RoundResolution
@@ -13,6 +13,7 @@ import top.ellan.mahjong.riichi.model.SettlementPayment
 import top.ellan.mahjong.riichi.model.SettlementPaymentType
 import top.ellan.mahjong.riichi.model.YakuSettlement
 import top.ellan.mahjong.table.core.MahjongTableSession
+import top.ellan.mahjong.model.MahjongVariant
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -106,7 +107,7 @@ class SettlementUiIntegrationTest {
     }
 
     private fun mockSession(): MahjongTableSession {
-        val plugin = mock(MahjongPaperPlugin::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
         val session = mock(MahjongTableSession::class.java)
         val craftEngine = mock(CraftEngineService::class.java)
         val messages = MessageService()
@@ -114,6 +115,7 @@ class SettlementUiIntegrationTest {
         `when`(plugin.messages()).thenReturn(messages)
         `when`(plugin.craftEngine()).thenReturn(craftEngine)
         `when`(session.plugin()).thenReturn(plugin)
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.RIICHI)
         `when`(session.roundDisplay(Locale.ENGLISH)).thenReturn("East 2")
         `when`(session.dealerName(Locale.ENGLISH)).thenReturn("Alice")
         `when`(session.finalStandings()).thenReturn(emptyList())

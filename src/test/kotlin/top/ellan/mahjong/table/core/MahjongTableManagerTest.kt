@@ -2,11 +2,17 @@ package top.ellan.mahjong.table.core
 
 import top.ellan.mahjong.model.SeatWind
 import top.ellan.mahjong.render.display.DisplayClickAction
+import org.bukkit.Location
+import org.bukkit.World
+import org.bukkit.block.Block
+import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import java.util.UUID
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MahjongTableManagerTest {
@@ -33,6 +39,62 @@ class MahjongTableManagerTest {
         val right = DisplayClickAction.playerCommand("TABLE01", owner, "react:skip")
 
         assertFalse(MahjongTableManager.sameDisplayAction(left, right))
+    }
+
+    @Test
+    fun `nearby table centers overlap on the same floor`() {
+        val world = mock(World::class.java)
+        val existing = Location(world, 10.5, 64.5, 10.5)
+        val candidate = Location(world, 15.9, 64.5, 10.5)
+
+        assertTrue(MahjongTableManager.isOverlappingTableCenter(existing, candidate))
+    }
+
+    @Test
+    fun `distant or vertically separated table centers do not overlap`() {
+        val world = mock(World::class.java)
+        val existing = Location(world, 10.5, 64.5, 10.5)
+        val distant = Location(world, 16.1, 64.5, 10.5)
+        val upperFloor = Location(world, 10.5, 69.0, 10.5)
+
+        assertFalse(MahjongTableManager.isOverlappingTableCenter(existing, distant))
+        assertFalse(MahjongTableManager.isOverlappingTableCenter(existing, upperFloor))
+    }
+
+    @Test
+    fun `passable clearance allows table placement`() {
+        val world = mock(World::class.java)
+        val passableBlock = mock(Block::class.java)
+        `when`(world.minHeight).thenReturn(0)
+        `when`(world.maxHeight).thenReturn(320)
+        `when`(passableBlock.isPassable).thenReturn(true)
+        `when`(world.getBlockAt(anyInt(), anyInt(), anyInt())).thenReturn(passableBlock)
+
+        assertNull(MahjongTableManager.firstBlockedTableSpace(Location(world, 10.5, 64.5, 10.5)))
+    }
+
+    @Test
+    fun `blocked clearance reports obstruction coordinates`() {
+        val world = mock(World::class.java)
+        val passableBlock = mock(Block::class.java)
+        val blockedBlock = mock(Block::class.java)
+        `when`(world.minHeight).thenReturn(0)
+        `when`(world.maxHeight).thenReturn(320)
+        `when`(passableBlock.isPassable).thenReturn(true)
+        `when`(blockedBlock.isPassable).thenReturn(false)
+        `when`(world.getBlockAt(anyInt(), anyInt(), anyInt())).thenAnswer { invocation ->
+            val x = invocation.getArgument<Int>(0)
+            val y = invocation.getArgument<Int>(1)
+            val z = invocation.getArgument<Int>(2)
+            if (x == 8 && y == 65 && z == 11) blockedBlock else passableBlock
+        }
+
+        val failure = MahjongTableManager.firstBlockedTableSpace(Location(world, 10.5, 64.5, 10.5))
+
+        assertEquals(MahjongTableManager.CreateTableFailureReason.BLOCKED_SPACE, failure?.reason())
+        assertEquals(8, failure?.x())
+        assertEquals(65, failure?.y())
+        assertEquals(11, failure?.z())
     }
 
     @Test

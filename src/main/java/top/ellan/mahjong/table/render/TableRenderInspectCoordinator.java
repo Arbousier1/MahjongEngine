@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.render;
 
-import top.ellan.mahjong.render.scene.TableRenderer;
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.render.scene.TableGeometry;
+import top.ellan.mahjong.table.core.TableSessionContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -13,9 +13,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class TableRenderInspectCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    public TableRenderInspectCoordinator(MahjongTableSession session) {
+    public TableRenderInspectCoordinator(TableSessionContext session) {
         this.session = session;
     }
 
@@ -36,12 +36,12 @@ public final class TableRenderInspectCoordinator {
     }
 
     private InspectRenderSnapshot captureInspectRenderSnapshot(Locale locale) {
-        TableRenderer.TableDiagnostics tableDiagnostics = this.session.renderer().inspectTable(this.session);
+        TableGeometry.TableDiagnostics tableDiagnostics = this.session.renderer().inspectTable(this.session);
         TableInspectSnapshot table = this.captureTableInspectSnapshot(locale, tableDiagnostics);
         List<StickInspectSnapshot> sticks = new ArrayList<>();
         List<String> debugLines = new ArrayList<>();
         debugLines.add(table.debugLine());
-        for (TableRenderer.StickDiagnostics stickDiagnostics : this.session.renderer().inspectSticks(this.session)) {
+        for (TableGeometry.StickDiagnostics stickDiagnostics : this.session.renderer().inspectSticks(this.session)) {
             StickInspectSnapshot stickSnapshot = this.captureStickInspectSnapshot(locale, stickDiagnostics);
             sticks.add(stickSnapshot);
             debugLines.add(stickSnapshot.debugLine());
@@ -49,7 +49,7 @@ public final class TableRenderInspectCoordinator {
         return new InspectRenderSnapshot(table, List.copyOf(sticks), table.summaryMessage(), List.copyOf(debugLines));
     }
 
-    private TableInspectSnapshot captureTableInspectSnapshot(Locale locale, TableRenderer.TableDiagnostics diagnostics) {
+    private TableInspectSnapshot captureTableInspectSnapshot(Locale locale, TableGeometry.TableDiagnostics diagnostics) {
         String center = this.formatLocation(diagnostics.tableCenter());
         String anchor = this.formatLocation(diagnostics.visualAnchor());
         String spanX = formatDecimal(diagnostics.borderSpanX());
@@ -70,7 +70,7 @@ public final class TableRenderInspectCoordinator {
         return new TableInspectSnapshot(diagnostics, summaryMessage, debugLine);
     }
 
-    private StickInspectSnapshot captureStickInspectSnapshot(Locale locale, TableRenderer.StickDiagnostics diagnostics) {
+    private StickInspectSnapshot captureStickInspectSnapshot(Locale locale, TableGeometry.StickDiagnostics diagnostics) {
         String kind = this.session.plugin().messages().plain(
             locale,
             diagnostics.riichi() ? "command.inspect.kind.riichi" : "command.inspect.kind.stick"
@@ -138,7 +138,7 @@ public final class TableRenderInspectCoordinator {
 
     private void spawnMarker(Player viewer, Location location, Color color, int count) {
         viewer.spawnParticle(
-            Particle.DUST,
+            top.ellan.mahjong.compat.PaperCompatibility.dustParticle(),
             location,
             count,
             0.015D,
@@ -166,14 +166,14 @@ public final class TableRenderInspectCoordinator {
     }
 
     private record TableInspectSnapshot(
-        TableRenderer.TableDiagnostics diagnostics,
+        TableGeometry.TableDiagnostics diagnostics,
         Component summaryMessage,
         String debugLine
     ) {
     }
 
     private record StickInspectSnapshot(
-        TableRenderer.StickDiagnostics diagnostics,
+        TableGeometry.StickDiagnostics diagnostics,
         Component message,
         String debugLine
     ) {

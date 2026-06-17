@@ -1,9 +1,9 @@
 package top.ellan.mahjong.table.render;
 
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.TableRenderSnapshot;
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot;
+import top.ellan.mahjong.render.TableRenderSubject;
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,16 +12,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Comparator;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 public final class TableRenderSnapshotFactory {
-    public TableRenderSnapshot create(MahjongTableSession session, long version, long cancellationNonce) {
+    public TableRenderSnapshot create(TableRenderSubject session, long version, long cancellationNonce) {
         Location tableCenter = session.center();
         boolean started = session.isStarted();
         List<UUID> onlineViewerIds = session.viewers().stream()
             .map(Player::getUniqueId)
             .distinct()
+            .sorted(Comparator.comparing(UUID::toString))
             .toList();
         Set<UUID> onlineViewerIdSet = new HashSet<>(onlineViewerIds);
         Map<UUID, String> viewerMembershipSignatures = new HashMap<>();
@@ -46,6 +48,7 @@ public final class TableRenderSnapshotFactory {
             session.remainingWallCount(),
             session.kanCount(),
             session.dicePoints(),
+            session.breakDicePoints(),
             session.roundIndex(),
             session.honbaCount(),
             session.dealerSeat(),
@@ -61,8 +64,40 @@ public final class TableRenderSnapshotFactory {
         );
     }
 
+    public TableSeatRenderSnapshot createPrivateHandSeat(TableRenderSubject session, SeatWind wind) {
+        if (wind == null) {
+            throw new IllegalArgumentException("wind is required");
+        }
+        UUID playerId = session.playerAt(wind);
+        boolean occupied = playerId != null;
+        boolean online = occupied && session.viewers().stream()
+            .anyMatch(viewer -> playerId.equals(viewer.getUniqueId()));
+        return new TableSeatRenderSnapshot(
+            wind,
+            playerId,
+            occupied ? session.displayName(playerId) : "",
+            "",
+            0,
+            false,
+            false,
+            false,
+            online,
+            "",
+            occupied ? session.selectedHandTileIndex(playerId) : -1,
+            occupied ? session.selectedHandTileIndices(playerId) : List.of(),
+            -1,
+            session.stickLayoutCount(wind),
+            List.of(),
+            occupied ? session.hand(playerId) : List.of(),
+            List.of(),
+            occupied ? session.fuuro(playerId) : List.of(),
+            List.of(),
+            List.of()
+        );
+    }
+
     private TableSeatRenderSnapshot captureSeatSnapshot(
-        MahjongTableSession session,
+        TableRenderSubject session,
         SeatWind wind,
         Set<UUID> onlineViewerIdSet,
         Map<UUID, String> viewerMembershipSignatures,
@@ -82,6 +117,7 @@ public final class TableRenderSnapshotFactory {
             occupied && onlineViewerIdSet.contains(playerId),
             occupied ? viewerMembershipSignatures.getOrDefault(playerId, "") : "",
             occupied ? session.selectedHandTileIndex(playerId) : -1,
+            occupied ? session.selectedHandTileIndices(playerId) : List.of(),
             occupied ? session.riichiDiscardIndex(playerId) : -1,
             session.stickLayoutCount(wind),
             occupied ? viewerIdsExcluding.getOrDefault(playerId, List.of()) : List.of(),
@@ -109,6 +145,3 @@ public final class TableRenderSnapshotFactory {
             .toList();
     }
 }
-
-
-

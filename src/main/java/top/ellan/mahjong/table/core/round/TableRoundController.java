@@ -7,14 +7,32 @@ import top.ellan.mahjong.riichi.ReactionOptions;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RoundResolution;
-import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.model.MahjongRule;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.riichi.model.ScoringStick;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.List;
 import java.util.UUID;
 
 public interface TableRoundController {
+    interface VariantVisitor<T> {
+        T visitRiichi(RiichiTableRoundController controller);
+
+        T visitGb(GbTableRoundController controller);
+
+        /**
+         * Visit a controller running the Sichuan variant. Sichuan reuses {@link GbTableRoundController}
+         * for the round flow but has its own scoring rules; visitors that care about the distinction
+         * should override this. The default delegates to {@link #visitGb(GbTableRoundController)} so
+         * existing visitors that only handle GB still compile and behave the same.
+         */
+        default T visitSichuan(GbTableRoundController controller) {
+            return this.visitGb(controller);
+        }
+    }
+
+    <T> T accept(VariantVisitor<T> visitor);
+
     MahjongVariant variant();
 
     MahjongRule rule();
@@ -57,6 +75,10 @@ public interface TableRoundController {
     boolean isRiichi(UUID playerId);
 
     int dicePoints();
+
+    default int dicePoints2() {
+        return this.dicePoints();
+    }
 
     int kanCount();
 
@@ -116,6 +138,14 @@ public interface TableRoundController {
         return false;
     }
 
+    default boolean handleHandTileClick(UUID playerId, int tileIndex, boolean cancelSelection) {
+        return false;
+    }
+
+    default List<Integer> selectedHandTileIndices(UUID playerId) {
+        return List.of();
+    }
+
     default boolean canDeclareRiichi(UUID playerId) {
         return false;
     }
@@ -163,9 +193,4 @@ public interface TableRoundController {
     default List<RiichiDiscardSuggestion> suggestedDiscardSuggestions(UUID playerId) {
         return List.of();
     }
-
-    default RiichiRoundEngine asRiichiEngine() {
-        return null;
-    }
 }
-

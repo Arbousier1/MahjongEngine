@@ -1,16 +1,16 @@
 package top.ellan.mahjong.table.presentation;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.table.core.TableSessionContext;
+import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.riichi.model.MahjongRule;
 import java.util.Locale;
 import java.util.UUID;
 
 public final class TablePublicTextFactory {
-    private final MahjongTableSession session;
+    private final TableSessionContext session;
 
-    public TablePublicTextFactory(MahjongTableSession session) {
+    public TablePublicTextFactory(TableSessionContext session) {
         this.session = session;
     }
 
@@ -38,7 +38,7 @@ public final class TablePublicTextFactory {
     public String ruleDisplaySummary(Locale locale) {
         MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
-        if (variant == MahjongVariant.GB) {
+        if (variant != MahjongVariant.RIICHI) {
             return this.session.plugin().messages().plain(
                 locale,
                 "table.rule_display_summary_gb",
@@ -64,7 +64,7 @@ public final class TablePublicTextFactory {
     public String ruleSummary(Locale locale) {
         MahjongVariant variant = this.session.currentVariant();
         MahjongRule rule = this.currentRule();
-        if (variant == MahjongVariant.GB) {
+        if (variant != MahjongVariant.RIICHI) {
             return this.session.plugin().messages().plain(
                 locale,
                 "table.rule_summary_gb",
@@ -143,12 +143,17 @@ public final class TablePublicTextFactory {
     public String publicCenterText() {
         Locale locale = this.session.publicLocale();
         if (this.session.isStarted()) {
+            MahjongVariant variant = this.session.currentVariant();
+            String messageKey = variant == MahjongVariant.RIICHI ? "table.public.center_active" : "table.public.center_active_gb";
+            String diceDisplay = variant == MahjongVariant.RIICHI
+                ? String.valueOf(this.session.dicePoints())
+                : this.session.dicePoints() + "+" + this.session.breakDicePoints();
             String center = this.session.plugin().messages().plain(
                 locale,
-                "table.public.center_active",
+                messageKey,
                 this.session.plugin().messages().tag("round", this.roundDisplay(locale)),
                 this.session.plugin().messages().number(locale, "wall", this.session.remainingWallCount()),
-                this.session.plugin().messages().number(locale, "dice", this.session.dicePoints()),
+                this.session.plugin().messages().tag("dice", diceDisplay),
                 this.session.plugin().messages().tag("dealer", this.dealerName(locale)),
                 this.session.plugin().messages().tag("last_discard", this.centerLastDiscardSummary(locale))
             );

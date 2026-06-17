@@ -1,34 +1,26 @@
 package top.ellan.mahjong.table.runtime;
 
-import top.ellan.mahjong.table.core.MahjongTableSession;
+import top.ellan.mahjong.table.core.TableSessionMutator;
 
 public final class TableLifecycleCoordinator {
-    private final MahjongTableSession session;
+    private final TableSessionMutator session;
 
-    public TableLifecycleCoordinator(MahjongTableSession session) {
+    public TableLifecycleCoordinator(TableSessionMutator session) {
         this.session = session;
     }
 
     public void shutdown() {
-        this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdown();
-        this.session.shutdownRenderFlow();
-        this.session.clearRenderDisplays();
-        this.session.clearFeedbackTracking();
-        this.session.clearRoundTrackingState();
+        this.stopActiveFlows();
+        this.clearRoundTracking();
         this.session.shutdownViewerPresentation();
-        this.session.clearReadyPlayersForLifecycle();
-        this.session.clearLeaveQueueForLifecycle();
+        this.clearReadyAndLeaveQueues();
         this.session.clearSpectatorsForLifecycle();
         this.session.clearEngineForLifecycle();
     }
 
     public void forceEndMatch() {
-        this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdown();
-        this.session.shutdownRenderFlow();
-        this.session.clearFeedbackTracking();
-        this.session.clearRoundTrackingState();
+        this.stopActiveFlows();
+        this.clearRoundTracking();
         this.session.invalidateRenderFingerprints();
         this.session.resetViewerPresentationForLifecycleChange();
         this.session.clearLeaveQueueForLifecycle();
@@ -38,14 +30,10 @@ public final class TableLifecycleCoordinator {
     }
 
     public void resetForServerStartup() {
-        this.session.cancelBotTask();
-        this.session.cancelNextRoundCountdown();
-        this.session.shutdownRenderFlow();
+        this.stopActiveFlows();
         this.session.clearRenderDisplays();
-        this.session.clearFeedbackTracking();
-        this.session.clearRoundTrackingState();
-        this.session.clearReadyPlayersForLifecycle();
-        this.session.clearLeaveQueueForLifecycle();
+        this.clearRoundTracking();
+        this.clearReadyAndLeaveQueues();
         this.session.clearSpectatorsForLifecycle();
         this.session.clearBotNamesForLifecycle();
         this.session.clearSeatAssignmentsForLifecycle();
@@ -53,6 +41,20 @@ public final class TableLifecycleCoordinator {
         this.session.clearEngineForLifecycle();
         this.session.resetBotCounterForLifecycle();
     }
+
+    private void stopActiveFlows() {
+        this.session.cancelBotTask();
+        this.session.cancelNextRoundCountdown();
+        this.session.shutdownRenderFlow();
+    }
+
+    private void clearRoundTracking() {
+        this.session.clearFeedbackTracking();
+        this.session.clearRoundTrackingState();
+    }
+
+    private void clearReadyAndLeaveQueues() {
+        this.session.clearReadyPlayersForLifecycle();
+        this.session.clearLeaveQueueForLifecycle();
+    }
 }
-
-

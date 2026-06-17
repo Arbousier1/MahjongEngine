@@ -10,8 +10,8 @@ import top.ellan.mahjong.render.scene.MeldView
 import top.ellan.mahjong.render.scene.TableRenderer
 import top.ellan.mahjong.riichi.model.ScoringStick
 import top.ellan.mahjong.table.core.MahjongTableSession
-import top.ellan.mahjong.table.core.TableRenderSnapshot
-import top.ellan.mahjong.table.core.TableSeatRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableRenderSnapshot
+import top.ellan.mahjong.render.snapshot.TableSeatRenderSnapshot
 import java.util.EnumMap
 import java.util.UUID
 import kotlin.test.Test
@@ -56,9 +56,9 @@ class TableRendererTest {
     fun `riichi discard uses sideways footprint and yaw`() {
         assertTrue(DiscardLayout.discardFootprint(tileWidth, tileHeight, true) > DiscardLayout.discardFootprint(tileWidth, tileHeight, false))
         assertEquals(-180.0f, DiscardLayout.discardYaw(SeatWind.EAST, true))
-        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
+        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.SOUTH, true))
         assertEquals(0.0f, DiscardLayout.discardYaw(SeatWind.WEST, true))
-        assertEquals(90.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
+        assertEquals(-90.0f, DiscardLayout.discardYaw(SeatWind.NORTH, true))
     }
 
     @Test
@@ -80,6 +80,28 @@ class TableRendererTest {
         assertEquals(13, plan.seat(SeatWind.EAST).publicHandPoints().size)
         assertEquals(13, plan.seat(SeatWind.EAST).privateHandPoints().size)
         assertEquals(2, plan.seat(SeatWind.EAST).stickPlacements().size)
+        assertTrue(plan.borderSpanX() > 0.0)
+        assertTrue(plan.borderSpanZ() > 0.0)
+    }
+
+    @Test
+    fun `table layout follows upstream seat sides`() {
+        val plan = TableRenderLayout.precompute(startedSnapshot())
+
+        assertTrue(plan.seat(SeatWind.EAST).privateHandPoints().first().x() > 0.0)
+        assertTrue(plan.seat(SeatWind.SOUTH).handBase().z() < 0.0)
+        assertTrue(plan.seat(SeatWind.WEST).handBase().x() < 0.0)
+        assertTrue(plan.seat(SeatWind.NORTH).handBase().z() > 0.0)
+
+        val eastWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.EAST }.value!!
+        val southWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.SOUTH }.value!!
+        val westWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.WEST }.value!!
+        val northWall = plan.wallTiles().withIndex().first { it.value != null && WallLayout.wallSeat(it.index) == SeatWind.NORTH }.value!!
+
+        assertTrue(eastWall.point().x() > 0.0)
+        assertTrue(southWall.point().z() < 0.0)
+        assertTrue(westWall.point().x() < 0.0)
+        assertTrue(northWall.point().z() > 0.0)
     }
 
     @Test
@@ -94,6 +116,7 @@ class TableRendererTest {
                 base.centerZ(),
                 false,
                 false,
+                0,
                 0,
                 0,
                 0,
@@ -134,6 +157,7 @@ class TableRendererTest {
                 69,
                 base.kanCount(),
                 base.dicePoints(),
+                base.breakDicePoints(),
                 base.roundIndex(),
                 base.honbaCount(),
                 base.dealerSeat(),
@@ -165,7 +189,7 @@ class TableRendererTest {
         val session = mock(MahjongTableSession::class.java)
 
         `when`(session.center()).thenReturn(Location(null, snapshot.centerX(), snapshot.centerY(), snapshot.centerZ()))
-        `when`(session.currentVariant()).thenReturn(top.ellan.mahjong.table.core.MahjongVariant.RIICHI)
+        `when`(session.currentVariant()).thenReturn(top.ellan.mahjong.model.MahjongVariant.RIICHI)
 
         val spec = renderer.renderHandPublicTileSpecs(session, snapshot, seat, plan, 0).single() as DisplayEntities.TileDisplaySpec
 
@@ -174,7 +198,7 @@ class TableRendererTest {
     }
 
     @Test
-    fun `kakan tile is stacked above claimed tile`() {
+    fun `kakan tile stays on table plane and moves inward`() {
         val eastId = UUID.fromString("00000000-0000-0000-0000-000000000001")
         val seats = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)
         seats[SeatWind.EAST] = seatSnapshot(
@@ -205,6 +229,7 @@ class TableRendererTest {
             70,
             0,
             6,
+            6,
             0,
             1,
             SeatWind.EAST,
@@ -224,7 +249,8 @@ class TableRendererTest {
         val claimTile = meldPlacements[1]
         val addedKanTile = meldPlacements[3]
         assertEquals(MahjongTile.M5, addedKanTile.tile())
-        assertTrue(addedKanTile.point().y() > claimTile.point().y())
+        assertEquals(claimTile.point().y(), addedKanTile.point().y(), 1e-9)
+        assertTrue(centerDistanceSquared(addedKanTile.point(), 0.0, 0.0) <= centerDistanceSquared(claimTile.point(), 0.0, 0.0) + 1e-9)
     }
 
     @Test
@@ -232,9 +258,9 @@ class TableRendererTest {
         val left = horizontalTileRankForClaimIndex(SeatWind.EAST, 0)
         val middle = horizontalTileRankForClaimIndex(SeatWind.EAST, 1)
         val right = horizontalTileRankForClaimIndex(SeatWind.EAST, 2)
-        assertEquals(0, left)
+        assertEquals(2, left)
         assertEquals(1, middle)
-        assertEquals(2, right)
+        assertEquals(0, right)
     }
 
     private fun startedSnapshot(): TableRenderSnapshot {
@@ -264,6 +290,7 @@ class TableRendererTest {
             false,
             70,
             0,
+            6,
             6,
             0,
             1,
@@ -302,6 +329,7 @@ class TableRendererTest {
         true,
         "",
         -1,
+        emptyList(),
         riichiDiscardIndex,
         scoringSticks.size + cornerSticks.size,
         emptyList(),
@@ -358,6 +386,7 @@ class TableRendererTest {
             70,
             0,
             6,
+            6,
             0,
             1,
             SeatWind.EAST,
@@ -379,19 +408,24 @@ class TableRendererTest {
 
     private fun leftToRightScalar(point: TableRenderLayout.Point, wind: SeatWind): Double =
         when (wind) {
-            SeatWind.EAST -> point.z()
-            SeatWind.SOUTH -> point.x()
-            SeatWind.WEST -> -point.z()
-            SeatWind.NORTH -> -point.x()
+            SeatWind.EAST -> -point.z()
+            SeatWind.SOUTH -> -point.x()
+            SeatWind.WEST -> point.z()
+            SeatWind.NORTH -> point.x()
         }
 
     private fun seatYawFor(wind: SeatWind): Float =
         when (wind) {
             SeatWind.EAST -> -90.0f
-            SeatWind.SOUTH -> 0.0f
+            SeatWind.SOUTH -> 180.0f
             SeatWind.WEST -> 90.0f
-            SeatWind.NORTH -> -180.0f
+            SeatWind.NORTH -> 0.0f
         }
-}
 
+    private fun centerDistanceSquared(point: TableRenderLayout.Point, centerX: Double, centerZ: Double): Double {
+        val dx = point.x() - centerX
+        val dz = point.z() - centerZ
+        return dx * dx + dz * dz
+    }
+}
 

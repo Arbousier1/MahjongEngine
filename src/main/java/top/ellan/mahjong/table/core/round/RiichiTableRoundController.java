@@ -8,8 +8,9 @@ import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RiichiPlayerState;
 import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.RoundResolution;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.riichi.model.ScoringStick;
-import top.ellan.mahjong.table.core.MahjongVariant;
+import top.ellan.mahjong.model.MahjongVariant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,15 @@ public final class RiichiTableRoundController implements TableRoundController {
 
     public RiichiTableRoundController(RiichiRoundEngine engine) {
         this.engine = engine;
+    }
+
+    public RiichiRoundEngine roundEngine() {
+        return this.engine;
+    }
+
+    @Override
+    public <T> T accept(VariantVisitor<T> visitor) {
+        return visitor.visitRiichi(this);
     }
 
     @Override
@@ -209,9 +219,9 @@ public final class RiichiTableRoundController implements TableRoundController {
             top.ellan.mahjong.riichi.model.TileInstance claimTile = fuuro.getClaimTile();
             orderedInstances.remove(claimTile);
             int claimTileIndex = switch (fuuro.getClaimTarget().name()) {
-                case "LEFT" -> 0;
+                case "RIGHT" -> 0;
                 case "ACROSS" -> 1;
-                case "RIGHT" -> orderedInstances.size();
+                case "LEFT" -> orderedInstances.size();
                 default -> -1;
             };
             if (claimTileIndex >= 0) {
@@ -296,7 +306,14 @@ public final class RiichiTableRoundController implements TableRoundController {
         if (!this.engine.getStarted() || this.engine.getPendingReaction() != null) {
             return false;
         }
-        return this.isCurrentPlayer(playerId);
+        if (!this.isCurrentPlayer(playerId)) {
+            return false;
+        }
+        if (player.getRiichi() || player.getDoubleRiichi()) {
+            top.ellan.mahjong.riichi.model.TileInstance drawn = player.getLastDrawnTile();
+            return drawn != null && player.getHands().get(tileIndex).getId().equals(drawn.getId());
+        }
+        return true;
     }
 
     @Override
@@ -413,13 +430,7 @@ public final class RiichiTableRoundController implements TableRoundController {
         }
         return List.copyOf(player.discardSuggestions());
     }
-    @Override
-    public RiichiRoundEngine asRiichiEngine() {
-        return this.engine;
-    }
-
     private RiichiPlayerState seatPlayer(UUID playerId) {
         return playerId == null ? null : this.engine.seatPlayer(playerId.toString());
     }
 }
-

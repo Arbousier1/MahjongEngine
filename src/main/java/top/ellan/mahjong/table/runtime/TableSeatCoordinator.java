@@ -1,19 +1,22 @@
 package top.ellan.mahjong.table.runtime;
 
-import top.ellan.mahjong.bootstrap.MahjongPaperPlugin;
+import top.ellan.mahjong.compat.CraftEngineService;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.display.DisplayClickAction;
 import top.ellan.mahjong.render.display.DisplayClickAction.ActionType;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
+import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.MahjongTableManager;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -27,7 +30,8 @@ public final class TableSeatCoordinator {
     private static final long SEAT_RESTORE_COOLDOWN_MILLIS = 150L;
     private static final double SEAT_RESTORE_MAX_DISTANCE_SQUARED = 16.0D;
 
-    private final MahjongPaperPlugin plugin;
+    private final Supplier<CraftEngineService> craftEngine;
+    private final ServerScheduler scheduler;
     private final MahjongTableManager tableManager;
     private final Map<UUID, SeatWatchdogBinding> seatWatchdogs = new ConcurrentHashMap<>();
     private final Map<UUID, Long> seatRestoreCooldownUntilMillis = new ConcurrentHashMap<>();
@@ -35,9 +39,10 @@ public final class TableSeatCoordinator {
     private final AtomicLong seatWatchdogClock = new AtomicLong();
     private PluginTask seatWatchdogTask;
 
-    public TableSeatCoordinator(MahjongPaperPlugin plugin, MahjongTableManager tableManager) {
-        this.plugin = plugin;
-        this.tableManager = tableManager;
+    public TableSeatCoordinator(Supplier<CraftEngineService> craftEngine, ServerScheduler scheduler, MahjongTableManager tableManager) {
+        this.craftEngine = Objects.requireNonNull(craftEngine, "craftEngine");
+        this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
     }
 
     public void shutdown() {
@@ -59,14 +64,15 @@ public final class TableSeatCoordinator {
         if (direct != null && (direct.actionType() == ActionType.JOIN_SEAT || direct.actionType() == ActionType.TOGGLE_READY)) {
             return direct;
         }
-        if (this.plugin.craftEngine() == null) {
+        CraftEngineService craftEngine = this.craftEngine();
+        if (craftEngine == null) {
             return null;
         }
         Entity furniture = null;
-        if (this.plugin.craftEngine().isFurnitureEntity(entity)) {
+        if (craftEngine.isFurnitureEntity(entity)) {
             furniture = entity;
-        } else if (this.plugin.craftEngine().isSeatEntity(entity)) {
-            furniture = this.plugin.craftEngine().furnitureEntityForSeat(entity);
+        } else if (craftEngine.isSeatEntity(entity)) {
+            furniture = craftEngine.furnitureEntityForSeat(entity);
         }
         if (furniture == null) {
             return null;
@@ -93,7 +99,7 @@ public final class TableSeatCoordinator {
         if (player == null) {
             return;
         }
-        this.plugin.scheduler().runEntity(player, () -> {
+        this.scheduler.runEntity(player, () -> {
             if (!player.isOnline() || !player.isInsideVehicle()) {
                 return;
             }
@@ -107,14 +113,14 @@ public final class TableSeatCoordinator {
     }
 
     public void requestSeatRestore(Player player, MahjongTableSession session, SeatWind wind) {
-        if (player == null || session == null || wind == null || this.plugin.craftEngine() == null) {
+        if (player == null || session == null || wind == null || this.craftEngine() == null) {
             return;
         }
         UUID playerId = player.getUniqueId();
         if (!this.tryEnterSeatRestoreCooldown(playerId)) {
             return;
         }
-        this.plugin.scheduler().runEntity(player, () -> this.restoreSeatOnPlayerThread(player, playerId, session, wind));
+        this.scheduler.runEntity(player, () -> this.restoreSeatOnPlayerThread(player, playerId, session, wind));
     }
 
     public void movePlayerToSeatExit(UUID playerId, MahjongTableSession session, SeatWind wind) {
@@ -138,9 +144,9 @@ public final class TableSeatCoordinator {
         Location exit = seatAnchor.clone().add(offsetX, 1.05D, offsetZ);
         exit.setYaw(session.seatFacingYaw(wind));
         exit.setPitch(0.0F);
-        this.plugin.scheduler().runEntity(player, () -> {
+        this.scheduler.runEntity(player, () -> {
             if (player.isOnline() && !player.isInsideVehicle()) {
-                this.plugin.scheduler().teleport(player, exit);
+                this.scheduler.teleport(player, exit);
             }
         });
     }
@@ -182,7 +188,7 @@ public final class TableSeatCoordinator {
         if (this.seatWatchdogTask != null && !this.seatWatchdogTask.isCancelled()) {
             return;
         }
-        this.seatWatchdogTask = this.plugin.scheduler().runGlobalTimer(this::runSeatWatchdogs, 1L, SEAT_WATCHDOG_PERIOD_TICKS);
+        this.seatWatchdogTask = this.scheduler.runGlobalTimer(this::runSeatWatchdogs, 1L, SEAT_WATCHDOG_PERIOD_TICKS);
     }
 
     private void runSeatWatchdogs() {
@@ -204,7 +210,7 @@ public final class TableSeatCoordinator {
                 this.seatWatchdogs.remove(playerId, binding);
                 continue;
             }
-            this.plugin.scheduler().runEntity(player, () -> this.inspectSeatWatchdogOnPlayerThread(player, playerId, binding));
+            this.scheduler.runEntity(player, () -> this.inspectSeatWatchdogOnPlayerThread(player, playerId, binding));
         }
         if (this.seatWatchdogs.isEmpty()) {
             this.stopSeatWatchdogTask();
@@ -265,7 +271,7 @@ public final class TableSeatCoordinator {
     }
 
     private void restoreSeatOnPlayerThread(Player player, UUID playerId, MahjongTableSession session, SeatWind wind) {
-        if (player == null || playerId == null || session == null || wind == null || this.plugin.craftEngine() == null) {
+        if (player == null || playerId == null || session == null || wind == null || this.craftEngine() == null) {
             return;
         }
         if (!player.isOnline()) {
@@ -286,12 +292,12 @@ public final class TableSeatCoordinator {
             return;
         }
         Location anchor = seatAnchor.clone();
-        this.plugin.scheduler().runRegion(anchor, () -> {
+        this.scheduler.runRegion(anchor, () -> {
             Entity furniture = this.findSeatFurnitureAtAnchor(session, wind, anchor);
             if (furniture == null) {
                 return;
             }
-            this.plugin.scheduler().runEntity(player, () -> this.mountPlayerIfStillEligible(player, playerId, session, wind, anchor, furniture));
+            this.scheduler.runEntity(player, () -> this.mountPlayerIfStillEligible(player, playerId, session, wind, anchor, furniture));
         });
     }
 
@@ -303,7 +309,8 @@ public final class TableSeatCoordinator {
         Location anchor,
         Entity furniture
     ) {
-        if (player == null || playerId == null || session == null || wind == null || anchor == null || furniture == null || this.plugin.craftEngine() == null) {
+        CraftEngineService craftEngine = this.craftEngine();
+        if (player == null || playerId == null || session == null || wind == null || anchor == null || furniture == null || craftEngine == null) {
             return;
         }
         if (!player.isOnline() || player.isInsideVehicle()) {
@@ -315,7 +322,7 @@ public final class TableSeatCoordinator {
         if (!this.isSeatRestoreInRange(player, anchor)) {
             return;
         }
-        this.plugin.craftEngine().seatPlayerOnFurniture(furniture, player);
+        craftEngine.seatPlayerOnFurniture(furniture, player);
     }
 
     private boolean isSeatRestoreInRange(Player player, Location seatAnchor) {
@@ -331,7 +338,8 @@ public final class TableSeatCoordinator {
     }
 
     private Entity findSeatFurnitureAtAnchor(MahjongTableSession session, SeatWind wind, Location anchor) {
-        if (session == null || wind == null || anchor == null || this.plugin.craftEngine() == null) {
+        CraftEngineService craftEngine = this.craftEngine();
+        if (session == null || wind == null || anchor == null || craftEngine == null) {
             return null;
         }
         World world = anchor.getWorld();
@@ -339,7 +347,7 @@ public final class TableSeatCoordinator {
             return null;
         }
         for (Entity entity : world.getNearbyEntities(anchor, 1.6D, 1.6D, 1.6D)) {
-            if (!this.plugin.craftEngine().isFurnitureEntity(entity)) {
+            if (!craftEngine.isFurnitureEntity(entity)) {
                 continue;
             }
             DisplayClickAction action = TableDisplayRegistry.get(entity.getEntityId());
@@ -354,6 +362,10 @@ public final class TableSeatCoordinator {
     }
 
     private record SeatWatchdogBinding(String tableId, SeatWind wind, long expiresAtTick) {
+    }
+
+    private CraftEngineService craftEngine() {
+        return this.craftEngine.get();
     }
 }
 
