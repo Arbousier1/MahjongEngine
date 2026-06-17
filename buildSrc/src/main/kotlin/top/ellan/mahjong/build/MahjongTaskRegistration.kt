@@ -275,9 +275,30 @@ object MahjongTaskRegistration {
         reference: String,
         ratchetFrom: (String) -> Unit,
     ) {
-        if (gitReferenceExists(project, reference)) {
-            ratchetFrom(reference)
+        when {
+            gitReferenceExists(project, reference) -> ratchetFrom(reference)
+            fetchRemoteTrackingReference(project, reference) -> ratchetFrom(reference)
+            gitReferenceExists(project, "HEAD") -> ratchetFrom("HEAD")
         }
+    }
+
+    private fun fetchRemoteTrackingReference(
+        project: Project,
+        reference: String,
+    ): Boolean {
+        if (!reference.startsWith("origin/")) {
+            return false
+        }
+        val branchName = reference.removePrefix("origin/")
+        val refspec = "+refs/heads/$branchName:refs/remotes/$reference"
+        return project.providers
+            .exec {
+                commandLine("git", "fetch", "--depth=1", "--no-tags", "origin", refspec)
+                isIgnoreExitValue = true
+            }.result
+            .get()
+            .exitValue == 0 &&
+            gitReferenceExists(project, reference)
     }
 
     private fun gitReferenceExists(
