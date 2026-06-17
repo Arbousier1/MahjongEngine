@@ -29,6 +29,8 @@ public interface TableSessionMutator extends TableSessionContext {
 
     void clearRenderDisplays();
 
+    void shutdownRenderDisplays();
+
     void invalidateRenderFingerprints();
 
     void removeManagedRegionDisplays(String regionKey);

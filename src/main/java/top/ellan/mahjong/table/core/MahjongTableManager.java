@@ -822,13 +822,11 @@ public final class MahjongTableManager implements Listener {
         Location normalizedCenter = this.normalizedTableCenter(center);
         MahjongTableSession session = new MahjongTableSession(this.plugin, normalizedId, normalizedCenter, variant, rule, true, botMatchRoom, ownerId);
         this.registerTable(session);
-        if (botMatchRoom) {
-            while (session.size() < 4) {
-                if (!session.addBot()) {
-                    break;
-                }
-            }
-        }
+        // Bots are NOT added here. During server startup, adding bots would
+        // trigger render() and maybeStartRoundIfReady() before the startup
+        // cleanup has a chance to clear leftover entities from the previous
+        // session. Bots are added after the startup/chunk refresh completes
+        // cleanup+render, via TableRefreshCoordinator.maybeAddBotsForBotMatchRoom().
         this.refreshCoordinator.markPendingArtifactCleanup(normalizedId);
         return session;
     }

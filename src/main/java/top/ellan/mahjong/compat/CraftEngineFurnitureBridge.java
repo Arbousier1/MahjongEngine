@@ -167,6 +167,7 @@ final class CraftEngineFurnitureBridge {
             Object bukkitEntity = this.resolveFurnitureEntityMethod(furniture.getClass()).invoke(furniture);
             if (bukkitEntity instanceof Entity entity) {
                 this.markManagedFurnitureEntity(entity);
+                entity.setPersistent(false);
                 return entity;
             }
             return null;

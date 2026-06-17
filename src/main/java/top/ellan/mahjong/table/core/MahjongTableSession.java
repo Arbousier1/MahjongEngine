@@ -1505,6 +1505,11 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         this.regionDisplayCoordinator.clearRenderDisplays();
     }
 
+    @Override
+    public void shutdownRenderDisplays() {
+        this.regionDisplayCoordinator.shutdown();
+    }
+
     public boolean hasRegionDisplays() {
         return this.regionDisplayCoordinator.hasRegionDisplays();
     }
