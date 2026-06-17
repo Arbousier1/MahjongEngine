@@ -1,7 +1,7 @@
 package top.ellan.mahjong.table.core;
 
 import top.ellan.mahjong.model.SeatWind;
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.table.core.round.TableRoundController;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -126,4 +126,3 @@ final class SessionRoundFlowCoordinator {
         return true;
     }
 }
-

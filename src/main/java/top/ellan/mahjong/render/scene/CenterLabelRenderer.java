@@ -8,7 +8,6 @@ import top.ellan.mahjong.render.snapshot.TableRenderSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -27,7 +26,7 @@ public final class CenterLabelRenderer {
             session.bukkitPlugin(),
             center.clone().add(0.0D, TableRenderConstants.CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(session.publicCenterText()),
-            Color.fromARGB(112, 20, 80, 20)
+            TableRenderConstants.CENTER_LABEL_BACKGROUND
         ));
         if (session.lastPublicDiscardTile() != null) {
             spawned.add(spawnCenterLastDiscardTile(session, center, session.lastPublicDiscardTile()));
@@ -46,7 +45,7 @@ public final class CenterLabelRenderer {
             session.bukkitPlugin(),
             center.clone().add(0.0D, TableRenderConstants.CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(snapshot.publicCenterText()),
-            Color.fromARGB(112, 20, 80, 20)
+            TableRenderConstants.CENTER_LABEL_BACKGROUND
         ));
         if (snapshot.lastPublicDiscardTile() != null) {
             spawned.add(spawnCenterLastDiscardTile(session, center, snapshot.lastPublicDiscardTile()));
@@ -64,22 +63,20 @@ public final class CenterLabelRenderer {
         specs.add(DisplayEntities.labelSpec(
             center.clone().add(0.0D, TableRenderConstants.CENTER_LABEL_Y_OFFSET, 0.0D),
             Component.text(snapshot.publicCenterText()),
-            Color.fromARGB(112, 20, 80, 20)
+            TableRenderConstants.CENTER_LABEL_BACKGROUND
         ));
         if (snapshot.lastPublicDiscardTile() != null) {
-            specs.add(DisplayEntities.tileDisplaySpec(
+            specs.add(DisplayEntities.tileDisplay(
                 center.clone().add(0.0D, TableRenderConstants.CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
                 0.0F,
                 session.currentVariant(),
                 snapshot.lastPublicDiscardTile(),
-                DisplayEntities.TileRenderPose.STANDING,
-                null,
-                true,
-                null,
-                TableRenderConstants.CENTER_LAST_DISCARD_TILE_SCALE,
-                TableRenderConstants.CENTER_LAST_DISCARD_TILE_GLOW,
-                Display.Billboard.CENTER
-            ));
+                DisplayEntities.TileRenderPose.STANDING
+            )
+                .scale(TableRenderConstants.CENTER_LAST_DISCARD_TILE_SCALE)
+                .glowColor(TableRenderConstants.CENTER_LAST_DISCARD_TILE_GLOW)
+                .billboard(Display.Billboard.CENTER)
+                .spec());
         }
         return List.copyOf(specs);
     }
@@ -89,19 +86,16 @@ public final class CenterLabelRenderer {
         Location center,
         MahjongTile tile
     ) {
-        return DisplayEntities.spawnTileDisplay(
-            session.bukkitPlugin(),
+        return DisplayEntities.tileDisplay(
             center.clone().add(0.0D, TableRenderConstants.CENTER_LAST_DISCARD_TILE_Y_OFFSET, 0.0D),
             0.0F,
             session.currentVariant(),
             tile,
-            DisplayEntities.TileRenderPose.STANDING,
-            null,
-            true,
-            null,
-            TableRenderConstants.CENTER_LAST_DISCARD_TILE_SCALE,
-            TableRenderConstants.CENTER_LAST_DISCARD_TILE_GLOW,
-            Display.Billboard.CENTER
-        );
+            DisplayEntities.TileRenderPose.STANDING
+        )
+            .scale(TableRenderConstants.CENTER_LAST_DISCARD_TILE_SCALE)
+            .glowColor(TableRenderConstants.CENTER_LAST_DISCARD_TILE_GLOW)
+            .billboard(Display.Billboard.CENTER)
+            .spawn(session.bukkitPlugin());
     }
 }

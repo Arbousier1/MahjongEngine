@@ -11,19 +11,19 @@ import top.ellan.mahjong.riichi.model.YakuSettlement
 data class PaoLiabilityEntry(
     val key: String,
     val liablePlayer: RiichiPlayerState,
-    val yakumanUnits: Int
+    val yakumanUnits: Int,
 )
 
 data class PaoRonBreakdown(
     val targetBase: Int,
     val liabilityPayments: Map<RiichiPlayerState, Int>,
     val liabilityNotes: Map<String, String>,
-    val honbaPayer: RiichiPlayerState?
+    val honbaPayer: RiichiPlayerState?,
 )
 
 data class PaoTsumoBreakdown(
     val payments: List<SettlementPayment>,
-    val paymentTotals: Map<String, Int>
+    val paymentTotals: Map<String, Int>,
 )
 
 object RiichiPaoRules {
@@ -37,30 +37,32 @@ object RiichiPaoRules {
         liabilitiesByWinner: MutableMap<String, MutableMap<String, String>>,
         winner: RiichiPlayerState,
         discarder: RiichiPlayerState,
-        tile: TileInstance
+        tile: TileInstance,
     ) {
         val baseTile = tile.mahjongTile.baseTile
         val liability = liabilitiesByWinner.getOrPut(winner.uuid) { linkedMapOf() }
         if (baseTile in dragonTiles && "DAISANGEN" !in liability) {
-            val dragonGroups = winner.fuuroList
-                .asSequence()
-                .filter { it.isOpen && (it.type.name == "PON" || it.type.name == "MINKAN" || it.type.name == "KAKAN") }
-                .map { it.claimTile.mahjongTile.baseTile }
-                .filter { it in dragonTiles }
-                .distinct()
-                .count()
+            val dragonGroups =
+                winner.fuuroList
+                    .asSequence()
+                    .filter { it.isOpen && (it.type.name == "PON" || it.type.name == "MINKAN" || it.type.name == "KAKAN") }
+                    .map { it.claimTile.mahjongTile.baseTile }
+                    .filter { it in dragonTiles }
+                    .distinct()
+                    .count()
             if (dragonGroups >= 3) {
                 liability["DAISANGEN"] = discarder.uuid
             }
         }
         if (baseTile in windTiles && "DAISUUSHI" !in liability) {
-            val windGroups = winner.fuuroList
-                .asSequence()
-                .filter { it.isOpen && (it.type.name == "PON" || it.type.name == "MINKAN" || it.type.name == "KAKAN") }
-                .map { it.claimTile.mahjongTile.baseTile }
-                .filter { it in windTiles }
-                .distinct()
-                .count()
+            val windGroups =
+                winner.fuuroList
+                    .asSequence()
+                    .filter { it.isOpen && (it.type.name == "PON" || it.type.name == "MINKAN" || it.type.name == "KAKAN") }
+                    .map { it.claimTile.mahjongTile.baseTile }
+                    .filter { it in windTiles }
+                    .distinct()
+                    .count()
             if (windGroups >= 4) {
                 liability["DAISUUSHI"] = discarder.uuid
             }
@@ -71,7 +73,7 @@ object RiichiPaoRules {
         liabilitiesByWinner: Map<String, Map<String, String>>,
         winner: RiichiPlayerState,
         settlement: YakuSettlement,
-        seatResolver: (String) -> RiichiPlayerState?
+        seatResolver: (String) -> RiichiPlayerState?,
     ): List<PaoLiabilityEntry> {
         val raw = liabilitiesByWinner[winner.uuid].orEmpty()
         if (raw.isEmpty()) {
@@ -96,14 +98,14 @@ object RiichiPaoRules {
         winnerIsDealer: Boolean,
         basicScore: Int,
         target: RiichiPlayerState,
-        seatOrderFromDealer: List<RiichiPlayerState>
+        seatOrderFromDealer: List<RiichiPlayerState>,
     ): PaoRonBreakdown {
         if (liabilityEntries.isEmpty()) {
             return PaoRonBreakdown(
                 targetBase = basicScore,
                 liabilityPayments = emptyMap(),
                 liabilityNotes = emptyMap(),
-                honbaPayer = target
+                honbaPayer = target,
             )
         }
         val unitValue = yakumanUnitValue(winnerIsDealer, basicScore, liabilityEntries)
@@ -115,32 +117,37 @@ object RiichiPaoRules {
             notes.merge(entry.liablePlayer.uuid, entry.key, ::mergeLiabilityNotes)
         }
         val liabilityTotal = unitValue * liabilityEntries.sumOf { it.yakumanUnits }
-        val targetOwnLiabilityHalf = liabilityEntries
-            .filter { it.liablePlayer == target }
-            .sumOf { unitValue * it.yakumanUnits / 2 }
+        val targetOwnLiabilityHalf =
+            liabilityEntries
+                .filter { it.liablePlayer == target }
+                .sumOf { unitValue * it.yakumanUnits / 2 }
         return PaoRonBreakdown(
             targetBase = (basicScore - liabilityTotal) + (liabilityTotal / 2) + targetOwnLiabilityHalf,
             liabilityPayments = liabilityPortions,
             liabilityNotes = notes,
-            honbaPayer = honbaPayer(liabilityEntries, seatOrderFromDealer) ?: target
+            honbaPayer = honbaPayer(liabilityEntries, seatOrderFromDealer) ?: target,
         )
     }
 
     fun tsumoBreakdown(
-        winner: RiichiPlayerState,
         liabilityEntries: List<PaoLiabilityEntry>,
         winnerIsDealer: Boolean,
         basicScore: Int,
         others: List<RiichiPlayerState>,
-        dealer: RiichiPlayerState
+        dealer: RiichiPlayerState,
     ): PaoTsumoBreakdown {
         if (liabilityEntries.isEmpty()) {
-            val payments = others.map { other ->
-                SettlementPayment(other.uuid, normalTsumoShare(winnerIsDealer, other == dealer, basicScore), SettlementPaymentType.TSUMO)
-            }
+            val payments =
+                others.map { other ->
+                    SettlementPayment(
+                        other.uuid,
+                        normalTsumoShare(winnerIsDealer, other == dealer, basicScore),
+                        SettlementPaymentType.TSUMO,
+                    )
+                }
             return PaoTsumoBreakdown(
                 payments = payments,
-                paymentTotals = payments.associate { it.payerUuid to it.amount }
+                paymentTotals = payments.associate { it.payerUuid to it.amount },
             )
         }
         val unitValue = yakumanUnitValue(winnerIsDealer, basicScore, liabilityEntries)
@@ -174,7 +181,7 @@ object RiichiPaoRules {
 
     fun honbaPayer(
         liabilityEntries: List<PaoLiabilityEntry>,
-        seatOrder: List<RiichiPlayerState>
+        seatOrder: List<RiichiPlayerState>,
     ): RiichiPlayerState? =
         liabilityEntries
             .sortedWith(compareByDescending<PaoLiabilityEntry> { it.yakumanUnits }.thenBy { seatOrder.indexOf(it.liablePlayer) })
@@ -184,7 +191,7 @@ object RiichiPaoRules {
     private fun yakumanUnitValue(
         winnerIsDealer: Boolean,
         basicScore: Int,
-        liabilityEntries: List<PaoLiabilityEntry>
+        liabilityEntries: List<PaoLiabilityEntry>,
     ): Int {
         val totalUnits = totalYakumanUnits(liabilityEntries, basicScore, winnerIsDealer)
         return if (totalUnits <= 0) basicScore else basicScore / totalUnits
@@ -193,7 +200,7 @@ object RiichiPaoRules {
     private fun totalYakumanUnits(
         liabilityEntries: List<PaoLiabilityEntry>,
         basicScore: Int,
-        winnerIsDealer: Boolean
+        winnerIsDealer: Boolean,
     ): Int {
         val singleValue = if (winnerIsDealer) 48000 else 32000
         return if (basicScore % singleValue == 0) {
@@ -203,7 +210,11 @@ object RiichiPaoRules {
         }
     }
 
-    private fun normalTsumoShare(winnerIsDealer: Boolean, payerIsDealer: Boolean, totalValue: Int): Int =
+    private fun normalTsumoShare(
+        winnerIsDealer: Boolean,
+        payerIsDealer: Boolean,
+        totalValue: Int,
+    ): Int =
         if (winnerIsDealer) {
             totalValue / 3
         } else if (payerIsDealer) {
@@ -212,7 +223,8 @@ object RiichiPaoRules {
             totalValue / 4
         }
 
-    private fun mergeLiabilityNotes(left: String, right: String): String =
-        if (left == right || right.isBlank()) left else "$left/$right"
+    private fun mergeLiabilityNotes(
+        left: String,
+        right: String,
+    ): String = if (left == right || right.isBlank()) left else "$left/$right"
 }
-

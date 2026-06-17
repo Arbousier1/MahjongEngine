@@ -12,7 +12,6 @@ import top.ellan.mahjong.render.snapshot.TableSpectatorSeatOverlaySnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -35,7 +34,7 @@ public final class ViewerOverlayRenderer {
                 session.bukkitPlugin(),
                 center.clone().add(0.0D, TableRenderConstants.VIEWER_OVERLAY_LABEL_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                 session.viewerOverlay(viewer),
-                Color.fromARGB(84, 12, 12, 12),
+                TableRenderConstants.VIEWER_OVERLAY_BACKGROUND,
                 List.of(viewerId)
             ));
         }
@@ -45,7 +44,7 @@ public final class ViewerOverlayRenderer {
                     session.bukkitPlugin(),
                     TableGeometry.add(TableGeometry.handDirectionBase(center, wind), TableGeometry.offsetAcrossSeat(wind, TableRenderConstants.SPECTATOR_OVERLAY_ACROSS_OFFSET)).add(0.0D, TableRenderConstants.SPECTATOR_OVERLAY_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                     session.spectatorSeatOverlay(viewer, wind),
-                    Color.fromARGB(92, 14, 14, 18),
+                    TableRenderConstants.SPECTATOR_SEAT_OVERLAY_BACKGROUND,
                     List.of(viewerId)
                 ));
             }
@@ -61,7 +60,7 @@ public final class ViewerOverlayRenderer {
                 session.bukkitPlugin(),
                 center.clone().add(0.0D, TableRenderConstants.VIEWER_OVERLAY_LABEL_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                 snapshot.overlay(),
-                Color.fromARGB(84, 12, 12, 12),
+                TableRenderConstants.VIEWER_OVERLAY_BACKGROUND,
                 List.of(snapshot.viewerId())
             ));
         }
@@ -71,7 +70,7 @@ public final class ViewerOverlayRenderer {
                     session.bukkitPlugin(),
                     TableGeometry.add(TableGeometry.handDirectionBase(center, seatOverlay.wind()), TableGeometry.offsetAcrossSeat(seatOverlay.wind(), TableRenderConstants.SPECTATOR_OVERLAY_ACROSS_OFFSET)).add(0.0D, TableRenderConstants.SPECTATOR_OVERLAY_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                     seatOverlay.overlay(),
-                    Color.fromARGB(92, 14, 14, 18),
+                    TableRenderConstants.SPECTATOR_SEAT_OVERLAY_BACKGROUND,
                     List.of(snapshot.viewerId())
                 ));
             }
@@ -88,7 +87,7 @@ public final class ViewerOverlayRenderer {
             specs.add(DisplayEntities.labelSpec(
                 center.clone().add(0.0D, TableRenderConstants.VIEWER_OVERLAY_LABEL_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                 snapshot.overlay(),
-                Color.fromARGB(84, 12, 12, 12),
+                TableRenderConstants.VIEWER_OVERLAY_BACKGROUND,
                 List.of(snapshot.viewerId()),
                 Display.Billboard.CENTER,
                 0.0F,
@@ -101,7 +100,7 @@ public final class ViewerOverlayRenderer {
                 specs.add(DisplayEntities.labelSpec(
                     TableGeometry.add(TableGeometry.handDirectionBase(center, seatOverlay.wind()), TableGeometry.offsetAcrossSeat(seatOverlay.wind(), TableRenderConstants.SPECTATOR_OVERLAY_ACROSS_OFFSET)).add(0.0D, TableRenderConstants.SPECTATOR_OVERLAY_Y_OFFSET + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
                     seatOverlay.overlay(),
-                    Color.fromARGB(92, 14, 14, 18),
+                    TableRenderConstants.SPECTATOR_SEAT_OVERLAY_BACKGROUND,
                     List.of(snapshot.viewerId()),
                     Display.Billboard.CENTER,
                     0.0F,
@@ -121,7 +120,7 @@ public final class ViewerOverlayRenderer {
         return List.of(DisplayEntities.labelSpec(
             center.clone().add(0.0D, 0.62D + TableRenderConstants.FLOATING_TEXT_Y_OFFSET, 0.0D),
             snapshot.prompt(),
-            Color.fromARGB(72, 20, 18, 4),
+            TableRenderConstants.VIEWER_PROMPT_BACKGROUND,
             List.of(snapshot.viewerId()),
             Display.Billboard.CENTER,
             0.0F,
@@ -175,7 +174,7 @@ public final class ViewerOverlayRenderer {
                 specs.add(DisplayEntities.labelSpec(
                     labelLocation,
                     net.kyori.adventure.text.Component.text("[" + button.label() + "]", button.color()),
-                    Color.fromARGB(60, 0, 0, 0),
+                    TableRenderConstants.VIEWER_ACTION_BUTTON_BACKGROUND,
                     List.of(viewerId),
                     Display.Billboard.FIXED,
                     yaw,

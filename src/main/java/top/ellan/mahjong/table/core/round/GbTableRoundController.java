@@ -23,6 +23,7 @@ import top.ellan.mahjong.riichi.RoundResolution;
 import top.ellan.mahjong.riichi.model.ExhaustiveDraw;
 import top.ellan.mahjong.riichi.model.MahjongRound;
 import top.ellan.mahjong.riichi.model.MahjongRule;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.riichi.model.ScoreItem;
 import top.ellan.mahjong.riichi.model.ScoreSettlement;
 import top.ellan.mahjong.riichi.model.ScoringStick;
@@ -1968,4 +1969,3 @@ public final class GbTableRoundController implements TableRoundController {
         return this.playerAt(SeatWind.fromIndex(this.currentPlayerIndex));
     }
 }
-

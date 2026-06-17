@@ -25,7 +25,7 @@ import top.ellan.mahjong.riichi.model.MahjongSoulScoring;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.table.core.round.GbTableRoundController;
 import top.ellan.mahjong.table.core.round.GbRuleProfile;
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.table.core.round.RiichiTableRoundController;
 import top.ellan.mahjong.table.core.round.TableRoundController;
 import top.ellan.mahjong.table.presentation.TableDiceAnimationCoordinator;

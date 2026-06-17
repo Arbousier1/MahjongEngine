@@ -7,7 +7,7 @@ import top.ellan.mahjong.render.snapshot.TableRenderPrecomputeResult;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.model.MahjongRule;
-import top.ellan.mahjong.table.core.round.OpeningDiceRoll;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.table.core.round.TableRoundController;
 import java.util.List;
 import java.util.Map;

@@ -4,9 +4,9 @@ import mahjongutils.shanten.shanten
 import top.ellan.mahjong.riichi.model.ClaimTarget
 import top.ellan.mahjong.riichi.model.Fuuro
 import top.ellan.mahjong.riichi.model.GeneralSituation
+import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.riichi.model.MahjongTile
 import top.ellan.mahjong.riichi.model.MeldType
-import top.ellan.mahjong.riichi.model.MahjongRule
 import top.ellan.mahjong.riichi.model.PersonalSituation
 import top.ellan.mahjong.riichi.model.TileInstance
 import top.ellan.mahjong.riichi.model.Wind
@@ -20,27 +20,8 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class RiichiPlayerStateTest {
-    private val probeTiles: List<mahjongutils.models.Tile> = listOf(
-        MahjongTile.M2,
-        MahjongTile.M3,
-        MahjongTile.M4,
-        MahjongTile.M3,
-        MahjongTile.M4,
-        MahjongTile.M5,
-        MahjongTile.P4,
-        MahjongTile.P5,
-        MahjongTile.P6,
-        MahjongTile.S6,
-        MahjongTile.S7,
-        MahjongTile.S8,
-        MahjongTile.P6,
-        MahjongTile.M9
-    ).map { it.utilsTile }
-
-    @Test
-    fun `best-only shanten probe switches strategy to primary full scan`() {
-        val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
+    private val probeTiles: List<mahjongutils.models.Tile> =
+        listOf(
             MahjongTile.M2,
             MahjongTile.M3,
             MahjongTile.M4,
@@ -54,8 +35,29 @@ class RiichiPlayerStateTest {
             MahjongTile.S7,
             MahjongTile.S8,
             MahjongTile.P6,
-            MahjongTile.M9
-        )
+            MahjongTile.M9,
+        ).map { it.utilsTile }
+
+    @Test
+    fun `best-only shanten probe switches strategy to primary full scan`() {
+        val player = RiichiPlayerState("Alice", "alice")
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+                MahjongTile.M9,
+            )
 
         val originalCalculator = RiichiPlayerState.shantenCalculator
         var bestOnlyCalls = 0
@@ -70,7 +72,7 @@ class RiichiPlayerStateTest {
                 shanten(
                     tiles = tiles,
                     furo = furo,
-                    bestShantenOnly = false
+                    bestShantenOnly = false,
                 )
             }
 
@@ -88,22 +90,23 @@ class RiichiPlayerStateTest {
     @Test
     fun `runtime shanten failure promotes primary strategy to full scan`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.P2,
-            MahjongTile.P3,
-            MahjongTile.P4,
-            MahjongTile.S2,
-            MahjongTile.S3,
-            MahjongTile.S4,
-            MahjongTile.EAST,
-            MahjongTile.EAST,
-            MahjongTile.WHITE_DRAGON,
-            MahjongTile.WHITE_DRAGON,
-            MahjongTile.WHITE_DRAGON
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.P4,
+                MahjongTile.S2,
+                MahjongTile.S3,
+                MahjongTile.S4,
+                MahjongTile.EAST,
+                MahjongTile.EAST,
+                MahjongTile.WHITE_DRAGON,
+                MahjongTile.WHITE_DRAGON,
+                MahjongTile.WHITE_DRAGON,
+            )
 
         val runtimeHand = player.hands.map { it.mahjongTile.utilsTile }
         val originalCalculator = RiichiPlayerState.shantenCalculator
@@ -121,7 +124,7 @@ class RiichiPlayerStateTest {
                 shanten(
                     tiles = tiles,
                     furo = furo,
-                    bestShantenOnly = bestShantenOnly
+                    bestShantenOnly = bestShantenOnly,
                 )
             }
 
@@ -139,22 +142,23 @@ class RiichiPlayerStateTest {
     @Test
     fun `runtime shanten failure promotes to stable util when primary full scan also fails`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.P2,
-            MahjongTile.P3,
-            MahjongTile.P4,
-            MahjongTile.S2,
-            MahjongTile.S3,
-            MahjongTile.S4,
-            MahjongTile.EAST,
-            MahjongTile.EAST,
-            MahjongTile.WHITE_DRAGON,
-            MahjongTile.WHITE_DRAGON,
-            MahjongTile.WHITE_DRAGON
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.P4,
+                MahjongTile.S2,
+                MahjongTile.S3,
+                MahjongTile.S4,
+                MahjongTile.EAST,
+                MahjongTile.EAST,
+                MahjongTile.WHITE_DRAGON,
+                MahjongTile.WHITE_DRAGON,
+                MahjongTile.WHITE_DRAGON,
+            )
 
         val runtimeHand = player.hands.map { it.mahjongTile.utilsTile }
         val originalCalculator = RiichiPlayerState.shantenCalculator
@@ -167,7 +171,7 @@ class RiichiPlayerStateTest {
                     shanten(
                         tiles = tiles,
                         furo = furo,
-                        bestShantenOnly = bestShantenOnly
+                        bestShantenOnly = bestShantenOnly,
                     )
                 } else if (tiles == runtimeHand) {
                     runtimeCalls++
@@ -176,7 +180,7 @@ class RiichiPlayerStateTest {
                     shanten(
                         tiles = tiles,
                         furo = furo,
-                        bestShantenOnly = bestShantenOnly
+                        bestShantenOnly = bestShantenOnly,
                     )
                 }
             }
@@ -195,22 +199,23 @@ class RiichiPlayerStateTest {
     @Test
     fun `strategy switches to stable util when primary probe fails twice`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6,
-            MahjongTile.M9
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+                MahjongTile.M9,
+            )
 
         val originalCalculator = RiichiPlayerState.shantenCalculator
         var calculatorCalls = 0
@@ -233,21 +238,22 @@ class RiichiPlayerStateTest {
     @Test
     fun `can win pre-check uses selected full-scan strategy`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+            )
 
         val originalCalculator = RiichiPlayerState.shantenCalculator
         var bestOnlyCalls = 0
@@ -262,17 +268,18 @@ class RiichiPlayerStateTest {
                 shanten(
                     tiles = tiles,
                     furo = furo,
-                    bestShantenOnly = false
+                    bestShantenOnly = false,
                 )
             }
 
-            val canWin = player.canWin(
-                winningTile = MahjongTile.P6,
-                isWinningTileInHands = false,
-                rule = MahjongRule(),
-                generalSituation = defaultGeneralSituation(),
-                personalSituation = defaultPersonalSituation()
-            )
+            val canWin =
+                player.canWin(
+                    winningTile = MahjongTile.P6,
+                    isWinningTileInHands = false,
+                    rule = MahjongRule(),
+                    generalSituation = defaultGeneralSituation(),
+                    personalSituation = defaultPersonalSituation(),
+                )
 
             assertEquals("primary-full-scan", RiichiPlayerState.activeShantenStrategyName)
             assertTrue(canWin)
@@ -286,21 +293,22 @@ class RiichiPlayerStateTest {
     @Test
     fun `can win result is memoized for unchanged hand state`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+            )
 
         val originalCalculator = RiichiPlayerState.shantenCalculator
         var calculatorCalls = 0
@@ -310,25 +318,27 @@ class RiichiPlayerStateTest {
                 shanten(
                     tiles = tiles,
                     furo = furo,
-                    bestShantenOnly = bestShantenOnly
+                    bestShantenOnly = bestShantenOnly,
                 )
             }
 
-            val firstCanWin = player.canWin(
-                winningTile = MahjongTile.P6,
-                isWinningTileInHands = false,
-                rule = MahjongRule(),
-                generalSituation = defaultGeneralSituation(),
-                personalSituation = defaultPersonalSituation()
-            )
+            val firstCanWin =
+                player.canWin(
+                    winningTile = MahjongTile.P6,
+                    isWinningTileInHands = false,
+                    rule = MahjongRule(),
+                    generalSituation = defaultGeneralSituation(),
+                    personalSituation = defaultPersonalSituation(),
+                )
             val callsAfterFirstEvaluation = calculatorCalls
-            val secondCanWin = player.canWin(
-                winningTile = MahjongTile.P6,
-                isWinningTileInHands = false,
-                rule = MahjongRule(),
-                generalSituation = defaultGeneralSituation(),
-                personalSituation = defaultPersonalSituation()
-            )
+            val secondCanWin =
+                player.canWin(
+                    winningTile = MahjongTile.P6,
+                    isWinningTileInHands = false,
+                    rule = MahjongRule(),
+                    generalSituation = defaultGeneralSituation(),
+                    personalSituation = defaultPersonalSituation(),
+                )
 
             assertTrue(firstCanWin)
             assertTrue(secondCanWin)
@@ -342,20 +352,21 @@ class RiichiPlayerStateTest {
     @Test
     fun `invalid hand size does not throw during shanten checks`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.M6,
-            MahjongTile.P1,
-            MahjongTile.P2,
-            MahjongTile.P3,
-            MahjongTile.S1,
-            MahjongTile.S2,
-            MahjongTile.S3
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.M6,
+                MahjongTile.P1,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.S1,
+                MahjongTile.S2,
+                MahjongTile.S3,
+            )
 
         assertFalse(player.isTenpai)
         assertTrue(player.discardSuggestions().isEmpty())
@@ -405,11 +416,12 @@ class RiichiPlayerStateTest {
         val player = RiichiPlayerState("Alice", "alice")
         val target = RiichiPlayerState("Bob", "bob")
         val discard = TileInstance(mahjongTile = MahjongTile.M5)
-        player.hands += listOf(
-            TileInstance(mahjongTile = MahjongTile.M5),
-            TileInstance(mahjongTile = MahjongTile.M5_RED),
-            TileInstance(mahjongTile = MahjongTile.P1)
-        )
+        player.hands +=
+            listOf(
+                TileInstance(mahjongTile = MahjongTile.M5),
+                TileInstance(mahjongTile = MahjongTile.M5_RED),
+                TileInstance(mahjongTile = MahjongTile.P1),
+            )
         target.discardedTilesForDisplay += discard
 
         player.pon(discard, ClaimTarget.RIGHT, target)
@@ -426,12 +438,13 @@ class RiichiPlayerStateTest {
     fun `ankan removes four matching tiles and creates concealed kan`() {
         val player = RiichiPlayerState("Alice", "alice")
         val tile = TileInstance(mahjongTile = MahjongTile.EAST)
-        player.hands += listOf(
-            tile,
-            TileInstance(mahjongTile = MahjongTile.EAST),
-            TileInstance(mahjongTile = MahjongTile.EAST),
-            TileInstance(mahjongTile = MahjongTile.EAST)
-        )
+        player.hands +=
+            listOf(
+                tile,
+                TileInstance(mahjongTile = MahjongTile.EAST),
+                TileInstance(mahjongTile = MahjongTile.EAST),
+                TileInstance(mahjongTile = MahjongTile.EAST),
+            )
 
         player.ankan(tile)
 
@@ -446,22 +459,23 @@ class RiichiPlayerStateTest {
     fun `riichi ankan requires the freshly drawn tile to complete the quad`() {
         val player = RiichiPlayerState("Alice", "alice")
         player.riichi = true
-        player.hands += tiles(
-            MahjongTile.EAST,
-            MahjongTile.EAST,
-            MahjongTile.EAST,
-            MahjongTile.EAST,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.P2,
-            MahjongTile.P3,
-            MahjongTile.P4,
-            MahjongTile.S2,
-            MahjongTile.S3,
-            MahjongTile.S4,
-            MahjongTile.WHITE_DRAGON
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.EAST,
+                MahjongTile.EAST,
+                MahjongTile.EAST,
+                MahjongTile.EAST,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.P4,
+                MahjongTile.S2,
+                MahjongTile.S3,
+                MahjongTile.S4,
+                MahjongTile.WHITE_DRAGON,
+            )
         player.lastDrawnTile = TileInstance(mahjongTile = MahjongTile.WHITE_DRAGON)
 
         assertTrue(player.tilesCanAnkan.isEmpty())
@@ -493,22 +507,23 @@ class RiichiPlayerStateTest {
     @Test
     fun `discard suggestion cache invalidates when hand changes`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6,
-            MahjongTile.M9
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+                MahjongTile.M9,
+            )
 
         player.discardSuggestions()
         val cachedVersionBefore = cachedDiscardSuggestionsVersion(player)
@@ -523,22 +538,23 @@ class RiichiPlayerStateTest {
     @Test
     fun `best discard suggestions mirror detailed discard suggestions`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6,
-            MahjongTile.M9
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+                MahjongTile.M9,
+            )
 
         val details = player.discardSuggestions()
 
@@ -551,21 +567,22 @@ class RiichiPlayerStateTest {
     @Test
     fun `furiten checks start from the actual last discard instance`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M3,
-            MahjongTile.P4,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P5,
-            MahjongTile.S6,
-            MahjongTile.S6,
-            MahjongTile.EAST
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M3,
+                MahjongTile.P4,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P5,
+                MahjongTile.S6,
+                MahjongTile.S6,
+                MahjongTile.EAST,
+            )
         val earlierSameKind = TileInstance(mahjongTile = MahjongTile.M9)
         val waitedTileFromEarlierTurn = TileInstance(mahjongTile = MahjongTile.EAST)
         val ownLastDiscard = TileInstance(mahjongTile = MahjongTile.M9)
@@ -575,8 +592,8 @@ class RiichiPlayerStateTest {
         assertFalse(
             player.isFuriten(
                 currentWinningDiscard,
-                listOf(earlierSameKind, waitedTileFromEarlierTurn, ownLastDiscard, currentWinningDiscard)
-            )
+                listOf(earlierSameKind, waitedTileFromEarlierTurn, ownLastDiscard, currentWinningDiscard),
+            ),
         )
     }
 
@@ -597,65 +614,69 @@ class RiichiPlayerStateTest {
     @Test
     fun `available chii pairs come from mahjong utils furo analysis`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M3,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.P1,
-            MahjongTile.P1,
-            MahjongTile.P2,
-            MahjongTile.P2,
-            MahjongTile.P3,
-            MahjongTile.P3,
-            MahjongTile.S4,
-            MahjongTile.S5,
-            MahjongTile.S6
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M3,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.P1,
+                MahjongTile.P1,
+                MahjongTile.P2,
+                MahjongTile.P2,
+                MahjongTile.P3,
+                MahjongTile.P3,
+                MahjongTile.S4,
+                MahjongTile.S5,
+                MahjongTile.S6,
+            )
 
         val pairs = player.availableChiiPairs(TileInstance(mahjongTile = MahjongTile.M2))
 
         assertEquals(
             setOf(MahjongTile.M1 to MahjongTile.M3, MahjongTile.M3 to MahjongTile.M4),
-            pairs.toSet()
+            pairs.toSet(),
         )
     }
 
     @Test
     fun `closed tanyao hand can win`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+            )
 
-        val canWin = player.canWin(
-            winningTile = MahjongTile.P6,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation()
-        )
-        val settlement = player.calcYakuSettlementForWin(
-            winningTile = MahjongTile.P6,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = emptyList(),
-            uraDoraIndicators = emptyList()
-        )
+        val canWin =
+            player.canWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+            )
+        val settlement =
+            player.calcYakuSettlementForWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = emptyList(),
+                uraDoraIndicators = emptyList(),
+            )
 
         assertTrue(canWin)
         assertContains(settlement.yakuList, "PINFU")
@@ -666,31 +687,33 @@ class RiichiPlayerStateTest {
     @Test
     fun `dora adds han when hand already has a yaku`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.P6,
-            MahjongTile.S6,
-            MahjongTile.S7,
-            MahjongTile.S8,
-            MahjongTile.P6
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.P6,
+                MahjongTile.S6,
+                MahjongTile.S7,
+                MahjongTile.S8,
+                MahjongTile.P6,
+            )
 
-        val settlement = player.calcYakuSettlementForWin(
-            winningTile = MahjongTile.P6,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.P5)),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = listOf(MahjongTile.P5),
-            uraDoraIndicators = emptyList()
-        )
+        val settlement =
+            player.calcYakuSettlementForWin(
+                winningTile = MahjongTile.P6,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.P5)),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = listOf(MahjongTile.P5),
+                uraDoraIndicators = emptyList(),
+            )
 
         assertContains(settlement.yakuList, "PINFU")
         assertContains(settlement.yakuList, "TANYAO")
@@ -701,56 +724,60 @@ class RiichiPlayerStateTest {
     @Test
     fun `ittsu loses one han after opening the hand`() {
         val closed = RiichiPlayerState("Closed", "closed")
-        closed.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.M6,
-            MahjongTile.M7,
-            MahjongTile.M8,
-            MahjongTile.P1,
-            MahjongTile.P1,
-            MahjongTile.P1,
-            MahjongTile.S7,
-            MahjongTile.S7
-        )
-        val closedSettlement = closed.calcYakuSettlementForWin(
-            winningTile = MahjongTile.M9,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = emptyList(),
-            uraDoraIndicators = emptyList()
-        )
+        closed.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.M6,
+                MahjongTile.M7,
+                MahjongTile.M8,
+                MahjongTile.P1,
+                MahjongTile.P1,
+                MahjongTile.P1,
+                MahjongTile.S7,
+                MahjongTile.S7,
+            )
+        val closedSettlement =
+            closed.calcYakuSettlementForWin(
+                winningTile = MahjongTile.M9,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = emptyList(),
+                uraDoraIndicators = emptyList(),
+            )
         assertContains(closedSettlement.yakuList, "ITTSU")
         assertEquals(2, closedSettlement.han)
 
         val open = RiichiPlayerState("Open", "open")
-        open.hands += tiles(
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.M6,
-            MahjongTile.M7,
-            MahjongTile.M8,
-            MahjongTile.P1,
-            MahjongTile.P1,
-            MahjongTile.P1,
-            MahjongTile.S7,
-            MahjongTile.S7
-        )
+        open.hands +=
+            tiles(
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.M6,
+                MahjongTile.M7,
+                MahjongTile.M8,
+                MahjongTile.P1,
+                MahjongTile.P1,
+                MahjongTile.P1,
+                MahjongTile.S7,
+                MahjongTile.S7,
+            )
         open.fuuroList += openChii(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)
-        val openSettlement = open.calcYakuSettlementForWin(
-            winningTile = MahjongTile.M9,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = emptyList(),
-            uraDoraIndicators = emptyList()
-        )
+        val openSettlement =
+            open.calcYakuSettlementForWin(
+                winningTile = MahjongTile.M9,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = emptyList(),
+                uraDoraIndicators = emptyList(),
+            )
         assertContains(openSettlement.yakuList, "ITTSU")
         assertEquals(1, openSettlement.han)
     }
@@ -758,56 +785,60 @@ class RiichiPlayerStateTest {
     @Test
     fun `chinitsu loses one han after opening the hand`() {
         val closed = RiichiPlayerState("Closed", "closed")
-        closed.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M1,
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.M6,
-            MahjongTile.M7,
-            MahjongTile.M7,
-            MahjongTile.M9,
-            MahjongTile.M9
-        )
-        val closedSettlement = closed.calcYakuSettlementForWin(
-            winningTile = MahjongTile.M7,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = emptyList(),
-            uraDoraIndicators = emptyList()
-        )
+        closed.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M1,
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.M6,
+                MahjongTile.M7,
+                MahjongTile.M7,
+                MahjongTile.M9,
+                MahjongTile.M9,
+            )
+        val closedSettlement =
+            closed.calcYakuSettlementForWin(
+                winningTile = MahjongTile.M7,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = emptyList(),
+                uraDoraIndicators = emptyList(),
+            )
         assertContains(closedSettlement.yakuList, "CHINITSU")
         assertEquals(6, closedSettlement.han)
 
         val open = RiichiPlayerState("Open", "open")
-        open.hands += tiles(
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.M4,
-            MahjongTile.M4,
-            MahjongTile.M5,
-            MahjongTile.M6,
-            MahjongTile.M7,
-            MahjongTile.M7,
-            MahjongTile.M9,
-            MahjongTile.M9
-        )
+        open.hands +=
+            tiles(
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.M4,
+                MahjongTile.M4,
+                MahjongTile.M5,
+                MahjongTile.M6,
+                MahjongTile.M7,
+                MahjongTile.M7,
+                MahjongTile.M9,
+                MahjongTile.M9,
+            )
         open.fuuroList += openPon(MahjongTile.M1)
-        val openSettlement = open.calcYakuSettlementForWin(
-            winningTile = MahjongTile.M7,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(),
-            personalSituation = defaultPersonalSituation(),
-            doraIndicators = emptyList(),
-            uraDoraIndicators = emptyList()
-        )
+        val openSettlement =
+            open.calcYakuSettlementForWin(
+                winningTile = MahjongTile.M7,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(),
+                personalSituation = defaultPersonalSituation(),
+                doraIndicators = emptyList(),
+                uraDoraIndicators = emptyList(),
+            )
         assertContains(openSettlement.yakuList, "CHINITSU")
         assertEquals(5, openSettlement.han)
     }
@@ -815,38 +846,41 @@ class RiichiPlayerStateTest {
     @Test
     fun `dora alone does not make a hand winnable`() {
         val player = RiichiPlayerState("Alice", "alice")
-        player.hands += tiles(
-            MahjongTile.M1,
-            MahjongTile.M2,
-            MahjongTile.M3,
-            MahjongTile.P3,
-            MahjongTile.P4,
-            MahjongTile.P5,
-            MahjongTile.S3,
-            MahjongTile.S4,
-            MahjongTile.S5,
-            MahjongTile.M7,
-            MahjongTile.M8,
-            MahjongTile.M9,
-            MahjongTile.EAST
-        )
+        player.hands +=
+            tiles(
+                MahjongTile.M1,
+                MahjongTile.M2,
+                MahjongTile.M3,
+                MahjongTile.P3,
+                MahjongTile.P4,
+                MahjongTile.P5,
+                MahjongTile.S3,
+                MahjongTile.S4,
+                MahjongTile.S5,
+                MahjongTile.M7,
+                MahjongTile.M8,
+                MahjongTile.M9,
+                MahjongTile.EAST,
+            )
 
-        val canWin = player.canWin(
-            winningTile = MahjongTile.EAST,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.NORTH)),
-            personalSituation = defaultPersonalSituation(jikaze = Wind.WEST)
-        )
-        val settlement = player.calcYakuSettlementForWin(
-            winningTile = MahjongTile.EAST,
-            isWinningTileInHands = false,
-            rule = MahjongRule(),
-            generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.NORTH)),
-            personalSituation = defaultPersonalSituation(jikaze = Wind.WEST),
-            doraIndicators = listOf(MahjongTile.NORTH),
-            uraDoraIndicators = emptyList()
-        )
+        val canWin =
+            player.canWin(
+                winningTile = MahjongTile.EAST,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.NORTH)),
+                personalSituation = defaultPersonalSituation(jikaze = Wind.WEST),
+            )
+        val settlement =
+            player.calcYakuSettlementForWin(
+                winningTile = MahjongTile.EAST,
+                isWinningTileInHands = false,
+                rule = MahjongRule(),
+                generalSituation = defaultGeneralSituation(doraIndicators = listOf(MahjongTile.NORTH)),
+                personalSituation = defaultPersonalSituation(jikaze = Wind.WEST),
+                doraIndicators = listOf(MahjongTile.NORTH),
+                uraDoraIndicators = emptyList(),
+            )
 
         assertFalse(canWin)
         assertTrue(settlement.yakuList.isEmpty())
@@ -861,39 +895,54 @@ class RiichiPlayerStateTest {
         val west = RiichiPlayerState("West", "west")
         val north = RiichiPlayerState("North", "north")
         val riichiDiscard = TileInstance(mahjongTile = MahjongTile.M1)
-        val discards = listOf(
-            riichiDiscard,
-            TileInstance(mahjongTile = MahjongTile.P1),
-            TileInstance(mahjongTile = MahjongTile.S1)
-        )
+        val discards =
+            listOf(
+                riichiDiscard,
+                TileInstance(mahjongTile = MahjongTile.P1),
+                TileInstance(mahjongTile = MahjongTile.S1),
+            )
         player.doubleRiichi = true
         player.riichiSengenTile = riichiDiscard
 
         assertTrue(player.isIppatsu(listOf(player, south, west, north), discards))
     }
 
-    private fun analysisVersion(player: RiichiPlayerState): Long =
-        playerField("analysisStateVersion").getLong(player)
+    private fun analysisVersion(player: RiichiPlayerState): Long = playerField("analysisStateVersion").getLong(player)
 
-    private fun cachedTilePairsVersion(player: RiichiPlayerState): Long =
-        playerField("cachedTilePairsForRiichiVersion").getLong(player)
+    private fun cachedTilePairsVersion(player: RiichiPlayerState): Long = cacheVersion(player, "TILE_PAIRS_FOR_RIICHI")
 
-    private fun cachedDiscardSuggestionsVersion(player: RiichiPlayerState): Long =
-        playerField("cachedDiscardSuggestionsVersion").getLong(player)
+    private fun cachedDiscardSuggestionsVersion(player: RiichiPlayerState): Long = cacheVersion(player, "DISCARD_SUGGESTIONS")
 
-    private fun playerField(name: String): Field =
-        RiichiPlayerState::class.java.getDeclaredField(name).apply { isAccessible = true }
+    private fun cacheVersion(
+        player: RiichiPlayerState,
+        cacheName: String,
+    ): Long {
+        @Suppress("UNCHECKED_CAST")
+        val versions = playerField("cacheVersions").get(player) as Map<Any, Long>
+        return versions[analysisCache(cacheName)] ?: -1L
+    }
 
-    private fun tiles(vararg tiles: MahjongTile): List<TileInstance> =
-        tiles.map { TileInstance(mahjongTile = it) }
+    private fun analysisCache(cacheName: String): Any =
+        Class
+            .forName("top.ellan.mahjong.riichi.RiichiPlayerState\$AnalysisCache")
+            .enumConstants
+            .first { (it as Enum<*>).name == cacheName }
 
-    private fun openChii(first: MahjongTile, second: MahjongTile, third: MahjongTile): Fuuro {
+    private fun playerField(name: String): Field = RiichiPlayerState::class.java.getDeclaredField(name).apply { isAccessible = true }
+
+    private fun tiles(vararg tiles: MahjongTile): List<TileInstance> = tiles.map { TileInstance(mahjongTile = it) }
+
+    private fun openChii(
+        first: MahjongTile,
+        second: MahjongTile,
+        third: MahjongTile,
+    ): Fuuro {
         val claim = TileInstance(mahjongTile = first)
         return Fuuro(
             type = MeldType.CHII,
             tileInstances = listOf(claim, TileInstance(mahjongTile = second), TileInstance(mahjongTile = third)),
             claimTarget = ClaimTarget.RIGHT,
-            claimTile = claim
+            claimTile = claim,
         )
     }
 
@@ -903,31 +952,30 @@ class RiichiPlayerStateTest {
             type = MeldType.PON,
             tileInstances = listOf(claim, TileInstance(mahjongTile = tile), TileInstance(mahjongTile = tile)),
             claimTarget = ClaimTarget.RIGHT,
-            claimTile = claim
+            claimTile = claim,
         )
     }
 
     private fun defaultGeneralSituation(
         doraIndicators: List<MahjongTile> = emptyList(),
-        uraDoraIndicators: List<MahjongTile> = emptyList()
-    ): GeneralSituation = GeneralSituation(
-        isFirstRound = false,
-        isHoutei = false,
-        bakaze = Wind.SOUTH,
-        doraIndicators = doraIndicators,
-        uraDoraIndicators = uraDoraIndicators
-    )
+        uraDoraIndicators: List<MahjongTile> = emptyList(),
+    ): GeneralSituation =
+        GeneralSituation(
+            isFirstRound = false,
+            isHoutei = false,
+            bakaze = Wind.SOUTH,
+            doraIndicators = doraIndicators,
+            uraDoraIndicators = uraDoraIndicators,
+        )
 
-    private fun defaultPersonalSituation(
-        jikaze: Wind = Wind.WEST
-    ): PersonalSituation = PersonalSituation(
-        isTsumo = false,
-        isIppatsu = false,
-        isRiichi = false,
-        isDoubleRiichi = false,
-        isChankan = false,
-        isRinshanKaihoh = false,
-        jikaze = jikaze
-    )
+    private fun defaultPersonalSituation(jikaze: Wind = Wind.WEST): PersonalSituation =
+        PersonalSituation(
+            isTsumo = false,
+            isIppatsu = false,
+            isRiichi = false,
+            isDoubleRiichi = false,
+            isChankan = false,
+            isRinshanKaihoh = false,
+            jikaze = jikaze,
+        )
 }
-

@@ -8,6 +8,7 @@ import top.ellan.mahjong.riichi.RiichiDiscardSuggestion;
 import top.ellan.mahjong.riichi.RiichiPlayerState;
 import top.ellan.mahjong.riichi.RiichiRoundEngine;
 import top.ellan.mahjong.riichi.RoundResolution;
+import top.ellan.mahjong.riichi.model.OpeningDiceRoll;
 import top.ellan.mahjong.riichi.model.ScoringStick;
 import top.ellan.mahjong.model.MahjongVariant;
 import java.util.ArrayList;
@@ -433,4 +434,3 @@ public final class RiichiTableRoundController implements TableRoundController {
         return playerId == null ? null : this.engine.seatPlayer(playerId.toString());
     }
 }
-
