@@ -222,6 +222,40 @@ public final class TableRegionDisplayCoordinator {
         this.recordRegionLoadMetrics(this.metrics());
     }
 
+    /**
+     * Synchronous shutdown removal that bypasses the scheduler. During
+     * plugin disable the Bukkit scheduler cancels all pending tasks for the
+     * plugin, so removeEntity()'s delayed runTask would never execute and
+     * entities would leak into the saved chunk data. This method calls
+     * entity.remove() directly since onDisable runs on the main thread.
+     */
+    public void shutdown() {
+        this.regionFingerprints.clear();
+        for (String regionKey : List.copyOf(this.regionDisplays.keySet())) {
+            List<Entity> entities = this.regionDisplays.remove(regionKey);
+            if (entities == null) {
+                continue;
+            }
+            for (Entity entity : entities) {
+                TableDisplayRegistry.unregister(entity.getEntityId());
+                DisplayVisibilityRegistry.unregister(entity.getEntityId());
+                if (this.session.plugin().craftEngine() != null) {
+                    this.session.plugin().craftEngine().unregisterCullableEntity(entity);
+                }
+                boolean removedByCraftEngine = this.session.plugin().craftEngine() != null
+                    && this.session.plugin().craftEngine().removeFurniture(entity);
+                if (!removedByCraftEngine && !entity.isDead()) {
+                    try {
+                        entity.remove();
+                    } catch (RuntimeException ignored) {
+                        // Entity might be in an unloaded chunk or already invalid.
+                    }
+                }
+            }
+        }
+        this.regionDisplays.clear();
+    }
+
     public void invalidateFingerprints() {
         this.regionFingerprints.clear();
         this.recordRegionLoadMetrics(this.metrics());

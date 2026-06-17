@@ -139,8 +139,9 @@ public final class TableRefreshCoordinator {
                 continue;
             }
             this.scheduler.runRegion(session.center(), () -> {
-                this.refreshPersistentTableArtifacts(session);
+                this.cleanupLoadedTableArtifactsIfNeeded(session);
                 session.render();
+                this.maybeAddBotsForBotMatchRoom(session);
             });
             attempts++;
         }
@@ -165,6 +166,7 @@ public final class TableRefreshCoordinator {
             this.scheduler.runRegion(session.center(), () -> {
                 this.cleanupLoadedTableArtifactsIfNeeded(session);
                 session.render();
+                this.maybeAddBotsForBotMatchRoom(session);
                 this.seatCoordinator.startSeatWatchdog(session);
             });
             attempts++;
@@ -172,6 +174,25 @@ public final class TableRefreshCoordinator {
         if (this.chunkRefreshQueue.isEmpty() && this.chunkRefreshTask != null) {
             this.chunkRefreshTask.cancel();
             this.chunkRefreshTask = null;
+        }
+    }
+
+    /**
+     * Adds bots to bot match rooms after cleanup and render have completed.
+     * This is called after the startup/chunk refresh has cleared leftover
+     * entities and rendered the initial table state, so addBot()'s internal
+     * render() and maybeStartRoundIfReady() calls operate on a clean display
+     * state. addBot() is idempotent (returns false when size >= 4 or the
+     * round has started), so calling this from both refresh batches is safe.
+     */
+    private void maybeAddBotsForBotMatchRoom(MahjongTableSession session) {
+        if (session == null || !session.isBotMatchRoom() || session.isStarted()) {
+            return;
+        }
+        while (session.size() < 4) {
+            if (!session.addBot()) {
+                break;
+            }
         }
     }
 
