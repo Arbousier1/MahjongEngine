@@ -4,8 +4,10 @@ import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.SeatWind;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 final class GbRoundSupport {
@@ -141,12 +143,34 @@ final class GbRoundSupport {
         return MahjongTile.valueOf("" + suit + number);
     }
 
+    // Direct enum-to-enum mapping avoids the expensive valueOf(name()) string
+    // round-trip on every tile conversion between the model and riichi types.
+    // Both enums share identical constant names, so the maps are built once.
+    private static final Map<MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> TO_RIICHI_MAP = buildToRiichiMap();
+    private static final Map<top.ellan.mahjong.riichi.model.MahjongTile, MahjongTile> FROM_RIICHI_MAP = buildFromRiichiMap();
+
+    private static Map<MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> buildToRiichiMap() {
+        Map<MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> map = new EnumMap<>(MahjongTile.class);
+        for (MahjongTile tile : MahjongTile.values()) {
+            map.put(tile, top.ellan.mahjong.riichi.model.MahjongTile.valueOf(tile.name()));
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    private static Map<top.ellan.mahjong.riichi.model.MahjongTile, MahjongTile> buildFromRiichiMap() {
+        Map<top.ellan.mahjong.riichi.model.MahjongTile, MahjongTile> map = new EnumMap<>(top.ellan.mahjong.riichi.model.MahjongTile.class);
+        for (top.ellan.mahjong.riichi.model.MahjongTile tile : top.ellan.mahjong.riichi.model.MahjongTile.values()) {
+            map.put(tile, MahjongTile.valueOf(tile.name()));
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
     static top.ellan.mahjong.riichi.model.MahjongTile toRiichiTile(MahjongTile tile) {
-        return top.ellan.mahjong.riichi.model.MahjongTile.valueOf(tile.name());
+        return TO_RIICHI_MAP.get(tile);
     }
 
     static MahjongTile fromRiichiTile(top.ellan.mahjong.riichi.model.MahjongTile tile) {
-        return MahjongTile.valueOf(tile.name());
+        return FROM_RIICHI_MAP.get(tile);
     }
 
     static List<top.ellan.mahjong.riichi.model.MahjongTile> toRiichiTiles(List<MahjongTile> tiles) {

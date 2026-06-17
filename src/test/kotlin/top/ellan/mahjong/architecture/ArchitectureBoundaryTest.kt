@@ -243,7 +243,7 @@ class ArchitectureBoundaryTest {
             "src/main/kotlin/top/ellan/mahjong/gb/jni"
         ).map { projectRoot.resolve(it).normalize() }
         val lineBudgets = listOf(
-            LineBudget("build.gradle.kts", 380),
+            LineBudget("build.gradle.kts", 210),
             LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableSession.java", 1660),
             LineBudget("src/main/java/top/ellan/mahjong/table/core/MahjongTableManager.java", 1050),
             LineBudget("src/main/java/top/ellan/mahjong/render/scene/TableRenderer.java", 2150)
