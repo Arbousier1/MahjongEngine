@@ -31,9 +31,31 @@ The current branch already supports playable Riichi Mahjong, GB Mahjong, and Sic
 - round history persistence through H2 by default, with optional MariaDB/MySQL
 - game room system: spatial containers for tables, with optional table creation restriction, enter/exit messages, and leave countdown for active matches
 
+## Recommended Setup: Create a Game Room First
+
+For normal server operation, create at least one game room before opening public tables. A game room is the allowed play area for Mahjong tables; when `gameRooms.restrictNewTables` is enabled, `/mahjong create` only works while the admin is standing inside a game room.
+
+Quick tutorial:
+
+1. Give yourself admin permission: `mahjongpaper.admin`.
+2. Run `/mahjong room wand` to get the selection wand.
+3. Left-click one corner of the room, then right-click the opposite corner.
+4. Check the cyan particle outline and make sure the entire play area is inside the cuboid.
+5. Run `/mahjong room create main-hall Main Hall`.
+6. Stand inside that room and run `/mahjong create` to place a Mahjong table.
+7. Use `/mahjong room list` and `/mahjong room info main-hall` to confirm the saved room.
+
+If you only need a quick test room, stand at the room center and run `/mahjong room create quick-room`; without a wand selection, the plugin uses `gameRooms.defaultRadius` and `gameRooms.defaultHeight`.
+
+For the longer operations guide, see [Game room system](./docs/wiki.zh-CN.md#棋牌室系统) in the Chinese wiki.
+
 ## Command Summary
 
 - `/mahjong help`: show in-game command help
+- `/mahjong room wand`: get the game-room selection wand
+- `/mahjong room create <id> [name]`: create a game room from the current wand selection, or around your current position
+- `/mahjong room list`: list saved game rooms
+- `/mahjong room info <id>`: show a game room's world, bounds, size, and owner
 - `/mahjong create`: create a new empty table at your location
 - `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]`: create a 4-bot test match and spectate it
 - `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`: apply a preset before the next start
@@ -67,6 +89,7 @@ Admin targeting details:
 
 ## Lobby Flow
 
+- On production servers, create the game room first, then stand inside it before running `/mahjong create`.
 - `/mahjong create` creates an empty table only; it does not auto-seat the creator
 - the creator becomes the table owner and can manage rules, bots, refresh, start, and delete from `/mahjong table`
 - the table owner/admin can transfer ownership with `/mahjong table owner <player> [tableId]`
@@ -96,7 +119,7 @@ The plugin ships three independent rulesets. Switch between them before a hand s
 
 Every mode uses the same play loop:
 
-1. `/mahjong create`: create an empty table at your feet.
+1. Create a game room first on production servers; then stand inside it and run `/mahjong create` to create an empty table.
 2. Click one of the east/south/west/north floating seat labels to sit down, or use `/mahjong join <tableId>`.
 3. Fill empty seats with `/mahjong addbot` (bots count as ready).
 4. `/mahjong start` toggles ready; the hand auto-starts once all 4 seats are filled and ready.

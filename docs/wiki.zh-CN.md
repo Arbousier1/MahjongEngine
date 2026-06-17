@@ -17,6 +17,22 @@
 | 配置文件 | `plugins/MahjongPaper/config.yml` |
 | CraftEngine 导出目录 | `plugins/CraftEngine/resources/mahjongpaper` |
 
+## 开服推荐路径：先建棋牌室
+
+正式服建议把“创建棋牌室”作为开桌前的第一步。棋牌室是牌桌的空间容器，用来规定牌桌能放在哪里，并提供进出提醒和对局中离开倒计时。默认配置下，`gameRooms.enabled: true` 且 `gameRooms.restrictNewTables: true`，因此管理员需要站在棋牌室内才能创建新牌桌。
+
+推荐流程：
+
+1. 确认管理员拥有 `mahjongpaper.admin`。
+2. 使用 `/mahjong room wand` 获取选区魔棒。
+3. 左键点击房间一个角，右键点击对角。
+4. 观察青色粒子边框，确认棋牌室范围覆盖整个游玩区域。
+5. 使用 `/mahjong room create main-hall 主厅` 保存棋牌室。
+6. 站在棋牌室内执行 `/mahjong create` 创建牌桌。
+7. 用 `/mahjong room info main-hall` 检查世界、坐标和大小。
+
+这个流程适合大厅、包间、活动区等固定场地。临时测试时，可以不使用魔棒，直接站在中心点执行 `/mahjong room create test-room`，插件会按 `gameRooms.defaultRadius` 和 `gameRooms.defaultHeight` 自动生成一个区域。
+
 ## 安装与首次启动
 
 1. 准备 Paper 或 Folia 服务端，并确保运行环境是 Java 21。
@@ -30,7 +46,7 @@
 
 一张牌桌从创建到结束大致是这个流程：
 
-1. 管理员使用 `/mahjong create` 在当前位置创建空牌桌。
+1. 管理员先创建棋牌室；如果启用了创建限制，则站在棋牌室内使用 `/mahjong create` 创建空牌桌。
 2. 玩家点击东、南、西、北四个座位悬浮标签入座，也可以使用 `/mahjong join <table_id>` 加入。
 3. 开局前可使用 `/mahjong mode <mode>` 切换玩法，或用 `/mahjong rule <key> <value>` 调整部分规则。
 4. 缺人时可用 `/mahjong addbot` 补 Bot。Bot 默认视为已准备。
@@ -208,7 +224,7 @@
 
 | 命令 | 用途 |
 | --- | --- |
-| `/mahjong create` | 在当前位置创建牌桌 |
+| `/mahjong create` | 在当前位置创建牌桌；开启棋牌室限制时必须站在棋牌室内 |
 | `/mahjong botmatch [hanchan|tonpuu]` | 创建 4 Bot 立直测试桌并进入观战 |
 | `/mahjong render` | 重新渲染当前牌桌 |
 | `/mahjong inspect` | 显示渲染锚点和方向诊断 |
@@ -314,7 +330,7 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 | `/mahjong leaderboard [mode]` | 玩家 | 查看分模式排行榜 |
 | `/mahjong addbot` | 桌主/管理员 | 开局前添加 Bot |
 | `/mahjong removebot` | 桌主/管理员 | 开局前移除 Bot |
-| `/mahjong create` | 管理员 | 创建牌桌 |
+| `/mahjong create` | 管理员 | 创建牌桌；开启棋牌室限制时必须站在棋牌室内 |
 | `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]` | 管理员 | 创建 4 Bot 测试桌 |
 | `/mahjong list` | 管理员 | 列出活动牌桌 |
 | `/mahjong render` | 管理员 | 强制刷新牌桌展示 |
@@ -362,7 +378,7 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 
 ### 创建棋牌室
 
-有两种方式创建棋牌室：使用游戏内魔棒工具（推荐）或手动编辑配置文件。
+有两种方式创建棋牌室：使用游戏内魔棒工具（推荐）或手动编辑配置文件。推荐优先使用魔棒，因为它能即时显示粒子边框，方便确认区域是否覆盖完整。
 
 #### 方式一：魔棒工具（推荐）
 
@@ -383,7 +399,14 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 | 左键点击方块 | 设置选区第一点（最小角） |
 | 右键点击方块 | 设置选区第二点（最大角） |
 
-两点确定一个长方体（AABB）区域。设置成功后会收到提示消息，显示当前选区坐标。
+两点确定一个长方体（AABB）区域。设置成功后会收到提示消息，显示当前选区坐标；同时会出现青色粒子边框，用来确认棋牌室的实际范围。粒子边框只会显示给当前管理员，不会影响其他玩家。
+
+选区建议：
+
+- 第一、第二点可以任意先后点击，插件会自动计算最小/最大坐标。
+- 选区高度要覆盖玩家活动高度和牌桌展示高度，不要只框地面一层。
+- 如果棋牌室是大厅，建议比墙体内侧略大一圈，避免牌桌中心点贴边时被判定在区域外。
+- 如果右键后发现粒子边框不对，重新左键/右键选择即可，旧预览会被刷新。
 
 **创建棋牌室**：
 
@@ -398,13 +421,23 @@ MahjongPaper 使用 CraftEngine 处理以下内容：
 
 如果已有选区，会使用选区坐标创建；如果没有选区，则以玩家当前位置为中心，按配置中的 `defaultRadius` 和 `defaultHeight` 创建。
 
-**示例**：
+**完整示例：创建一个主厅棋牌室**：
 
 ```
 /mahjong room wand                          # 获取魔棒
-# 左键点击房间一个角，右键点击对角
+# 左键点击主厅地面一角
+# 右键点击主厅对角的上方或地面方块
+# 确认青色粒子边框覆盖整个主厅
 /mahjong room create main-hall 主厅          # 用选区创建棋牌室
+/mahjong room info main-hall                # 检查保存后的范围
+/mahjong create                             # 站在主厅内创建牌桌
+```
+
+**快速测试示例**：
+
+```
 /mahjong room create quick-room             # 无选区时以玩家位置为中心创建
+/mahjong create                             # 在 quick-room 内创建牌桌
 ```
 
 **其他棋牌室命令**：

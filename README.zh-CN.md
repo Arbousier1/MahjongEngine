@@ -29,9 +29,31 @@
 - 默认使用 H2 持久化对局历史和段位，可选 MariaDB/MySQL
 - 棋牌室系统：牌桌的空间容器，支持牌桌创建限制、进出提醒和对局中离开倒计时
 
+## 推荐开服流程：先创建棋牌室
+
+正式开服时，建议先创建至少一个棋牌室，再在棋牌室内创建牌桌。棋牌室是牌桌的允许摆放区域；当 `gameRooms.restrictNewTables` 开启时，管理员只有站在棋牌室内才能使用 `/mahjong create` 创建新牌桌。
+
+快速教程：
+
+1. 确认你拥有管理员权限：`mahjongpaper.admin`。
+2. 执行 `/mahjong room wand` 获取棋牌室选区魔棒。
+3. 左键点击房间的一个角，右键点击对角线另一角。
+4. 观察青色粒子边框，确认整个游玩区域都被框住。
+5. 执行 `/mahjong room create main-hall 主厅` 创建棋牌室。
+6. 站在这个棋牌室内，执行 `/mahjong create` 创建牌桌。
+7. 用 `/mahjong room list` 和 `/mahjong room info main-hall` 检查保存结果。
+
+如果只是快速测试，也可以站在房间中心直接执行 `/mahjong room create quick-room`；没有魔棒选区时，插件会按 `gameRooms.defaultRadius` 和 `gameRooms.defaultHeight` 自动生成一个区域。
+
+更完整的操作说明见中文 wiki 的 [棋牌室系统](./docs/wiki.zh-CN.md#棋牌室系统)。
+
 ## 指令概览
 
 - `/mahjong help`：显示游戏内帮助
+- `/mahjong room wand`：获取棋牌室选区魔棒
+- `/mahjong room create <id> [名称]`：用当前选区创建棋牌室；没有选区时以当前位置为中心创建
+- `/mahjong room list`：列出已保存的棋牌室
+- `/mahjong room info <id>`：查看棋牌室世界、边界、大小和所有者
 - `/mahjong create`：在当前位置创建一个空牌桌
 - `/mahjong botmatch [MAJSOUL_HANCHAN|MAJSOUL_TONPUU|GB|SICHUAN]`：创建一桌 4 Bot 测试对局并进入观战
 - `/mahjong mode <MAJSOUL_TONPUU|MAJSOUL_HANCHAN|GB|SICHUAN>`：桌主/管理员在下一局开始前应用预设规则；默认玩法以 `MAJSOUL_HANCHAN` 为主
@@ -62,6 +84,7 @@
 
 ## 大厅与准备流程
 
+- 正式服建议先建棋牌室，再站在棋牌室内使用 `/mahjong create` 创建牌桌。
 - `/mahjong create` 只会创建空桌，不会自动把创建者加入牌局
 - 创建者会成为桌主，可通过 `/mahjong table` 管理规则、Bot、刷新、开局和删除
 - 桌主/管理员可用 `/mahjong table owner <玩家名> [tableId]` 把桌主转让给已经入座的在线玩家
@@ -86,7 +109,7 @@
 
 无论哪种模式，一局的操作流程都一样：
 
-1. `/mahjong create`：在你脚下创建一张空牌桌。
+1. 正式服先创建棋牌室；然后站在棋牌室内执行 `/mahjong create` 创建一张空牌桌。
 2. 走到东/南/西/北四个悬浮座位牌前点击入座，或用 `/mahjong join <牌桌ID>`。
 3. 缺人时由桌主/管理员用 `/mahjong table` 或 `/mahjong addbot` 补 Bot（Bot 默认视为已准备）。
 4. `/mahjong start` 切换准备状态；4 个座位都坐满且全部准备后自动开局。

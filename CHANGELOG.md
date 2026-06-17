@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.2 - 2026-06-18
+
+Maintenance release for release-build formatting and clearer game room documentation.
+
+中文更新日志:
+
+- **发布构建修复**: 格式化 UI 测试文件，修复 Release 工作流在 Windows 平台执行 `spotlessKotlinCheck` 时失败的问题。
+- **棋牌室教程强化**: README 和中文 wiki 新增“先创建棋牌室，再创建牌桌”的开服推荐流程，补充魔棒选区、青色粒子范围确认、主厅创建和快速测试示例。
+
+English Release Notes:
+
+- **Release build fix**: Formatted UI test sources so the Windows Release build no longer fails in `spotlessKotlinCheck`.
+- **Game room documentation**: README and the Chinese wiki now emphasize creating a game room before placing tables, with wand selection, particle-outline confirmation, main-hall setup, and quick-test examples.
+
 ## 1.3.1 - 2026-06-18
 
 Hotfix and usability release for CI reliability, command help navigation, and game room selection confirmation.
