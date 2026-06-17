@@ -11,6 +11,10 @@ import java.util.Set;
 import java.util.function.Supplier;
 import kotlin.Pair;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import top.ellan.mahjong.debug.DebugService;
@@ -37,7 +41,9 @@ import top.ellan.mahjong.runtime.ServerScheduler;
 
 public final class MahjongCommandContext {
     public static final String ADMIN_PERMISSION = "mahjongpaper.admin";
+    private static final int HELP_PAGE_SIZE = 10;
     static final java.util.List<String> HELP_KEY_ORDER = java.util.List.of(
+        "command.help.help",
         "command.help.create",
         "command.help.botmatch",
         "command.help.mode",
@@ -147,14 +153,40 @@ public final class MahjongCommandContext {
     }
 
     public void sendHelp(Player player) {
+        this.sendHelp(player, 1);
+    }
+
+    public void sendHelp(Player player, int requestedPage) {
         Locale locale = this.messages.resolveLocale(player);
-        this.messages.send(player, "command.usage");
-        for (String key : HELP_KEYS) {
-            if (ADMIN_HELP_KEYS.contains(key) && !player.hasPermission(ADMIN_PERMISSION)) {
-                continue;
-            }
-            player.sendMessage(this.messages.render(locale, key));
+        List<String> visibleKeys = this.visibleHelpKeys(player);
+        int pageCount = Math.max(1, (int) Math.ceil((double) visibleKeys.size() / HELP_PAGE_SIZE));
+        int page = Math.max(1, Math.min(requestedPage, pageCount));
+        int start = (page - 1) * HELP_PAGE_SIZE;
+        int end = Math.min(start + HELP_PAGE_SIZE, visibleKeys.size());
+
+        player.sendMessage(this.messages.render(locale, "command.help.header"));
+        player.sendMessage(this.messages.render(locale, "command.help.subtitle"));
+        player.sendMessage(this.messages.render(
+            locale,
+            "command.help.page_status",
+            this.messages.number(locale, "page", page),
+            this.messages.number(locale, "pages", pageCount),
+            this.messages.number(locale, "count", visibleKeys.size())
+        ));
+        for (int index = start; index < end; index++) {
+            player.sendMessage(Component.text("  - ", NamedTextColor.DARK_AQUA).append(this.messages.render(locale, visibleKeys.get(index))));
         }
+        player.sendMessage(this.helpNavigation(locale, page, pageCount));
+        player.sendMessage(this.messages.render(locale, "command.help.footer"));
+    }
+
+    public List<String> suggestedHelpPages(Player player, String rawPrefix) {
+        int pageCount = this.helpPageCount(player);
+        List<String> pages = new ArrayList<>(pageCount);
+        for (int page = 1; page <= pageCount; page++) {
+            pages.add(String.valueOf(page));
+        }
+        return this.matchPrefix(rawPrefix, pages);
     }
 
     public void sendReaction(Player player, ReactionType type, Pair<MahjongTile, MahjongTile> pair, String actionKey) {
@@ -437,6 +469,51 @@ public final class MahjongCommandContext {
             case CELESTIAL -> "rank.tier.celestial";
         };
         return this.messages.plain(locale, tierKey) + " " + profile.level();
+    }
+
+    private List<String> visibleHelpKeys(Player player) {
+        List<String> keys = new ArrayList<>();
+        for (String key : HELP_KEYS) {
+            if (ADMIN_HELP_KEYS.contains(key) && !player.hasPermission(ADMIN_PERMISSION)) {
+                continue;
+            }
+            keys.add(key);
+        }
+        return List.copyOf(keys);
+    }
+
+    private int helpPageCount(Player player) {
+        return Math.max(1, (int) Math.ceil((double) this.visibleHelpKeys(player).size() / HELP_PAGE_SIZE));
+    }
+
+    private Component helpNavigation(Locale locale, int page, int pageCount) {
+        TextComponent.Builder builder = Component.text();
+        builder.append(Component.text("  "));
+        builder.append(this.helpPageButton(locale, "command.help.previous", page - 1, page > 1));
+        builder.append(Component.text(" "));
+        builder.append(this.messages.render(
+            locale,
+            "command.help.page_compact",
+            this.messages.number(locale, "page", page),
+            this.messages.number(locale, "pages", pageCount)
+        ));
+        builder.append(Component.text(" "));
+        builder.append(this.helpPageButton(locale, "command.help.next", page + 1, page < pageCount));
+        return builder.build();
+    }
+
+    private Component helpPageButton(Locale locale, String labelKey, int targetPage, boolean enabled) {
+        String label = this.messages.plain(locale, labelKey);
+        Component button = Component.text("[", NamedTextColor.DARK_GRAY)
+            .append(Component.text(label, enabled ? NamedTextColor.YELLOW : NamedTextColor.DARK_GRAY))
+            .append(Component.text("]", NamedTextColor.DARK_GRAY));
+        if (!enabled) {
+            return button;
+        }
+        String command = "/mahjong help " + targetPage;
+        return button
+            .clickEvent(ClickEvent.runCommand(command))
+            .hoverEvent(HoverEvent.showText(Component.text(command, NamedTextColor.GRAY)));
     }
 
     public void showLeaderboard(Player player, MahjongVariant requestedMode) {

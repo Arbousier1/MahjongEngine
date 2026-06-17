@@ -9,6 +9,7 @@ import top.ellan.mahjong.debug.DebugService;
 import top.ellan.mahjong.db.DatabaseService;
 import top.ellan.mahjong.gb.jni.GbNativeWarmupService;
 import top.ellan.mahjong.gameroom.GameRoomManager;
+import top.ellan.mahjong.gameroom.GameRoomSelectionPreviewService;
 import top.ellan.mahjong.gameroom.GameRoomSelectionService;
 import top.ellan.mahjong.gameroom.GameRoomWandListener;
 import top.ellan.mahjong.i18n.MessageService;
@@ -47,6 +48,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private MahjongTableManager tableManager;
     private GameRoomManager gameRoomManager;
     private GameRoomSelectionService gameRoomSelectionService;
+    private GameRoomSelectionPreviewService gameRoomSelectionPreviewService;
     private PluginTask gameRoomTickTask;
 
     @Override
@@ -85,6 +87,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.tableManager.loadPersistentTables();
 
         this.gameRoomSelectionService = new GameRoomSelectionService();
+        this.gameRoomSelectionPreviewService = new GameRoomSelectionPreviewService(this.gameRoomSelectionService, this.scheduler);
         this.gameRoomManager = new GameRoomManager(
             this.tableManager,
             () -> this.debug,
@@ -112,7 +115,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
         this.getServer().getPluginManager().registerEvents(new top.ellan.mahjong.gameroom.GameRoomListener(() -> this.gameRoomManager, this.messages, () -> this.settings), this);
-        this.getServer().getPluginManager().registerEvents(new GameRoomWandListener(this.gameRoomSelectionService, this.messages, () -> this.settings), this);
+        this.getServer().getPluginManager().registerEvents(new GameRoomWandListener(this.gameRoomSelectionService, this.gameRoomSelectionPreviewService, this.messages, () -> this.settings), this);
         this.gameRoomTickTask = this.scheduler.runGlobalTimer(() -> {
             if (this.gameRoomManager != null) {
                 this.gameRoomManager.tick();
@@ -137,6 +140,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.gameRoomTickTask != null) {
             this.gameRoomTickTask.cancel();
             this.gameRoomTickTask = null;
+        }
+        if (this.gameRoomSelectionPreviewService != null) {
+            this.gameRoomSelectionPreviewService.cancelAll();
+            this.gameRoomSelectionPreviewService = null;
         }
         if (this.tableManager != null) {
             this.tableManager.shutdown();
@@ -372,6 +379,9 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.gameRoomSelectionService != null && !reloadedSettings.gameRooms().enabled()) {
             this.gameRoomSelectionService.clearAll();
         }
+        if (this.gameRoomSelectionPreviewService != null && !reloadedSettings.gameRooms().enabled()) {
+            this.gameRoomSelectionPreviewService.cancelAll();
+        }
         this.debug.log("lifecycle", "Debug logging enabled.");
         this.notifySettingsListeners(previousSettings, reloadedSettings);
 
@@ -458,5 +468,3 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         return this.getDataFolder().toPath().resolve(file);
     }
 }
-
-

@@ -9,6 +9,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import java.util.function.Supplier;
 import top.ellan.mahjong.config.PluginSettings;
@@ -19,15 +20,18 @@ public final class GameRoomWandListener implements Listener {
     private static final String WAND_NBT_KEY = "mahjongpaper:wand";
 
     private final GameRoomSelectionService selectionService;
+    private final GameRoomSelectionPreviewService previewService;
     private final MessageService messages;
     private final Supplier<PluginSettings> settingsSupplier;
 
     public GameRoomWandListener(
         GameRoomSelectionService selectionService,
+        GameRoomSelectionPreviewService previewService,
         MessageService messages,
         Supplier<PluginSettings> settingsSupplier
     ) {
         this.selectionService = selectionService;
+        this.previewService = previewService;
         this.messages = messages;
         this.settingsSupplier = settingsSupplier;
     }
@@ -52,6 +56,7 @@ public final class GameRoomWandListener implements Listener {
         if (action == Action.LEFT_CLICK_BLOCK) {
             Location loc = event.getClickedBlock().getLocation();
             this.selectionService.setFirst(playerId, loc);
+            this.previewSelection(player);
             this.messages.send(player, "gameroom.wand_first",
                 this.messages.tag("x", String.valueOf(loc.getBlockX())),
                 this.messages.tag("y", String.valueOf(loc.getBlockY())),
@@ -61,12 +66,32 @@ public final class GameRoomWandListener implements Listener {
         } else if (action == Action.RIGHT_CLICK_BLOCK) {
             Location loc = event.getClickedBlock().getLocation();
             this.selectionService.setSecond(playerId, loc);
+            this.previewSelection(player);
             this.messages.send(player, "gameroom.wand_second",
                 this.messages.tag("x", String.valueOf(loc.getBlockX())),
                 this.messages.tag("y", String.valueOf(loc.getBlockY())),
                 this.messages.tag("z", String.valueOf(loc.getBlockZ()))
             );
+            GameRoomSelectionService.Selection selection = this.selectionService.selection(playerId);
+            if (selection != null && selection.complete()) {
+                this.messages.send(player, "gameroom.wand_preview");
+            }
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        this.selectionService.clear(playerId);
+        if (this.previewService != null) {
+            this.previewService.cancel(playerId);
+        }
+    }
+
+    private void previewSelection(Player player) {
+        if (this.previewService != null) {
+            this.previewService.showSelection(player);
         }
     }
 

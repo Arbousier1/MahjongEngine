@@ -14,7 +14,10 @@ class MessageServiceTest {
 
     @Test
     fun `plain returns english text for english locale`() {
-        assertEquals(bundleValue("language/messages.properties", "command.action.ron"), messages.plain(Locale.ENGLISH, "command.action.ron"))
+        assertEquals(
+            bundleValue("language/messages.properties", "command.action.ron"),
+            messages.plain(Locale.ENGLISH, "command.action.ron"),
+        )
     }
 
     @Test
@@ -42,12 +45,33 @@ class MessageServiceTest {
     }
 
     @Test
+    fun `render keeps paged command help chrome available`() {
+        val subtitle = messages.plain(Locale.ENGLISH, "command.help.subtitle")
+        val status =
+            messages.plain(
+                Locale.ENGLISH,
+                "command.help.page_status",
+                messages.number(Locale.ENGLISH, "page", 2),
+                messages.number(Locale.ENGLISH, "pages", 4),
+                messages.number(Locale.ENGLISH, "count", 31),
+            )
+
+        assertContains(subtitle, "/mahjong help <page>")
+        assertContains(status, "2")
+        assertContains(status, "4")
+        assertContains(status, "31")
+    }
+
+    @Test
     fun `yaku labels are localized`() {
         assertEquals(bundleValue("language/messages.properties", "yaku.reach"), messages.plain(Locale.ENGLISH, "yaku.reach"))
-        assertEquals(bundleValue("language/messages_zh_CN.properties", "yaku.reach"), messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"))
+        assertEquals(
+            bundleValue("language/messages_zh_CN.properties", "yaku.reach"),
+            messages.plain(Locale.forLanguageTag("zh-CN"), "yaku.reach"),
+        )
         assertEquals(
             bundleValue("language/messages_zh_CN.properties", "yakuman.kokushimuso"),
-            messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso")
+            messages.plain(Locale.forLanguageTag("zh-CN"), "yakuman.kokushimuso"),
         )
     }
 
@@ -55,15 +79,15 @@ class MessageServiceTest {
     fun `traditional region bundles are addressable`() {
         assertEquals(
             bundleValue("language/messages_zh_TW.properties", "command.action.ron"),
-            messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron")
+            messages.plain(Locale.forLanguageTag("zh-TW"), "command.action.ron"),
         )
         assertEquals(
             bundleValue("language/messages_zh_HK.properties", "command.action.ron"),
-            messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron")
+            messages.plain(Locale.forLanguageTag("zh-HK"), "command.action.ron"),
         )
         assertEquals(
             bundleValue("language/messages_zh_MO.properties", "command.action.ron"),
-            messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron")
+            messages.plain(Locale.forLanguageTag("zh-MO"), "command.action.ron"),
         )
     }
 
@@ -77,24 +101,26 @@ class MessageServiceTest {
 
     @Test
     fun `render keeps placeholder substitutions dynamic`() {
-        val first = messages.plain(
-            Locale.ENGLISH,
-            "command.inspect_summary",
-            messages.tag("table_id", "A"),
-            messages.tag("center", "1"),
-            messages.tag("anchor", "2"),
-            messages.tag("span_x", "3"),
-            messages.tag("span_z", "4")
-        )
-        val second = messages.plain(
-            Locale.ENGLISH,
-            "command.inspect_summary",
-            messages.tag("table_id", "B"),
-            messages.tag("center", "5"),
-            messages.tag("anchor", "6"),
-            messages.tag("span_x", "7"),
-            messages.tag("span_z", "8")
-        )
+        val first =
+            messages.plain(
+                Locale.ENGLISH,
+                "command.inspect_summary",
+                messages.tag("table_id", "A"),
+                messages.tag("center", "1"),
+                messages.tag("anchor", "2"),
+                messages.tag("span_x", "3"),
+                messages.tag("span_z", "4"),
+            )
+        val second =
+            messages.plain(
+                Locale.ENGLISH,
+                "command.inspect_summary",
+                messages.tag("table_id", "B"),
+                messages.tag("center", "5"),
+                messages.tag("anchor", "6"),
+                messages.tag("span_x", "7"),
+                messages.tag("span_z", "8"),
+            )
 
         assertContains(first, "A")
         assertContains(second, "B")
@@ -125,12 +151,13 @@ class MessageServiceTest {
     @Test
     fun `localized bundles contain every english message key`() {
         val english = loadBundle("language/messages.properties").stringPropertyNames()
-        val localizedBundles = listOf(
-            "language/messages_zh_CN.properties",
-            "language/messages_zh_TW.properties",
-            "language/messages_zh_HK.properties",
-            "language/messages_zh_MO.properties"
-        )
+        val localizedBundles =
+            listOf(
+                "language/messages_zh_CN.properties",
+                "language/messages_zh_TW.properties",
+                "language/messages_zh_HK.properties",
+                "language/messages_zh_MO.properties",
+            )
 
         localizedBundles.forEach { resource ->
             val localized = loadBundle(resource).stringPropertyNames()
@@ -139,7 +166,10 @@ class MessageServiceTest {
         }
     }
 
-    private fun bundleValue(resource: String, key: String): String {
+    private fun bundleValue(
+        resource: String,
+        key: String,
+    ): String {
         val bundle = loadBundle(resource)
         val value = bundle.getProperty(key)
         assertNotNull(value, "Missing key $key in $resource")

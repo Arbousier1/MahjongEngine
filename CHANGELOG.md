@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.1 - 2026-06-18
+
+Hotfix and usability release for CI reliability, command help navigation, and game room selection confirmation.
+
+中文更新日志:
+
+- **Java 编译修复**: 修复 `TableEventCoordinator` 对 Caffeine `Cache` 的旧式 `get(key)` 调用，改为 `getIfPresent`，恢复 Java 编译。
+- **Gradle 下载稳定性**: 提高 Gradle Wrapper 下载超时时间并启用重试，降低 GitHub Actions 首次拉取 Gradle 发行包时的超时概率。
+- **命令帮助排版**: `/mahjong help` 改为分页式帮助列表，加入标题、副标题、页码状态以及上一页/下一页点击导航。
+- **棋室选区粒子预览**: 借鉴 Residence 的领地选择可视化思路，使用粒子描出已选择方块或完整长方体边框，方便创建棋室前确认范围。
+
+English Release Notes:
+
+- **Java compilation fix**: Fixed the outdated Caffeine `Cache#get(key)` call in `TableEventCoordinator` by switching to `getIfPresent`, restoring Java compilation.
+- **Gradle download reliability**: Increased the Gradle Wrapper network timeout and enabled retries to reduce first-download timeouts in GitHub Actions.
+- **Command help layout**: `/mahjong help` now renders as a paged command list with header, subtitle, page status, and clickable previous/next navigation.
+- **Game room selection preview**: Added Residence-inspired particle outlines for the selected block or full cuboid, helping admins confirm the room range before creation.
+
 ## 1.3.0 - 2026-06-17
 
 Game room system with core restrictions, wand selection tool, room management commands, bossbar/text mode adaptation, and documentation alignment.
