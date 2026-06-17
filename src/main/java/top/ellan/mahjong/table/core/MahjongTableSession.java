@@ -466,6 +466,11 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
     }
 
     public void shutdown() {
+        // Synchronously remove display entities before delegating to the
+        // lifecycle coordinator. During plugin disable the Bukkit scheduler
+        // cancels all pending tasks, so the coordinator's scheduled removal
+        // would never execute and entities would leak into saved chunk data.
+        this.regionDisplayCoordinator.shutdown();
         this.lifecycleCoordinator.shutdown();
     }
 
@@ -1503,11 +1508,6 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
 
     public void clearRenderDisplays() {
         this.regionDisplayCoordinator.clearRenderDisplays();
-    }
-
-    @Override
-    public void shutdownRenderDisplays() {
-        this.regionDisplayCoordinator.shutdown();
     }
 
     public boolean hasRegionDisplays() {

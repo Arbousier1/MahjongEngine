@@ -11,7 +11,6 @@ public final class TableLifecycleCoordinator {
 
     public void shutdown() {
         this.stopActiveFlows();
-        this.session.shutdownRenderDisplays();
         this.clearRoundTracking();
         this.session.shutdownViewerPresentation();
         this.clearReadyAndLeaveQueues();
