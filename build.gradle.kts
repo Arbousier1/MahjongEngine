@@ -11,6 +11,8 @@ plugins {
     kotlin("jvm") version "2.4.0"
     kotlin("plugin.serialization") version "2.4.0"
     id("io.papermc.paperweight.userdev") version "2.0.0-SNAPSHOT"
+    id("com.diffplug.spotless") version "7.2.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.7"
 }
 
 group = "top.ellan"
@@ -322,5 +324,36 @@ tasks {
         dependsOn(jacocoTestReport)
         dependsOn(verifyMahjongTileResources)
         dependsOn(generateCraftEngineBundle)
+        dependsOn("spotlessCheck")
+        dependsOn("detekt")
     }
+}
+
+spotless {
+    // Ratchet: only enforce formatting on files that changed relative to the
+    // dev branch, so existing code is not reformatted in one giant commit.
+    ratchetFrom("origin/dev")
+    kotlin {
+        target("src/main/kotlin/**/*.kt", "src/test/kotlin/**/*.kt", "buildSrc/**/*.kt")
+        ktlint()
+    }
+    kotlinGradle {
+        target("*.gradle.kts", "buildSrc/**/*.gradle.kts")
+        ktlint()
+    }
+    java {
+        target("src/main/java/**/*.java", "src/test/java/**/*.java")
+        // Remove trailing whitespace and ensure files end with a newline.
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+detekt {
+    // Permissive baseline: existing code has many style issues. New code is
+    // enforced via spotless; detekt focuses on code-smell rules going forward.
+    buildUponDefaultConfig = true
+    config.setFrom(files("$rootDir/config/detekt.yml"))
+    // Don't fail the build on existing violations; only fail on new severe issues.
+    ignoreFailures = true
 }

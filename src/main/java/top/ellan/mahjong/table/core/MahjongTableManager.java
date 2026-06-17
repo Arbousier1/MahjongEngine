@@ -23,8 +23,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -52,6 +54,7 @@ import top.ellan.mahjong.runtime.PluginTask;
 public final class MahjongTableManager implements Listener {
     private static final String ADMIN_PERMISSION = "mahjongpaper.admin";
     private static final long DUPLICATE_HAND_TILE_CLICK_WINDOW_NANOS = 40_000_000L;
+    private static final long RECENT_HAND_TILE_CLICK_TTL_SECONDS = 60L;
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_XZ = 4.5D;
     private static final double PERSISTED_TABLE_CLEANUP_RADIUS_Y = 3.5D;
     private static final double ADMIN_NEAREST_TABLE_RADIUS = 4.5D;
@@ -63,7 +66,11 @@ public final class MahjongTableManager implements Listener {
     private final TableRuntimeServices plugin;
     private final PersistentTableStore persistentTableStore;
     private final TableDirectory directory = new TableDirectory();
-    private final Map<UUID, RecentHandTileClick> recentHandTileClicks = new ConcurrentHashMap<>();
+    // Caffeine cache with 1-minute TTL bounds memory growth even if a PlayerQuitEvent
+    // is missed; entries also expire naturally once the duplicate-click window passes.
+    private final Cache<UUID, RecentHandTileClick> recentHandTileClicks = Caffeine.newBuilder()
+        .expireAfterWrite(RECENT_HAND_TILE_CLICK_TTL_SECONDS, TimeUnit.SECONDS)
+        .build();
     private final TableSeatCoordinator seatCoordinator;
     private final TableRefreshCoordinator refreshCoordinator;
     private final TableEventCoordinator eventCoordinator;
@@ -238,7 +245,7 @@ public final class MahjongTableManager implements Listener {
     }
 
     void clearRecentHandInput(UUID playerId) {
-        this.recentHandTileClicks.remove(playerId);
+        this.recentHandTileClicks.invalidate(playerId);
     }
 
     boolean isViewingAnyTableInternal(UUID playerId) {
@@ -654,7 +661,7 @@ public final class MahjongTableManager implements Listener {
     }
 
     private boolean isDuplicateHandTileClick(UUID playerId, String tableId, UUID ownerId, int tileIndex) {
-        RecentHandTileClick recent = this.recentHandTileClicks.get(playerId);
+        RecentHandTileClick recent = this.recentHandTileClicks.getIfPresent(playerId);
         if (recent == null || !recent.matches(tableId, ownerId, tileIndex)) {
             return false;
         }
