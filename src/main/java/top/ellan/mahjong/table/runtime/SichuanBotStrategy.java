@@ -1,6 +1,9 @@
 package top.ellan.mahjong.table.runtime;
 
 import top.ellan.mahjong.model.MahjongTile;
+import top.ellan.mahjong.table.action.PlayerActionPhase;
+import top.ellan.mahjong.table.action.PlayerActionSnapshot;
+import top.ellan.mahjong.table.action.PlayerActionSnapshotFactory;
 import top.ellan.mahjong.table.core.MahjongTableSession;
 import top.ellan.mahjong.table.core.SichuanSessionAccess;
 import top.ellan.mahjong.runtime.PluginTask;
@@ -34,32 +37,36 @@ import java.util.UUID;
  */
 final class SichuanBotStrategy implements BotStrategy {
     private static final int MAX_SICHUAN_TURN_RETRY_ATTEMPTS = 8;
+    private static final long PREPARATION_ACTION_DELAY_TICKS = 1L;
+    private static final long REACTION_AND_TURN_DELAY_TICKS = 20L;
 
     @Override
     public void schedule(MahjongTableSession session) {
         if (!session.isStarted()) {
             return;
         }
+        PlayerActionSnapshotFactory actionSnapshotFactory = new PlayerActionSnapshotFactory(session);
         for (UUID playerId : session.players()) {
             if (!session.isBot(playerId)) {
                 continue;
             }
-            if (session.canChooseSichuanMissingSuit(playerId)) {
+            PlayerActionSnapshot snapshot = actionSnapshotFactory.capture(playerId);
+            if (snapshot.phase() == PlayerActionPhase.SICHUAN_DING_QUE) {
                 final PluginTask[] holder = new PluginTask[1];
                 holder[0] = session.plugin().scheduler().runRegionDelayed(
                     session.center(),
                     () -> this.safeHandleSichuanDingQue(session, playerId, holder[0]),
-                    20L
+                    PREPARATION_ACTION_DELAY_TICKS
                 );
                 session.setBotTask(holder[0]);
                 return;
             }
-            if (SichuanSessionAccess.isExchangePhase(session, playerId)) {
+            if (snapshot.phase() == PlayerActionPhase.SICHUAN_EXCHANGE) {
                 final PluginTask[] holder = new PluginTask[1];
                 holder[0] = session.plugin().scheduler().runRegionDelayed(
                     session.center(),
                     () -> this.safeHandleSichuanExchange(session, playerId, holder[0]),
-                    20L
+                    PREPARATION_ACTION_DELAY_TICKS
                 );
                 session.setBotTask(holder[0]);
                 return;
@@ -74,7 +81,7 @@ final class SichuanBotStrategy implements BotStrategy {
             holder[0] = session.plugin().scheduler().runRegionDelayed(
                 session.center(),
                 () -> this.safeHandleSichuanReaction(session, playerId, holder[0]),
-                20L
+                REACTION_AND_TURN_DELAY_TICKS
             );
             session.setBotTask(holder[0]);
             return;
@@ -86,7 +93,7 @@ final class SichuanBotStrategy implements BotStrategy {
             holder[0] = session.plugin().scheduler().runRegionDelayed(
                 session.center(),
                 () -> this.safeHandleSichuanTurn(session, current, 0, holder[0]),
-                20L
+                REACTION_AND_TURN_DELAY_TICKS
             );
             session.setBotTask(holder[0]);
         }
@@ -175,9 +182,7 @@ final class SichuanBotStrategy implements BotStrategy {
         if (candidates.size() < 3) {
             return;
         }
-        for (int i = candidates.size() - 3; i < candidates.size(); i++) {
-            session.clickHandTile(playerId, candidates.get(i), false);
-        }
+        SichuanSessionAccess.submitExchangeSelection(session, playerId, candidates.subList(candidates.size() - 3, candidates.size()));
     }
 
     private void handleSichuanDingQue(MahjongTableSession session, UUID playerId) {

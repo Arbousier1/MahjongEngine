@@ -10,6 +10,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import java.util.function.Supplier;
+import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.i18n.MessageService;
 
 public final class GameRoomWandListener implements Listener {
@@ -18,14 +20,23 @@ public final class GameRoomWandListener implements Listener {
 
     private final GameRoomSelectionService selectionService;
     private final MessageService messages;
+    private final Supplier<PluginSettings> settingsSupplier;
 
-    public GameRoomWandListener(GameRoomSelectionService selectionService, MessageService messages) {
+    public GameRoomWandListener(
+        GameRoomSelectionService selectionService,
+        MessageService messages,
+        Supplier<PluginSettings> settingsSupplier
+    ) {
         this.selectionService = selectionService;
         this.messages = messages;
+        this.settingsSupplier = settingsSupplier;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (!this.isEnabled()) {
+            return;
+        }
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
         if (!isWand(item)) {
@@ -57,6 +68,11 @@ public final class GameRoomWandListener implements Listener {
             );
             event.setCancelled(true);
         }
+    }
+
+    private boolean isEnabled() {
+        PluginSettings settings = this.settingsSupplier == null ? null : this.settingsSupplier.get();
+        return settings != null && settings.gameRooms().enabled();
     }
 
     public static ItemStack createWand() {

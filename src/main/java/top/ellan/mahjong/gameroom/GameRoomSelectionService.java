@@ -26,6 +26,10 @@ public final class GameRoomSelectionService {
         this.selections.remove(playerId);
     }
 
+    public void clearAll() {
+        this.selections.clear();
+    }
+
     public record Selection(Location first, Location second) {
         public boolean complete() {
             return this.first != null && this.second != null && this.first.getWorld() != null && this.first.getWorld().equals(this.second.getWorld());

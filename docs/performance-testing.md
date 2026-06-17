@@ -74,6 +74,20 @@ The generated markdown report includes:
 
 Use the same warmup, measurement, and batch parameters before and after an optimization so the results remain comparable.
 
+## Entity-Heavy Render Changes
+
+`perfTest` measures CPU-side hot paths such as snapshot creation, layout precompute, and region fingerprinting. It does **not** model Paper entity tracking cost or client-side rendering cost.
+
+For changes that increase table entities, per-viewer overlays, or display churn, also validate on a live server scene:
+
+- server `mspt`
+- client `fps`
+- `table.render.region.managed_entities`
+- `table.render.region.viewer_overlay_regions`
+- `table.render.region.viewer_overlay_entities`
+
+Treat those entity gauges as leading indicators. Even if benchmark numbers stay flat, a higher managed entity count can still hurt server tick time and client frame rate once real viewers are present.
+
 ## Recommended Workflow
 
 For a performance-sensitive change:

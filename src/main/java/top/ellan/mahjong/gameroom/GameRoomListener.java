@@ -8,17 +8,18 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import top.ellan.mahjong.config.PluginSettings;
 import top.ellan.mahjong.i18n.MessageService;
 
 public final class GameRoomListener implements Listener {
-    private final GameRoomManager gameRoomManager;
+    private final Supplier<GameRoomManager> gameRoomManagerSupplier;
     private final MessageService messages;
     private final Supplier<PluginSettings> settingsSupplier;
 
-    public GameRoomListener(GameRoomManager gameRoomManager, MessageService messages, Supplier<PluginSettings> settingsSupplier) {
-        this.gameRoomManager = gameRoomManager;
+    public GameRoomListener(Supplier<GameRoomManager> gameRoomManagerSupplier, MessageService messages, Supplier<PluginSettings> settingsSupplier) {
+        this.gameRoomManagerSupplier = gameRoomManagerSupplier;
         this.messages = messages;
         this.settingsSupplier = settingsSupplier;
     }
@@ -46,10 +47,23 @@ public final class GameRoomListener implements Listener {
         this.handleMovement(event.getPlayer(), to);
     }
 
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        GameRoomManager gameRoomManager = this.gameRoomManager();
+        if (gameRoomManager == null || !gameRoomManager.isEnabled()) {
+            return;
+        }
+        gameRoomManager.handlePlayerQuit(event.getPlayer().getUniqueId());
+    }
+
     private void handleMovement(Player player, Location to) {
-        Optional<GameRoom> previousRoom = this.gameRoomManager.roomForPlayer(player.getUniqueId());
-        this.gameRoomManager.updateMembership(player.getUniqueId(), to);
-        Optional<GameRoom> currentRoom = this.gameRoomManager.roomForPlayer(player.getUniqueId());
+        GameRoomManager gameRoomManager = this.gameRoomManager();
+        if (gameRoomManager == null || !gameRoomManager.isEnabled()) {
+            return;
+        }
+        Optional<GameRoom> previousRoom = gameRoomManager.roomForPlayer(player.getUniqueId());
+        gameRoomManager.updateMembership(player.getUniqueId(), to);
+        Optional<GameRoom> currentRoom = gameRoomManager.roomForPlayer(player.getUniqueId());
 
         if (!this.shouldShowMessages()) {
             return;
@@ -83,5 +97,9 @@ public final class GameRoomListener implements Listener {
     private boolean shouldShowMessages() {
         PluginSettings settings = this.settingsSupplier.get();
         return settings.gameRooms().enabled() && settings.gameRooms().enterExitMessages();
+    }
+
+    private GameRoomManager gameRoomManager() {
+        return this.gameRoomManagerSupplier == null ? null : this.gameRoomManagerSupplier.get();
     }
 }

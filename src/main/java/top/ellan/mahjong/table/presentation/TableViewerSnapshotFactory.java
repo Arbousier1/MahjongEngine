@@ -2,13 +2,17 @@ package top.ellan.mahjong.table.presentation;
 
 import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.riichi.ReactionOptions;
+import top.ellan.mahjong.table.action.PlayerActionEntry;
+import top.ellan.mahjong.table.action.PlayerActionId;
+import top.ellan.mahjong.table.action.PlayerActionPhase;
+import top.ellan.mahjong.table.action.PlayerActionSnapshot;
+import top.ellan.mahjong.table.action.PlayerActionSnapshotFactory;
 import top.ellan.mahjong.table.core.DelimitedFingerprintBuilder;
 import top.ellan.mahjong.table.core.TableSessionMutator;
 import top.ellan.mahjong.render.snapshot.TableSpectatorSeatOverlaySnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerActionButtonSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerHudSnapshot;
 import top.ellan.mahjong.render.snapshot.TableViewerOverlaySnapshot;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -21,9 +25,11 @@ import org.bukkit.entity.Player;
 
 public final class TableViewerSnapshotFactory {
     private final TableSessionMutator session;
+    private final PlayerActionSnapshotFactory actionSnapshotFactory;
 
     public TableViewerSnapshotFactory(TableSessionMutator session) {
         this.session = session;
+        this.actionSnapshotFactory = new PlayerActionSnapshotFactory(session);
     }
 
     public Component createStateSummary(Player player) {
@@ -168,7 +174,7 @@ public final class TableViewerSnapshotFactory {
     private Component buildActiveOverlay(Locale locale, ViewerSummarySnapshot summary) {
         MahjongVariant variant = this.session.currentVariant();
         if (variant == MahjongVariant.RIICHI) {
-            return this.session.plugin().messages().render(
+            return this.appendViewerPrompt(this.session.plugin().messages().render(
                 locale,
                 "overlay.active",
                 this.session.plugin().messages().tag("role", summary.roleLabel()),
@@ -180,9 +186,9 @@ public final class TableViewerSnapshotFactory {
                 this.session.plugin().messages().tag("dora", summary.doraSummary()),
                 this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
                 this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
-            );
+            ), summary.viewerPrompt());
         }
-        return this.session.plugin().messages().render(
+        return this.appendViewerPrompt(this.session.plugin().messages().render(
             locale,
             "overlay.active",
             this.session.plugin().messages().tag("role", summary.roleLabel()),
@@ -194,7 +200,14 @@ public final class TableViewerSnapshotFactory {
             this.session.plugin().messages().tag("dora", ""),
             this.session.plugin().messages().tag("last_discard", summary.lastDiscardSummary()),
             this.session.plugin().messages().tag("prompt", summary.viewerPrompt())
-        );
+        ), summary.viewerPrompt());
+    }
+
+    private Component appendViewerPrompt(Component overlay, String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return overlay;
+        }
+        return overlay.append(Component.newline()).append(Component.text(prompt, NamedTextColor.YELLOW));
     }
 
     private Component waitingOverlay(Locale locale, ViewerSummarySnapshot summary) {
@@ -238,12 +251,13 @@ public final class TableViewerSnapshotFactory {
         String doraSummary = this.doraSummary(locale);
         String roleLabel = this.viewerRoleLabel(locale, viewerId);
         String lastDiscardSummary = this.lastDiscardSummary(locale);
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
         ReactionOptions options = this.session.availableReactions(viewerId);
         String reactionOptionsFingerprint = Objects.toString(options, "");
         String resolutionTitle = this.session.lastResolution() == null
             ? ""
             : this.resolutionLabel(locale, this.session.lastResolution().getTitle());
-        String viewerPrompt = this.viewerPrompt(locale, viewerId, options, turn, spectator, riichiPool, doraSummary, resolutionTitle);
+        String viewerPrompt = this.viewerPrompt(locale, viewerId, actionSnapshot, options, turn, spectator);
         String commandStateSummary = this.buildCommandStateSummary(locale, round, turn, wall, options, resolutionTitle);
         return new ViewerSummarySnapshot(
             spectator,
@@ -353,14 +367,65 @@ public final class TableViewerSnapshotFactory {
     private String viewerPrompt(
         Locale locale,
         UUID viewerId,
+        PlayerActionSnapshot actionSnapshot,
         ReactionOptions options,
         String currentTurnName,
-        boolean spectator,
-        int riichiPool,
-        String doraSummary,
-        String resolutionTitle
+        boolean spectator
     ) {
-        return "";
+        if (spectator || actionSnapshot == null || actionSnapshot.phase() == PlayerActionPhase.NONE) {
+            return "";
+        }
+        return switch (actionSnapshot.phase()) {
+            case REACTION -> options == null ? "" : this.reactionSummary(locale, options);
+            case TURN -> this.turnPrompt(locale, viewerId, actionSnapshot);
+            case SICHUAN_EXCHANGE -> this.sichuanExchangePrompt(locale, actionSnapshot);
+            case SICHUAN_DING_QUE -> this.session.plugin().messages().plain(locale, "overlay.prompt.sichuan_dingque");
+            case WAITING -> "";
+            case NONE -> "";
+        };
+    }
+
+    private String turnPrompt(Locale locale, UUID viewerId, PlayerActionSnapshot actionSnapshot) {
+        String actions = this.actionLabels(locale, actionSnapshot.actions());
+        String suggestion = this.discardSuggestion(locale, viewerId);
+        if (!suggestion.isBlank()) {
+            suggestion = " | " + suggestion;
+        }
+        if (actions.isBlank()) {
+            return this.session.plugin().messages().plain(locale, "overlay.your_turn") + suggestion;
+        }
+        return this.session.plugin().messages().plain(
+            locale,
+            "table.turn_prompt",
+            this.session.plugin().messages().tag("actions", actions),
+            this.session.plugin().messages().tag("suggestion", suggestion)
+        );
+    }
+
+    private String sichuanExchangePrompt(Locale locale, PlayerActionSnapshot actionSnapshot) {
+        String key = actionSnapshot.waitingOnOthers()
+            ? "overlay.prompt.sichuan_exchange_waiting"
+            : "overlay.prompt.sichuan_exchange";
+        return this.session.plugin().messages().plain(
+            locale,
+            key,
+            this.session.plugin().messages().number(locale, "selected", actionSnapshot.selectedCount()),
+            this.session.plugin().messages().number(locale, "target", actionSnapshot.selectedTarget())
+        );
+    }
+
+    private String actionLabels(Locale locale, List<PlayerActionEntry> actions) {
+        if (actions == null || actions.isEmpty()) {
+            return "";
+        }
+        List<String> labels = new java.util.ArrayList<>(actions.size());
+        for (PlayerActionEntry action : actions) {
+            if (action.actionId() == PlayerActionId.MENU_BACK) {
+                continue;
+            }
+            labels.add(this.actionLabel(locale, action));
+        }
+        return String.join("/", labels);
     }
 
     private String viewerOverlayFingerprint(
@@ -573,153 +638,17 @@ public final class TableViewerSnapshotFactory {
         if (spectator || !this.session.hasRoundController()) {
             return List.of();
         }
-        if (!this.session.isStarted()) {
+        PlayerActionSnapshot actionSnapshot = this.actionSnapshotFactory.capture(viewerId);
+        if (!actionSnapshot.hasActions()) {
             return List.of();
         }
-        String menuState = this.session.viewerActionMenuState(viewerId);
-        List<TableViewerActionButtonSnapshot> buttons = new ArrayList<>(12);
-        ReactionOptions options = this.session.availableReactions(viewerId);
-        if (options != null && this.session.hasPendingReaction()) {
-            this.addReactionButtons(locale, options, menuState, buttons);
-            return List.copyOf(buttons);
+        java.util.ArrayList<TableViewerActionButtonSnapshot> buttons = new java.util.ArrayList<>(actionSnapshot.actions().size());
+        int index = 0;
+        for (PlayerActionEntry action : actionSnapshot.actions()) {
+            this.addButton(buttons, this.actionButtonId(action, index), this.actionLabel(locale, action), action.color(), action.command());
+            index++;
         }
-        if (this.session.canChooseSichuanMissingSuit(viewerId)) {
-            this.addSichuanMissingSuitButtons(locale, buttons);
-            return List.copyOf(buttons);
-        }
-        if (!this.session.isStarted() || this.session.currentSeat() != this.session.seatOf(viewerId)) {
-            if (!menuState.isBlank()) {
-                this.session.clearViewerActionMenuState(viewerId);
-            }
-            return List.of();
-        }
-        this.addTurnButtons(locale, viewerId, menuState, buttons);
         return List.copyOf(buttons);
-    }
-
-    private void addReactionButtons(
-        Locale locale,
-        ReactionOptions options,
-        String menuState,
-        List<TableViewerActionButtonSnapshot> buttons
-    ) {
-        if ("react-chii".equals(menuState)) {
-            int chiiIndex = 0;
-            for (kotlin.Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair : options.getChiiPairs()) {
-                String first = pair.getFirst().name().toLowerCase(Locale.ROOT);
-                String second = pair.getSecond().name().toLowerCase(Locale.ROOT);
-                String label = this.session.plugin().messages().plain(locale, "table.action.chii") + " "
-                    + this.session.tileLabelForDisplay(locale, pair.getFirst().name()) + " "
-                    + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
-                this.addButton(buttons, "reaction-chii-" + chiiIndex, label, NamedTextColor.GREEN, "react:chii:" + first + ":" + second);
-                chiiIndex++;
-            }
-            this.addButton(buttons, "menu-back-reaction", this.session.plugin().messages().plain(locale, "table.action.back"), NamedTextColor.GRAY, "menu:back");
-            return;
-        }
-        if (options.getCanRon()) {
-            this.addButton(buttons, "reaction-ron", this.session.plugin().messages().plain(locale, "table.action.ron"), NamedTextColor.RED, "react:ron");
-        }
-        if (options.getCanPon()) {
-            this.addButton(buttons, "reaction-pon", this.session.plugin().messages().plain(locale, "table.action.pon"), NamedTextColor.YELLOW, "react:pon");
-        }
-        if (options.getCanMinkan()) {
-            this.addButton(buttons, "reaction-minkan", this.session.plugin().messages().plain(locale, "table.action.minkan"), NamedTextColor.DARK_AQUA, "react:minkan");
-        }
-        if (options.getChiiPairs().size() == 1) {
-            kotlin.Pair<top.ellan.mahjong.riichi.model.MahjongTile, top.ellan.mahjong.riichi.model.MahjongTile> pair = options.getChiiPairs().get(0);
-            String first = pair.getFirst().name().toLowerCase(Locale.ROOT);
-            String second = pair.getSecond().name().toLowerCase(Locale.ROOT);
-            String label = this.session.plugin().messages().plain(locale, "table.action.chii") + " "
-                + this.session.tileLabelForDisplay(locale, pair.getFirst().name()) + " "
-                + this.session.tileLabelForDisplay(locale, pair.getSecond().name());
-            this.addButton(buttons, "reaction-chii-0", label, NamedTextColor.GREEN, "react:chii:" + first + ":" + second);
-        } else if (!options.getChiiPairs().isEmpty()) {
-            this.addButton(buttons, "reaction-chii-menu", this.session.plugin().messages().plain(locale, "table.action.chii"), NamedTextColor.GREEN, "menu:react-chii");
-        }
-        this.addButton(buttons, "reaction-skip", this.session.plugin().messages().plain(locale, "table.action.skip"), NamedTextColor.GRAY, "react:skip");
-    }
-
-    private void addTurnButtons(
-        Locale locale,
-        UUID viewerId,
-        String menuState,
-        List<TableViewerActionButtonSnapshot> buttons
-    ) {
-        if (this.session.canDeclareTsumo(viewerId)) {
-            this.addButton(buttons, "turn-tsumo", this.session.plugin().messages().plain(locale, "table.action.tsumo"), NamedTextColor.GOLD, "turn:tsumo");
-        }
-        List<String> kanButtons = new ArrayList<>();
-        if (this.session.canDeclareConcealedKan(viewerId)) {
-            for (String tileName : this.session.suggestedConcealedKanTiles(viewerId)) {
-                kanButtons.add(this.session.plugin().messages().plain(locale, "table.action.ankan") + ":" + tileName);
-            }
-        }
-        if (this.session.canDeclareAddedKan(viewerId)) {
-            for (String tileName : this.session.suggestedAddedKanTiles(viewerId)) {
-                kanButtons.add(this.session.plugin().messages().plain(locale, "table.action.kakan") + ":" + tileName);
-            }
-        }
-        if ("turn-kan".equals(menuState)) {
-            int index = 0;
-            for (String encoded : kanButtons) {
-                int split = encoded.indexOf(':');
-                String kind = split > -1 ? encoded.substring(0, split) : this.session.plugin().messages().plain(locale, "table.action.kan");
-                String tile = split > -1 ? encoded.substring(split + 1) : "";
-                String label = kind + " " + this.session.tileLabelForDisplay(locale, tile);
-                this.addButton(buttons, "turn-kan-" + index, label, NamedTextColor.DARK_AQUA, "turn:kan:" + tile.toLowerCase(Locale.ROOT));
-                index++;
-            }
-            this.addButton(buttons, "menu-back-turn-kan", this.session.plugin().messages().plain(locale, "table.action.back"), NamedTextColor.GRAY, "menu:back");
-        } else if (kanButtons.size() == 1) {
-            String encoded = kanButtons.get(0);
-            int split = encoded.indexOf(':');
-            String kind = split > -1 ? encoded.substring(0, split) : this.session.plugin().messages().plain(locale, "table.action.kan");
-            String tile = split > -1 ? encoded.substring(split + 1) : "";
-            String label = kind + " " + this.session.tileLabelForDisplay(locale, tile);
-            this.addButton(buttons, "turn-kan-single", label, NamedTextColor.DARK_AQUA, "turn:kan:" + tile.toLowerCase(Locale.ROOT));
-        } else if (!kanButtons.isEmpty()) {
-            this.addButton(buttons, "turn-kan-menu", this.session.plugin().messages().plain(locale, "table.action.kan"), NamedTextColor.DARK_AQUA, "menu:turn-kan");
-        }
-
-        if (this.session.canDeclareRiichi(viewerId)) {
-            List<top.ellan.mahjong.model.MahjongTile> hand = this.session.hand(viewerId);
-            List<Integer> riichiIndices = new ArrayList<>();
-            int riichiIndex = 0;
-            for (Integer index : this.session.suggestedRiichiIndices(viewerId)) {
-                if (index == null || index < 0 || index >= hand.size()) {
-                    continue;
-                }
-                riichiIndex++;
-                riichiIndices.add(index);
-            }
-            if ("turn-riichi".equals(menuState)) {
-                int index = 0;
-                for (Integer riichiDiscardIndex : riichiIndices) {
-                    String tileLabel = this.session.tileLabelForDisplay(locale, hand.get(riichiDiscardIndex).name());
-                    String label = this.session.plugin().messages().plain(locale, "table.action.riichi") + " " + tileLabel;
-                    this.addButton(buttons, "turn-riichi-" + index, label, NamedTextColor.LIGHT_PURPLE, "turn:riichi:" + riichiDiscardIndex);
-                    index++;
-                }
-                this.addButton(buttons, "menu-back-turn-riichi", this.session.plugin().messages().plain(locale, "table.action.back"), NamedTextColor.GRAY, "menu:back");
-            } else if (riichiIndices.size() == 1) {
-                Integer riichiDiscardIndex = riichiIndices.get(0);
-                String tileLabel = this.session.tileLabelForDisplay(locale, hand.get(riichiDiscardIndex).name());
-                String label = this.session.plugin().messages().plain(locale, "table.action.riichi") + " " + tileLabel;
-                this.addButton(buttons, "turn-riichi-single", label, NamedTextColor.LIGHT_PURPLE, "turn:riichi:" + riichiDiscardIndex);
-            } else if (!riichiIndices.isEmpty()) {
-                this.addButton(buttons, "turn-riichi-menu", this.session.plugin().messages().plain(locale, "table.action.riichi"), NamedTextColor.LIGHT_PURPLE, "menu:turn-riichi");
-            }
-        }
-        if (this.session.canDeclareKyuushu(viewerId)) {
-            this.addButton(buttons, "turn-kyuushu", this.session.plugin().messages().plain(locale, "table.action.kyuushu"), NamedTextColor.RED, "turn:kyuushu");
-        }
-    }
-
-    private void addSichuanMissingSuitButtons(Locale locale, List<TableViewerActionButtonSnapshot> buttons) {
-        this.addButton(buttons, "turn-dingque-wan", this.session.plugin().messages().plain(locale, "table.action.dingque_wan"), NamedTextColor.RED, "turn:dingque:wan");
-        this.addButton(buttons, "turn-dingque-tong", this.session.plugin().messages().plain(locale, "table.action.dingque_tong"), NamedTextColor.GOLD, "turn:dingque:tong");
-        this.addButton(buttons, "turn-dingque-suo", this.session.plugin().messages().plain(locale, "table.action.dingque_suo"), NamedTextColor.GREEN, "turn:dingque:suo");
     }
 
     private void addButton(
@@ -731,6 +660,31 @@ public final class TableViewerSnapshotFactory {
     ) {
         float hitboxWidth = this.actionButtonHitboxWidth(label);
         buttons.add(new TableViewerActionButtonSnapshot(actionId, label, color, command, hitboxWidth));
+    }
+
+    private String actionButtonId(PlayerActionEntry action, int index) {
+        String source = action.command();
+        if (source == null || source.isBlank()) {
+            source = action.actionId().name();
+        }
+        return source.toLowerCase(Locale.ROOT).replace(':', '-') + "-" + index;
+    }
+
+    private String actionLabel(Locale locale, PlayerActionEntry action) {
+        String label = this.session.plugin().messages().plain(locale, action.labelKey());
+        List<String> arguments = action.arguments();
+        if (arguments.isEmpty()) {
+            return label;
+        }
+        return switch (action.actionId()) {
+            case CHII -> arguments.size() < 2
+                ? label
+                : label + " " + this.session.tileLabelForDisplay(locale, arguments.get(0)) + " "
+                    + this.session.tileLabelForDisplay(locale, arguments.get(1));
+            case ANKAN, KAKAN -> label + " " + this.session.tileLabelForDisplay(locale, arguments.get(0));
+            case RIICHI -> label + " " + this.session.tileLabelForDisplay(locale, arguments.get(0));
+            default -> label;
+        };
     }
 
     private float actionButtonHitboxWidth(String label) {
@@ -781,4 +735,3 @@ public final class TableViewerSnapshotFactory {
     }
 
 }
-

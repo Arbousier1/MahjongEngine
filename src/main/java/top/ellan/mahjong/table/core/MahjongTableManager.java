@@ -500,13 +500,15 @@ public final class MahjongTableManager implements Listener {
 
     private boolean handleMenuCommand(MahjongTableSession session, UUID playerId, String operation) {
         if ("back".equals(operation)) {
-            session.transitionViewerActionMenuState(playerId, "");
+            session.clearViewerActionMenuState(playerId);
+            session.flushViewerActionsNow(playerId);
             return true;
         }
         if (!"react-chii".equals(operation) && !"turn-kan".equals(operation) && !"turn-riichi".equals(operation)) {
             return false;
         }
-        session.transitionViewerActionMenuState(playerId, operation);
+        session.setViewerActionMenuState(playerId, operation);
+        session.flushViewerActionsNow(playerId);
         return true;
     }
 

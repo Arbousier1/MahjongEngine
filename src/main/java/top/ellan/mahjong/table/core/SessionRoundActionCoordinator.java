@@ -1,5 +1,6 @@
 package top.ellan.mahjong.table.core;
 
+import top.ellan.mahjong.model.MahjongTile;
 import top.ellan.mahjong.model.SeatWind;
 import top.ellan.mahjong.render.scene.MeldView;
 import top.ellan.mahjong.riichi.ReactionResponse;
@@ -22,15 +23,12 @@ final class SessionRoundActionCoordinator {
         if (controller == null) {
             return false;
         }
-        top.ellan.mahjong.model.MahjongTile discardedTile = this.session.handTileAtInternal(playerId, tileIndex);
+        MahjongTile discardedTile = this.session.handTileAtInternal(playerId, tileIndex);
         boolean result = controller.discard(playerId, tileIndex);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            this.session.clearLastPublicActionInternal();
-            this.session.rememberPublicDiscardInternal(playerId, discardedTile);
-        }
-        this.session.render();
-        return result;
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .clearLastPublicAction()
+            .publicDiscard(playerId, discardedTile));
     }
 
     boolean declareRiichi(UUID playerId, int tileIndex) {
@@ -38,15 +36,12 @@ final class SessionRoundActionCoordinator {
         if (controller == null) {
             return false;
         }
-        top.ellan.mahjong.model.MahjongTile discardedTile = this.session.handTileAtInternal(playerId, tileIndex);
+        MahjongTile discardedTile = this.session.handTileAtInternal(playerId, tileIndex);
         boolean result = controller.declareRiichi(playerId, tileIndex);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            this.session.rememberPublicDiscardInternal(playerId, discardedTile);
-            this.session.rememberPublicActionInternal(playerId, "table.action.riichi");
-        }
-        this.session.render();
-        return result;
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .publicDiscard(playerId, discardedTile)
+            .publicAction(playerId, "table.action.riichi"));
     }
 
     boolean declareTsumo(UUID playerId) {
@@ -55,12 +50,9 @@ final class SessionRoundActionCoordinator {
             return false;
         }
         boolean result = controller.declareTsumo(playerId);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            this.session.rememberPublicActionInternal(playerId, "table.action.tsumo");
-        }
-        this.session.render();
-        return result;
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .publicAction(playerId, "table.action.tsumo"));
     }
 
     boolean declareKyuushuKyuuhai(UUID playerId) {
@@ -69,12 +61,9 @@ final class SessionRoundActionCoordinator {
             return false;
         }
         boolean result = controller.declareKyuushuKyuuhai(playerId);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            this.session.rememberPublicActionInternal(playerId, "table.action.kyuushu");
-        }
-        this.session.render();
-        return result;
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .publicAction(playerId, "table.action.kyuushu"));
     }
 
     boolean react(UUID playerId, ReactionResponse response) {
@@ -84,13 +73,13 @@ final class SessionRoundActionCoordinator {
         }
         Map<UUID, List<MeldView>> meldsBefore = this.captureSeatMelds(controller);
         boolean result = controller.react(playerId, response);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            this.session.playReactionSoundInternal(response);
-            this.recordResolvedReactionAction(controller, playerId, response, meldsBefore);
-        }
-        this.session.render();
-        return result;
+        PublicAction publicAction = result
+            ? this.resolvedReactionAction(controller, playerId, response, meldsBefore)
+            : PublicAction.none();
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .reactionSound(response)
+            .publicAction(publicAction.playerId(), publicAction.actionKey()));
     }
 
     boolean declareKan(UUID playerId, String tileName) {
@@ -100,19 +89,13 @@ final class SessionRoundActionCoordinator {
         }
         List<MeldView> meldsBefore = playerId == null ? List.of() : List.copyOf(controller.fuuro(playerId));
         boolean result = controller.declareKan(playerId, tileName);
-        if (result) {
-            this.session.clearSelectedHandTilesInternal();
-            List<MeldView> meldsAfter = playerId == null ? List.of() : List.copyOf(controller.fuuro(playerId));
-            String actionKey = this.resolveKanActionKey(meldsBefore, meldsAfter);
-            if (!actionKey.isBlank()) {
-                this.session.rememberPublicActionInternal(playerId, actionKey);
-            }
-        }
-        this.session.render();
-        return result;
+        List<MeldView> meldsAfter = result && playerId != null ? List.copyOf(controller.fuuro(playerId)) : List.of();
+        return this.completeRoundAction(RoundActionResult.from(result)
+            .clearSelectedHandTiles()
+            .publicAction(playerId, this.resolveKanActionKey(meldsBefore, meldsAfter)));
     }
 
-    private void recordResolvedReactionAction(
+    private PublicAction resolvedReactionAction(
         TableRoundController controller,
         UUID actorId,
         ReactionResponse response,
@@ -126,13 +109,14 @@ final class SessionRoundActionCoordinator {
             MeldView addedMeld = after.isEmpty() ? null : after.get(after.size() - 1);
             String actionKey = this.claimActionKey(addedMeld);
             if (!actionKey.isBlank()) {
-                this.session.rememberPublicActionInternal(claimPlayerId, actionKey);
+                return new PublicAction(claimPlayerId, actionKey);
             }
-            return;
+            return PublicAction.none();
         }
         if (response != null && response.getType() == ReactionType.RON) {
-            this.session.rememberPublicActionInternal(actorId, "table.action.ron");
+            return new PublicAction(actorId, "table.action.ron");
         }
+        return PublicAction.none();
     }
 
     private Map<UUID, List<MeldView>> captureSeatMelds(TableRoundController controller) {
@@ -169,8 +153,8 @@ final class SessionRoundActionCoordinator {
     }
 
     private boolean isUniformMeld(MeldView meld) {
-        top.ellan.mahjong.model.MahjongTile first = meld.tiles().get(0);
-        for (top.ellan.mahjong.model.MahjongTile tile : meld.tiles()) {
+        MahjongTile first = meld.tiles().get(0);
+        for (MahjongTile tile : meld.tiles()) {
             if (tile != first) {
                 return false;
             }
@@ -210,5 +194,115 @@ final class SessionRoundActionCoordinator {
         MeldView newest = after.get(after.size() - 1);
         return newest != null && newest.hasAddedKanTile();
     }
-}
 
+    private void renderAndFlushViewerPresentation() {
+        this.session.render();
+        this.session.flushViewerPresentationIfNeededInternal();
+    }
+
+    private boolean completeRoundAction(RoundActionResult result) {
+        if (result.changed()) {
+            if (result.shouldClearSelectedHandTiles()) {
+                this.session.clearSelectedHandTilesInternal();
+            }
+            if (result.shouldClearLastPublicAction()) {
+                this.session.clearLastPublicActionInternal();
+            }
+            if (result.publicDiscardTile() != null) {
+                this.session.rememberPublicDiscardInternal(result.publicDiscardPlayerId(), result.publicDiscardTile());
+            }
+            if (result.publicActionKey() != null && !result.publicActionKey().isBlank()) {
+                this.session.rememberPublicActionInternal(result.publicActionPlayerId(), result.publicActionKey());
+            }
+            if (result.reactionSound() != null) {
+                this.session.playReactionSoundInternal(result.reactionSound());
+            }
+        }
+        this.renderAndFlushViewerPresentation();
+        return result.changed();
+    }
+
+    private record PublicAction(UUID playerId, String actionKey) {
+        private static PublicAction none() {
+            return new PublicAction(null, "");
+        }
+    }
+
+    private static final class RoundActionResult {
+        private final boolean changed;
+        private boolean clearSelectedHandTiles;
+        private boolean clearLastPublicAction;
+        private UUID publicDiscardPlayerId;
+        private MahjongTile publicDiscardTile;
+        private UUID publicActionPlayerId;
+        private String publicActionKey;
+        private ReactionResponse reactionSound;
+
+        private RoundActionResult(boolean changed) {
+            this.changed = changed;
+        }
+
+        static RoundActionResult from(boolean changed) {
+            return new RoundActionResult(changed);
+        }
+
+        RoundActionResult clearSelectedHandTiles() {
+            this.clearSelectedHandTiles = true;
+            return this;
+        }
+
+        RoundActionResult clearLastPublicAction() {
+            this.clearLastPublicAction = true;
+            return this;
+        }
+
+        RoundActionResult publicDiscard(UUID playerId, MahjongTile tile) {
+            this.publicDiscardPlayerId = playerId;
+            this.publicDiscardTile = tile;
+            return this;
+        }
+
+        RoundActionResult publicAction(UUID playerId, String actionKey) {
+            this.publicActionPlayerId = playerId;
+            this.publicActionKey = actionKey;
+            return this;
+        }
+
+        RoundActionResult reactionSound(ReactionResponse response) {
+            this.reactionSound = response;
+            return this;
+        }
+
+        boolean changed() {
+            return this.changed;
+        }
+
+        boolean shouldClearSelectedHandTiles() {
+            return this.clearSelectedHandTiles;
+        }
+
+        boolean shouldClearLastPublicAction() {
+            return this.clearLastPublicAction;
+        }
+
+        UUID publicDiscardPlayerId() {
+            return this.publicDiscardPlayerId;
+        }
+
+        MahjongTile publicDiscardTile() {
+            return this.publicDiscardTile;
+        }
+
+        UUID publicActionPlayerId() {
+            return this.publicActionPlayerId;
+        }
+
+        String publicActionKey() {
+            return this.publicActionKey;
+        }
+
+        ReactionResponse reactionSound() {
+            return this.reactionSound;
+        }
+    }
+}

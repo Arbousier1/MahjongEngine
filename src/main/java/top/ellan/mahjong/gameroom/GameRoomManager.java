@@ -24,27 +24,28 @@ import top.ellan.mahjong.table.core.MahjongTableSession;
 
 public final class GameRoomManager {
     private final MahjongTableManager tableManager;
-    private final DebugService debug;
+    private final Supplier<DebugService> debugSupplier;
     private final ServerScheduler scheduler;
     private final MessageService messages;
     private final Supplier<PluginSettings> settingsSupplier;
-    private final Path storageFile;
+    private volatile Path storageFile;
     private final Map<String, GameRoom> rooms = new ConcurrentHashMap<>();
     private final Map<UUID, String> playerRoomMembership = new ConcurrentHashMap<>();
     private final Map<UUID, Long> exitCountdowns = new ConcurrentHashMap<>();
     private final Map<UUID, String> exitCountdownTableIds = new ConcurrentHashMap<>();
+    private final Map<UUID, String> exitCountdownRoomIds = new ConcurrentHashMap<>();
     private final Map<UUID, java.util.Set<Integer>> warnedSeconds = new ConcurrentHashMap<>();
 
     public GameRoomManager(
         MahjongTableManager tableManager,
-        DebugService debug,
+        Supplier<DebugService> debugSupplier,
         ServerScheduler scheduler,
         MessageService messages,
         Supplier<PluginSettings> settingsSupplier,
         Path storageFile
     ) {
         this.tableManager = Objects.requireNonNull(tableManager, "tableManager");
-        this.debug = Objects.requireNonNull(debug, "debug");
+        this.debugSupplier = Objects.requireNonNull(debugSupplier, "debugSupplier");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.messages = Objects.requireNonNull(messages, "messages");
         this.settingsSupplier = Objects.requireNonNull(settingsSupplier, "settingsSupplier");
@@ -97,8 +98,13 @@ public final class GameRoomManager {
             return false;
         }
         this.playerRoomMembership.entrySet().removeIf(entry -> removed.id().equals(entry.getValue()));
-        this.exitCountdowns.keySet().removeIf(playerId -> removed.equals(this.roomFor(playerId)));
-        this.exitCountdownTableIds.keySet().removeIf(playerId -> removed.equals(this.roomFor(playerId)));
+        java.util.List<UUID> affectedCountdownPlayers = this.exitCountdownRoomIds.entrySet().stream()
+            .filter(entry -> removed.id().equals(entry.getValue()))
+            .map(Map.Entry::getKey)
+            .toList();
+        for (UUID playerId : affectedCountdownPlayers) {
+            this.removeCountdownState(playerId);
+        }
         this.save();
         return true;
     }
@@ -152,7 +158,16 @@ public final class GameRoomManager {
             Files.createDirectories(this.storageFile.getParent());
             yaml.save(this.storageFile.toFile());
         } catch (IOException ex) {
-            this.debug.log("gameroom", "Failed to save game rooms: " + ex.getMessage());
+            this.logDebug("Failed to save game rooms: " + ex.getMessage());
+        }
+    }
+
+    public void refreshConfiguration(Path storageFile) {
+        this.storageFile = Objects.requireNonNull(storageFile, "storageFile");
+        this.load();
+        this.playerRoomMembership.entrySet().removeIf(entry -> !this.rooms.containsKey(entry.getValue()));
+        if (!this.isEnabled()) {
+            this.clearRuntimeState();
         }
     }
 
@@ -196,9 +211,10 @@ public final class GameRoomManager {
 
         // Player left a room
         if (previousRoom.isPresent() && currentRoom.isEmpty()) {
+            GameRoom room = previousRoom.get();
             this.playerRoomMembership.remove(playerId);
             // If player is in an active match, start countdown
-            this.startExitCountdownIfNeeded(playerId);
+            this.startExitCountdownIfNeeded(playerId, room);
         }
 
         // Player entered a room
@@ -209,7 +225,19 @@ public final class GameRoomManager {
         }
     }
 
-    private void startExitCountdownIfNeeded(UUID playerId) {
+    public void handlePlayerQuit(UUID playerId) {
+        if (!this.isEnabled() || playerId == null) {
+            return;
+        }
+        Optional<GameRoom> previousRoom = this.roomFor(playerId);
+        if (previousRoom.isEmpty()) {
+            return;
+        }
+        this.playerRoomMembership.remove(playerId);
+        this.startExitCountdownIfNeeded(playerId, previousRoom.get());
+    }
+
+    private void startExitCountdownIfNeeded(UUID playerId, GameRoom room) {
         MahjongTableSession session = this.tableManager.tableFor(playerId);
         if (session == null || !session.isStarted()) {
             return;
@@ -218,28 +246,32 @@ public final class GameRoomManager {
         long deadline = System.currentTimeMillis() + countdownSeconds * 1000L;
         this.exitCountdowns.put(playerId, deadline);
         this.exitCountdownTableIds.put(playerId, session.id());
+        if (room != null) {
+            this.exitCountdownRoomIds.put(playerId, room.id());
+        }
 
         // Send warning message
         org.bukkit.entity.Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             this.messages.send(player, "gameroom.leave_warning",
                 this.messages.tag("seconds", String.valueOf(countdownSeconds)),
-                this.messages.tag("room_name", this.roomFor(playerId).map(GameRoom::name).orElse(""))
+                this.messages.tag("room_name", room == null ? "" : room.name())
             );
         }
-        this.debug.log("gameroom", "Player " + playerId + " left room during match, countdown started (" + countdownSeconds + "s)");
+        this.logDebug("Player " + playerId + " left room during match, countdown started (" + countdownSeconds + "s)");
     }
 
     private void cancelExitCountdown(UUID playerId) {
         Long removed = this.exitCountdowns.remove(playerId);
         this.exitCountdownTableIds.remove(playerId);
+        this.exitCountdownRoomIds.remove(playerId);
         this.warnedSeconds.remove(playerId);
         if (removed != null) {
             org.bukkit.entity.Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 this.messages.send(player, "gameroom.countdown_cancelled");
             }
-            this.debug.log("gameroom", "Player " + playerId + " returned, countdown cancelled");
+            this.logDebug("Player " + playerId + " returned, countdown cancelled");
         }
     }
 
@@ -267,11 +299,30 @@ public final class GameRoomManager {
         return settings.gameRooms().enabled() && settings.gameRooms().restrictNewTables();
     }
 
+    public boolean isEnabled() {
+        PluginSettings settings = this.settingsSupplier.get();
+        return settings != null && settings.gameRooms().enabled();
+    }
+
     public boolean isEnterExitMessages() {
         return this.settingsSupplier.get().gameRooms().enterExitMessages();
     }
 
+    public int defaultRadius() {
+        return this.settingsSupplier.get().gameRooms().defaultRadius();
+    }
+
+    public int defaultHeight() {
+        return this.settingsSupplier.get().gameRooms().defaultHeight();
+    }
+
     public void tick() {
+        if (!this.isEnabled()) {
+            if (!this.exitCountdowns.isEmpty() || !this.playerRoomMembership.isEmpty()) {
+                this.clearRuntimeState();
+            }
+            return;
+        }
         if (this.exitCountdowns.isEmpty()) {
             return;
         }
@@ -286,12 +337,11 @@ public final class GameRoomManager {
                 // Countdown expired, force end the match
                 String tableId = this.exitCountdownTableIds.get(playerId);
                 if (tableId != null) {
-                    this.debug.log("gameroom", "Player " + playerId + " countdown expired, force-ending table " + tableId);
+                    this.logDebug("Player " + playerId + " countdown expired, force-ending table " + tableId);
                     this.tableManager.forceEndTable(tableId);
                 }
                 iterator.remove();
-                this.exitCountdownTableIds.remove(playerId);
-                this.warnedSeconds.remove(playerId);
+                this.removeCountdownState(playerId);
             } else {
                 long remainingSeconds = (deadline - now) / 1000;
                 int remaining = (int) remainingSeconds;
@@ -325,5 +375,27 @@ public final class GameRoomManager {
 
     public Map<String, GameRoom> roomMap() {
         return Map.copyOf(this.rooms);
+    }
+
+    private void clearRuntimeState() {
+        this.playerRoomMembership.clear();
+        this.exitCountdowns.clear();
+        this.exitCountdownTableIds.clear();
+        this.exitCountdownRoomIds.clear();
+        this.warnedSeconds.clear();
+    }
+
+    private void removeCountdownState(UUID playerId) {
+        this.exitCountdowns.remove(playerId);
+        this.exitCountdownTableIds.remove(playerId);
+        this.exitCountdownRoomIds.remove(playerId);
+        this.warnedSeconds.remove(playerId);
+    }
+
+    private void logDebug(String message) {
+        DebugService debug = this.debugSupplier.get();
+        if (debug != null) {
+            debug.log("gameroom", message);
+        }
     }
 }

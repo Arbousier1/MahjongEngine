@@ -30,8 +30,6 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
     private static final String SICHUAN_GANG_SHANG_HUA = "GANG_SHANG_HUA";
     private static final String SICHUAN_GANG_SHANG_PAO = "GANG_SHANG_PAO";
     private static final String SICHUAN_QIANG_GANG_HU = "QIANG_GANG_HU";
-    private static final int SICHUAN_MAX_FAN = 5;
-
     private static final List<MahjongTile> SICHUAN_TILES = List.of(
         MahjongTile.M1, MahjongTile.M2, MahjongTile.M3, MahjongTile.M4, MahjongTile.M5, MahjongTile.M6, MahjongTile.M7, MahjongTile.M8, MahjongTile.M9,
         MahjongTile.P1, MahjongTile.P2, MahjongTile.P3, MahjongTile.P4, MahjongTile.P5, MahjongTile.P6, MahjongTile.P7, MahjongTile.P8, MahjongTile.P9,
@@ -52,10 +50,7 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
         if (!result.valid()) {
             return new FanResult(false, 0, List.of(), "Hand is not a valid Sichuan Mahjong winning hand.");
         }
-        List<MahjongTile> totalTiles = new ArrayList<>(concealedHand == null ? List.of() : concealedHand);
-        if (winningTile != null) {
-            totalTiles.add(winningTile);
-        }
+        List<MahjongTile> totalTiles = fullHandTiles(concealedHand, melds, winningTile);
         if (!isMissingOneSuit(totalTiles)) {
             return new FanResult(false, 0, List.of(), "Sichuan Mahjong hand must be missing one suit.");
         }
@@ -67,17 +62,14 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
             // Seven pairs is scored as a single layered fan that already folds in any
             // four-of-a-kind "roots", so it must not also receive a separate GEN entry.
             fans.add(sevenPairsFan(roots));
-            if (is258) {
-                fans.add(new GbFanEntry(SICHUAN_JIANG_DUI, 2, 1));
-            }
         } else {
-            if (allTriplets) {
+            if (allTriplets && is258) {
+                // Jiang dui is a standalone three-fan hand, not dui dui hu plus a bonus.
+                fans.add(new GbFanEntry(SICHUAN_JIANG_DUI, 3, 1));
+            } else if (allTriplets) {
                 fans.add(new GbFanEntry(SICHUAN_DUI_DUI_HU, 1, 1));
             } else {
                 fans.add(new GbFanEntry(SICHUAN_PING_HU, 1, 1));
-            }
-            if (allTriplets && is258) {
-                fans.add(new GbFanEntry(SICHUAN_JIANG_DUI, 4, 1));
             }
             if (allTriplets && goldenSingleWait) {
                 fans.add(new GbFanEntry(SICHUAN_JIN_GOU_DIAO, 1, 1));
@@ -104,7 +96,7 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
         if (flags.contains("ROBBING_KONG")) {
             fans.add(new GbFanEntry(SICHUAN_QIANG_GANG_HU, 1, 1));
         }
-        int totalFan = Math.max(1, Math.min(SICHUAN_MAX_FAN, fans.stream().mapToInt(fan -> fan.getFan() * Math.max(1, fan.getCount())).sum()));
+        int totalFan = Math.max(1, totalFan(fans));
         return new FanResult(true, totalFan, List.copyOf(fans), null);
     }
 
@@ -128,7 +120,11 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
 
     @Override
     public int scoreUnit(int fan) {
-        return 1 << Math.min(SICHUAN_MAX_FAN, Math.max(1, fan));
+        int normalizedFan = Math.max(1, fan);
+        if (normalizedFan >= Integer.SIZE) {
+            return Integer.MAX_VALUE;
+        }
+        return 1 << (normalizedFan - 1);
     }
 
     @Override
@@ -247,6 +243,25 @@ final class DefaultSichuanRulesEngine implements SichuanRulesEngine {
             case 2 -> new GbFanEntry(SICHUAN_SHUANG_LONG_QI_DUI, 4, 1);
             default -> new GbFanEntry(SICHUAN_HAO_HUA_LONG_QI_DUI, 5, 1);
         };
+    }
+
+    private static int totalFan(List<GbFanEntry> fans) {
+        return fans.stream().mapToInt(fan -> fan.getFan() * Math.max(1, fan.getCount())).sum();
+    }
+
+    private static List<MahjongTile> fullHandTiles(
+        List<MahjongTile> concealedHand,
+        List<? extends GbNativeRequestFactory.MeldStateView> melds,
+        MahjongTile winningTile
+    ) {
+        List<MahjongTile> totalTiles = new ArrayList<>(concealedHand == null ? List.of() : concealedHand);
+        if (winningTile != null) {
+            totalTiles.add(winningTile);
+        }
+        for (GbNativeRequestFactory.MeldStateView meld : melds == null ? List.<GbNativeRequestFactory.MeldStateView>of() : melds) {
+            totalTiles.addAll(meld.tiles());
+        }
+        return totalTiles;
     }
 
     private static boolean isSingleSuit(List<MahjongTile> tiles) {

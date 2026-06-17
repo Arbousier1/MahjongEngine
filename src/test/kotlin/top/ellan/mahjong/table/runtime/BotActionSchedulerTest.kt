@@ -250,6 +250,83 @@ class BotActionSchedulerTest {
     }
 
     @Test
+    fun `sichuan bot exchange preparation uses short delay and one batched submission`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c001")
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.hasRoundController()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.canChooseSichuanMissingSuit(botId)).thenReturn(false)
+        `when`(session.isSichuanExchangePhase(botId)).thenReturn(true)
+        `when`(session.selectedHandTileIndices(botId)).thenReturn(emptyList())
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(session.hand(botId)).thenReturn(
+            listOf(
+                MahjongTile.M1, MahjongTile.M2, MahjongTile.M3,
+                MahjongTile.P1, MahjongTile.P2, MahjongTile.P3, MahjongTile.P4,
+                MahjongTile.S1, MahjongTile.S2, MahjongTile.S3, MahjongTile.S4
+            )
+        )
+        `when`(session.submitSichuanExchangeSelection(botId, listOf(0, 1, 2))).thenReturn(true)
+        `when`(scheduler.runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(1L))).thenReturn(task)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(1L))
+        runnableCaptor.value.run()
+
+        verify(session).submitSichuanExchangeSelection(botId, listOf(0, 1, 2))
+        verify(session, never()).clickHandTile(eq(botId), any(Int::class.java), eq(false))
+    }
+
+    @Test
+    fun `sichuan bot dingque preparation uses short delay`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val scheduler = mock(ServerScheduler::class.java)
+        val task = mock(PluginTask::class.java)
+        val center = mock(Location::class.java)
+        val botId = UUID.fromString("00000000-0000-0000-0000-00000000c006")
+
+        `when`(session.currentVariant()).thenReturn(MahjongVariant.SICHUAN)
+        `when`(session.isStarted()).thenReturn(true)
+        `when`(session.hasRoundController()).thenReturn(true)
+        `when`(session.players()).thenReturn(listOf(botId))
+        `when`(session.isBot(botId)).thenReturn(true)
+        `when`(session.canChooseSichuanMissingSuit(botId)).thenReturn(true)
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.scheduler()).thenReturn(scheduler)
+        `when`(session.center()).thenReturn(center)
+        `when`(session.hand(botId)).thenReturn(
+            listOf(
+                MahjongTile.M1,
+                MahjongTile.P1, MahjongTile.P2,
+                MahjongTile.S1, MahjongTile.S2, MahjongTile.S3
+            )
+        )
+        `when`(session.chooseSichuanMissingSuit(botId, "wan")).thenReturn(true)
+        `when`(scheduler.runRegionDelayed(any(Location::class.java), any(Runnable::class.java), eq(1L))).thenReturn(task)
+
+        BotActionScheduler.schedule(session)
+
+        val runnableCaptor = ArgumentCaptor.forClass(Runnable::class.java)
+        verify(scheduler).runRegionDelayed(any(Location::class.java), runnableCaptor.capture(), eq(1L))
+        runnableCaptor.value.run()
+
+        verify(session).chooseSichuanMissingSuit(botId, "wan")
+    }
+
+    @Test
     fun `sichuan bot prioritises discarding from smallest suit when all three suits present`() {
         val session = mock(MahjongTableSession::class.java)
         val plugin = mock(TableRuntimeServices::class.java)

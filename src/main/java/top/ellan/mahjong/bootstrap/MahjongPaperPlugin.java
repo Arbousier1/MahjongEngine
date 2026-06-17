@@ -17,6 +17,7 @@ import top.ellan.mahjong.metrics.MetricsCollector;
 import top.ellan.mahjong.render.display.DisplayVisibilityRegistry;
 import top.ellan.mahjong.render.display.TableDisplayRegistry;
 import top.ellan.mahjong.runtime.AsyncService;
+import top.ellan.mahjong.runtime.PluginTask;
 import top.ellan.mahjong.runtime.ServerScheduler;
 import top.ellan.mahjong.table.core.DefaultTableRuntimeServices;
 import top.ellan.mahjong.table.core.MahjongTableManager;
@@ -45,6 +46,7 @@ public final class MahjongPaperPlugin extends JavaPlugin {
     private MahjongTableManager tableManager;
     private GameRoomManager gameRoomManager;
     private GameRoomSelectionService gameRoomSelectionService;
+    private PluginTask gameRoomTickTask;
 
     @Override
     public void onEnable() {
@@ -84,15 +86,13 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.gameRoomSelectionService = new GameRoomSelectionService();
         this.gameRoomManager = new GameRoomManager(
             this.tableManager,
-            this.debug,
+            () -> this.debug,
             this.scheduler,
             this.messages,
             () -> this.settings,
-            this.getDataFolder().toPath().resolve(this.settings.gameRooms().file())
+            this.gameRoomStoragePath(this.settings)
         );
-        if (this.settings.gameRooms().enabled()) {
-            this.gameRoomManager.load();
-        }
+        this.gameRoomManager.load();
 
         MahjongCommand mahjongCommand = new MahjongCommand(
             this.messages,
@@ -110,11 +110,13 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         }
 
         this.getServer().getPluginManager().registerEvents(this.tableManager, this);
-        if (this.gameRoomManager != null && this.settings.gameRooms().enabled()) {
-            this.getServer().getPluginManager().registerEvents(new top.ellan.mahjong.gameroom.GameRoomListener(this.gameRoomManager, this.messages, () -> this.settings), this);
-            this.getServer().getPluginManager().registerEvents(new GameRoomWandListener(this.gameRoomSelectionService, this.messages), this);
-            this.scheduler.runGlobalTimer(this.gameRoomManager::tick, 20L, 20L);
-        }
+        this.getServer().getPluginManager().registerEvents(new top.ellan.mahjong.gameroom.GameRoomListener(() -> this.gameRoomManager, this.messages, () -> this.settings), this);
+        this.getServer().getPluginManager().registerEvents(new GameRoomWandListener(this.gameRoomSelectionService, this.messages, () -> this.settings), this);
+        this.gameRoomTickTask = this.scheduler.runGlobalTimer(() -> {
+            if (this.gameRoomManager != null) {
+                this.gameRoomManager.tick();
+            }
+        }, 20L, 20L);
         this.scheduler.runGlobal(() -> {
             this.craftEngine.initializeAfterStartup();
             if (this.tableManager != null) {
@@ -130,6 +132,10 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         if (this.craftEngine != null) {
             this.craftEngine.disableFurnitureInteractionBridge();
             this.craftEngine.clearTrackedCullables();
+        }
+        if (this.gameRoomTickTask != null) {
+            this.gameRoomTickTask.cancel();
+            this.gameRoomTickTask = null;
         }
         if (this.tableManager != null) {
             this.tableManager.shutdown();
@@ -323,6 +329,12 @@ public final class MahjongPaperPlugin extends JavaPlugin {
         this.debug = reloadedDebug;
         this.database = reloadedDatabase;
         this.craftEngine = reloadedCraftEngine;
+        if (this.gameRoomManager != null) {
+            this.gameRoomManager.refreshConfiguration(this.gameRoomStoragePath(reloadedSettings));
+        }
+        if (this.gameRoomSelectionService != null && !reloadedSettings.gameRooms().enabled()) {
+            this.gameRoomSelectionService.clearAll();
+        }
         this.debug.log("lifecycle", "Debug logging enabled.");
         this.notifySettingsListeners(previousSettings, reloadedSettings);
 
@@ -401,6 +413,12 @@ public final class MahjongPaperPlugin extends JavaPlugin {
 
     public GameRoomManager gameRoomManager() {
         return this.gameRoomManager;
+    }
+
+    private java.nio.file.Path gameRoomStoragePath(PluginSettings settings) {
+        PluginSettings effectiveSettings = settings != null ? settings : this.settings;
+        String file = effectiveSettings == null ? "game-rooms.yml" : effectiveSettings.gameRooms().file();
+        return this.getDataFolder().toPath().resolve(file);
     }
 }
 

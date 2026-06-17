@@ -116,6 +116,8 @@ public interface TableSessionContext extends TableRenderSubject {
 
     boolean canChooseSichuanMissingSuit(UUID playerId);
 
+    boolean isSichuanExchangePhase(UUID playerId);
+
     boolean canSelectHandTileInternal(UUID playerId, int tileIndex);
 
     MahjongTile handTileAtInternal(UUID playerId, int tileIndex);

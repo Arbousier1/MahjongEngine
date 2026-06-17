@@ -492,7 +492,20 @@ class GbTableRoundControllerTest {
         forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M7", "M7", "M9", "M9"))
 
         assertTrue(controller.declareTsumo(east))
-        assertEquals(48, controller.points(east) - 25000)
+        assertEquals(24, controller.points(east) - 25000)
+    }
+
+    @Test
+    fun `sichuan seven fan hands are not capped at five fan`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+
+        activateSichuan(controller, east to "tong")
+        forceHand(controller, east, listOf("M1", "M1", "M1", "M1", "M2", "M2", "M2", "M2", "M3", "M3", "M3", "M3", "M4", "M4"))
+
+        assertTrue(controller.declareTsumo(east))
+        assertEquals(192, controller.points(east) - 25000)
     }
 
     @Test
@@ -613,6 +626,30 @@ class GbTableRoundControllerTest {
 
         assertTrue(controller.canChooseSichuanMissingSuit(east))
         assertFalse(controller.canSelectHandTile(east, 0))
+        assertTrue(controller.hand(south).containsAll(listOf(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)))
+        assertTrue(controller.hand(east).containsAll(listOf(MahjongTile.M4, MahjongTile.M5, MahjongTile.M6)))
+    }
+
+    @Test
+    fun `sichuan bulk exchange submission transitions directly to dingque`() {
+        val controller = controller(profile = GbRuleProfile.SICHUAN, dicePoints = 4)
+        controller.startRound()
+        val east = player(SeatWind.EAST)
+        val south = player(SeatWind.SOUTH)
+        val west = player(SeatWind.WEST)
+        val north = player(SeatWind.NORTH)
+
+        forceHand(controller, east, listOf("M1", "M2", "M3", "P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "S5", "S6", "S7"))
+        forceHand(controller, south, listOf("P1", "P2", "P3", "M4", "M5", "M6", "M7", "S1", "S2", "S3", "S4", "S5", "S6"))
+        forceHand(controller, west, listOf("S1", "S2", "S3", "M1", "M2", "M3", "M4", "P4", "P5", "P6", "P7", "P8", "P9"))
+        forceHand(controller, north, listOf("M4", "M5", "M6", "P4", "P5", "P6", "P7", "S4", "S5", "S6", "S7", "S8", "S9"))
+
+        assertTrue(controller.submitSichuanExchangeSelection(east, listOf(0, 1, 2)))
+        assertTrue(controller.submitSichuanExchangeSelection(south, listOf(0, 1, 2)))
+        assertTrue(controller.submitSichuanExchangeSelection(west, listOf(0, 1, 2)))
+        assertTrue(controller.submitSichuanExchangeSelection(north, listOf(0, 1, 2)))
+
+        assertTrue(controller.canChooseSichuanMissingSuit(east))
         assertTrue(controller.hand(south).containsAll(listOf(MahjongTile.M1, MahjongTile.M2, MahjongTile.M3)))
         assertTrue(controller.hand(east).containsAll(listOf(MahjongTile.M4, MahjongTile.M5, MahjongTile.M6)))
     }

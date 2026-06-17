@@ -2,7 +2,10 @@ package top.ellan.mahjong.command
 
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.bukkit.Location
+import org.bukkit.World
 import org.junit.jupiter.api.BeforeEach
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.mockito.Mockito.lenient
@@ -18,7 +21,10 @@ import top.ellan.mahjong.command.subcommand.LeaderboardSubcommand
 import top.ellan.mahjong.command.subcommand.RankSubcommand
 import top.ellan.mahjong.command.subcommand.RemoveBotSubcommand
 import top.ellan.mahjong.command.subcommand.ReloadSubcommand
+import top.ellan.mahjong.command.subcommand.RoomSubcommand
 import top.ellan.mahjong.debug.DebugService
+import top.ellan.mahjong.gameroom.GameRoom
+import top.ellan.mahjong.gameroom.GameRoomManager
 import top.ellan.mahjong.i18n.MessageService
 import top.ellan.mahjong.model.MahjongVariant
 import top.ellan.mahjong.runtime.AsyncService
@@ -233,6 +239,44 @@ class SubcommandBehaviourTest {
             org.mockito.ArgumentMatchers.eq("command.created_table") ?: "command.created_table",
             org.mockito.ArgumentMatchers.any()
         )
+    }
+
+    @Test
+    fun `RoomSubcommand reports disabled when game room system is off`() {
+        val manager = mock(GameRoomManager::class.java)
+        `when`(manager.isEnabled()).thenReturn(false)
+        Mockito.doReturn(manager).`when`(contextSpy).gameRoomManager()
+
+        RoomSubcommand(contextSpy).create().executor().execute(senderPlayer, senderPlayer, arrayOf("room", "list"))
+
+        verify(messages).send(senderPlayer, "command.room_disabled")
+    }
+
+    @Test
+    fun `RoomSubcommand fallback creation uses configured room radius and height`() {
+        val manager = mock(GameRoomManager::class.java)
+        val world = mock(World::class.java)
+        val createdRoom = ArgumentCaptor.forClass(GameRoom::class.java)
+        `when`(manager.isEnabled()).thenReturn(true)
+        `when`(manager.defaultRadius()).thenReturn(14)
+        `when`(manager.defaultHeight()).thenReturn(9)
+        `when`(manager.createRoom(createdRoom.capture())).thenAnswer { it.getArgument(0) }
+        `when`(world.minHeight).thenReturn(-64)
+        `when`(world.maxHeight).thenReturn(320)
+        `when`(world.name).thenReturn("world")
+        `when`(senderPlayer.location).thenReturn(Location(world, 100.5, 64.0, 200.5))
+        Mockito.doReturn(manager).`when`(contextSpy).gameRoomManager()
+        Mockito.doReturn(null).`when`(contextSpy).selectionService()
+
+        RoomSubcommand(contextSpy).create().executor().execute(senderPlayer, senderPlayer, arrayOf("room", "create", "main-hall"))
+
+        assertEquals("main-hall", createdRoom.value.id())
+        assertEquals(86, createdRoom.value.minX())
+        assertEquals(114, createdRoom.value.maxX())
+        assertEquals(63, createdRoom.value.minY())
+        assertEquals(71, createdRoom.value.maxY())
+        assertEquals(186, createdRoom.value.minZ())
+        assertEquals(214, createdRoom.value.maxZ())
     }
 
     @Test

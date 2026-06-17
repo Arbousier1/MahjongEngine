@@ -44,14 +44,14 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("delete")) {
             GameRoomManager manager = this.context.gameRoomManager();
-            if (manager == null) {
+            if (manager == null || !manager.isEnabled()) {
                 return List.of();
             }
             return this.context.matchPrefix(args[2], manager.rooms().stream().map(GameRoom::id).toList());
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("info")) {
             GameRoomManager manager = this.context.gameRoomManager();
-            if (manager == null) {
+            if (manager == null || !manager.isEnabled()) {
                 return List.of();
             }
             return this.context.matchPrefix(args[2], manager.rooms().stream().map(GameRoom::id).toList());
@@ -61,7 +61,7 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
 
     private void handleCreate(Player player, String[] args) {
         GameRoomManager manager = this.context.gameRoomManager();
-        if (manager == null) {
+        if (manager == null || !manager.isEnabled()) {
             this.context.messages().send(player, "command.room_disabled");
             return;
         }
@@ -100,7 +100,14 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
         }
 
         // Fallback: center-radius creation at player location
-        GameRoom room = GameRoom.fromCenter(id, name, player.getLocation(), 10, 8, player.getUniqueId());
+        GameRoom room = GameRoom.fromCenter(
+            id,
+            name,
+            player.getLocation(),
+            manager.defaultRadius(),
+            manager.defaultHeight(),
+            player.getUniqueId()
+        );
         if (room == null) {
             this.context.messages().send(player, "command.room_create_failed");
             return;
@@ -121,7 +128,7 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
 
     private void handleDelete(Player player, String[] args) {
         GameRoomManager manager = this.context.gameRoomManager();
-        if (manager == null) {
+        if (manager == null || !manager.isEnabled()) {
             this.context.messages().send(player, "command.room_disabled");
             return;
         }
@@ -144,7 +151,7 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
 
     private void handleList(Player player) {
         GameRoomManager manager = this.context.gameRoomManager();
-        if (manager == null) {
+        if (manager == null || !manager.isEnabled()) {
             this.context.messages().send(player, "command.room_disabled");
             return;
         }
@@ -167,7 +174,7 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
 
     private void handleInfo(Player player, String[] args) {
         GameRoomManager manager = this.context.gameRoomManager();
-        if (manager == null) {
+        if (manager == null || !manager.isEnabled()) {
             this.context.messages().send(player, "command.room_disabled");
             return;
         }
@@ -221,6 +228,11 @@ public final class RoomSubcommand extends AbstractMahjongSubcommand {
     }
 
     private void handleWand(Player player) {
+        GameRoomManager manager = this.context.gameRoomManager();
+        if (manager == null || !manager.isEnabled()) {
+            this.context.messages().send(player, "command.room_disabled");
+            return;
+        }
         player.getInventory().addItem(GameRoomWandListener.createWand());
         this.context.messages().send(player, "command.room_wand_given");
     }

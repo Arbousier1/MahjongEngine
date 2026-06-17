@@ -25,6 +25,7 @@ public final class TableRegionDisplayCoordinator {
     private static final String REGION_WALL = "wall";
     private static final String REGION_DORA = "dora";
     private static final String REGION_CENTER = "center";
+    private static final String REGION_VIEWER_OVERLAY_PREFIX = "viewer-overlay:";
     private static final int MAX_WALL_TILE_REGIONS = 136;
     private static final int MAX_HAND_TILE_REGIONS = 14;
     private static final int MAX_DISCARD_TILE_REGIONS = 24;
@@ -131,6 +132,7 @@ public final class TableRegionDisplayCoordinator {
         } else {
             metrics.recordGauge("table.render.region.queue.remaining", 0L);
         }
+        this.recordRegionLoadMetrics(metrics);
         metrics.recordGauge("table.render.region.heap_used_bytes", usedHeapBytes());
         metrics.recordTimerNanos("table.render.region.apply.nanos", System.nanoTime() - startedAt);
         return execution.deferred();
@@ -150,6 +152,7 @@ public final class TableRegionDisplayCoordinator {
             ApplyBudget.unlimited(),
             () -> this.session.renderer().renderViewerOverlaySpecs(this.session, snapshot)
         );
+        this.recordRegionLoadMetrics(metrics);
         metrics.recordTimerNanos("table.render.viewer_overlay.apply.nanos", System.nanoTime() - startedAt);
     }
 
@@ -172,15 +175,18 @@ public final class TableRegionDisplayCoordinator {
 
     public void removeManagedRegionDisplays(String regionKey) {
         this.removeRegionDisplays(regionKey);
+        this.recordRegionLoadMetrics(this.metrics());
     }
 
     public void clearRenderDisplays() {
         this.regionFingerprints.clear();
         this.removeAllDisplays();
+        this.recordRegionLoadMetrics(this.metrics());
     }
 
     public void invalidateFingerprints() {
         this.regionFingerprints.clear();
+        this.recordRegionLoadMetrics(this.metrics());
     }
 
     public boolean hasRegionDisplays() {
@@ -476,6 +482,45 @@ public final class TableRegionDisplayCoordinator {
         } catch (RuntimeException ignored) {
             return NoopMetricsCollector.instance();
         }
+    }
+
+    private void recordRegionLoadMetrics(MetricsCollector metrics) {
+        if (metrics == null) {
+            return;
+        }
+        metrics.recordGauge("table.render.region.active_regions", this.regionFingerprints.size());
+        metrics.recordGauge("table.render.region.regions_with_entities", this.regionDisplays.size());
+        metrics.recordGauge("table.render.region.managed_entities", this.managedEntityCount());
+        metrics.recordGauge("table.render.region.viewer_overlay_regions", this.countRegionsWithPrefix(this.regionFingerprints, REGION_VIEWER_OVERLAY_PREFIX));
+        metrics.recordGauge("table.render.region.viewer_overlay_entities", this.managedEntityCountWithPrefix(REGION_VIEWER_OVERLAY_PREFIX));
+    }
+
+    private long managedEntityCount() {
+        long total = 0L;
+        for (List<Entity> entities : this.regionDisplays.values()) {
+            total += entities.size();
+        }
+        return total;
+    }
+
+    private long managedEntityCountWithPrefix(String prefix) {
+        long total = 0L;
+        for (Map.Entry<String, List<Entity>> entry : this.regionDisplays.entrySet()) {
+            if (entry.getKey().startsWith(prefix)) {
+                total += entry.getValue().size();
+            }
+        }
+        return total;
+    }
+
+    private long countRegionsWithPrefix(Map<String, ?> regions, String prefix) {
+        long total = 0L;
+        for (String regionKey : regions.keySet()) {
+            if (regionKey.startsWith(prefix)) {
+                total++;
+            }
+        }
+        return total;
     }
 
     private static long usedHeapBytes() {

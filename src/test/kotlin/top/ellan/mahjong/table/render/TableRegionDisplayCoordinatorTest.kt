@@ -155,6 +155,73 @@ class TableRegionDisplayCoordinatorTest {
         assertTrue(metrics.timerCount("table.render.region.apply.nanos") >= 1L)
     }
 
+    @Test
+    fun `applyRenderPrecompute records managed entity gauges for entity-heavy tables`() {
+        val session = mock(MahjongTableSession::class.java)
+        val plugin = mock(TableRuntimeServices::class.java)
+        val renderer = mock(TableRenderer::class.java)
+        val fingerprintService = mock(TableRegionFingerprintService::class.java)
+        val metrics = InMemoryMetricsCollector()
+
+        `when`(session.plugin()).thenReturn(plugin)
+        `when`(plugin.metrics()).thenReturn(metrics)
+        `when`(session.renderer()).thenReturn(renderer)
+
+        `when`(renderer.renderTableStructure(eq(session), any(TableRenderLayout.LayoutPlan::class.java))).thenReturn(
+            listOf(mock(Entity::class.java), mock(Entity::class.java))
+        )
+        `when`(renderer.renderSeatVisual(eq(session), any(SeatWind::class.java))).thenReturn(listOf(mock(Entity::class.java)))
+        `when`(
+            renderer.renderSticks(
+                eq(session),
+                any(TableSeatRenderSnapshot::class.java),
+                any(TableRenderLayout.SeatLayoutPlan::class.java)
+            )
+        ).thenReturn(emptyEntities())
+        `when`(renderer.renderDoraSpecs(eq(session), any(TableRenderLayout.LayoutPlan::class.java))).thenReturn(emptySpecs())
+        `when`(
+            renderer.renderCenterLabelSpecs(
+                eq(session),
+                any(TableRenderSnapshot::class.java),
+                any(TableRenderLayout.LayoutPlan::class.java)
+            )
+        ).thenReturn(emptySpecs())
+        `when`(
+            renderer.renderSeatLabelSpecs(
+                eq(session),
+                any(TableSeatRenderSnapshot::class.java),
+                any(TableRenderLayout.SeatLayoutPlan::class.java)
+            )
+        ).thenReturn(emptySpecs())
+        `when`(
+            renderer.renderHandPublicTileSpecs(
+                eq(session),
+                any(TableRenderSnapshot::class.java),
+                any(TableSeatRenderSnapshot::class.java),
+                any(TableRenderLayout.SeatLayoutPlan::class.java),
+                eq(0)
+            )
+        ).thenReturn(emptySpecs())
+        `when`(
+            renderer.renderHandPrivateTileSpecs(
+                eq(session),
+                any(TableSeatRenderSnapshot::class.java),
+                any(TableRenderLayout.SeatLayoutPlan::class.java),
+                eq(0)
+            )
+        ).thenReturn(emptySpecs())
+
+        val deferred = TableRegionDisplayCoordinator(session, fingerprintService).applyRenderPrecompute(precomputeResult())
+
+        assertFalse(deferred)
+        assertEquals(17L, metrics.counterValue("table.render.region.apply.processed"))
+        assertEquals(6L, metrics.gaugeValue("table.render.region.managed_entities"))
+        assertEquals(5L, metrics.gaugeValue("table.render.region.regions_with_entities"))
+        assertEquals(17L, metrics.gaugeValue("table.render.region.active_regions"))
+        assertEquals(0L, metrics.gaugeValue("table.render.region.viewer_overlay_regions"))
+        assertEquals(0L, metrics.gaugeValue("table.render.region.viewer_overlay_entities"))
+    }
+
     private fun precomputeResult(): TableRenderPrecomputeResult {
         val eastPlayerId = UUID.fromString("00000000-0000-0000-0000-00000000e001")
         val seatSnapshots = EnumMap<SeatWind, TableSeatRenderSnapshot>(SeatWind::class.java)

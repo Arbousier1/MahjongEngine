@@ -110,5 +110,27 @@ class PluginSettingsTest {
         assertFalse(settings.craftEngine().injectAntiCheatPacketEventsMappings())
         assertFalse(settings.craftEngine().furniture().preferHitboxInteraction())
     }
+
+    @Test
+    fun `from parses and clamps game room settings including legacy aliases`() {
+        val config = YamlConfiguration()
+        config.set("gamerooms.enabled", false)
+        config.set("gamerooms.restrict-new-tables", false)
+        config.set("gamerooms.enter-exit-messages", false)
+        config.set("gamerooms.leave-countdown-seconds", 1)
+        config.set("gamerooms.default-radius", 1)
+        config.set("gamerooms.default-height", 2)
+        config.set("gamerooms.file", "rooms-custom.yml")
+
+        val settings = PluginSettings.from(config)
+
+        assertFalse(settings.gameRooms().enabled())
+        assertFalse(settings.gameRooms().restrictNewTables())
+        assertFalse(settings.gameRooms().enterExitMessages())
+        assertEquals(5, settings.gameRooms().leaveCountdownSeconds())
+        assertEquals(2, settings.gameRooms().defaultRadius())
+        assertEquals(3, settings.gameRooms().defaultHeight())
+        assertEquals("rooms-custom.yml", settings.gameRooms().file())
+    }
 }
 

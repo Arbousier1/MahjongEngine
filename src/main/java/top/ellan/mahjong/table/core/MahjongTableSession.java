@@ -106,7 +106,6 @@ public final class MahjongTableSession implements TableSessionMutator {
     private final SessionHandSelectionCoordinator handSelectionCoordinator;
     private final SessionRoundFlowCoordinator roundFlowCoordinator;
     private final Map<UUID, String> viewerActionMenuStates = new HashMap<>();
-    private final Map<UUID, PluginTask> viewerActionMenuTransitions = new HashMap<>();
     private MahjongVariant configuredVariant;
     private UUID ownerId;
 
@@ -253,7 +252,6 @@ public final class MahjongTableSession implements TableSessionMutator {
 
     public boolean removeSpectator(UUID playerId) {
         this.viewerPresentation.hideHud(playerId);
-        this.cancelViewerActionMenuTransition(playerId);
         this.viewerActionMenuStates.remove(playerId);
         return this.participants.removeSpectator(playerId);
     }
@@ -308,7 +306,6 @@ public final class MahjongTableSession implements TableSessionMutator {
             return false;
         }
         this.viewerPresentation.hideHud(playerId);
-        this.cancelViewerActionMenuTransition(playerId);
         this.viewerActionMenuStates.remove(playerId);
         this.playerFeedbackCoordinator.clearPlayerState(playerId);
         this.handSelectionCoordinator.clearPlayer(playerId);
@@ -506,7 +503,6 @@ public final class MahjongTableSession implements TableSessionMutator {
         this.clearLastPublicActionInternal();
         this.playerFeedbackCoordinator.resetState();
         this.stateSoundCoordinator.reset();
-        this.cancelAllViewerActionMenuTransitions();
         this.viewerActionMenuStates.clear();
     }
 
@@ -926,17 +922,20 @@ public final class MahjongTableSession implements TableSessionMutator {
         return this.fromRoundController(playerId, TableRoundController::canDeclareTsumo);
     }
 
-    public boolean canChooseSichuanMissingSuit(UUID playerId) {
-        return this.fromGbController(playerId, GbTableRoundController::canChooseSichuanMissingSuit, false);
+    public boolean canChooseSichuanMissingSuit(UUID playerId) { return this.fromGbController(playerId, GbTableRoundController::canChooseSichuanMissingSuit, false); }
+
+    public boolean isSichuanExchangePhase(UUID playerId) { return this.fromGbController(playerId, GbTableRoundController::isSichuanExchangePhase, false); }
+
+    public boolean chooseSichuanMissingSuit(UUID playerId, String suitToken) {
+        boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.chooseSichuanMissingSuit(actorId, suitToken), false);
+        if (result) { this.clearSelectedHandTilesInternal(); }
+        this.render();
+        return result;
     }
 
-    boolean isSichuanExchangePhase(UUID playerId) { return this.fromGbController(playerId, GbTableRoundController::isSichuanExchangePhase, false); }
-
-    boolean chooseSichuanMissingSuit(UUID playerId, String suitToken) {
-        boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.chooseSichuanMissingSuit(actorId, suitToken), false);
-        if (result) {
-            this.clearSelectedHandTilesInternal();
-        }
+    public boolean submitSichuanExchangeSelection(UUID playerId, List<Integer> tileIndices) {
+        boolean result = this.fromGbController(playerId, (controller, actorId) -> controller.submitSichuanExchangeSelection(actorId, tileIndices), false);
+        if (result) { this.clearSelectedHandTilesInternal(); }
         this.render();
         return result;
     }
@@ -1187,7 +1186,6 @@ public final class MahjongTableSession implements TableSessionMutator {
         if (viewerId == null) {
             return;
         }
-        this.cancelViewerActionMenuTransition(viewerId);
         if (menuState == null || menuState.isBlank()) {
             this.clearViewerActionMenuState(viewerId);
             return;
@@ -1203,53 +1201,9 @@ public final class MahjongTableSession implements TableSessionMutator {
         if (viewerId == null) {
             return;
         }
-        this.cancelViewerActionMenuTransition(viewerId);
         if (this.viewerActionMenuStates.remove(viewerId) != null) {
             this.viewerPresentation.markDirty();
         }
-    }
-
-    public void transitionViewerActionMenuState(UUID viewerId, String targetMenuState) {
-        if (viewerId == null) {
-            return;
-        }
-        this.cancelViewerActionMenuTransition(viewerId);
-        this.viewerActionMenuStates.remove(viewerId);
-        this.viewerPresentation.markDirty();
-        this.render();
-        PluginTask transitionTask = this.plugin.scheduler().runRegionDelayed(this.center(), () -> {
-            this.viewerActionMenuTransitions.remove(viewerId);
-            if (!this.contains(viewerId)) {
-                return;
-            }
-            if (targetMenuState == null || targetMenuState.isBlank()) {
-                this.viewerActionMenuStates.remove(viewerId);
-            } else {
-                this.viewerActionMenuStates.put(viewerId, targetMenuState);
-            }
-            this.viewerPresentation.markDirty();
-            this.render();
-        }, 1L);
-        this.viewerActionMenuTransitions.put(viewerId, transitionTask);
-    }
-
-    private void cancelViewerActionMenuTransition(UUID viewerId) {
-        if (viewerId == null) {
-            return;
-        }
-        PluginTask task = this.viewerActionMenuTransitions.remove(viewerId);
-        if (task != null) {
-            task.cancel();
-        }
-    }
-
-    private void cancelAllViewerActionMenuTransitions() {
-        for (PluginTask task : this.viewerActionMenuTransitions.values()) {
-            if (task != null) {
-                task.cancel();
-            }
-        }
-        this.viewerActionMenuTransitions.clear();
     }
 
     public void playReactionSoundInternal(ReactionResponse response) {
@@ -1337,7 +1291,11 @@ public final class MahjongTableSession implements TableSessionMutator {
     }
 
     public void flushViewerPresentationIfNeededInternal() {
-        this.viewerPresentation.flushIfNeeded();
+        this.viewerPresentation.flushNow();
+    }
+
+    void flushViewerActionsNow(UUID viewerId) {
+        this.viewerPresentation.flushViewerActionsNow(viewerId);
     }
 
     public boolean hasQueuedLeavesInternal() {

@@ -39,15 +39,29 @@ public final class TableViewerPresentationCoordinator {
     public void flushIfNeeded() {
         long nowTick = Bukkit.getCurrentTick();
         if (this.shouldRefreshOverlay(nowTick)) {
-            this.updateViewerOverlayRegions();
-            this.viewerOverlayDirty = false;
-            this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
+            this.flushOverlay(nowTick);
         }
         if (this.shouldRefreshHud(nowTick)) {
-            this.syncHud();
-            this.viewerHudDirty = false;
-            this.nextHudRefreshTick = nowTick + HUD_REFRESH_INTERVAL_TICKS;
+            this.flushHud(nowTick);
         }
+    }
+
+    public void flushNow() {
+        long nowTick = Bukkit.getCurrentTick();
+        this.flushOverlay(nowTick);
+        if (this.viewerHudDirty || !this.viewerHudBars.isEmpty()) {
+            this.flushHud(nowTick);
+        }
+    }
+
+    public void flushViewerActionsNow(UUID viewerId) {
+        Player viewer = viewerId == null ? null : this.session.onlinePlayer(viewerId);
+        if (viewer == null) {
+            return;
+        }
+        TableViewerOverlaySnapshot snapshot = this.session.captureViewerOverlaySnapshot(viewer);
+        this.session.updateViewerOverlayRegion(snapshot);
+        this.nextOverlayRefreshTick = Bukkit.getCurrentTick() + OVERLAY_REFRESH_INTERVAL_TICKS;
     }
 
     public boolean hasPresentationState() {
@@ -78,6 +92,18 @@ public final class TableViewerPresentationCoordinator {
         for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
             this.hideHud(viewerId);
         }
+    }
+
+    private void flushOverlay(long nowTick) {
+        this.updateViewerOverlayRegions();
+        this.viewerOverlayDirty = false;
+        this.nextOverlayRefreshTick = nowTick + OVERLAY_REFRESH_INTERVAL_TICKS;
+    }
+
+    private void flushHud(long nowTick) {
+        this.syncHud();
+        this.viewerHudDirty = false;
+        this.nextHudRefreshTick = nowTick + HUD_REFRESH_INTERVAL_TICKS;
     }
 
     private void updateViewerOverlayRegions() {
@@ -170,5 +196,4 @@ public final class TableViewerPresentationCoordinator {
         }
     }
 }
-
 

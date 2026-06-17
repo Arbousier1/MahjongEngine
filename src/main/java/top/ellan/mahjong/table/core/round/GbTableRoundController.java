@@ -30,7 +30,6 @@ import top.ellan.mahjong.riichi.model.Wind;
 import top.ellan.mahjong.riichi.model.YakuSettlement;
 import top.ellan.mahjong.model.MahjongVariant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,13 +46,12 @@ import java.util.function.Supplier;
 import kotlin.Pair;
 
 public final class GbTableRoundController implements TableRoundController {
-    private static final int SICHUAN_MAX_FAN = 5;
     private static final int SICHUAN_CONCEALED_KAN_UNIT = 2;
     private static final int SICHUAN_ADDED_KAN_UNIT = 1;
     private static final int SICHUAN_OPEN_KAN_UNIT = 2;
     private static final int SICHUAN_HUA_ZHU_UNIT = 16;
 
-    private enum SichuanPreparationPhase {
+    enum SichuanPreparationPhase {
         NONE,
         EXCHANGE,
         DING_QUE,
@@ -83,6 +81,7 @@ public final class GbTableRoundController implements TableRoundController {
     private final Set<UUID> confirmedExchangePlayers = new HashSet<>();
     private final Map<UUID, SichuanSuit> chosenMissingSuits = new HashMap<>();
     private final SichuanRulesEngine sichuanRulesEngine;
+    private final SichuanPreparationFlow sichuanPreparationFlow;
     private List<MahjongTile> wall = List.of();
     private List<MahjongTile> deadWall = List.of();
     private boolean started;
@@ -96,7 +95,6 @@ public final class GbTableRoundController implements TableRoundController {
     private OpeningDiceRoll pendingDiceRoll;
     private UUID afterKanTsumoPlayer;
     private SichuanPreparationPhase sichuanPreparationPhase = SichuanPreparationPhase.NONE;
-    private SichuanExchangeDirection sichuanExchangeDirection = SichuanExchangeDirection.CLOCKWISE;
 
     public GbTableRoundController(MahjongRule rule, EnumMap<SeatWind, UUID> seats, Map<UUID, String> displayNames, GbNativeRulesGateway nativeGateway) {
         this(rule, seats, displayNames, nativeGateway, GbRuleProfile.GB);
@@ -140,6 +138,13 @@ public final class GbTableRoundController implements TableRoundController {
         this.dicePointsSupplier = dicePointsSupplier;
         this.wallSupplier = wallSupplier;
         this.sichuanRulesEngine = new DefaultSichuanRulesEngine();
+        this.sichuanPreparationFlow = new SichuanPreparationFlow(
+            this.selectedExchangeTileIndices,
+            this.confirmedExchangePlayers,
+            this.chosenMissingSuits,
+            () -> this.sichuanPreparationPhase,
+            phase -> this.sichuanPreparationPhase = phase
+        );
         this.round = rule.getLength().getStartingRound();
         for (UUID playerId : seats.values()) {
             if (playerId == null) {
@@ -213,13 +218,7 @@ public final class GbTableRoundController implements TableRoundController {
         this.settledSichuanPlayers.clear();
         this.sichuanWinHistory.clear();
         this.sichuanGangEvents.clear();
-        this.selectedExchangeTileIndices.clear();
-        this.confirmedExchangePlayers.clear();
-        this.chosenMissingSuits.clear();
-        this.sichuanPreparationPhase = this.ruleProfile.useSichuanHuEvaluator()
-            ? SichuanPreparationPhase.EXCHANGE
-            : SichuanPreparationPhase.NONE;
-        this.sichuanExchangeDirection = SichuanExchangeDirection.fromDicePoints(this.dicePoints);
+        this.sichuanPreparationFlow.reset(this.ruleProfile.useSichuanHuEvaluator(), this.dicePoints);
         for (UUID playerId : this.seats.values()) {
             if (playerId == null) {
                 continue;
@@ -587,50 +586,36 @@ public final class GbTableRoundController implements TableRoundController {
 
     @Override
     public boolean handleHandTileClick(UUID playerId, int tileIndex, boolean cancelSelection) {
-        if (!this.isSichuanExchangePhase() || !this.canSelectSichuanExchangeTile(playerId, tileIndex)) {
-            return false;
+        boolean result = this.sichuanPreparationFlow.handleHandTileClick(
+            playerId,
+            tileIndex,
+            this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId),
+            this.hands.getOrDefault(playerId, List.of()),
+            this.activeSeatCount()
+        );
+        if (result && this.sichuanPreparationFlow.exchangeReadyToApply(this.activeSeatCount())) {
+            this.applySichuanExchange();
         }
-        LinkedHashSet<Integer> selected = this.selectedExchangeTileIndices.computeIfAbsent(playerId, ignored -> new LinkedHashSet<>());
-        if (selected.contains(tileIndex)) {
-            selected.remove(tileIndex);
-            if (selected.isEmpty()) {
-                this.selectedExchangeTileIndices.remove(playerId);
-            }
-            return true;
+        return result;
+    }
+
+    public boolean submitSichuanExchangeSelection(UUID playerId, List<Integer> tileIndices) {
+        boolean result = this.sichuanPreparationFlow.submitExchangeSelection(
+            playerId,
+            tileIndices,
+            this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId),
+            this.hands.getOrDefault(playerId, List.of()),
+            this.activeSeatCount()
+        );
+        if (result && this.sichuanPreparationFlow.exchangeReadyToApply(this.activeSeatCount())) {
+            this.applySichuanExchange();
         }
-        if (selected.size() >= 3) {
-            return false;
-        }
-        MahjongTile tile = this.hands.getOrDefault(playerId, List.of()).get(tileIndex);
-        if (!selected.isEmpty()) {
-            Integer firstIndex = selected.iterator().next();
-            MahjongTile firstTile = this.hands.getOrDefault(playerId, List.of()).get(firstIndex);
-            if (SichuanSuit.fromTile(firstTile) != SichuanSuit.fromTile(tile)) {
-                return false;
-            }
-        }
-        selected.add(tileIndex);
-        if (selected.size() == 3) {
-            this.confirmedExchangePlayers.add(playerId);
-            if (this.confirmedExchangePlayers.size() == this.activeSeatCount()) {
-                this.applySichuanExchange();
-            }
-        }
-        return true;
+        return result;
     }
 
     @Override
     public List<Integer> selectedHandTileIndices(UUID playerId) {
-        if (!this.isSichuanExchangePhase() || playerId == null) {
-            return List.of();
-        }
-        LinkedHashSet<Integer> selected = this.selectedExchangeTileIndices.get(playerId);
-        if (selected == null || selected.isEmpty()) {
-            return List.of();
-        }
-        List<Integer> indices = new ArrayList<>(selected);
-        Collections.sort(indices);
-        return List.copyOf(indices);
+        return this.sichuanPreparationFlow.selectedHandTileIndices(playerId);
     }
 
     @Override
@@ -824,30 +809,24 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     public boolean isSichuanExchangePhase(UUID playerId) {
-        return this.isSichuanExchangePhase()
-            && this.isSeatedPlayer(playerId)
-            && !this.isSettledInSichuan(playerId)
-            && !this.confirmedExchangePlayers.contains(playerId);
+        return this.sichuanPreparationFlow.isExchangeAvailable(playerId, this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId));
     }
 
     public boolean canChooseSichuanMissingSuit(UUID playerId) {
-        return this.isSichuanDingQuePhase()
-            && this.isSeatedPlayer(playerId)
-            && !this.isSettledInSichuan(playerId)
-            && !this.chosenMissingSuits.containsKey(playerId);
+        return this.sichuanPreparationFlow.canChooseMissingSuit(playerId, this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId));
     }
 
     public boolean chooseSichuanMissingSuit(UUID playerId, String suitToken) {
-        if (!this.canChooseSichuanMissingSuit(playerId)) {
+        boolean result = this.sichuanPreparationFlow.chooseMissingSuit(
+            playerId,
+            suitToken,
+            this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId),
+            this.activeSeatCount()
+        );
+        if (!result) {
             return false;
         }
-        SichuanSuit suit = SichuanSuit.fromKey(suitToken);
-        if (suit == null) {
-            return false;
-        }
-        this.chosenMissingSuits.put(playerId, suit);
-        if (this.chosenMissingSuits.size() == this.activeSeatCount()) {
-            this.sichuanPreparationPhase = SichuanPreparationPhase.ACTIVE;
+        if (!this.sichuanPreparationFlow.isPreparationPhase()) {
             this.refreshAllTing();
         } else {
             this.seedSichuanPreparationTing();
@@ -1129,7 +1108,7 @@ public final class GbTableRoundController implements TableRoundController {
         if (!this.canWinResponse(fanResponse)) {
             return new GbWinResponse(false, "WIN", 0, List.of(), List.of(), fanResponse.getError());
         }
-        int totalFan = Math.max(1, Math.min(SICHUAN_MAX_FAN, fanResponse.getTotalFan()));
+        int totalFan = Math.max(1, fanResponse.getTotalFan());
         int scoreUnit = this.sichuanRulesEngine.scoreUnit(totalFan);
         return new GbWinResponse(
             true,
@@ -1350,7 +1329,7 @@ public final class GbTableRoundController implements TableRoundController {
         return active;
     }
 
-    private List<GbFanEntry> sichuanFans(
+    private SichuanRulesEngine.FanResult sichuanFanResult(
         UUID playerId,
         List<MahjongTile> concealedHand,
         List<GbMeldState> meldStates,
@@ -1360,7 +1339,7 @@ public final class GbTableRoundController implements TableRoundController {
     ) {
         // Delegate to the single shared rules engine so the table flow and the
         // standalone engine stay byte-for-byte consistent on fan composition.
-        SichuanRulesEngine.FanResult result = this.sichuanRulesEngine.evaluateFan(
+        return this.sichuanRulesEngine.evaluateFan(
             concealedHand,
             meldStates,
             winningTile,
@@ -1368,6 +1347,17 @@ public final class GbTableRoundController implements TableRoundController {
             flags,
             this.isSichuanGoldenSingleWait(playerId)
         );
+    }
+
+    private List<GbFanEntry> sichuanFans(
+        UUID playerId,
+        List<MahjongTile> concealedHand,
+        List<GbMeldState> meldStates,
+        MahjongTile winningTile,
+        String winType,
+        List<String> flags
+    ) {
+        SichuanRulesEngine.FanResult result = this.sichuanFanResult(playerId, concealedHand, meldStates, winningTile, winType, flags);
         return result.valid() ? result.fans() : List.of();
     }
 
@@ -1376,11 +1366,8 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private int sichuanFanTotal(UUID playerId, List<MahjongTile> concealedHand, List<GbMeldState> meldStates, MahjongTile winningTile) {
-        int totalFan = this.sichuanFans(playerId, concealedHand, meldStates, winningTile, "DISCARD", List.of())
-            .stream()
-            .mapToInt(fan -> fan.getFan() * Math.max(1, fan.getCount()))
-            .sum();
-        return Math.max(1, Math.min(SICHUAN_MAX_FAN, totalFan));
+        SichuanRulesEngine.FanResult result = this.sichuanFanResult(playerId, concealedHand, meldStates, winningTile, "DISCARD", List.of());
+        return result.valid() ? Math.max(1, result.totalFan()) : 1;
     }
 
     private List<MahjongTile> tilesForSichuanWin(UUID playerId, List<MahjongTile> concealedHand, List<GbMeldState> meldStates, MahjongTile winningTile) {
@@ -1430,29 +1417,22 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private boolean isSichuanPreparationPhase() {
-        return this.sichuanPreparationPhase == SichuanPreparationPhase.EXCHANGE
-            || this.sichuanPreparationPhase == SichuanPreparationPhase.DING_QUE;
+        return this.sichuanPreparationFlow.isPreparationPhase();
     }
 
     private boolean isSichuanExchangePhase() {
-        return this.sichuanPreparationPhase == SichuanPreparationPhase.EXCHANGE;
+        return this.sichuanPreparationFlow.isExchangePhase();
     }
 
     private boolean isSichuanDingQuePhase() {
-        return this.sichuanPreparationPhase == SichuanPreparationPhase.DING_QUE;
+        return this.sichuanPreparationFlow.isDingQuePhase();
     }
 
     private boolean isSichuanPlayerActionPending(UUID playerId) {
         if (playerId == null || !this.ruleProfile.useSichuanHuEvaluator()) {
             return false;
         }
-        if (this.isSichuanExchangePhase()) {
-            return !this.confirmedExchangePlayers.contains(playerId);
-        }
-        if (this.isSichuanDingQuePhase()) {
-            return !this.chosenMissingSuits.containsKey(playerId);
-        }
-        return false;
+        return this.sichuanPreparationFlow.isActionPending(playerId);
     }
 
     private int activeSeatCount() {
@@ -1466,78 +1446,18 @@ public final class GbTableRoundController implements TableRoundController {
     }
 
     private boolean canSelectSichuanExchangeTile(UUID playerId, int tileIndex) {
-        if (!this.isSichuanExchangePhase()
-            || playerId == null
-            || this.confirmedExchangePlayers.contains(playerId)
-            || this.isSettledInSichuan(playerId)) {
-            return false;
-        }
-        List<MahjongTile> hand = this.hands.get(playerId);
-        if (hand == null || tileIndex < 0 || tileIndex >= hand.size()) {
-            return false;
-        }
-        MahjongTile tile = hand.get(tileIndex);
-        SichuanSuit tileSuit = SichuanSuit.fromTile(tile);
-        if (tileSuit == null) {
-            return false;
-        }
-        LinkedHashSet<Integer> selected = this.selectedExchangeTileIndices.get(playerId);
-        if (selected == null || selected.isEmpty() || selected.contains(tileIndex)) {
-            return true;
-        }
-        if (selected.size() >= 3) {
-            return false;
-        }
-        Integer firstIndex = selected.iterator().next();
-        if (firstIndex == null || firstIndex < 0 || firstIndex >= hand.size()) {
-            return true;
-        }
-        return tileSuit == SichuanSuit.fromTile(hand.get(firstIndex));
+        return this.sichuanPreparationFlow.canSelectExchangeTile(
+            playerId,
+            tileIndex,
+            this.isSeatedPlayer(playerId) && !this.isSettledInSichuan(playerId),
+            this.hands.get(playerId)
+        );
     }
 
     private void applySichuanExchange() {
-        EnumMap<SeatWind, List<Integer>> indicesBySeat = new EnumMap<>(SeatWind.class);
-        EnumMap<SeatWind, List<MahjongTile>> outgoingBySeat = new EnumMap<>(SeatWind.class);
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null) {
-                continue;
-            }
-            List<Integer> indices = this.selectedHandTileIndices(playerId);
-            if (indices.size() != 3) {
-                return;
-            }
-            indicesBySeat.put(wind, indices);
-            List<MahjongTile> hand = this.hands.getOrDefault(playerId, List.of());
-            List<MahjongTile> outgoing = new ArrayList<>(indices.size());
-            for (Integer index : indices) {
-                outgoing.add(hand.get(index));
-            }
-            outgoingBySeat.put(wind, List.copyOf(outgoing));
+        if (this.sichuanPreparationFlow.applyExchange(this.seats, this.hands, this::rebuildHandAfterSichuanExchange)) {
+            this.seedSichuanPreparationTing();
         }
-        EnumMap<SeatWind, List<MahjongTile>> incomingBySeat = new EnumMap<>(SeatWind.class);
-        for (SeatWind source : SeatWind.values()) {
-            List<MahjongTile> outgoing = outgoingBySeat.get(source);
-            if (outgoing == null) {
-                continue;
-            }
-            incomingBySeat.put(this.sichuanExchangeDirection.targetOf(source), outgoing);
-        }
-        for (SeatWind wind : SeatWind.values()) {
-            UUID playerId = this.playerAt(wind);
-            if (playerId == null) {
-                continue;
-            }
-            this.rebuildHandAfterSichuanExchange(
-                playerId,
-                indicesBySeat.getOrDefault(wind, List.of()),
-                incomingBySeat.getOrDefault(wind, List.of())
-            );
-        }
-        this.selectedExchangeTileIndices.clear();
-        this.confirmedExchangePlayers.clear();
-        this.sichuanPreparationPhase = SichuanPreparationPhase.DING_QUE;
-        this.seedSichuanPreparationTing();
     }
 
     private void rebuildHandAfterSichuanExchange(UUID playerId, List<Integer> removedIndices, List<MahjongTile> incomingTiles) {
