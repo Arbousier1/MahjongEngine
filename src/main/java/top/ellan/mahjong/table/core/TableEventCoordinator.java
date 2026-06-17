@@ -203,7 +203,7 @@ final class TableEventCoordinator {
     }
 
     private boolean isDuplicateDisplayAction(UUID playerId, DisplayClickAction action) {
-        RecentDisplayAction recent = this.recentDisplayActions.get(playerId);
+        RecentDisplayAction recent = this.recentDisplayActions.getIfPresent(playerId);
         if (recent == null || !recent.matches(action)) {
             return false;
         }
