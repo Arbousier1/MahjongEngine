@@ -1,3 +1,4 @@
+import dev.detekt.gradle.Detekt
 import org.gradle.api.tasks.testing.Test
 import top.ellan.mahjong.build.MahjongTaskRegistration
 
@@ -8,25 +9,31 @@ plugins {
     kotlin("plugin.serialization") version "2.4.0"
     id("io.papermc.paperweight.userdev") version "2.0.0-SNAPSHOT"
     id("com.diffplug.spotless") version "7.2.0"
-    id("io.gitlab.arturbosch.detekt") version "1.23.7"
+    id("dev.detekt") version "2.0.0-alpha.4"
 }
 
 group = "top.ellan"
 version = "1.3.0-SNAPSHOT"
 
 val minimumPaperDevBundleVersion = "1.20.1-R0.1-SNAPSHOT"
-val paperDevBundleVersion = providers.gradleProperty("mahjongPaperDevBundle")
-    .orElse(minimumPaperDevBundleVersion)
-    .get()
+val paperDevBundleVersion =
+    providers
+        .gradleProperty("mahjongPaperDevBundle")
+        .orElse(minimumPaperDevBundleVersion)
+        .get()
 val supportedPaperApiVersion = "1.20"
 val paperApiVersion = supportedPaperApiVersion
-val javaTargetVersion = providers.gradleProperty("mahjongJavaTarget")
-    .map(String::toInt)
-    .orElse(17)
-    .get()
-val toolchainJavaVersion = providers.gradleProperty("mahjongJavaToolchain")
-    .map(String::toInt)
-    .orElse(if (Runtime.version().feature() >= javaTargetVersion) Runtime.version().feature() else javaTargetVersion)
+val javaTargetVersion =
+    providers
+        .gradleProperty("mahjongJavaTarget")
+        .map(String::toInt)
+        .orElse(17)
+        .get()
+val toolchainJavaVersion =
+    providers
+        .gradleProperty("mahjongJavaToolchain")
+        .map(String::toInt)
+        .orElse(if (Runtime.version().feature() >= javaTargetVersion) Runtime.version().feature() else javaTargetVersion)
 val kotlinRuntimeVersion = "2.4.0"
 val kotlinSerializationVersion = "1.11.0"
 val mahjongUtilsVersion = "0.7.7"
@@ -49,12 +56,17 @@ repositories {
 }
 
 // Codegen + native build tasks are registered via buildSrc convention helpers.
-val codegenTasks = MahjongTaskRegistration.registerCodegenTasks(
-    project, generatedResourcesDir, project.version.toString()
-)
-val nativeTasks = MahjongTaskRegistration.registerNativeTasks(
-    project, generatedNativeResourcesDir
-)
+val codegenTasks =
+    MahjongTaskRegistration.registerCodegenTasks(
+        project,
+        generatedResourcesDir,
+        project.version.toString(),
+    )
+val nativeTasks =
+    MahjongTaskRegistration.registerNativeTasks(
+        project,
+        generatedNativeResourcesDir,
+    )
 
 dependencies {
     paperweight.paperDevBundle(paperDevBundleVersion)
@@ -94,16 +106,24 @@ kotlin {
 }
 
 paperweight {
-    javaLauncher = javaToolchains.launcherFor {
-        languageVersion.set(toolchainJavaVersion.map(JavaLanguageVersion::of))
-    }
+    javaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion.set(toolchainJavaVersion.map(JavaLanguageVersion::of))
+        }
     reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 }
 
 tasks {
+    withType<Detekt>().configureEach {
+        jvmTarget.set(javaTargetVersion.toString())
+    }
+
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(javaTargetVersion.toString()))
+            jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget
+                    .fromTarget(javaTargetVersion.toString()),
+            )
         }
     }
 
@@ -134,7 +154,7 @@ tasks {
                 "h2Version" to h2Version,
                 "hikariVersion" to hikariVersion,
                 "kotlinRuntimeVersion" to kotlinRuntimeVersion,
-                "kotlinSerializationVersion" to kotlinSerializationVersion
+                "kotlinSerializationVersion" to kotlinSerializationVersion,
             )
         }
     }
@@ -163,7 +183,10 @@ tasks {
         systemProperty("mahjong.perf.batchSize", providers.gradleProperty("perfBatchSize").orElse("200").get())
         systemProperty(
             "mahjong.perf.reportDir",
-            layout.buildDirectory.dir("reports/performance").get().asFile.absolutePath
+            layout.buildDirectory
+                .dir("reports/performance")
+                .get()
+                .asFile.absolutePath,
         )
         shouldRunAfter(test)
     }

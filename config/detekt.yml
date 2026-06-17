@@ -6,25 +6,25 @@ complexity:
   active: true
   LongMethod:
     active: true
-    threshold: 200
+    allowedLines: 200
   LongParameterList:
     active: true
-    functionThreshold: 12
-    constructorThreshold: 12
+    allowedFunctionParameters: 12
+    allowedConstructorParameters: 12
   ComplexCondition:
     active: true
-    threshold: 8
+    allowedConditions: 8
   CyclomaticComplexMethod:
     active: true
-    threshold: 30
+    allowedComplexity: 30
   TooManyFunctions:
     active: false
   LargeClass:
     active: true
-    threshold: 600
+    allowedLines: 600
   NestedBlockDepth:
     active: true
-    threshold: 8
+    allowedDepth: 8
 
 style:
   active: true
