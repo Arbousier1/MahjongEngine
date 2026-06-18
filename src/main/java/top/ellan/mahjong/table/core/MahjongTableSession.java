@@ -1273,6 +1273,10 @@ public final class MahjongTableSession implements TableSessionMutator, TableMemb
         this.stateSoundCoordinator.playReactionSound(response);
     }
 
+    public void playDiscardSoundInternal() {
+        this.stateSoundCoordinator.playDiscardSound();
+    }
+
     public void persistRoomMetadataIfNeededInternal() {
         if (this.persistentRoom && this.plugin.tableManager() != null) {
             this.plugin.tableManager().persistTables();

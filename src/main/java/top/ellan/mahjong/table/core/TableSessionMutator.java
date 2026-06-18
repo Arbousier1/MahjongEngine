@@ -89,6 +89,8 @@ public interface TableSessionMutator extends TableSessionContext {
 
     void playReactionSoundInternal(ReactionResponse response);
 
+    void playDiscardSoundInternal();
+
     void persistRoomMetadataIfNeededInternal();
 
     void setConfiguredRuleInternal(MahjongRule configuredRule);

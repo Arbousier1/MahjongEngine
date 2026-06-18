@@ -1,17 +1,25 @@
 package top.ellan.mahjong.table.presentation;
 
+import top.ellan.mahjong.model.MahjongVariant;
 import top.ellan.mahjong.riichi.ReactionResponse;
 import top.ellan.mahjong.riichi.ReactionType;
 import top.ellan.mahjong.table.core.TableSessionContext;
+import top.ellan.mahjong.table.core.round.TableRoundController;
 import java.util.Objects;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 public final class TableStateSoundCoordinator {
+    private static final String NAMESPACE = "mahjong";
+
+    private static String sound(String name) {
+        return NAMESPACE + ":" + name;
+    }
+
     private final TableSessionContext session;
     private String lastTurnSoundFingerprint = "";
     private String lastRiichiSoundFingerprint = "";
     private String lastResolutionSoundFingerprint = "";
+    private int lastRemainingWallCount = -1;
 
     public TableStateSoundCoordinator(TableSessionContext session) {
         this.session = session;
@@ -22,29 +30,50 @@ public final class TableStateSoundCoordinator {
             this.reset();
             return;
         }
+        this.syncDrawSound();
         this.syncTurnSound();
         this.syncRiichiSound();
         this.syncResolutionSound();
     }
 
     public void playReactionSound(ReactionResponse response) {
-        if (response.getType() == ReactionType.CHII) {
-            this.broadcastSound(Sound.ENTITY_PLAYER_BURP, 0.85F, 1.15F);
+        switch (response.getType()) {
+            case CHII  -> this.broadcastSound(this.variantSound("reaction_chi"), 0.8F, 1.1F);
+            case PON   -> this.broadcastSound(this.variantSound("reaction_pon"), 0.8F, 1.1F);
+            case MINKAN-> this.broadcastSound(this.variantSound("reaction_kan"), 0.8F, 1.1F);
+            default -> { /* no custom sound for other reactions */ }
         }
     }
 
     public void playRoundStartSound() {
-        this.broadcastSound(Sound.BLOCK_BEACON_POWER_SELECT, 0.9F, 1.2F);
+        this.broadcastSound(this.variantSound("tile_shuffle"), 0.9F, 1.2F);
+    }
+
+    public void playDiscardSound() {
+        this.broadcastSound(this.variantSound("tile_discard"), 0.75F, 1.05F);
     }
 
     public void reset() {
         this.lastTurnSoundFingerprint = "";
         this.lastRiichiSoundFingerprint = "";
         this.lastResolutionSoundFingerprint = "";
+        this.lastRemainingWallCount = -1;
     }
 
     public void resetForRoundStart() {
         this.lastResolutionSoundFingerprint = Objects.toString(this.session.lastResolution(), "");
+        this.lastRemainingWallCount = -1;
+    }
+
+    private void syncDrawSound() {
+        TableRoundController controller = this.session.roundControllerInternal();
+        int remainingWallCount = controller == null || !controller.started()
+            ? -1
+            : controller.remainingWallCount();
+        if (remainingWallCount >= 0 && this.lastRemainingWallCount >= 0 && remainingWallCount < this.lastRemainingWallCount) {
+            this.broadcastSound(this.variantSound("tile_draw"), 0.65F, 1.05F);
+        }
+        this.lastRemainingWallCount = remainingWallCount;
     }
 
     private void syncTurnSound() {
@@ -52,7 +81,7 @@ public final class TableStateSoundCoordinator {
             ? this.session.currentSeat() + ":" + this.session.remainingWallCount() + ":" + this.session.pendingReactionFingerprint()
             : "";
         if (!turnFingerprint.isBlank() && !turnFingerprint.equals(this.lastTurnSoundFingerprint)) {
-            this.broadcastSound(Sound.UI_BUTTON_CLICK, 0.5F, 1.6F);
+            this.broadcastSound(this.variantSound("turn_change"), 0.5F, 1.6F);
         }
         this.lastTurnSoundFingerprint = turnFingerprint;
     }
@@ -60,7 +89,7 @@ public final class TableStateSoundCoordinator {
     private void syncRiichiSound() {
         String riichiFingerprint = this.session.riichiFingerprintValue();
         if (!riichiFingerprint.equals(this.lastRiichiSoundFingerprint) && !this.lastRiichiSoundFingerprint.isBlank()) {
-            this.broadcastSound(Sound.BLOCK_BELL_USE, 0.8F, 1.25F);
+            this.broadcastSound(sound("riichi"), 0.8F, 1.25F);
         }
         this.lastRiichiSoundFingerprint = riichiFingerprint;
     }
@@ -68,19 +97,26 @@ public final class TableStateSoundCoordinator {
     private void syncResolutionSound() {
         String resolutionFingerprint = Objects.toString(this.session.lastResolution(), "");
         if (!resolutionFingerprint.isBlank() && !resolutionFingerprint.equals(this.lastResolutionSoundFingerprint)) {
-            Sound sound = this.session.lastResolution().getDraw() == null
-                ? Sound.UI_TOAST_CHALLENGE_COMPLETE
-                : Sound.BLOCK_NOTE_BLOCK_BELL;
-            this.broadcastSound(sound, 0.9F, 1.0F);
+            boolean isDraw = this.session.lastResolution().getDraw() != null;
+            this.broadcastSound(this.variantSound(isDraw ? "round_draw" : "round_win"), 0.9F, 1.0F);
         }
         this.lastResolutionSoundFingerprint = resolutionFingerprint;
     }
 
-    private void broadcastSound(Sound sound, float volume, float pitch) {
+    private String variantSound(String baseName) {
+        MahjongVariant variant = this.session.currentVariant();
+        if (variant == MahjongVariant.GB) {
+            return sound("gb_" + baseName);
+        }
+        if (variant == MahjongVariant.SICHUAN) {
+            return sound("sichuan_" + baseName);
+        }
+        return sound(baseName);
+    }
+
+    private void broadcastSound(String soundKey, float volume, float pitch) {
         for (Player viewer : this.session.viewers()) {
-            viewer.playSound(viewer.getLocation(), sound, volume, pitch);
+            viewer.playSound(viewer.getLocation(), soundKey, volume, pitch);
         }
     }
 }
-
-

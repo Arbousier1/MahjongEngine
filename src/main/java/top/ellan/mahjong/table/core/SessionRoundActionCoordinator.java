@@ -212,6 +212,7 @@ final class SessionRoundActionCoordinator {
         }
         if (result.publicDiscardTile() != null) {
             this.session.rememberPublicDiscardInternal(result.publicDiscardPlayerId(), result.publicDiscardTile());
+            this.session.playDiscardSoundInternal();
         }
         if (result.publicActionKey() != null && !result.publicActionKey().isBlank()) {
             this.session.rememberPublicActionInternal(result.publicActionPlayerId(), result.publicActionKey());
