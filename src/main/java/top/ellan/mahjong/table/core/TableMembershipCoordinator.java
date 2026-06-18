@@ -128,6 +128,42 @@ final class TableMembershipCoordinator {
         return session;
     }
 
+    void removePlayerWithoutMove(UUID playerId, MahjongTableSession session) {
+        if (playerId == null || session == null) {
+            return;
+        }
+        SeatWind seatWind = session.seatOf(playerId);
+        if (seatWind != null) {
+            this.manager.seatCoordinatorRef().ejectSeatOccupant(playerId);
+            if (!session.removePlayer(playerId)) {
+                return;
+            }
+            this.manager.directoryRef().removePlayer(playerId);
+        } else if (session.isSpectator(playerId)) {
+            session.removeSpectator(playerId);
+            this.manager.directoryRef().removeSpectator(playerId);
+        } else {
+            return;
+        }
+        this.manager.pluginRef().debug().log("table", "Player " + playerId + " removed from table " + session.id() + " without movement");
+        this.handleSeatMembershipChanged(session, true);
+    }
+
+    void removePlayerFromTableWithoutMove(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        MahjongTableSession session = this.manager.tableFor(playerId);
+        if (session != null) {
+            this.removePlayerWithoutMove(playerId, session);
+            return;
+        }
+        MahjongTableSession spectatorSession = this.manager.sessionForViewer(playerId);
+        if (spectatorSession != null) {
+            this.unspectate(playerId);
+        }
+    }
+
     void finalizeDeferredLeaves(MahjongTableSession session, Map<UUID, SeatWind> playerSeats) {
         if (session == null || playerSeats == null || playerSeats.isEmpty()) {
             return;

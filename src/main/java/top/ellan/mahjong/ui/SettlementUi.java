@@ -16,6 +16,7 @@ import java.text.NumberFormat;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -254,7 +255,7 @@ public final class SettlementUi {
         ItemStack customItem = session.plugin().craftEngine().resolveTileItem(session.currentVariant(), tile, faceDown);
         if (customItem != null) {
             ItemMeta customMeta = customItem.getItemMeta();
-            customMeta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));
+            customMeta.displayName(name.colorIfAbsent(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
             customItem.setItemMeta(customMeta);
             return customItem;
         }
@@ -262,7 +263,7 @@ public final class SettlementUi {
         ItemStack itemStack = new ItemStack(Material.PAPER);
         ItemMeta meta = itemStack.getItemMeta();
         PaperCompatibility.applyItemModel(meta, new NamespacedKey("mahjongcraft", path));
-        meta.displayName(name.colorIfAbsent(NamedTextColor.GOLD));
+        meta.displayName(name.colorIfAbsent(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false));
         itemStack.setItemMeta(meta);
         return itemStack;
     }
@@ -274,9 +275,11 @@ public final class SettlementUi {
     private static ItemStack namedItem(Material material, Component name, List<Component> loreLines) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(name.colorIfAbsent(NamedTextColor.YELLOW));
+        meta.displayName(name.colorIfAbsent(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         if (!loreLines.isEmpty()) {
-            meta.lore(loreLines);
+            meta.lore(loreLines.stream()
+                .map(line -> line.colorIfAbsent(NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
+                .toList());
         }
         item.setItemMeta(meta);
         return item;

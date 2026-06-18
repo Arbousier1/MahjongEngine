@@ -334,7 +334,8 @@ public final class GameRoomManager {
             long deadline = entry.getValue();
 
             if (now >= deadline) {
-                // Countdown expired, force end the match
+                // Countdown expired, force end the match and remove the player
+                // who left the room from the table without moving them.
                 String tableId = this.exitCountdownTableIds.get(playerId);
                 if (tableId != null) {
                     this.logDebug("Player " + playerId + " countdown expired, force-ending table " + tableId);
@@ -342,15 +343,15 @@ public final class GameRoomManager {
                     // cross-thread mutation of game state (round controller,
                     // viewer presentation, bot task, etc.) on Folia.
                     MahjongTableSession session = this.tableManager.resolveTableById(tableId);
-                    // Guard against redundant forceEnd scheduling: if the match has
-                    // already ended (e.g. natural round end between the countdown
-                    // expiry and this tick) skip the region scheduling entirely.
-                    // forceEndMatch is idempotent but skipping it saves a region
-                    // task dispatch + an unnecessary render pass on the table's
-                    // region thread. isStarted() reads the now-volatile
-                    // roundController field (T1) so this cross-thread read is safe.
-                    if (session != null && session.isStarted()) {
-                        this.scheduler.runRegion(session.center(), () -> this.tableManager.forceEndTable(tableId));
+                    // Guard against redundant scheduling: if the match has already
+                    // ended and the player is no longer at the table, skip the
+                    // region task dispatch. Otherwise force-end the match and
+                    // remove the leaving player from the table (without teleport).
+                    if (session != null && (session.isStarted() || session.contains(playerId))) {
+                        this.scheduler.runRegion(session.center(), () -> {
+                            this.tableManager.forceEndTable(tableId);
+                            this.tableManager.removePlayerFromTableWithoutMove(playerId);
+                        });
                     }
                 }
                 iterator.remove();

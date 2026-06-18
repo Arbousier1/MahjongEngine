@@ -337,6 +337,10 @@ public final class MahjongTableManager implements Listener {
         return session;
     }
 
+    public void removePlayerFromTableWithoutMove(UUID playerId) {
+        this.membershipCoordinator.removePlayerFromTableWithoutMove(playerId);
+    }
+
     public MahjongTableSession deleteTable(String tableId) {
         MahjongTableSession session = this.resolveTable(tableId);
         if (session == null) {

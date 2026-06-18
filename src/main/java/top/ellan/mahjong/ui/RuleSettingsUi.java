@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -255,9 +256,11 @@ public final class RuleSettingsUi {
     private static ItemStack namedItem(Material material, Component name, List<Component> loreLines) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(name.colorIfAbsent(NamedTextColor.YELLOW));
+        meta.displayName(name.colorIfAbsent(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
         if (!loreLines.isEmpty()) {
-            meta.lore(loreLines);
+            meta.lore(loreLines.stream()
+                .map(line -> line.colorIfAbsent(NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
+                .toList());
         }
         item.setItemMeta(meta);
         return item;

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1 - 2026-06-18
+
+Hotfix for game room exit countdown behavior.
+
+中文更新日志:
+
+- **棋牌室离开倒计时结束时踢出玩家**: 修复玩家离开棋牌室后倒计时结束仅强制结束对局、但未将该玩家从牌桌移除的问题。现在倒计时到期时会同时把离开房间的玩家从牌桌无位移移除。
+
+English Release Notes:
+
+- **Game room exit countdown now removes the player**: Fixed an issue where the countdown only force-ended the match when a player left the game room, but left the player attached to the table. The countdown expiry now also removes the leaving player from the table without moving them.
+
 ## 1.4.0 - 2026-06-18
 
 Visual asset release for the MahjongPaper table furniture, seat chair, and dice resources.
