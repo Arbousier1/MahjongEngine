@@ -31,7 +31,7 @@ public final class TableRenderConstants {
     public static final double TABLE_BORDER_OUTWARD_OFFSET = 0.0D;
     public static final double TABLE_BORDER_HEIGHT = 3.0D * ONE_SIXTEENTH;
     public static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
-    public static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
+    public static final double TABLE_VISUAL_Y_OFFSET = 0.375D;
     public static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
     public static final double SEAT_DISTANCE_FROM_HAND_BASE = 0.9D;
     public static final double SEAT_BASE_Y_OFFSET = -0.62D;

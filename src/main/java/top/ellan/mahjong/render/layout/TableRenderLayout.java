@@ -26,7 +26,7 @@ public final class TableRenderLayout {
     private static final double TABLE_TOP_SIZE_EXPANSION = ONE_SIXTEENTH;
     private static final double TABLE_BORDER_THICKNESS = ONE_SIXTEENTH;
     private static final double DISPLAY_CENTER_Y_OFFSET = 0.52D;
-    private static final double TABLE_VISUAL_Y_OFFSET = 0.5D;
+    private static final double TABLE_VISUAL_Y_OFFSET = 0.375D;
     private static final double FLOATING_TEXT_Y_OFFSET = 1.0D;
     private static final double WALL_DIRECTION_OFFSET = 1.0D;
     private static final double HAND_DIRECTION_OFFSET = WALL_DIRECTION_OFFSET + TILE_DEPTH + TILE_HEIGHT;

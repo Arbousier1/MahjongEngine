@@ -1,19 +1,28 @@
 {
-  "credit": "Generated for MahjongPaper CraftEngine furniture",
-  "texture_size": [
-    16,
-    16
+  "meta": {
+    "format_version": "4.10",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "mahjong_table_visual",
+  "model_identifier": "mahjongcraft:table_visual",
+  "visible_box": [
+    3,
+    2,
+    3
   ],
-  "textures": {
-    "wood": "mahjongcraft:item/table/table_walnut",
-    "felt": "mahjongcraft:item/table/table_felt_green",
-    "slot": "mahjongcraft:item/table/table_dark_slot",
-    "trim": "mahjongcraft:item/table/table_muted_brass",
-    "center": "mahjongcraft:item/table/table_center_hatch",
-    "particle": "mahjongcraft:item/table/table_felt_green"
+  "variable_placeholders": "",
+  "variable_placeholder_buttons": [],
+  "timeline_setups": [],
+  "unhandled_root_fields": {},
+  "resolution": {
+    "width": 16,
+    "height": 16
   },
   "elements": [
     {
+      "name": "Legs and Feet 001",
+      "type": "cube",
       "from": [
         -15,
         -16,
@@ -24,6 +33,13 @@
         -14,
         -9
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -32,7 +48,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -41,7 +57,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -50,7 +66,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -59,7 +75,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -68,7 +84,7 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -77,11 +93,14 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "d425b101-f84c-5637-af4a-32b223a05930"
     },
     {
+      "name": "Legs and Feet 002",
+      "type": "cube",
       "from": [
         25,
         -16,
@@ -92,6 +111,13 @@
         -14,
         -9
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -100,7 +126,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -109,7 +135,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -118,7 +144,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -127,7 +153,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -136,7 +162,7 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -145,11 +171,14 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "1db18fc8-3429-5855-a7f6-f4f938a1da85"
     },
     {
+      "name": "Legs and Feet 003",
+      "type": "cube",
       "from": [
         -15,
         -16,
@@ -160,6 +189,13 @@
         -14,
         31
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -168,7 +204,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -177,7 +213,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -186,7 +222,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -195,7 +231,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -204,7 +240,7 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -213,11 +249,14 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "97f69765-ab71-5ce1-a456-d3c3733bc236"
     },
     {
+      "name": "Legs and Feet 004",
+      "type": "cube",
       "from": [
         25,
         -16,
@@ -228,6 +267,13 @@
         -14,
         31
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -236,7 +282,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -245,7 +291,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -254,7 +300,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -263,7 +309,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -272,7 +318,7 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -281,11 +327,14 @@
             6,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "9aeadbed-be38-56e8-b95d-567898d82a4a"
     },
     {
+      "name": "Legs and Feet 005",
+      "type": "cube",
       "from": [
         -14,
         -14,
@@ -296,6 +345,13 @@
         -6,
         -10
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -304,7 +360,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -313,7 +369,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -322,7 +378,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -331,7 +387,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -340,7 +396,7 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -349,11 +405,14 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "80a242fa-73b4-534a-a9fd-f3d1b0d25f42"
     },
     {
+      "name": "Player Controls 001",
+      "type": "cube",
       "from": [
         -13,
         -13,
@@ -364,6 +423,13 @@
         -7,
         -11
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -372,7 +438,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -381,7 +447,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -390,7 +456,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -399,7 +465,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -408,7 +474,7 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -417,11 +483,14 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "dd892f90-7804-5732-8d4a-362b6bae3a06"
     },
     {
+      "name": "Legs and Feet 006",
+      "type": "cube",
       "from": [
         26,
         -14,
@@ -432,6 +501,13 @@
         -6,
         -10
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -440,7 +516,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -449,7 +525,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -458,7 +534,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -467,7 +543,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -476,7 +552,7 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -485,11 +561,14 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "3836ea82-8e23-5d60-bbbf-2c211bd062bd"
     },
     {
+      "name": "Player Controls 002",
+      "type": "cube",
       "from": [
         27,
         -13,
@@ -500,6 +579,13 @@
         -7,
         -11
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -508,7 +594,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -517,7 +603,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -526,7 +612,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -535,7 +621,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -544,7 +630,7 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -553,11 +639,14 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "d8feb28e-bcb7-5c51-941e-5973975ef0a4"
     },
     {
+      "name": "Legs and Feet 007",
+      "type": "cube",
       "from": [
         -14,
         -14,
@@ -568,6 +657,13 @@
         -6,
         30
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -576,7 +672,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -585,7 +681,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -594,7 +690,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -603,7 +699,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -612,7 +708,7 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -621,11 +717,14 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "2c683039-2f91-5ad0-8f39-33caceed0b9a"
     },
     {
+      "name": "Player Controls 003",
+      "type": "cube",
       "from": [
         -13,
         -13,
@@ -636,6 +735,13 @@
         -7,
         29
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -644,7 +750,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -653,7 +759,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -662,7 +768,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -671,7 +777,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -680,7 +786,7 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -689,11 +795,14 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "92115743-e772-587c-bc60-5cc43e94e450"
     },
     {
+      "name": "Legs and Feet 008",
+      "type": "cube",
       "from": [
         26,
         -14,
@@ -704,6 +813,13 @@
         -6,
         30
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -712,7 +828,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -721,7 +837,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -730,7 +846,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -739,7 +855,7 @@
             4,
             8
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -748,7 +864,7 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -757,11 +873,14 @@
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "be1e3ed9-af82-51da-9338-ccb6ad723f12"
     },
     {
+      "name": "Player Controls 004",
+      "type": "cube",
       "from": [
         27,
         -13,
@@ -772,6 +891,13 @@
         -7,
         29
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -780,7 +906,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -789,7 +915,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -798,7 +924,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -807,7 +933,7 @@
             2,
             6
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -816,7 +942,7 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -825,11 +951,14 @@
             2,
             2
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "bc7e6cb6-52f6-5d14-b60a-c3fc6120c5b2"
     },
     {
+      "name": "Lower Stretchers 001",
+      "type": "cube",
       "from": [
         -10,
         -12,
@@ -840,6 +969,13 @@
         -10,
         -11
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -848,7 +984,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -857,7 +993,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -866,7 +1002,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -875,7 +1011,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -884,7 +1020,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -893,11 +1029,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "7b9d3ba4-ccc6-5814-b699-7d8bc8acdc79"
     },
     {
+      "name": "Lower Stretchers 002",
+      "type": "cube",
       "from": [
         6,
         -12,
@@ -908,6 +1047,13 @@
         -10,
         -11
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -916,7 +1062,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -925,7 +1071,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -934,7 +1080,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -943,7 +1089,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -952,7 +1098,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -961,11 +1107,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "15d449aa-2f03-576f-bfca-c4529fa354a2"
     },
     {
+      "name": "Legs and Feet 009",
+      "type": "cube",
       "from": [
         22,
         -12,
@@ -976,6 +1125,13 @@
         -10,
         -11
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -984,7 +1140,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -993,7 +1149,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1002,7 +1158,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1011,7 +1167,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1020,7 +1176,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1029,11 +1185,14 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "fa495716-28c9-56c0-936f-39783869c815"
     },
     {
+      "name": "Lower Stretchers 003",
+      "type": "cube",
       "from": [
         -10,
         -12,
@@ -1044,6 +1203,13 @@
         -10,
         29
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1052,7 +1218,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1061,7 +1227,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1070,7 +1236,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1079,7 +1245,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1088,7 +1254,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1097,11 +1263,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "ee6cafc6-fb03-558f-b73b-78241265834d"
     },
     {
+      "name": "Lower Stretchers 004",
+      "type": "cube",
       "from": [
         6,
         -12,
@@ -1112,6 +1281,13 @@
         -10,
         29
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1120,7 +1296,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1129,7 +1305,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1138,7 +1314,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1147,7 +1323,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1156,7 +1332,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1165,11 +1341,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "fd4088bd-b3c5-50c1-81fc-a542332e73da"
     },
     {
+      "name": "Legs and Feet 010",
+      "type": "cube",
       "from": [
         22,
         -12,
@@ -1180,6 +1359,13 @@
         -10,
         29
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1188,7 +1374,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1197,7 +1383,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1206,7 +1392,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1215,7 +1401,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1224,7 +1410,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1233,11 +1419,14 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "4171fd70-748a-55ae-9817-14c2b1ddebf6"
     },
     {
+      "name": "Lower Stretchers 005",
+      "type": "cube",
       "from": [
         -13,
         -12,
@@ -1248,6 +1437,13 @@
         -10,
         6
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1256,7 +1452,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1265,7 +1461,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1274,7 +1470,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1283,7 +1479,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1292,7 +1488,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1301,11 +1497,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "7a7c0c6a-86f5-5565-9d4f-69ab04b885fc"
     },
     {
+      "name": "Lower Stretchers 006",
+      "type": "cube",
       "from": [
         -13,
         -12,
@@ -1316,6 +1515,13 @@
         -10,
         22
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1324,7 +1530,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1333,7 +1539,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1342,7 +1548,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1351,7 +1557,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1360,7 +1566,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1369,11 +1575,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "93cb0a09-5e10-5d49-afe1-0dea3f02bba3"
     },
     {
+      "name": "Legs and Feet 011",
+      "type": "cube",
       "from": [
         -13,
         -12,
@@ -1384,6 +1593,13 @@
         -10,
         26
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1392,7 +1608,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1401,7 +1617,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1410,7 +1626,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1419,7 +1635,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1428,7 +1644,7 @@
             2,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1437,11 +1653,14 @@
             2,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "888b6cf6-abd8-5476-8f6f-520a4a10c612"
     },
     {
+      "name": "Lower Stretchers 007",
+      "type": "cube",
       "from": [
         27,
         -12,
@@ -1452,6 +1671,13 @@
         -10,
         6
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1460,7 +1686,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1469,7 +1695,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1478,7 +1704,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1487,7 +1713,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1496,7 +1722,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1505,11 +1731,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "e4688d6b-f1c5-5b0a-88c2-2aae6e165b12"
     },
     {
+      "name": "Lower Stretchers 008",
+      "type": "cube",
       "from": [
         27,
         -12,
@@ -1520,6 +1749,13 @@
         -10,
         22
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1528,7 +1764,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1537,7 +1773,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1546,7 +1782,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1555,7 +1791,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1564,7 +1800,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1573,11 +1809,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "74ec4922-4efa-55dd-acb5-512c978e90d3"
     },
     {
+      "name": "Legs and Feet 012",
+      "type": "cube",
       "from": [
         27,
         -12,
@@ -1588,6 +1827,13 @@
         -10,
         26
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1596,7 +1842,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1605,7 +1851,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1614,7 +1860,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1623,7 +1869,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1632,7 +1878,7 @@
             2,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1641,11 +1887,14 @@
             2,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "3db2a341-df80-575d-8f30-9956ebdfd64b"
     },
     {
+      "name": "Legs and Feet 013",
+      "type": "cube",
       "from": [
         0,
         -16,
@@ -1656,6 +1905,13 @@
         -14,
         16
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1664,7 +1920,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1673,7 +1929,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1682,7 +1938,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1691,7 +1947,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1700,7 +1956,7 @@
             16,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1709,11 +1965,14 @@
             16,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "cd93fed5-2dfa-5876-8ab3-a5389df388e0"
     },
     {
+      "name": "Lower Stretchers 009",
+      "type": "cube",
       "from": [
         2,
         -14,
@@ -1724,6 +1983,13 @@
         -7,
         14
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1732,7 +1998,7 @@
             12,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1741,7 +2007,7 @@
             12,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1750,7 +2016,7 @@
             12,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1759,7 +2025,7 @@
             12,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1768,7 +2034,7 @@
             12,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1777,11 +2043,14 @@
             12,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "5e7e1fc6-f73c-5361-aeca-d8cc5290d73e"
     },
     {
+      "name": "Player Controls 005",
+      "type": "cube",
       "from": [
         4,
         -13,
@@ -1792,6 +2061,13 @@
         -8,
         12
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1800,7 +2076,7 @@
             8,
             5
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -1809,7 +2085,7 @@
             8,
             5
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -1818,7 +2094,7 @@
             8,
             5
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -1827,7 +2103,7 @@
             8,
             5
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -1836,7 +2112,7 @@
             8,
             8
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -1845,11 +2121,14 @@
             8,
             8
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "1dea28a9-3bef-5ff9-9a19-15467de58586"
     },
     {
+      "name": "Center Cabinet 001",
+      "type": "cube",
       "from": [
         0.0,
         -7.0,
@@ -1860,6 +2139,13 @@
         -0.5,
         16.0
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1868,7 +2154,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1877,7 +2163,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1886,7 +2172,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1895,7 +2181,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1904,7 +2190,7 @@
             16,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1913,11 +2199,14 @@
             16,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "0e6165f9-aead-52f9-9d5d-c9fecfe48121"
     },
     {
+      "name": "Side Aprons 001",
+      "type": "cube",
       "from": [
         -1.0,
         -3.0,
@@ -1928,6 +2217,13 @@
         -1.0,
         0.0
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1936,7 +2232,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1945,7 +2241,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1954,7 +2250,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1963,7 +2259,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1972,7 +2268,7 @@
             16,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1981,11 +2277,14 @@
             16,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "dc8bf46d-2f33-56fe-a7b8-7c0eb32d4647"
     },
     {
+      "name": "Side Aprons 002",
+      "type": "cube",
       "from": [
         -1.0,
         -3.0,
@@ -1996,6 +2295,13 @@
         -1.0,
         16.0
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2004,7 +2310,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2013,7 +2319,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2022,7 +2328,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2031,7 +2337,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2040,7 +2346,7 @@
             4,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2049,11 +2355,14 @@
             4,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "9b36a972-6775-58fb-aa89-7edb41f980e2"
     },
     {
+      "name": "Side Aprons 003",
+      "type": "cube",
       "from": [
         16.0,
         -3.0,
@@ -2064,6 +2373,13 @@
         -1.0,
         16.0
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2072,7 +2388,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2081,7 +2397,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2090,7 +2406,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2099,29 +2415,32 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
-          "uv": [
-            0,
-            0,
-            4,
-            4
-          ],
-          "texture": "#wood"
-        },
-        "down": {
           "uv": [
             0,
             0,
             4,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": 0
         }
-      }
+      },
+      "uuid": "29c139f7-ae24-5839-aaaf-e940c7b8812d"
     },
     {
+      "name": "Side Aprons 004",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -2132,6 +2451,13 @@
         0,
         -14
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2140,7 +2466,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2149,7 +2475,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2158,7 +2484,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2167,7 +2493,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2176,7 +2502,7 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2185,11 +2511,14 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "1545a5a4-4f99-50db-bfad-3b5125537937"
     },
     {
+      "name": "Side Aprons 005",
+      "type": "cube",
       "from": [
         24,
         -7,
@@ -2200,6 +2529,13 @@
         0,
         -14
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2208,7 +2544,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2217,7 +2553,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2226,7 +2562,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2235,7 +2571,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2244,7 +2580,7 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2253,11 +2589,14 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "a07ddd7a-6ca3-592a-abf7-5a308e662fd4"
     },
     {
+      "name": "Lower Stretchers 010",
+      "type": "cube",
       "from": [
         -8,
         -7,
@@ -2268,6 +2607,13 @@
         -6,
         -14
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2276,7 +2622,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2285,7 +2631,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2294,7 +2640,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2303,7 +2649,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2312,7 +2658,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2321,11 +2667,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "05e182c5-4baa-5f90-bdb0-91d450acb2a4"
     },
     {
+      "name": "Lower Stretchers 011",
+      "type": "cube",
       "from": [
         8,
         -7,
@@ -2336,6 +2685,13 @@
         -6,
         -14
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2344,7 +2700,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2353,7 +2709,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2362,7 +2718,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2371,7 +2727,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2380,7 +2736,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2389,11 +2745,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "caec46db-a956-5993-a008-8ad71a7a2858"
     },
     {
+      "name": "Side Aprons 006",
+      "type": "cube",
       "from": [
         -8,
         -3,
@@ -2404,6 +2763,13 @@
         0,
         -14
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2412,7 +2778,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2421,7 +2787,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2430,7 +2796,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2439,7 +2805,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2448,7 +2814,7 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2457,11 +2823,14 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "4e807afe-9202-5239-a857-2375da356dcd"
     },
     {
+      "name": "Side Aprons 007",
+      "type": "cube",
       "from": [
         5,
         -2,
@@ -2472,6 +2841,13 @@
         0,
         -14
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2480,7 +2856,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2489,7 +2865,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2498,7 +2874,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2507,7 +2883,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2516,7 +2892,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2525,11 +2901,14 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "0227afb8-2657-5df7-b69f-2b9f2853e1aa"
     },
     {
+      "name": "Side Aprons 008",
+      "type": "cube",
       "from": [
         11,
         -3,
@@ -2540,6 +2919,13 @@
         0,
         -14
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2548,7 +2934,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2557,7 +2943,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2566,7 +2952,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2575,7 +2961,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2584,7 +2970,7 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2593,11 +2979,14 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "f21b2100-1d9b-5ca7-97b1-d498ddf07780"
     },
     {
+      "name": "Player Controls 006",
+      "type": "cube",
       "from": [
         -8,
         -6,
@@ -2608,6 +2997,13 @@
         -3,
         -15
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2616,7 +3012,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -2625,7 +3021,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -2634,7 +3030,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -2643,7 +3039,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -2652,7 +3048,7 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -2661,11 +3057,14 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "f53557f1-06d8-5a0d-8460-28911b5362ff"
     },
     {
+      "name": "Player Controls 007",
+      "type": "cube",
       "from": [
         8,
         -6,
@@ -2676,6 +3075,13 @@
         -3,
         -15
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2684,7 +3090,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -2693,7 +3099,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -2702,7 +3108,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -2711,7 +3117,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -2720,7 +3126,7 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -2729,11 +3135,14 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "de9bd9d4-b7e8-55de-9d51-4086f7f01e73"
     },
     {
+      "name": "Accents 001",
+      "type": "cube",
       "from": [
         5,
         -3,
@@ -2744,6 +3153,13 @@
         -2,
         -15
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2752,7 +3168,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "south": {
           "uv": [
@@ -2761,7 +3177,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "east": {
           "uv": [
@@ -2770,7 +3186,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "west": {
           "uv": [
@@ -2779,7 +3195,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "up": {
           "uv": [
@@ -2788,7 +3204,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "down": {
           "uv": [
@@ -2797,11 +3213,14 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         }
-      }
+      },
+      "uuid": "1016cd76-8e6a-5ca5-b400-b0604d67d455"
     },
     {
+      "name": "Side Aprons 009",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -2812,6 +3231,13 @@
         0,
         32
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2820,7 +3246,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2829,7 +3255,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2838,7 +3264,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2847,7 +3273,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2856,7 +3282,7 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2865,11 +3291,14 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "9b841d64-0f70-57a6-a148-684871dfe0ac"
     },
     {
+      "name": "Side Aprons 010",
+      "type": "cube",
       "from": [
         24,
         -7,
@@ -2880,6 +3309,13 @@
         0,
         32
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2888,7 +3324,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2897,7 +3333,7 @@
             8,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2906,7 +3342,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2915,7 +3351,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2924,7 +3360,7 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -2933,11 +3369,14 @@
             8,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "81df684d-aaf3-5aff-811d-54ac9eafad8f"
     },
     {
+      "name": "Lower Stretchers 012",
+      "type": "cube",
       "from": [
         -8,
         -7,
@@ -2948,6 +3387,13 @@
         -6,
         32
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -2956,7 +3402,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -2965,7 +3411,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -2974,7 +3420,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -2983,7 +3429,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -2992,7 +3438,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3001,11 +3447,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "e60f889d-3f97-5c4e-8ba5-ac78d61acfde"
     },
     {
+      "name": "Lower Stretchers 013",
+      "type": "cube",
       "from": [
         8,
         -7,
@@ -3016,6 +3465,13 @@
         -6,
         32
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3024,7 +3480,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3033,7 +3489,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3042,7 +3498,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3051,7 +3507,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3060,7 +3516,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3069,11 +3525,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "841096e6-79e7-5ccf-b652-4e0eab80341a"
     },
     {
+      "name": "Side Aprons 011",
+      "type": "cube",
       "from": [
         -8,
         -3,
@@ -3084,6 +3543,13 @@
         0,
         32
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3092,7 +3558,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3101,7 +3567,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3110,7 +3576,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3119,7 +3585,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3128,7 +3594,7 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3137,11 +3603,14 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "1cd9113b-1cd8-5aa2-96af-d1935fcbacec"
     },
     {
+      "name": "Side Aprons 012",
+      "type": "cube",
       "from": [
         5,
         -2,
@@ -3152,6 +3621,13 @@
         0,
         32
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3160,7 +3636,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3169,7 +3645,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3178,7 +3654,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3187,7 +3663,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3196,7 +3672,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3205,11 +3681,14 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "1216d344-b033-5b5c-9811-47c7f40332fa"
     },
     {
+      "name": "Side Aprons 013",
+      "type": "cube",
       "from": [
         11,
         -3,
@@ -3220,6 +3699,13 @@
         0,
         32
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3228,7 +3714,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3237,7 +3723,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3246,7 +3732,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3255,7 +3741,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3264,7 +3750,7 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3273,11 +3759,14 @@
             13,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "2610bb0e-28dd-5778-8c56-ec80d40018f4"
     },
     {
+      "name": "Player Controls 008",
+      "type": "cube",
       "from": [
         -8,
         -6,
@@ -3288,6 +3777,13 @@
         -3,
         32
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3296,7 +3792,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -3305,7 +3801,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -3314,7 +3810,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -3323,7 +3819,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -3332,7 +3828,7 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -3341,11 +3837,14 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "551dc2bc-8708-59d5-b844-2cbafa5a9998"
     },
     {
+      "name": "Player Controls 009",
+      "type": "cube",
       "from": [
         8,
         -6,
@@ -3356,6 +3855,13 @@
         -3,
         32
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3364,7 +3870,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -3373,7 +3879,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -3382,7 +3888,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -3391,7 +3897,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -3400,7 +3906,7 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -3409,11 +3915,14 @@
             16,
             1
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "0cd52d0c-01e2-51ae-ad3d-8642c3776a70"
     },
     {
+      "name": "Accents 002",
+      "type": "cube",
       "from": [
         5,
         -3,
@@ -3424,6 +3933,13 @@
         -2,
         32
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3432,7 +3948,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "south": {
           "uv": [
@@ -3441,7 +3957,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "east": {
           "uv": [
@@ -3450,7 +3966,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "west": {
           "uv": [
@@ -3459,7 +3975,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "up": {
           "uv": [
@@ -3468,7 +3984,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "down": {
           "uv": [
@@ -3477,11 +3993,14 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         }
-      }
+      },
+      "uuid": "62cd2054-252a-54fe-8ef6-ce03e2abd837"
     },
     {
+      "name": "Side Aprons 014",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -3492,6 +4011,13 @@
         0,
         -8
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3500,7 +4026,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3509,7 +4035,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3518,7 +4044,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3527,7 +4053,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3536,7 +4062,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3545,11 +4071,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "5e50ee38-63c7-5211-8019-401d9a4a9352"
     },
     {
+      "name": "Side Aprons 015",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -3560,6 +4089,13 @@
         0,
         30
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3568,7 +4104,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3577,7 +4113,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3586,7 +4122,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3595,7 +4131,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3604,7 +4140,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3613,11 +4149,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "f4f2f8a9-e85d-592a-b1d9-0b210460d9eb"
     },
     {
+      "name": "Lower Stretchers 014",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -3628,6 +4167,13 @@
         -6,
         8
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3636,7 +4182,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3645,7 +4191,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3654,7 +4200,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3663,7 +4209,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3672,7 +4218,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3681,11 +4227,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "d31140ba-cd69-54a0-9825-8fcfa1343a26"
     },
     {
+      "name": "Lower Stretchers 015",
+      "type": "cube",
       "from": [
         -16,
         -7,
@@ -3696,6 +4245,13 @@
         -6,
         24
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3704,7 +4260,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3713,7 +4269,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3722,7 +4278,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3731,7 +4287,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3740,7 +4296,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3749,11 +4305,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "7517d53e-d811-5725-906b-99558ba86520"
     },
     {
+      "name": "Side Aprons 016",
+      "type": "cube",
       "from": [
         -16,
         -3,
@@ -3764,6 +4323,13 @@
         0,
         5
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3772,7 +4338,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3781,7 +4347,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3790,7 +4356,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3799,7 +4365,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3808,7 +4374,7 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3817,11 +4383,14 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "cb23afd4-e088-59ce-9b4f-1a154da0e7a4"
     },
     {
+      "name": "Side Aprons 017",
+      "type": "cube",
       "from": [
         -16,
         -2,
@@ -3832,6 +4401,13 @@
         0,
         11
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3840,7 +4416,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3849,7 +4425,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3858,7 +4434,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3867,7 +4443,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3876,7 +4452,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3885,11 +4461,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "bbe51e2c-c39f-5337-89a8-7aa998181aeb"
     },
     {
+      "name": "Side Aprons 018",
+      "type": "cube",
       "from": [
         -16,
         -3,
@@ -3900,6 +4479,13 @@
         0,
         24
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3908,7 +4494,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -3917,7 +4503,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -3926,7 +4512,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -3935,7 +4521,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -3944,7 +4530,7 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -3953,11 +4539,14 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "21c83a74-90d5-5dc6-929a-94b139132d5c"
     },
     {
+      "name": "Player Controls 010",
+      "type": "cube",
       "from": [
         -16,
         -6,
@@ -3968,6 +4557,13 @@
         -3,
         8
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -3976,7 +4572,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -3985,7 +4581,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -3994,7 +4590,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -4003,7 +4599,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -4012,7 +4608,7 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -4021,11 +4617,14 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "a378718f-8115-51fb-bb59-a6c51daa91f9"
     },
     {
+      "name": "Player Controls 011",
+      "type": "cube",
       "from": [
         -16,
         -6,
@@ -4036,6 +4635,13 @@
         -3,
         24
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4044,7 +4650,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -4053,7 +4659,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -4062,7 +4668,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -4071,7 +4677,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -4080,7 +4686,7 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -4089,11 +4695,14 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "3cef8401-9bb9-56ae-8b17-e12cf4046680"
     },
     {
+      "name": "Accents 003",
+      "type": "cube",
       "from": [
         -16,
         -3,
@@ -4104,6 +4713,13 @@
         -2,
         11
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4112,7 +4728,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "south": {
           "uv": [
@@ -4121,7 +4737,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "east": {
           "uv": [
@@ -4130,7 +4746,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "west": {
           "uv": [
@@ -4139,7 +4755,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "up": {
           "uv": [
@@ -4148,7 +4764,7 @@
             1,
             6
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "down": {
           "uv": [
@@ -4157,11 +4773,14 @@
             1,
             6
           ],
-          "texture": "#trim"
+          "texture": 3
         }
-      }
+      },
+      "uuid": "7bd305df-8d54-55bf-8740-c9ab4c8f32fd"
     },
     {
+      "name": "Side Aprons 019",
+      "type": "cube",
       "from": [
         30,
         -7,
@@ -4172,6 +4791,13 @@
         0,
         -8
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4180,7 +4806,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4189,7 +4815,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4198,7 +4824,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4207,7 +4833,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4216,7 +4842,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4225,11 +4851,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "ac0293de-0656-5784-ba9d-1f130271b1e4"
     },
     {
+      "name": "Side Aprons 020",
+      "type": "cube",
       "from": [
         30,
         -7,
@@ -4240,6 +4869,13 @@
         0,
         30
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4248,7 +4884,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4257,7 +4893,7 @@
             2,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4266,7 +4902,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4275,7 +4911,7 @@
             6,
             7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4284,7 +4920,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4293,11 +4929,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "7cf5c427-613c-5b28-a234-8ccc108427be"
     },
     {
+      "name": "Lower Stretchers 016",
+      "type": "cube",
       "from": [
         30,
         -7,
@@ -4308,6 +4947,13 @@
         -6,
         8
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4316,7 +4962,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4325,7 +4971,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4334,7 +4980,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4343,7 +4989,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4352,7 +4998,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4361,11 +5007,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "b76704f1-a253-5d04-85b7-3a650ca9c6d5"
     },
     {
+      "name": "Lower Stretchers 017",
+      "type": "cube",
       "from": [
         30,
         -7,
@@ -4376,6 +5025,13 @@
         -6,
         24
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4384,7 +5040,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4393,7 +5049,7 @@
             2,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4402,7 +5058,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4411,7 +5067,7 @@
             16,
             1
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4420,7 +5076,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4429,11 +5085,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "eee75359-bd09-5cc8-87a5-fdff56c8f15f"
     },
     {
+      "name": "Side Aprons 021",
+      "type": "cube",
       "from": [
         30,
         -3,
@@ -4444,6 +5103,13 @@
         0,
         5
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4452,7 +5118,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4461,7 +5127,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4470,7 +5136,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4479,7 +5145,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4488,7 +5154,7 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4497,11 +5163,14 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "75cebbf9-03fc-53c4-a11d-d9c1657d5c8f"
     },
     {
+      "name": "Side Aprons 022",
+      "type": "cube",
       "from": [
         30,
         -2,
@@ -4512,6 +5181,13 @@
         0,
         11
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4520,7 +5196,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4529,7 +5205,7 @@
             2,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4538,7 +5214,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4547,7 +5223,7 @@
             6,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4556,7 +5232,7 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4565,11 +5241,14 @@
             2,
             6
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "4f1103ec-7b36-5471-a2bc-5662cd60da76"
     },
     {
+      "name": "Side Aprons 023",
+      "type": "cube",
       "from": [
         30,
         -3,
@@ -4580,6 +5259,13 @@
         0,
         24
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4588,7 +5274,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4597,7 +5283,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4606,7 +5292,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4615,7 +5301,7 @@
             13,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4624,7 +5310,7 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4633,11 +5319,14 @@
             2,
             13
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "ebff6d06-8226-5002-a877-fe3757156e8f"
     },
     {
+      "name": "Player Controls 012",
+      "type": "cube",
       "from": [
         31,
         -6,
@@ -4648,6 +5337,13 @@
         -3,
         8
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4656,7 +5352,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -4665,7 +5361,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -4674,7 +5370,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -4683,7 +5379,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -4692,7 +5388,7 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -4701,11 +5397,14 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "fbe89014-4c12-5c84-8a9e-6267a0f436a6"
     },
     {
+      "name": "Player Controls 013",
+      "type": "cube",
       "from": [
         31,
         -6,
@@ -4716,6 +5415,13 @@
         -3,
         24
       ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4724,7 +5430,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -4733,7 +5439,7 @@
             1,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -4742,7 +5448,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -4751,7 +5457,7 @@
             16,
             3
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -4760,7 +5466,7 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -4769,11 +5475,14 @@
             1,
             16
           ],
-          "texture": "#slot"
+          "texture": 2
         }
-      }
+      },
+      "uuid": "9cc231b4-9cbf-5add-9029-0e61840a1493"
     },
     {
+      "name": "Accents 004",
+      "type": "cube",
       "from": [
         31,
         -3,
@@ -4784,6 +5493,13 @@
         -2,
         11
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4792,7 +5508,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "south": {
           "uv": [
@@ -4801,7 +5517,7 @@
             1,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "east": {
           "uv": [
@@ -4810,7 +5526,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "west": {
           "uv": [
@@ -4819,7 +5535,7 @@
             6,
             1
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "up": {
           "uv": [
@@ -4828,7 +5544,7 @@
             1,
             6
           ],
-          "texture": "#trim"
+          "texture": 3
         },
         "down": {
           "uv": [
@@ -4837,11 +5553,14 @@
             1,
             6
           ],
-          "texture": "#trim"
+          "texture": 3
         }
-      }
+      },
+      "uuid": "0fd90818-6848-54b7-9080-5649284a083d"
     },
     {
+      "name": "Top Rim 001",
+      "type": "cube",
       "from": [
         -16,
         0,
@@ -4852,6 +5571,13 @@
         3,
         -15
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4860,7 +5586,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4869,7 +5595,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4878,7 +5604,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4887,7 +5613,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4896,7 +5622,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4905,11 +5631,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "b0e173bc-5df7-555a-b678-3ec9eb89d20a"
     },
     {
+      "name": "Top Rim 002",
+      "type": "cube",
       "from": [
         0,
         0,
@@ -4920,6 +5649,13 @@
         3,
         -15
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4928,7 +5664,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -4937,7 +5673,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -4946,7 +5682,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -4955,7 +5691,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -4964,7 +5700,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -4973,11 +5709,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "84c15406-dc68-5959-acb5-fe9d96900927"
     },
     {
+      "name": "Top Rim 003",
+      "type": "cube",
       "from": [
         16,
         0,
@@ -4988,6 +5727,13 @@
         3,
         -15
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -4996,7 +5742,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5005,7 +5751,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5014,7 +5760,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5023,7 +5769,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5032,7 +5778,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5041,11 +5787,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "835cc71d-0feb-5480-bd5a-01a5d70b2b58"
     },
     {
+      "name": "Top Rim 004",
+      "type": "cube",
       "from": [
         -16,
         0,
@@ -5056,6 +5805,13 @@
         3,
         32
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5064,7 +5820,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5073,7 +5829,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5082,7 +5838,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5091,7 +5847,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5100,7 +5856,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5109,11 +5865,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "403ca5d7-ad9d-581d-b6d3-981202242822"
     },
     {
+      "name": "Top Rim 005",
+      "type": "cube",
       "from": [
         0,
         0,
@@ -5124,6 +5883,13 @@
         3,
         32
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5132,7 +5898,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5141,7 +5907,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5150,7 +5916,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5159,7 +5925,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5168,7 +5934,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5177,11 +5943,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "6125ec3d-c82e-55ca-91f3-1f3e395e2188"
     },
     {
+      "name": "Top Rim 006",
+      "type": "cube",
       "from": [
         16,
         0,
@@ -5192,6 +5961,13 @@
         3,
         32
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5200,7 +5976,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5209,7 +5985,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5218,7 +5994,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5227,7 +6003,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5236,7 +6012,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5245,11 +6021,14 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "c44be6e5-5025-548a-8569-519c2942e80a"
     },
     {
+      "name": "Top Rim 007",
+      "type": "cube",
       "from": [
         -16,
         0,
@@ -5260,6 +6039,13 @@
         3,
         2
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5268,7 +6054,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5277,7 +6063,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5286,7 +6072,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5295,7 +6081,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5304,7 +6090,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5313,11 +6099,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "9f4932fe-d8a0-5926-849c-7f3d8f561d2b"
     },
     {
+      "name": "Top Rim 008",
+      "type": "cube",
       "from": [
         -16,
         0,
@@ -5328,6 +6117,13 @@
         3,
         18
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5336,7 +6132,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5345,7 +6141,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5354,7 +6150,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5363,7 +6159,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5372,7 +6168,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5381,11 +6177,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "e85be6f1-8c4e-584d-a298-adf311fae014"
     },
     {
+      "name": "Top Rim 009",
+      "type": "cube",
       "from": [
         -16,
         0,
@@ -5396,6 +6195,13 @@
         3,
         31
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5404,7 +6210,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5413,7 +6219,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5422,7 +6228,7 @@
             12,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5431,7 +6237,7 @@
             12,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5440,7 +6246,7 @@
             2,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5449,11 +6255,14 @@
             2,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "bbde5cf8-c1d7-5593-9cce-234712684b40"
     },
     {
+      "name": "Top Rim 010",
+      "type": "cube",
       "from": [
         31,
         0,
@@ -5464,6 +6273,13 @@
         3,
         2
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5472,7 +6288,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5481,7 +6297,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5490,7 +6306,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5499,7 +6315,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5508,7 +6324,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5517,11 +6333,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "9f9facb1-8590-5102-8274-461a30ad359d"
     },
     {
+      "name": "Top Rim 011",
+      "type": "cube",
       "from": [
         31,
         0,
@@ -5532,6 +6351,13 @@
         3,
         18
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5540,7 +6366,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5549,7 +6375,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5558,7 +6384,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5567,7 +6393,7 @@
             16,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5576,7 +6402,7 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5585,11 +6411,14 @@
             2,
             16
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "03b84b25-ae2d-5c63-b16c-61334d39061d"
     },
     {
+      "name": "Top Rim 012",
+      "type": "cube",
       "from": [
         31,
         0,
@@ -5600,6 +6429,13 @@
         3,
         31
       ],
+      "autouv": 0,
+      "color": 4,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5608,7 +6444,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -5617,7 +6453,7 @@
             2,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -5626,7 +6462,7 @@
             12,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -5635,7 +6471,7 @@
             12,
             3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -5644,7 +6480,7 @@
             2,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -5653,11 +6489,14 @@
             2,
             12
           ],
-          "texture": "#wood"
+          "texture": 0
         }
-      }
+      },
+      "uuid": "764cc511-0425-563c-988c-3eeea11a5b14"
     },
     {
+      "name": "Playable Felt 001",
+      "type": "cube",
       "from": [
         -15,
         1,
@@ -5668,6 +6507,13 @@
         2,
         -8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5676,7 +6522,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -5685,7 +6531,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -5694,7 +6540,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -5703,7 +6549,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -5712,7 +6558,7 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -5721,11 +6567,14 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "021b5c58-4231-54d1-aba9-d02e8b2f03b3"
     },
     {
+      "name": "Playable Felt 002",
+      "type": "cube",
       "from": [
         -15,
         1,
@@ -5736,6 +6585,13 @@
         2,
         8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5744,7 +6600,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -5753,7 +6609,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -5762,7 +6618,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -5771,7 +6627,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -5780,7 +6636,7 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -5789,11 +6645,14 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "ab5eb0c1-2c90-5b6d-a63b-2521ebdd8de5"
     },
     {
+      "name": "Playable Felt 003",
+      "type": "cube",
       "from": [
         -15,
         1,
@@ -5804,6 +6663,13 @@
         2,
         24
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5812,7 +6678,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -5821,7 +6687,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -5830,7 +6696,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -5839,7 +6705,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -5848,7 +6714,7 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -5857,11 +6723,14 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "8b91aeb9-61ec-5740-bbe5-b72a4b2620c8"
     },
     {
+      "name": "Playable Felt 004",
+      "type": "cube",
       "from": [
         -15,
         1,
@@ -5872,6 +6741,13 @@
         2,
         31
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5880,7 +6756,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -5889,7 +6765,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -5898,7 +6774,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -5907,7 +6783,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -5916,7 +6792,7 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -5925,11 +6801,14 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "888a46f3-37fa-5267-b53a-d6328ba5d4c1"
     },
     {
+      "name": "Playable Felt 005",
+      "type": "cube",
       "from": [
         -8,
         1,
@@ -5940,6 +6819,13 @@
         2,
         -8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -5948,7 +6834,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -5957,7 +6843,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -5966,7 +6852,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -5975,7 +6861,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -5984,7 +6870,7 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -5993,11 +6879,14 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "0e87151d-4681-5b67-8da3-b01c803f7b2e"
     },
     {
+      "name": "Playable Felt 006",
+      "type": "cube",
       "from": [
         -8,
         1,
@@ -6008,6 +6897,13 @@
         2,
         8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6016,7 +6912,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6025,7 +6921,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6034,7 +6930,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6043,7 +6939,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6052,7 +6948,7 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6061,11 +6957,14 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "7560fa1b-e883-5a54-91f9-b56c1ecfe00e"
     },
     {
+      "name": "Playable Felt 007",
+      "type": "cube",
       "from": [
         -8,
         1,
@@ -6076,6 +6975,13 @@
         2,
         24
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6084,7 +6990,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6093,7 +6999,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6102,7 +7008,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6111,7 +7017,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6120,7 +7026,7 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6129,11 +7035,14 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "d4b9fde0-08fd-5436-8855-278675a5e231"
     },
     {
+      "name": "Playable Felt 008",
+      "type": "cube",
       "from": [
         -8,
         1,
@@ -6144,6 +7053,13 @@
         2,
         31
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6152,7 +7068,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6161,7 +7077,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6170,7 +7086,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6179,7 +7095,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6188,7 +7104,7 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6197,11 +7113,14 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "6852113e-ec88-5e12-b8f1-33efb6f9954d"
     },
     {
+      "name": "Playable Felt 009",
+      "type": "cube",
       "from": [
         8,
         1,
@@ -6212,6 +7131,13 @@
         2,
         -8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6220,7 +7146,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6229,7 +7155,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6238,7 +7164,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6247,7 +7173,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6256,7 +7182,7 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6265,11 +7191,14 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "7ce28c28-da15-5071-b36d-3c203cb6bb63"
     },
     {
+      "name": "Playable Felt 010",
+      "type": "cube",
       "from": [
         8,
         1,
@@ -6280,6 +7209,13 @@
         2,
         8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6288,7 +7224,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6297,7 +7233,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6306,7 +7242,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6315,7 +7251,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6324,7 +7260,7 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6333,11 +7269,14 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "34661c0f-c73f-5a9f-a46d-125d94cac120"
     },
     {
+      "name": "Playable Felt 011",
+      "type": "cube",
       "from": [
         8,
         1,
@@ -6348,6 +7287,13 @@
         2,
         24
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6356,7 +7302,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6365,7 +7311,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6374,7 +7320,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6383,7 +7329,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6392,7 +7338,7 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6401,11 +7347,14 @@
             16,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "777eea0c-77b9-5f43-8cc7-d29660a20d7b"
     },
     {
+      "name": "Playable Felt 012",
+      "type": "cube",
       "from": [
         8,
         1,
@@ -6416,6 +7365,13 @@
         2,
         31
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6424,7 +7380,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6433,7 +7389,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6442,7 +7398,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6451,7 +7407,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6460,7 +7416,7 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6469,11 +7425,14 @@
             16,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "0656fe8e-85ac-519a-8cbb-116b7a61450d"
     },
     {
+      "name": "Playable Felt 013",
+      "type": "cube",
       "from": [
         24,
         1,
@@ -6484,6 +7443,13 @@
         2,
         -8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6492,7 +7458,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6501,7 +7467,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6510,7 +7476,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6519,7 +7485,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6528,7 +7494,7 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6537,11 +7503,14 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "3cad2239-18c0-5eba-88da-c73f02a3f0c4"
     },
     {
+      "name": "Playable Felt 014",
+      "type": "cube",
       "from": [
         24,
         1,
@@ -6552,6 +7521,13 @@
         2,
         8
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6560,7 +7536,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6569,7 +7545,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6578,7 +7554,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6587,7 +7563,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6596,7 +7572,7 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6605,11 +7581,14 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "ba38bb05-1eb8-50ea-897c-192425839c01"
     },
     {
+      "name": "Playable Felt 015",
+      "type": "cube",
       "from": [
         24,
         1,
@@ -6620,6 +7599,13 @@
         2,
         24
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6628,7 +7614,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6637,7 +7623,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6646,7 +7632,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6655,7 +7641,7 @@
             16,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6664,7 +7650,7 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6673,11 +7659,14 @@
             6,
             16
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "161ee3a6-18c5-55d3-a66e-281ba1914802"
     },
     {
+      "name": "Playable Felt 016",
+      "type": "cube",
       "from": [
         24,
         1,
@@ -6688,6 +7677,13 @@
         2,
         31
       ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6696,7 +7692,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -6705,7 +7701,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -6714,7 +7710,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -6723,7 +7719,7 @@
             6,
             1
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -6732,7 +7728,7 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -6741,11 +7737,14 @@
             6,
             6
           ],
-          "texture": "#felt"
+          "texture": 1
         }
-      }
+      },
+      "uuid": "665089be-aaa7-5738-ac8e-8674376fd77e"
     },
     {
+      "name": "Side Aprons 024",
+      "type": "cube",
       "from": [
         -1.0,
         -3.0,
@@ -6756,6 +7755,13 @@
         -1.0,
         17.0
       ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -6764,7 +7770,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -6773,7 +7779,7 @@
             16,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -6782,7 +7788,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -6791,7 +7797,7 @@
             4,
             2
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -6800,7 +7806,7 @@
             16,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -6809,9 +7815,333 @@
             16,
             4
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     }
-  ]
+  ],
+  "outliner": [
+    {
+      "name": "Legs and Feet",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 0,
+      "uuid": "59c77e19-b42e-5b68-922a-be34444edc33",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "d425b101-f84c-5637-af4a-32b223a05930",
+        "1db18fc8-3429-5855-a7f6-f4f938a1da85",
+        "97f69765-ab71-5ce1-a456-d3c3733bc236",
+        "9aeadbed-be38-56e8-b95d-567898d82a4a",
+        "80a242fa-73b4-534a-a9fd-f3d1b0d25f42",
+        "3836ea82-8e23-5d60-bbbf-2c211bd062bd",
+        "2c683039-2f91-5ad0-8f39-33caceed0b9a",
+        "be1e3ed9-af82-51da-9338-ccb6ad723f12",
+        "fa495716-28c9-56c0-936f-39783869c815",
+        "4171fd70-748a-55ae-9817-14c2b1ddebf6",
+        "888b6cf6-abd8-5476-8f6f-520a4a10c612",
+        "3db2a341-df80-575d-8f30-9956ebdfd64b",
+        "cd93fed5-2dfa-5876-8ab3-a5389df388e0"
+      ]
+    },
+    {
+      "name": "Lower Stretchers",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 1,
+      "uuid": "5bd20b6e-7e4b-5337-b400-a95195075e4e",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "7b9d3ba4-ccc6-5814-b699-7d8bc8acdc79",
+        "15d449aa-2f03-576f-bfca-c4529fa354a2",
+        "ee6cafc6-fb03-558f-b73b-78241265834d",
+        "fd4088bd-b3c5-50c1-81fc-a542332e73da",
+        "7a7c0c6a-86f5-5565-9d4f-69ab04b885fc",
+        "93cb0a09-5e10-5d49-afe1-0dea3f02bba3",
+        "e4688d6b-f1c5-5b0a-88c2-2aae6e165b12",
+        "74ec4922-4efa-55dd-acb5-512c978e90d3",
+        "5e7e1fc6-f73c-5361-aeca-d8cc5290d73e",
+        "05e182c5-4baa-5f90-bdb0-91d450acb2a4",
+        "caec46db-a956-5993-a008-8ad71a7a2858",
+        "e60f889d-3f97-5c4e-8ba5-ac78d61acfde",
+        "841096e6-79e7-5ccf-b652-4e0eab80341a",
+        "d31140ba-cd69-54a0-9825-8fcfa1343a26",
+        "7517d53e-d811-5725-906b-99558ba86520",
+        "b76704f1-a253-5d04-85b7-3a650ca9c6d5",
+        "eee75359-bd09-5cc8-87a5-fdff56c8f15f"
+      ]
+    },
+    {
+      "name": "Center Cabinet",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 2,
+      "uuid": "65a21875-3afc-5af0-9885-08706a9dc55e",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "0e6165f9-aead-52f9-9d5d-c9fecfe48121"
+      ]
+    },
+    {
+      "name": "Side Aprons",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 3,
+      "uuid": "415c10f2-77b0-5842-bb30-20ec96e9f881",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "dc8bf46d-2f33-56fe-a7b8-7c0eb32d4647",
+        "9b36a972-6775-58fb-aa89-7edb41f980e2",
+        "29c139f7-ae24-5839-aaaf-e940c7b8812d",
+        "1545a5a4-4f99-50db-bfad-3b5125537937",
+        "a07ddd7a-6ca3-592a-abf7-5a308e662fd4",
+        "4e807afe-9202-5239-a857-2375da356dcd",
+        "0227afb8-2657-5df7-b69f-2b9f2853e1aa",
+        "f21b2100-1d9b-5ca7-97b1-d498ddf07780",
+        "9b841d64-0f70-57a6-a148-684871dfe0ac",
+        "81df684d-aaf3-5aff-811d-54ac9eafad8f",
+        "1cd9113b-1cd8-5aa2-96af-d1935fcbacec",
+        "1216d344-b033-5b5c-9811-47c7f40332fa",
+        "2610bb0e-28dd-5778-8c56-ec80d40018f4",
+        "5e50ee38-63c7-5211-8019-401d9a4a9352",
+        "f4f2f8a9-e85d-592a-b1d9-0b210460d9eb",
+        "cb23afd4-e088-59ce-9b4f-1a154da0e7a4",
+        "bbe51e2c-c39f-5337-89a8-7aa998181aeb",
+        "21c83a74-90d5-5dc6-929a-94b139132d5c",
+        "ac0293de-0656-5784-ba9d-1f130271b1e4",
+        "7cf5c427-613c-5b28-a234-8ccc108427be",
+        "75cebbf9-03fc-53c4-a11d-d9c1657d5c8f",
+        "4f1103ec-7b36-5471-a2bc-5662cd60da76",
+        "ebff6d06-8226-5002-a877-fe3757156e8f"
+      ]
+    },
+    {
+      "name": "Top Rim",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 4,
+      "uuid": "d1d085e5-6479-5bbe-848c-d3233996bc27",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "b0e173bc-5df7-555a-b678-3ec9eb89d20a",
+        "84c15406-dc68-5959-acb5-fe9d96900927",
+        "835cc71d-0feb-5480-bd5a-01a5d70b2b58",
+        "403ca5d7-ad9d-581d-b6d3-981202242822",
+        "6125ec3d-c82e-55ca-91f3-1f3e395e2188",
+        "c44be6e5-5025-548a-8569-519c2942e80a",
+        "9f4932fe-d8a0-5926-849c-7f3d8f561d2b",
+        "e85be6f1-8c4e-584d-a298-adf311fae014",
+        "bbde5cf8-c1d7-5593-9cce-234712684b40",
+        "9f9facb1-8590-5102-8274-461a30ad359d",
+        "03b84b25-ae2d-5c63-b16c-61334d39061d",
+        "764cc511-0425-563c-988c-3eeea11a5b14",
+        "d43f5018-1a1f-5886-934f-bb43d58af716",
+        "7e6a40c2-4e57-5e3d-a6ca-02e635f646f8",
+        "54ddcedd-76a5-55fe-ba15-e41983e2e919",
+        "0e967bf7-3dbb-5594-9ede-22540e2eafc8"
+      ]
+    },
+    {
+      "name": "Playable Felt",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 5,
+      "uuid": "a94fc0fb-aab2-5158-ac92-7d5dec957e84",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "021b5c58-4231-54d1-aba9-d02e8b2f03b3",
+        "ab5eb0c1-2c90-5b6d-a63b-2521ebdd8de5",
+        "8b91aeb9-61ec-5740-bbe5-b72a4b2620c8",
+        "888a46f3-37fa-5267-b53a-d6328ba5d4c1",
+        "0e87151d-4681-5b67-8da3-b01c803f7b2e",
+        "7560fa1b-e883-5a54-91f9-b56c1ecfe00e",
+        "d4b9fde0-08fd-5436-8855-278675a5e231",
+        "6852113e-ec88-5e12-b8f1-33efb6f9954d",
+        "7ce28c28-da15-5071-b36d-3c203cb6bb63",
+        "34661c0f-c73f-5a9f-a46d-125d94cac120",
+        "777eea0c-77b9-5f43-8cc7-d29660a20d7b",
+        "0656fe8e-85ac-519a-8cbb-116b7a61450d",
+        "3cad2239-18c0-5eba-88da-c73f02a3f0c4",
+        "ba38bb05-1eb8-50ea-897c-192425839c01",
+        "161ee3a6-18c5-55d3-a66e-281ba1914802",
+        "665089be-aaa7-5738-ac8e-8674376fd77e"
+      ]
+    },
+    {
+      "name": "Player Controls",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 6,
+      "uuid": "031d4b24-5cf5-5bef-8f2a-647e01c66142",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "dd892f90-7804-5732-8d4a-362b6bae3a06",
+        "d8feb28e-bcb7-5c51-941e-5973975ef0a4",
+        "92115743-e772-587c-bc60-5cc43e94e450",
+        "bc7e6cb6-52f6-5d14-b60a-c3fc6120c5b2",
+        "1dea28a9-3bef-5ff9-9a19-15467de58586",
+        "f53557f1-06d8-5a0d-8460-28911b5362ff",
+        "de9bd9d4-b7e8-55de-9d51-4086f7f01e73",
+        "551dc2bc-8708-59d5-b844-2cbafa5a9998",
+        "0cd52d0c-01e2-51ae-ad3d-8642c3776a70",
+        "a378718f-8115-51fb-bb59-a6c51daa91f9",
+        "3cef8401-9bb9-56ae-8b17-e12cf4046680",
+        "fbe89014-4c12-5c84-8a9e-6267a0f436a6",
+        "9cc231b4-9cbf-5add-9029-0e61840a1493",
+        "9eda49b8-2394-5e0a-a1b4-9ef4d646c293",
+        "7ba316a1-38de-5f19-9098-2c2dcb8bfc0b",
+        "417c012a-79af-5b56-ad6b-650c33c19f92",
+        "0448ed8e-084a-5d86-b492-463224c897b2"
+      ]
+    },
+    {
+      "name": "Center Lift",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 7,
+      "uuid": "70ddb528-b8ea-5a64-bd24-013d41e679aa",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "3b7ff27e-e449-5b57-af4b-4ece7ace6dea",
+        "03ce0c8c-95b4-52ec-9894-c7f6795f4a1d",
+        "215dc3af-7ff7-527c-9482-ee5f8a97a4e4"
+      ]
+    },
+    {
+      "name": "Accents",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 0,
+      "uuid": "cfeecaec-abb6-5a58-bd3c-b08f9ff25d2d",
+      "export": true,
+      "isOpen": false,
+      "children": [
+        "1016cd76-8e6a-5ca5-b400-b0604d67d455",
+        "62cd2054-252a-54fe-8ef6-ce03e2abd837",
+        "7bd305df-8d54-55bf-8740-c9ab4c8f32fd",
+        "0fd90818-6848-54b7-9080-5649284a083d",
+        "cec22796-1418-52d4-8f51-b3c35cfc1188",
+        "d496099b-c986-5107-a6c6-cf33dfa909e2",
+        "dca1fc90-7b9a-5f28-8f2d-0eccd470e3fb",
+        "d5105acf-1f8b-5fea-841c-f7ddffdd4c6c",
+        "fd52dedc-d662-5f0c-be27-157cf69d528e",
+        "64ddd38e-7c57-50ff-b4d3-c469547d2ef7",
+        "783a40fb-be9e-54a0-8cf0-9b006a780562",
+        "11c46130-2a1a-5b9f-bae2-80eee3439bb8"
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_walnut.png",
+      "name": "table_walnut.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "0",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "adfca7ba-6fd9-51dd-b170-1423ad7fc334",
+      "relative_path": "../../resourcepack/assets/mahjongcraft/textures/item/table/table_walnut.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABBklEQVR42p2TQW7CMBBF34yHACWLVtn0CL3/pbpFhQbsOpkuHCNC1AqQNdKXx/7+fpbl4/3VVYSg8zqcc9GXHhzPAzrp2jNBeNttZpPHmHl7WS9MLcxND+eIIiACUkfVMmkBAb5OPwhFX+ZFsD5mtqs8O+k7LeP3cRn/c3/CunZN1zaz+N2uWcRvbGl6ShlLw0jKPjk7KTuqENwJLoSxmM5Ae6k4jOjtnR5loveA+s9Un6VfTa1Pme1E/V76lUkfM9a1Dd2ueYj+2gKqQmNgKTv1JR6hH1zKnmfpVyb6LH25hmjKn6BumVyD7uOAtZtV+boI7lMp5GFEVXDAp96+L6ZljdBujF+ES5pZWC36AAAAAABJRU5ErkJggg=="
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_felt_green.png",
+      "name": "table_felt_green.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "1",
+      "particle": true,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "46536dbd-3dcc-5317-896b-ad0db7f08ed7",
+      "relative_path": "../../resourcepack/assets/mahjongcraft/textures/item/table/table_felt_green.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABOElEQVR4nKVT0XHFIAyTHTpA13nDdP8d2od7kuWQfpc7EjA2SELE59erIgO1C3kFqoB6F4LjXWDTumMRwObYNQsFBZEuniLGLn4AfhnVWoaKuc78xYT9UyfLjafMvHofzYkELmZb+iZj0X9DHOiqYzaXTVEbRQGbJdHFkQ1RpaLVMXXhPTQU60Kkoj41FweGy+EuddETLyhHCE05RzCp/jZcwTcKIxkqzJnbuDXYD8Hu079PgEVzog7YR9jEP9vSLoRvjjqB3D5oFANKIyJVYpeIff3Z3MZ9TpDa5sw+G1GPq3PHB3mreUUbakhxmKF+65M+lQ717a1jClvUzmux/hpJM70B1jfVdqJUtbqPm5h3MSiF8DE/Ii5bdB6MKc1mI5hQ2N6yvET0w5BFHwkj7FOw+xXS8tbgF53h2p+uleWfAAAAAElFTkSuQmCC"
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_dark_slot.png",
+      "name": "table_dark_slot.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "2",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "bf8aea46-f798-56e1-a197-b2d27d8f0c35",
+      "relative_path": "../../resourcepack/assets/mahjongcraft/textures/item/table/table_dark_slot.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwElEQVR42qWSy47CMAxFz3VdRiMNC1b8/z+CGOVRs2gKQrRFClk4i+Pk+trW+XQMSQBIQgLxvFMp7HEH8ff7M0NALag9SNnn5BV+/U9Y+3w+moNaTLnwidujtCd/Sf7EfRyMcbBV7we33d4c3PAyBaVOb95zDaRo6rHKc52wXu8Lt17vC7dv1B8V9KoLsG/UEfjoyxhFxLC5dWs8D4aXOlFqkEre2Ploc3/nucbrGHu20nq9L9wRXG5p13vKdZPfAb9lWXnpNbXhAAAAAElFTkSuQmCC"
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_muted_brass.png",
+      "name": "table_muted_brass.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "3",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "804ac912-b082-5c8b-859a-3ec2a808c7df",
+      "relative_path": "../../resourcepack/assets/mahjongcraft/textures/item/table/table_muted_brass.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA70lEQVR42t2S0WqDQBBF79w7+hAtmFDoJ/R/+i394bxEAk1bqQ3GqNsHY4gkpZvXPgzswh7m7syx15fnQDMUWYKvQw+agRzLLs5XdyOMBncRT48LFIsED4c+GtyUn3j7aODLPMUqT0EalomiQJphlafouwG+Pw74bgcUWYL6VgIjjMCm3J2/ZzTQDPt2gEuE+1jqwq8dXTyD05uRdULi6RKiwCmhOy8SSJAQBc4TSJCEcluhbvoocJag3FYI3RFFlkAe7vJA0uiBTnNwhfs9GMEbW/jDg6nx9RYiwGlGLv4bD3ZVi/X6HXXTz1yP8eAHpSdg+uVKmTgAAAAASUVORK5CYII="
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_center_hatch.png",
+      "name": "table_center_hatch.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "4",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "402ddb40-6bbb-5733-b8b6-138be6bdb1a6",
+      "relative_path": "../../resourcepack/assets/mahjongcraft/textures/item/table/table_center_hatch.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA1klEQVR42qWTywqDMBBF7wwlJlmVCoX+/9e1UIub5gHSLqJ5EKPSCkrmQo6Tw4Ru18sHfzwnAOj7M5gIzAATwfgJzAQmzHlYGz9lNeH+GMARReFDhPCGKq7fbgJRqonCNgZQhUehCZCFz9Gs/slYX0EjIA+1ErDWV+1r1cE6X3XKy/48VFLAOF+1r2VXQCsHuSgtBazzm07SERqitBRNJ+URNuy3nNC8KTpYwjVRLSelg0zUAtl1khyU7avF9oqTHBoBrTHdm8h6lA/Mfgmdb+NrGH++zl8IQE8lxdIRoAAAAABJRU5ErkJggg=="
+    }
+  ],
+  "display": {}
 }

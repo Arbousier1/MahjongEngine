@@ -1,18 +1,28 @@
 {
-  "credit": "Generated for MahjongPaper CraftEngine seat furniture",
-  "texture_size": [
-    16,
-    16
+  "meta": {
+    "format_version": "4.10",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "mahjong_seat_chair",
+  "model_identifier": "mahjongcraft:seat_chair",
+  "visible_box": [
+    2,
+    2,
+    2
   ],
-  "textures": {
-    "wood": "mahjongcraft:item/table/table_walnut",
-    "felt": "mahjongcraft:item/table/table_felt_green",
-    "trim": "mahjongcraft:item/table/table_muted_brass",
-    "slot": "mahjongcraft:item/table/table_dark_slot",
-    "particle": "mahjongcraft:item/table/table_walnut"
+  "variable_placeholders": "",
+  "variable_placeholder_buttons": [],
+  "timeline_setups": [],
+  "unhandled_root_fields": {},
+  "resolution": {
+    "width": 16,
+    "height": 16
   },
   "elements": [
     {
+      "name": "Foot Plate 001",
+      "type": "cube",
       "from": [
         3.0,
         -16.0,
@@ -23,6 +33,13 @@
         -15.05,
         13.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -31,7 +48,7 @@
             10.0,
             0.95
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -40,7 +57,7 @@
             10.0,
             0.95
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -49,7 +66,7 @@
             10.0,
             0.95
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -58,7 +75,7 @@
             10.0,
             0.95
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -67,7 +84,7 @@
             10.0,
             10.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -76,11 +93,13 @@
             10.0,
             10.0
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Foot Plate Trim 001",
+      "type": "cube",
       "from": [
         2.5,
         -15.0,
@@ -91,6 +110,13 @@
         -14.7,
         13.5
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -99,7 +125,7 @@
             11.0,
             0.3
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -108,7 +134,7 @@
             11.0,
             0.3
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -117,7 +143,7 @@
             11.0,
             0.3
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -126,7 +152,7 @@
             11.0,
             0.3
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -135,7 +161,7 @@
             11.0,
             11.0
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -144,11 +170,13 @@
             11.0,
             11.0
           ],
-          "texture": "#trim"
+          "texture": 2
         }
       }
     },
     {
+      "name": "Leg Front Left",
+      "type": "cube",
       "from": [
         3.5,
         -14.7,
@@ -159,6 +187,13 @@
         -8.05,
         5.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -167,7 +202,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -176,7 +211,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -185,7 +220,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -194,7 +229,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -203,7 +238,7 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -212,11 +247,13 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Leg Front Right",
+      "type": "cube",
       "from": [
         11.0,
         -14.7,
@@ -227,6 +264,13 @@
         -8.05,
         5.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -235,7 +279,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -244,7 +288,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -253,7 +297,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -262,7 +306,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -271,7 +315,7 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -280,11 +324,13 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Leg Back Left",
+      "type": "cube",
       "from": [
         3.5,
         -14.7,
@@ -295,6 +341,13 @@
         -8.05,
         12.5
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -303,7 +356,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -312,7 +365,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -321,7 +374,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -330,7 +383,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -339,7 +392,7 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -348,11 +401,13 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Leg Back Right",
+      "type": "cube",
       "from": [
         11.0,
         -14.7,
@@ -363,6 +418,13 @@
         -8.05,
         12.5
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -371,7 +433,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -380,7 +442,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -389,7 +451,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -398,7 +460,7 @@
             1.5,
             6.65
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -407,7 +469,7 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -416,11 +478,13 @@
             1.5,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Front Lower Rail",
+      "type": "cube",
       "from": [
         5.0,
         -12.5,
@@ -431,6 +495,13 @@
         -11.5,
         5.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -439,7 +510,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -448,7 +519,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -457,7 +528,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -466,7 +537,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -475,7 +546,7 @@
             6.0,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -484,11 +555,13 @@
             6.0,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Back Lower Rail",
+      "type": "cube",
       "from": [
         5.0,
         -12.5,
@@ -499,6 +572,13 @@
         -11.5,
         12.5
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -507,7 +587,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -516,7 +596,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -525,7 +605,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -534,7 +614,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -543,7 +623,7 @@
             6.0,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -552,11 +632,13 @@
             6.0,
             1.5
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Left Lower Rail",
+      "type": "cube",
       "from": [
         3.5,
         -12.5,
@@ -567,6 +649,13 @@
         -11.5,
         11.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -575,7 +664,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -584,7 +673,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -593,7 +682,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -602,7 +691,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -611,7 +700,7 @@
             1.5,
             6.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -620,11 +709,13 @@
             1.5,
             6.0
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Right Lower Rail",
+      "type": "cube",
       "from": [
         11.0,
         -12.5,
@@ -635,6 +726,13 @@
         -11.5,
         11.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -643,7 +741,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -652,7 +750,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -661,7 +759,7 @@
             1.5,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -670,7 +768,7 @@
             6.0,
             1.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -679,7 +777,7 @@
             1.5,
             6.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -688,11 +786,13 @@
             1.5,
             6.0
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Seat Board 001",
+      "type": "cube",
       "from": [
         2.0,
         -8.0,
@@ -703,6 +803,13 @@
         -6.55,
         14.0
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -711,7 +818,7 @@
             12.0,
             1.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -720,7 +827,7 @@
             12.0,
             1.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -729,7 +836,7 @@
             12.0,
             1.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -738,7 +845,7 @@
             12.0,
             1.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -747,7 +854,7 @@
             12.0,
             12.0
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -756,11 +863,13 @@
             12.0,
             12.0
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Seat Cushion 001",
+      "type": "cube",
       "from": [
         2.75,
         -6.5,
@@ -771,6 +880,13 @@
         -5.3,
         13.25
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -779,7 +895,7 @@
             10.5,
             1.2
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -788,7 +904,7 @@
             10.5,
             1.2
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -797,7 +913,7 @@
             10.5,
             1.2
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -806,7 +922,7 @@
             10.5,
             1.2
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -815,7 +931,7 @@
             10.5,
             10.5
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -824,11 +940,13 @@
             10.5,
             10.5
           ],
-          "texture": "#felt"
+          "texture": 1
         }
       }
     },
     {
+      "name": "Seat Cushion Trim Front",
+      "type": "cube",
       "from": [
         2.5,
         -6.4,
@@ -839,6 +957,13 @@
         -5.85,
         2.75
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -847,7 +972,7 @@
             11.0,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -856,7 +981,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -865,7 +990,7 @@
             11.0,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -874,7 +999,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -883,7 +1008,7 @@
             11.0,
             0.25
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -892,11 +1017,13 @@
             11.0,
             0.25
           ],
-          "texture": "#trim"
+          "texture": 2
         }
       }
     },
     {
+      "name": "Seat Cushion Trim Back",
+      "type": "cube",
       "from": [
         2.5,
         -6.4,
@@ -907,6 +1034,13 @@
         -5.85,
         13.5
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -915,7 +1049,7 @@
             11.0,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -924,7 +1058,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -933,7 +1067,7 @@
             11.0,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -942,7 +1076,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -951,7 +1085,7 @@
             11.0,
             0.25
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -960,11 +1094,13 @@
             11.0,
             0.25
           ],
-          "texture": "#trim"
+          "texture": 2
         }
       }
     },
     {
+      "name": "Seat Cushion Trim Left",
+      "type": "cube",
       "from": [
         2.5,
         -6.4,
@@ -975,6 +1111,13 @@
         -5.85,
         13.25
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -983,7 +1126,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -992,7 +1135,7 @@
             10.5,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -1001,7 +1144,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -1010,7 +1153,7 @@
             10.5,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -1019,7 +1162,7 @@
             0.25,
             10.5
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -1028,11 +1171,13 @@
             0.25,
             10.5
           ],
-          "texture": "#trim"
+          "texture": 2
         }
       }
     },
     {
+      "name": "Seat Cushion Trim Right",
+      "type": "cube",
       "from": [
         13.25,
         -6.4,
@@ -1043,6 +1188,13 @@
         -5.85,
         13.25
       ],
+      "autouv": 0,
+      "color": 2,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1051,7 +1203,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "east": {
           "uv": [
@@ -1060,7 +1212,7 @@
             10.5,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "south": {
           "uv": [
@@ -1069,7 +1221,7 @@
             0.25,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "west": {
           "uv": [
@@ -1078,7 +1230,7 @@
             10.5,
             0.55
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "up": {
           "uv": [
@@ -1087,7 +1239,7 @@
             0.25,
             10.5
           ],
-          "texture": "#trim"
+          "texture": 2
         },
         "down": {
           "uv": [
@@ -1096,11 +1248,13 @@
             0.25,
             10.5
           ],
-          "texture": "#trim"
+          "texture": 2
         }
       }
     },
     {
+      "name": "Back Post Left",
+      "type": "cube",
       "from": [
         2.75,
         -6.45,
@@ -1111,6 +1265,13 @@
         2.0,
         14.25
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1119,7 +1280,7 @@
             1.75,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1128,7 +1289,7 @@
             0.7,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1137,7 +1298,7 @@
             1.75,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1146,7 +1307,7 @@
             0.7,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1155,7 +1316,7 @@
             1.75,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1164,11 +1325,13 @@
             1.75,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Back Post Right",
+      "type": "cube",
       "from": [
         11.5,
         -6.45,
@@ -1179,6 +1342,13 @@
         2.0,
         14.25
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1187,7 +1357,7 @@
             1.75,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1196,7 +1366,7 @@
             0.7,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1205,7 +1375,7 @@
             1.75,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1214,7 +1384,7 @@
             0.7,
             8.45
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1223,7 +1393,7 @@
             1.75,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1232,11 +1402,13 @@
             1.75,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Back Rail Lower",
+      "type": "cube",
       "from": [
         4.5,
         -4.0,
@@ -1247,6 +1419,13 @@
         -2.7,
         14.25
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1255,7 +1434,7 @@
             7.0,
             1.3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1264,7 +1443,7 @@
             0.7,
             1.3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1273,7 +1452,7 @@
             7.0,
             1.3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1282,7 +1461,7 @@
             0.7,
             1.3
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1291,7 +1470,7 @@
             7.0,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1300,11 +1479,13 @@
             7.0,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Back Rail Upper",
+      "type": "cube",
       "from": [
         4.5,
         0.2,
@@ -1315,6 +1496,13 @@
         1.8,
         14.25
       ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1323,7 +1511,7 @@
             7.0,
             1.6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "east": {
           "uv": [
@@ -1332,7 +1520,7 @@
             0.7,
             1.6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "south": {
           "uv": [
@@ -1341,7 +1529,7 @@
             7.0,
             1.6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "west": {
           "uv": [
@@ -1350,7 +1538,7 @@
             0.7,
             1.6
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "up": {
           "uv": [
@@ -1359,7 +1547,7 @@
             7.0,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         },
         "down": {
           "uv": [
@@ -1368,11 +1556,13 @@
             7.0,
             0.7
           ],
-          "texture": "#wood"
+          "texture": 0
         }
       }
     },
     {
+      "name": "Back Cushion 001",
+      "type": "cube",
       "from": [
         4.5,
         -2.65,
@@ -1383,6 +1573,13 @@
         0.15,
         13.55
       ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        8,
+        8,
+        8
+      ],
       "faces": {
         "north": {
           "uv": [
@@ -1391,7 +1588,7 @@
             7.0,
             2.8
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "east": {
           "uv": [
@@ -1400,7 +1597,7 @@
             0.15,
             2.8
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "south": {
           "uv": [
@@ -1409,7 +1606,7 @@
             7.0,
             2.8
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "west": {
           "uv": [
@@ -1418,7 +1615,7 @@
             0.15,
             2.8
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "up": {
           "uv": [
@@ -1427,7 +1624,7 @@
             7.0,
             0.15
           ],
-          "texture": "#felt"
+          "texture": 1
         },
         "down": {
           "uv": [
@@ -1436,9 +1633,94 @@
             7.0,
             0.15
           ],
-          "texture": "#felt"
+          "texture": 1
         }
       }
+    }
+  ],
+  "outliner": [
+    "Foot Plate 001",
+    "Foot Plate Trim 001",
+    "Leg Front Left",
+    "Leg Front Right",
+    "Leg Back Left",
+    "Leg Back Right",
+    "Front Lower Rail",
+    "Back Lower Rail",
+    "Left Lower Rail",
+    "Right Lower Rail",
+    "Seat Board 001",
+    "Seat Cushion 001",
+    "Seat Cushion Trim Front",
+    "Seat Cushion Trim Back",
+    "Seat Cushion Trim Left",
+    "Seat Cushion Trim Right",
+    "Back Post Left",
+    "Back Post Right",
+    "Back Rail Lower",
+    "Back Rail Upper",
+    "Back Cushion 001"
+  ],
+  "textures": [
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_walnut.png",
+      "name": "table_walnut.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "0",
+      "particle": true,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "seat-texture-wood",
+      "relative_path": "../resourcepack/assets/mahjongcraft/textures/item/table/table_walnut.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABBklEQVR42p2TQW7CMBBF34yHACWLVtn0CL3/pbpFhQbsOpkuHCNC1AqQNdKXx/7+fpbl4/3VVYSg8zqcc9GXHhzPAzrp2jNBeNttZpPHmHl7WS9MLcxND+eIIiACUkfVMmkBAb5OPwhFX+ZFsD5mtqs8O+k7LeP3cRn/c3/CunZN1zaz+N2uWcRvbGl6ShlLw0jKPjk7KTuqENwJLoSxmM5Ae6k4jOjtnR5loveA+s9Un6VfTa1Pme1E/V76lUkfM9a1Dd2ueYj+2gKqQmNgKTv1JR6hH1zKnmfpVyb6LH25hmjKn6BumVyD7uOAtZtV+boI7lMp5GFEVXDAp96+L6ZljdBujF+ES5pZWC36AAAAAABJRU5ErkJggg=="
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_felt_green.png",
+      "name": "table_felt_green.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "1",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "seat-texture-felt",
+      "relative_path": "../resourcepack/assets/mahjongcraft/textures/item/table/table_felt_green.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABOElEQVR4nKVT0XHFIAyTHTpA13nDdP8d2od7kuWQfpc7EjA2SELE59erIgO1C3kFqoB6F4LjXWDTumMRwObYNQsFBZEuniLGLn4AfhnVWoaKuc78xYT9UyfLjafMvHofzYkELmZb+iZj0X9DHOiqYzaXTVEbRQGbJdHFkQ1RpaLVMXXhPTQU60Kkoj41FweGy+EuddETLyhHCE05RzCp/jZcwTcKIxkqzJnbuDXYD8Hu079PgEVzog7YR9jEP9vSLoRvjjqB3D5oFANKIyJVYpeIff3Z3MZ9TpDa5sw+G1GPq3PHB3mreUUbakhxmKF+65M+lQ717a1jClvUzmux/hpJM70B1jfVdqJUtbqPm5h3MSiF8DE/Ii5bdB6MKc1mI5hQ2N6yvET0w5BFHwkj7FOw+xXS8tbgF53h2p+uleWfAAAAAElFTkSuQmCC"
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_muted_brass.png",
+      "name": "table_muted_brass.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "2",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "seat-texture-trim",
+      "relative_path": "../resourcepack/assets/mahjongcraft/textures/item/table/table_muted_brass.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA70lEQVR42t2S0WqDQBBF79w7+hAtmFDoJ/R/+i394bxEAk1bqQ3GqNsHY4gkpZvXPgzswh7m7syx15fnQDMUWYKvQw+agRzLLs5XdyOMBncRT48LFIsED4c+GtyUn3j7aODLPMUqT0EalomiQJphlafouwG+Pw74bgcUWYL6VgIjjMCm3J2/ZzTQDPt2gEuE+1jqwq8dXTyD05uRdULi6RKiwCmhOy8SSJAQBc4TSJCEcluhbvoocJag3FYI3RFFlkAe7vJA0uiBTnNwhfs9GMEbW/jDg6nx9RYiwGlGLv4bD3ZVi/X6HXXTz1yP8eAHpSdg+uVKmTgAAAAASUVORK5CYII="
+    },
+    {
+      "path": "E:/project/majiang/resourcepack/assets/mahjongcraft/textures/item/table/table_dark_slot.png",
+      "name": "table_dark_slot.png",
+      "folder": "item/table",
+      "namespace": "mahjongcraft",
+      "id": "3",
+      "particle": false,
+      "render_mode": "default",
+      "visible": true,
+      "mode": "bitmap",
+      "saved": true,
+      "uuid": "seat-texture-slot",
+      "relative_path": "../resourcepack/assets/mahjongcraft/textures/item/table/table_dark_slot.png",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwElEQVR42qWSy47CMAxFz3VdRiMNC1b8/z+CGOVRs2gKQrRFClk4i+Pk+trW+XQMSQBIQgLxvFMp7HEH8ff7M0NALag9SNnn5BV+/U9Y+3w+moNaTLnwidujtCd/Sf7EfRyMcbBV7we33d4c3PAyBaVOb95zDaRo6rHKc52wXu8Lt17vC7dv1B8V9KoLsG/UEfjoyxhFxLC5dWs8D4aXOlFqkEre2Ploc3/nucbrGHu20nq9L9wRXG5p13vKdZPfAb9lWXnpNbXhAAAAAElFTkSuQmCC"
     }
   ]
 }

@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.4.0 - 2026-06-18
+
+Visual asset release for the MahjongPaper table furniture, seat chair, and dice resources.
+
+中文更新日志:
+
+- **棋牌桌视觉重做**: 使用新的 Blockbench 源文件重建 CraftEngine 牌桌家具模型，加入木纹桌脚、绿色毡面、低矮护边、对称中央底座和四面腰线，让桌面在游戏内更接近真实棋牌桌。
+- **桌面对齐优化**: 桌面绿布扩大到与外圈贴合，外圈护边压薄并加高 1 像素，毡面与牌底齐平，避免悬空和 z-fighting。
+- **椅子模型自制**: 替换之前的占位 `seat_chair`，自制带木腿、横档、坐板、绿色坐垫、黄铜边和低靠背的胡桃木风格凳子，与新牌桌风格统一。
+- **资源包贴图补全**: 新增 `item/table` 系列表格贴图，并将模型引用切换到项目自生成资源，避免继续依赖占位纹理。
+- **骰子资源刷新**: 更新骰子贴图和基础模型显示参数，使开局骰子动画在手持、地面、GUI 和固定展示场景下尺寸更稳定。
+- **家具锚点调整**: 把牌桌视觉锚点从 0.5 调到 0.375，模型本体保持在 Minecraft 合法坐标范围内，避免越界导致紫色缺失方块。
+- **资源归属说明**: 更新资源包 attribution，明确骰子、牌桌贴图、椅子模型与家具模型均为 MahjongPaper 项目生成资产。
+
+English Release Notes:
+
+- **Table visual overhaul**: Rebuilt the CraftEngine table furniture from the new Blockbench source with walnut legs, green felt, low rim guards, a centered base column, and four-sided waistlines so in-game tables look closer to a real mahjong table.
+- **Tabletop alignment**: Expanded the felt to meet the rim, raised the rim by 1 px, and aligned the felt top with the tile bottom plane to remove the floating gap and z-fighting.
+- **Custom seat chair**: Replaced the placeholder `seat_chair` with a hand-built walnut-style stool featuring wood legs, stretchers, a seat board, a green felt cushion, brass trim, and a low backrest matching the new table.
+- **Resource pack textures**: Added the `item/table` texture set and switched the table model to project-generated textures instead of placeholder assets.
+- **Dice asset refresh**: Updated dice textures and base-model display transforms for steadier sizing across animation, handheld, ground, GUI, and fixed-display contexts.
+- **Furniture anchor tuning**: Lowered the table visual anchor from 0.5 to 0.375 while keeping every cube within Minecraft's legal element range so the model never falls back to a missing-texture purple block.
+- **Asset attribution**: Updated the resource-pack attribution to identify dice textures, table textures, the seat chair model, and the table furniture model as MahjongPaper-generated assets.
+
+
 ## 1.3.2 - 2026-06-18
 
 Maintenance release for release-build formatting and clearer game room documentation.
