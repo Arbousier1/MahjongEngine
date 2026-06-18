@@ -10,7 +10,7 @@ Dice textures, table textures, dice item models, and the table furniture model a
 
 ## Sound Effects
 
-The sound effects under `assets/mahjong/sounds/` use low-risk redistributable sources:
+The sound effects under `assets/mahjongcraft/sounds/` use low-risk redistributable sources:
 
 - Real tile/table sounds are from Freesound recordings marked Creative Commons 0 (CC0 1.0).
 - Action call voices are from Amitaro's Voice Material Studio. These are not CC0; use requires credit, terms-link/readme, and a post-release usage report when redistributed in a Minecraft/CraftEngine bundle.

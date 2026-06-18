@@ -35,12 +35,12 @@ class TableStateSoundCoordinatorTest {
 
         when(controller.remainingWallCount()).thenReturn(70);
         coordinator.syncStateSounds();
-        verify(viewer, never()).playSound(location, "mahjong:tile_draw", 0.65F, 1.05F);
+        verify(viewer, never()).playSound(location, "mahjongcraft:tile_draw", 0.65F, 1.05F);
 
         when(controller.remainingWallCount()).thenReturn(69);
         coordinator.syncStateSounds();
 
-        verify(viewer).playSound(location, "mahjong:tile_draw", 0.65F, 1.05F);
+        verify(viewer).playSound(location, "mahjongcraft:tile_draw", 0.65F, 1.05F);
     }
 
     @Test
@@ -55,7 +55,7 @@ class TableStateSoundCoordinatorTest {
 
         coordinator.playDiscardSound();
 
-        verify(viewer).playSound(location, "mahjong:tile_discard", 0.75F, 1.05F);
+        verify(viewer).playSound(location, "mahjongcraft:tile_discard", 0.75F, 1.05F);
     }
 
     @Test
@@ -83,7 +83,7 @@ class TableStateSoundCoordinatorTest {
         when(controller.remainingWallCount()).thenReturn(69);
         coordinator.syncStateSounds();
 
-        verify(viewer).playSound(location, "mahjong:gb_tile_draw", 0.65F, 1.05F);
+        verify(viewer).playSound(location, "mahjongcraft:gb_tile_draw", 0.65F, 1.05F);
     }
 
     @Test
@@ -99,6 +99,6 @@ class TableStateSoundCoordinatorTest {
 
         coordinator.playDiscardSound();
 
-        verify(viewer).playSound(location, "mahjong:sichuan_tile_discard", 0.75F, 1.05F);
+        verify(viewer).playSound(location, "mahjongcraft:sichuan_tile_discard", 0.75F, 1.05F);
     }
 }

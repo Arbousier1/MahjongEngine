@@ -1,142 +1,142 @@
 {
   "tile_draw": {
     "sounds": [
-      "mahjong:tile_draw"
+      "mahjongcraft:tile_draw"
     ]
   },
   "tile_discard": {
     "sounds": [
-      "mahjong:tile_discard"
+      "mahjongcraft:tile_discard"
     ]
   },
   "tile_shuffle": {
     "sounds": [
-      "mahjong:tile_shuffle"
+      "mahjongcraft:tile_shuffle"
     ]
   },
   "reaction_chi": {
     "sounds": [
-      "mahjong:reaction_chi"
+      "mahjongcraft:reaction_chi"
     ]
   },
   "reaction_pon": {
     "sounds": [
-      "mahjong:reaction_pon"
+      "mahjongcraft:reaction_pon"
     ]
   },
   "reaction_kan": {
     "sounds": [
-      "mahjong:reaction_kan"
+      "mahjongcraft:reaction_kan"
     ]
   },
   "riichi": {
     "sounds": [
-      "mahjong:riichi"
+      "mahjongcraft:riichi"
     ]
   },
   "round_win": {
     "sounds": [
-      "mahjong:round_win"
+      "mahjongcraft:round_win"
     ]
   },
   "round_draw": {
     "sounds": [
-      "mahjong:round_draw"
+      "mahjongcraft:round_draw"
     ]
   },
   "turn_change": {
     "sounds": [
-      "mahjong:turn_change"
+      "mahjongcraft:turn_change"
     ]
   },
   "gb_tile_draw": {
     "sounds": [
-      "mahjong:gb_tile_draw"
+      "mahjongcraft:gb_tile_draw"
     ]
   },
   "gb_tile_discard": {
     "sounds": [
-      "mahjong:gb_tile_discard"
+      "mahjongcraft:gb_tile_discard"
     ]
   },
   "gb_tile_shuffle": {
     "sounds": [
-      "mahjong:gb_tile_shuffle"
+      "mahjongcraft:gb_tile_shuffle"
     ]
   },
   "gb_turn_change": {
     "sounds": [
-      "mahjong:gb_turn_change"
+      "mahjongcraft:gb_turn_change"
     ]
   },
   "gb_round_draw": {
     "sounds": [
-      "mahjong:gb_round_draw"
+      "mahjongcraft:gb_round_draw"
     ]
   },
   "gb_reaction_chi": {
     "sounds": [
-      "mahjong:gb_reaction_chi"
+      "mahjongcraft:gb_reaction_chi"
     ]
   },
   "gb_reaction_pon": {
     "sounds": [
-      "mahjong:gb_reaction_pon"
+      "mahjongcraft:gb_reaction_pon"
     ]
   },
   "gb_reaction_kan": {
     "sounds": [
-      "mahjong:gb_reaction_kan"
+      "mahjongcraft:gb_reaction_kan"
     ]
   },
   "gb_round_win": {
     "sounds": [
-      "mahjong:gb_round_win"
+      "mahjongcraft:gb_round_win"
     ]
   },
   "sichuan_tile_draw": {
     "sounds": [
-      "mahjong:sichuan_tile_draw"
+      "mahjongcraft:sichuan_tile_draw"
     ]
   },
   "sichuan_tile_discard": {
     "sounds": [
-      "mahjong:sichuan_tile_discard"
+      "mahjongcraft:sichuan_tile_discard"
     ]
   },
   "sichuan_tile_shuffle": {
     "sounds": [
-      "mahjong:sichuan_tile_shuffle"
+      "mahjongcraft:sichuan_tile_shuffle"
     ]
   },
   "sichuan_turn_change": {
     "sounds": [
-      "mahjong:sichuan_turn_change"
+      "mahjongcraft:sichuan_turn_change"
     ]
   },
   "sichuan_round_draw": {
     "sounds": [
-      "mahjong:sichuan_round_draw"
+      "mahjongcraft:sichuan_round_draw"
     ]
   },
   "sichuan_reaction_chi": {
     "sounds": [
-      "mahjong:sichuan_reaction_chi"
+      "mahjongcraft:sichuan_reaction_chi"
     ]
   },
   "sichuan_reaction_pon": {
     "sounds": [
-      "mahjong:sichuan_reaction_pon"
+      "mahjongcraft:sichuan_reaction_pon"
     ]
   },
   "sichuan_reaction_kan": {
     "sounds": [
-      "mahjong:sichuan_reaction_kan"
+      "mahjongcraft:sichuan_reaction_kan"
     ]
   },
   "sichuan_round_win": {
     "sounds": [
-      "mahjong:sichuan_round_win"
+      "mahjongcraft:sichuan_round_win"
     ]
   }
 }

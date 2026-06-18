@@ -9,7 +9,7 @@ import java.util.Objects;
 import org.bukkit.entity.Player;
 
 public final class TableStateSoundCoordinator {
-    private static final String NAMESPACE = "mahjong";
+    private static final String NAMESPACE = "mahjongcraft";
 
     private static String sound(String name) {
         return NAMESPACE + ":" + name;
