@@ -85,7 +85,7 @@ public final class TableViewerPresentationCoordinator {
         this.markDirty();
         this.nextOverlayRefreshTick = 0L;
         this.nextHudRefreshTick = 0L;
-        this.clearHud();
+        this.clearHudImmediately();
     }
 
     public void hideHud(UUID viewerId) {
@@ -100,6 +100,17 @@ public final class TableViewerPresentationCoordinator {
     public void clearHud() {
         for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
             this.hideHud(viewerId);
+        }
+    }
+
+    private void clearHudImmediately() {
+        for (UUID viewerId : List.copyOf(this.viewerHudBars.keySet())) {
+            BossBar bar = this.viewerHudBars.remove(viewerId);
+            this.viewerHudState.remove(viewerId);
+            Player player = this.session.onlinePlayer(viewerId);
+            if (bar != null && player != null) {
+                player.hideBossBar(bar);
+            }
         }
     }
 

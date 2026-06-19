@@ -29,7 +29,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runGlobal(Runnable runnable) {
-        if (runnable == null) {
+        if (runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.globalRegionScheduler();
@@ -49,7 +49,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runGlobalDelayed(Runnable runnable, long delayTicks) {
-        if (runnable == null) {
+        if (runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.globalRegionScheduler();
@@ -70,7 +70,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runGlobalTimer(Runnable runnable, long delayTicks, long periodTicks) {
-        if (runnable == null) {
+        if (runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.globalRegionScheduler();
@@ -92,7 +92,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runRegion(Location location, Runnable runnable) {
-        if (location == null || location.getWorld() == null || runnable == null) {
+        if (location == null || location.getWorld() == null || runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.regionScheduler();
@@ -113,7 +113,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runRegionDelayed(Location location, Runnable runnable, long delayTicks) {
-        if (location == null || location.getWorld() == null || runnable == null) {
+        if (location == null || location.getWorld() == null || runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.regionScheduler();
@@ -135,7 +135,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runRegionTimer(Location location, Runnable runnable, long delayTicks, long periodTicks) {
-        if (location == null || location.getWorld() == null || runnable == null) {
+        if (location == null || location.getWorld() == null || runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.regionScheduler();
@@ -158,7 +158,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runEntity(Entity entity, Runnable runnable) {
-        if (entity == null || runnable == null) {
+        if (entity == null || runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.entityScheduler(entity);
@@ -179,7 +179,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask runEntityDelayed(Entity entity, Runnable runnable, long delayTicks) {
-        if (entity == null || runnable == null) {
+        if (entity == null || runnable == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Object scheduler = this.entityScheduler(entity);
@@ -202,7 +202,7 @@ public final class ServerScheduler {
 
     @SuppressWarnings("unchecked")
     public CompletableFuture<Boolean> teleport(Entity entity, Location location) {
-        if (entity == null || location == null) {
+        if (entity == null || location == null || !this.isPluginEnabled()) {
             return CompletableFuture.completedFuture(Boolean.FALSE);
         }
         try {
@@ -231,7 +231,7 @@ public final class ServerScheduler {
     }
 
     public PluginTask removeEntity(Entity entity, long delayTicks) {
-        if (entity == null) {
+        if (entity == null || !this.isPluginEnabled()) {
             return NO_OP_TASK;
         }
         Runnable removeTask = () -> {
@@ -255,6 +255,10 @@ public final class ServerScheduler {
 
     private Object entityScheduler(Entity entity) {
         return this.invokeNoArgs(entity, "getScheduler");
+    }
+
+    private boolean isPluginEnabled() {
+        return this.plugin.isEnabled();
     }
 
     private Object invokeNoArgs(Object target, String methodName) {
