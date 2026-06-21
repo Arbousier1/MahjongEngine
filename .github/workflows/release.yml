@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -195,7 +195,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           # Need the full history so the fast-forward step can verify ancestry between main and the tag commit.
